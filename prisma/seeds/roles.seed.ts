@@ -5,21 +5,40 @@ export async function seedRoles(prisma: PrismaClient) {
     data: [
       {
         name: 'admin',
-        description: 'no tengo',
+        description: 'Full system access',
       },
+
       {
-        name: 'seller',
-        description: 'no tengo',
+        name: 'purchasing',
+        description: 'Manages purchases and supplier orders',
       },
+
       {
-        name: 'warehouse_manager',
-        description: 'no tengo',
+        name: 'warehouse',
+        description: 'Manages inventory and warehouse operations',
       },
+
       {
-        name: 'accountant',
-        description: 'no tengo',
+        name: 'basket_management',
+        description: 'Manages product baskets and packaging',
+      },
+
+      {
+        name: 'billing',
+        description: 'Handles invoicing and sales billing',
+      },
+
+      {
+        name: 'accounts_payable_admin',
+        description: 'Manages accounts payable and supplier payments',
+      },
+
+      {
+        name: 'accounts_receivable_admin',
+        description: 'Manages accounts receivable and customer collections',
       },
     ],
+
     skipDuplicates: true,
   });
 }

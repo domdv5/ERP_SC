@@ -1,50 +1,53 @@
 import { PrismaClient } from '@prisma/client';
 
-const permissions = [
-  {
-    code: 'all.manage',
-    module: 'all',
-    description: 'Permite administrar todos los recursos',
-  },
-  {
-    code: 'auth.read',
-    module: 'auth',
-    description: 'Permite consultar usuarios/autenticacion',
-  },
-];
-
 export async function seedPermissions(prisma: PrismaClient) {
-  for (const permission of permissions) {
-    await prisma.permission.upsert({
-      where: { code: permission.code },
-      update: permission,
-      create: permission,
-    });
-  }
+  await prisma.permission.createMany({
+    data: [
+      // Productos
+      { code: 'product.create', module: 'products' },
+      { code: 'product.read', module: 'products' },
+      { code: 'product.update', module: 'products' },
 
-  const adminRole = await prisma.role.findUnique({
-    where: { name: 'admin' },
-    select: { id: true },
-  });
+      // Documentos — separados por tipo porque cada rol crea tipos distintos
+      { code: 'document.create.CM', module: 'documents' },
+      { code: 'document.create.DVC', module: 'documents' },
+      { code: 'document.create.RMDVC', module: 'documents' },
+      { code: 'document.create.PE', module: 'documents' },
+      { code: 'document.create.EAI', module: 'documents' },
+      { code: 'document.create.SAJ', module: 'documents' },
+      { code: 'document.create.COT', module: 'documents' },
+      { code: 'document.create.POS', module: 'documents' },
+      { code: 'document.create.REM', module: 'documents' },
+      { code: 'document.create.DVV', module: 'documents' },
+      { code: 'document.create.T', module: 'documents' },
+      { code: 'document.read', module: 'documents' },
 
-  const adminPermission = await prisma.permission.findUnique({
-    where: { code: 'all.manage' },
-    select: { id: true },
-  });
+      // Etiquetas
+      { code: 'label.print', module: 'labels' },
 
-  if (!adminRole || !adminPermission) return;
+      // Terceros (proveedores y clientes)
+      { code: 'thirdparty.create', module: 'third-parties' },
+      { code: 'thirdparty.read', module: 'third-parties' },
+      { code: 'thirdparty.update', module: 'third-parties' },
 
-  await prisma.rolePermission.upsert({
-    where: {
-      roleId_permissionId: {
-        roleId: adminRole.id,
-        permissionId: adminPermission.id,
-      },
-    },
-    update: {},
-    create: {
-      roleId: adminRole.id,
-      permissionId: adminPermission.id,
-    },
+      // Bodegas — manage porque solo bodega las gestiona completamente
+      { code: 'warehouse.manage', module: 'warehouses' },
+
+      // Cuentas por cobrar
+      { code: 'ar.read', module: 'accounts' },
+      { code: 'ar.manage', module: 'accounts' },
+
+      // Cuentas por pagar
+      { code: 'ap.read', module: 'accounts' },
+      { code: 'ap.manage', module: 'accounts' },
+
+      // Caja
+      { code: 'cash.create', module: 'cash' },
+      { code: 'cash.read', module: 'cash' },
+
+      // Usuarios — solo admin
+      { code: 'user.manage', module: 'users' },
+    ],
+    skipDuplicates: true,
   });
 }

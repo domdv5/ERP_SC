@@ -2,8 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { seedRoles } from 'prisma/seeds/roles.seed';
-import { seedPermissions } from 'prisma/seeds/permissions.seed';
+import { seedPermissions, seedRoles } from 'prisma/seeds/index';
 
 const connectionString = process.env.DATABASE_URL;
 
