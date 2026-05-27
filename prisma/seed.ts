@@ -2,7 +2,11 @@ import { PrismaClient } from '@prisma/client';
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { seedPermissions, seedRoles } from 'prisma/seeds/index';
+import {
+  seedPermissions,
+  seedRoles,
+  seedRolePermissions,
+} from 'prisma/seeds/index';
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -17,6 +21,7 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   await seedRoles(prisma);
   await seedPermissions(prisma);
+  await seedRolePermissions(prisma);
 }
 
 main()
