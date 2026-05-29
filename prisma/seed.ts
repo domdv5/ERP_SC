@@ -3,6 +3,8 @@ import 'dotenv/config';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
+  seedCategories,
+  seedGenders,
   seedPermissions,
   seedRoles,
   seedRolePermissions,
@@ -19,6 +21,8 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
+  await seedCategories(prisma);
+  await seedGenders(prisma);
   await seedRoles(prisma);
   await seedPermissions(prisma);
   await seedRolePermissions(prisma);
