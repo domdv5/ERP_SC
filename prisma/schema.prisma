@@ -45,42 +45,30 @@ model Category {
 // ─── Third parties (base for customers & suppliers) ──────────────────────────
 
 model ThirdParty {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  email     String?
-  phone     String?
-  address   String?
-  isActive  Boolean  @default(true) @map("is_active")
-  isSeller  Boolean  @default(false) @map("is_seller")
-  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  id             String    @id @default(uuid()) @db.Uuid
+  name           String
+  email          String?   @unique
+  phone          String?
+  address        String?
+  isActive       Boolean   @default(true) @map("is_active")
+  isSeller       Boolean   @default(false) @map("is_seller")
+  personType     String    @map("person_type") @db.VarChar(10)
+  documentType   String    @map("document_type") @db.VarChar(20)
+  documentNumber String    @unique @map("document_number") @db.VarChar(50)
+  firstName      String?   @map("first_name") @db.VarChar(100)
+  lastName       String?   @map("last_name") @db.VarChar(100)
+  businessName   String?   @map("business_name") @db.VarChar(200)
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime? @updatedAt @map("updated_at") @db.Timestamptz
 
-  taxIdentifications TaxIdentification[]
   customer           Customer?
   supplier           Supplier?
   documents          Document[]
-  soldToCustomers    Customer[]          @relation("SellerThirdParty")
+  soldToCustomers    Customer[]           @relation("SellerThirdParty")
   accountsReceivable AccountsReceivable[] @relation("SellerAR")
   equivalenceTables  EquivalenceTable[]
 
   @@map("third_parties")
-}
-
-model TaxIdentification {
-  id             String   @id @default(uuid()) @db.Uuid
-  thirdPartyId   String   @map("third_party_id") @db.Uuid
-  documentType   String?  @map("document_type") @db.VarChar(20)
-  documentNumber String   @map("document_number") @db.VarChar(50)
-  personType     String?  @map("person_type") @db.VarChar(10)
-  businessName   String?  @map("business_name") @db.VarChar(200)
-  firstName      String?  @map("first_name") @db.VarChar(100)
-  lastName       String?  @map("last_name") @db.VarChar(100)
-  isDefault      Boolean  @default(false) @map("is_default")
-  isActive       Boolean  @default(true) @map("is_active")
-
-  thirdParty ThirdParty @relation(fields: [thirdPartyId], references: [id])
-
-  @@map("tax_identifications")
 }
 
 // ─── Customer ─────────────────────────────────────────────────────────────────

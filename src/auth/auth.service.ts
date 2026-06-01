@@ -111,8 +111,24 @@ export class AuthService {
     return `This action returns all auth`;
   }
 
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
+  async update(id: string, updateAuthDto: UpdateAuthDto) {
+    const { roleId } = updateAuthDto;
+
+    await this.prisma.user.findFirstOrThrow({ where: { id } });
+
+    if (roleId) {
+      await this.prisma.role.findFirstOrThrow({ where: { id: roleId } });
+
+      await this.prisma.$transaction([
+        this.prisma.userRole.deleteMany({ where: { userId: id } }),
+        this.prisma.userRole.create({ data: { userId: id, roleId } }),
+      ]);
+    }
+
+    return this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, name: true, username: true },
+    });
   }
 
   remove(id: number) {

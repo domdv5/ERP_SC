@@ -6,12 +6,7 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-
-export interface ResponseFormat<T = any> {
-  success: boolean;
-  data: T;
-  message?: string;
-}
+import type { ResponseFormat } from '@/common/types';
 
 @Injectable()
 export class ResponseFormatInterceptor<T> implements NestInterceptor<
