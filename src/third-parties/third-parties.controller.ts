@@ -1,6 +1,16 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
-import { ThirdPartiesService } from './third-parties.service';
-import { CreateThirdPartyDto } from './dto/create-third-party.dto';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Patch,
+  Param,
+} from '@nestjs/common';
+import { ThirdPartiesService } from '@/third-parties/third-parties.service';
+import {
+  CreateThirdPartyDto,
+  UpdateThirdPartyDto,
+} from '@/third-parties/dto/index';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Permissions } from '@/common/decorators/permissions.decorator';
@@ -14,5 +24,14 @@ export class ThirdPartiesController {
   @Permissions('thirdparty.create')
   create(@Body() createThirdPartyDto: CreateThirdPartyDto) {
     return this.thirdPartiesService.create(createThirdPartyDto);
+  }
+
+  @Patch(':id')
+  @Permissions('thirdparty.update')
+  update(
+    @Param('id') id: string,
+    @Body() updateThirdPartyDto: UpdateThirdPartyDto,
+  ) {
+    return this.thirdPartiesService.update(id, updateThirdPartyDto);
   }
 }

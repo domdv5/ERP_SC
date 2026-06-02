@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { CreateAuthDto, UpdateAuthDto, LoginAuthDto } from '@/auth/dto/index';
 import { PrismaService } from '@/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -12,11 +16,14 @@ export class AuthService {
   ) {}
 
   async create(createAuthDto: CreateAuthDto) {
-    const { password, roleId, ...rest } = createAuthDto;
+    const { password, roleIds, ...rest } = createAuthDto;
 
-    await this.prisma.role.findFirstOrThrow({
-      where: { id: roleId },
+    const roles = await this.prisma.role.findMany({
+      where: { id: { in: roleIds } },
     });
+    if (roles.length !== roleIds.length) {
+      throw new NotFoundException('Uno o más roles no existen');
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     return this.prisma.user.create({
@@ -24,41 +31,12 @@ export class AuthService {
         ...rest,
         password: hashedPassword,
         userRoles: {
-          create: {
-            roleId,
-          },
+          create: roleIds.map((roleId) => ({ roleId })),
         },
       },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-      },
+      select: { id: true, name: true, username: true },
     });
   }
-
-  // async login(loginAuthDto: LoginAuthDto) {
-  //   const { username, password } = loginAuthDto;
-  //   const user = await this.prisma.user.findUnique({
-  //     where: { username },
-  //   });
-
-  //   if (!user) throw new UnauthorizedException('Credenciales inválidas');
-
-  //   const valid = await bcrypt.compare(password, user.password);
-
-  //   if (!valid) throw new UnauthorizedException('Credenciales inválidas');
-
-  //   const payload = {
-  //     sub: user.id,
-  //     name: user.name,
-  //     username: user.username,
-  //   };
-
-  //   return {
-  //     access_token: this.jwt.sign(payload),
-  //   };
-  // }
 
   async login(loginAuthDto: LoginAuthDto) {
     const { username, password } = loginAuthDto;
@@ -71,9 +49,7 @@ export class AuthService {
             role: {
               include: {
                 rolePermissions: {
-                  include: {
-                    permission: true,
-                  },
+                  include: { permission: true },
                 },
               },
             },
@@ -102,36 +78,38 @@ export class AuthService {
       permissions,
     };
 
-    return {
-      access_token: this.jwt.sign(payload),
-    };
-  }
-
-  findAll() {
-    return `This action returns all auth`;
+    return { access_token: this.jwt.sign(payload) };
   }
 
   async update(id: string, updateAuthDto: UpdateAuthDto) {
-    const { roleId } = updateAuthDto;
+    const { roleIds, ...rest } = updateAuthDto;
 
-    await this.prisma.user.findFirstOrThrow({ where: { id } });
-
-    if (roleId) {
-      await this.prisma.role.findFirstOrThrow({ where: { id: roleId } });
-
-      await this.prisma.$transaction([
-        this.prisma.userRole.deleteMany({ where: { userId: id } }),
-        this.prisma.userRole.create({ data: { userId: id, roleId } }),
-      ]);
+    if (roleIds?.length) {
+      const roles = await this.prisma.role.findMany({
+        where: { id: { in: roleIds } },
+      });
+      if (roles.length !== roleIds.length) {
+        throw new NotFoundException('Uno o más roles no existen');
+      }
     }
 
-    return this.prisma.user.findUnique({
+    return this.prisma.user.update({
       where: { id },
+      data: {
+        ...rest,
+        ...(roleIds?.length && {
+          userRoles: {
+            deleteMany: {},
+            create: roleIds.map((roleId) => ({ roleId })),
+          },
+        }),
+      },
       select: { id: true, name: true, username: true },
     });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+  async remove(id: string) {
+    await this.prisma.user.findFirstOrThrow({ where: { id } });
+    await this.prisma.user.delete({ where: { id } });
   }
 }

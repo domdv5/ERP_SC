@@ -3,5 +3,5 @@ import { CreateAuthDto } from '@/auth/dto/create-auth.dto';
 
 export class LoginAuthDto extends OmitType(CreateAuthDto, [
   'name',
-  'roleId',
+  'roleIds',
 ] as const) {}

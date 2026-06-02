@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsUUID,
+  IsArray,
+  ArrayNotEmpty,
+} from 'class-validator';
 
 export class CreateAuthDto {
   @IsString()
@@ -12,9 +18,10 @@ export class CreateAuthDto {
   @IsNotEmpty()
   password!: string;
 
-  @IsNotEmpty()
-  @IsUUID()
-  roleId!: string;
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsUUID('4', { each: true })
+  roleIds!: string[];
 
   active: boolean = true;
 }
