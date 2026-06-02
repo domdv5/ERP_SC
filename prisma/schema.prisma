@@ -52,6 +52,8 @@ model ThirdParty {
   address        String?
   isActive       Boolean   @default(true) @map("is_active")
   isSeller       Boolean   @default(false) @map("is_seller")
+  isCustomer     Boolean   @default(false) @map("is_customer")
+  isSupplier     Boolean   @default(false) @map("is_supplier")
   personType     String    @map("person_type") @db.VarChar(10)
   documentType   String    @map("document_type") @db.VarChar(20)
   documentNumber String    @unique @map("document_number") @db.VarChar(50)
@@ -91,7 +93,7 @@ model Customer {
 
 model Supplier {
   id             String  @id @db.Uuid
-  internalNumber Int?    @unique @map("internal_number")
+  internalNumber Int    @unique @map("internal_number")
 
   thirdParty      ThirdParty       @relation(fields: [id], references: [id])
   brands          Brand[]

@@ -2,9 +2,14 @@ import {
   IsBoolean,
   IsEmail,
   IsIn,
+  IsInt,
+  isNotEmpty,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateThirdPartyDto {
@@ -26,16 +31,19 @@ export class CreateThirdPartyDto {
   @IsNotEmpty()
   documentNumber!: string;
 
-  @IsOptional()
+  @ValidateIf((o) => o.personType === 'natural')
   @IsString()
+  @IsNotEmpty()
   firstName?: string;
 
-  @IsOptional()
+  @ValidateIf((o) => o.personType === 'natural')
   @IsString()
+  @IsNotEmpty()
   lastName?: string;
 
-  @IsOptional()
+  @ValidateIf((o) => o.personType === 'juridica')
   @IsString()
+  @IsNotEmpty()
   businessName?: string;
 
   @IsOptional()
@@ -53,4 +61,34 @@ export class CreateThirdPartyDto {
   @IsOptional()
   @IsBoolean()
   isSeller?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isCustomer?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isSupplier?: boolean;
+
+  // Customer-specific
+  @ValidateIf((o) => o.isCustomer === true)
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  creditLimit?: number;
+
+  @ValidateIf((o) => o.isCustomer === true)
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  discount?: number;
+
+  @ValidateIf((o) => o.isCustomer === true)
+  @IsOptional()
+  @IsUUID()
+  sellerId?: string;
+
+  // Supplier-specific
+  @ValidateIf((o) => o.isSupplier === true)
+  @IsNotEmpty()
+  @IsInt()
+  internalNumber!: number;
 }

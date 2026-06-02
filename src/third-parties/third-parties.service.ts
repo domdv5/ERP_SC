@@ -6,7 +6,36 @@ import { PrismaService } from '@/prisma/prisma.service';
 export class ThirdPartiesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(dto: CreateThirdPartyDto) {
-    return this.prisma.thirdParty.create({ data: dto });
+  async create(createThirdPartyDto: CreateThirdPartyDto) {
+    const {
+      isCustomer,
+      isSupplier,
+      creditLimit,
+      discount,
+      sellerId,
+      internalNumber,
+      ...thirdPartyData
+    } = createThirdPartyDto;
+
+    return this.prisma.$transaction(async (tx) => {
+      const thirdParty = await tx.thirdParty.create({ data: thirdPartyData });
+
+      if (isCustomer) {
+        await tx.customer.create({
+          data: { id: thirdParty.id, creditLimit, discount, sellerId },
+        });
+      }
+
+      if (isSupplier) {
+        await tx.supplier.create({
+          data: { id: thirdParty.id, internalNumber },
+        });
+      }
+
+      return tx.thirdParty.findUnique({
+        where: { id: thirdParty.id },
+        include: { customer: true, supplier: true },
+      });
+    });
   }
 }
