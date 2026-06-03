@@ -18,6 +18,7 @@ export class ThirdPartiesService {
       discount,
       sellerId,
       internalNumber,
+      brands,
       ...thirdPartyData
     } = createThirdPartyDto;
 
@@ -35,7 +36,15 @@ export class ThirdPartiesService {
 
       if (isSupplier) {
         supplier = await tx.supplier.create({
-          data: { id: thirdParty.id, internalNumber },
+          data: {
+            id: thirdParty.id,
+            internalNumber,
+            brands: {
+              createMany: {
+                data: brands.map((name: string) => ({ name })),
+              },
+            },
+          },
         });
       }
 

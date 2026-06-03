@@ -59,7 +59,6 @@ model ThirdParty {
   documentNumber String    @unique @map("document_number") @db.VarChar(50)
   firstName      String?   @map("first_name") @db.VarChar(100)
   lastName       String?   @map("last_name") @db.VarChar(100)
-  businessName   String?   @map("business_name") @db.VarChar(200)
   createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime? @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -97,7 +96,6 @@ model Supplier {
 
   thirdParty      ThirdParty       @relation(fields: [id], references: [id])
   brands          Brand[]
-  products        Product[]
   accountsPayable AccountsPayable[]
 
   @@map("suppliers")
@@ -109,11 +107,11 @@ model Brand {
   id         String   @id @default(uuid()) @db.Uuid
   name       String   @db.VarChar(100)
   active     Boolean  @default(true)
-  supplierId String?  @map("supplier_id") @db.Uuid
+  supplierId String   @map("supplier_id") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  supplier Supplier? @relation(fields: [supplierId], references: [id])
+  supplier Supplier @relation(fields: [supplierId], references: [id])
   products Product[]
 
   @@map("brand")
@@ -129,11 +127,10 @@ model Product {
   brandId       String   @map("brand_id") @db.Uuid
   genderId      String   @map("gender_id") @db.Uuid
   categoryId    String   @map("category_id") @db.Uuid
-  supplierId    String   @map("supplier_id") @db.Uuid
-  salePrice     Decimal  @map("sale_price") @db.Decimal(14, 2)
-  minSalePrice  Decimal  @map("min_sale_price") @db.Decimal(14, 2)
+  salePrice     Int  @map("sale_price")
+  minSalePrice  Int  @map("min_sale_price")
   active        Boolean  @default(true)
-  stockCache    Decimal  @default(0) @map("stock_cache") @db.Decimal(14, 3)
+  stockCache    Int  @default(0) @map("stock_cache")
   avgCost       Decimal  @default(0) @map("avg_cost") @db.Decimal(14, 4)
   lastCost      Decimal  @default(0) @map("last_cost") @db.Decimal(14, 4)
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
@@ -142,7 +139,6 @@ model Product {
   brand    Brand    @relation(fields: [brandId], references: [id])
   gender   Gender   @relation(fields: [genderId], references: [id])
   category Category @relation(fields: [categoryId], references: [id])
-  supplier Supplier @relation(fields: [supplierId], references: [id])
 
   documentItems      DocumentItem[]
   inventoryRecords   Inventory[]

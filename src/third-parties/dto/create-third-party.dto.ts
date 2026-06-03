@@ -1,4 +1,6 @@
 import {
+  ArrayNotEmpty,
+  IsArray,
   IsBoolean,
   IsEmail,
   IsIn,
@@ -40,11 +42,6 @@ export class CreateThirdPartyDto {
   @IsString()
   @IsNotEmpty()
   lastName?: string;
-
-  @ValidateIf((o) => o.personType === 'juridica')
-  @IsString()
-  @IsNotEmpty()
-  businessName?: string;
 
   @IsOptional()
   @IsEmail()
@@ -91,4 +88,10 @@ export class CreateThirdPartyDto {
   @IsNotEmpty()
   @IsInt()
   internalNumber!: number;
+
+  @ValidateIf((o) => o.isSupplier === true)
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  brands!: string[];
 }
