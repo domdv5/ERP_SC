@@ -7,6 +7,7 @@ export async function seedPermissions(prisma: PrismaClient) {
       { code: 'product.create', module: 'products' },
       { code: 'product.read', module: 'products' },
       { code: 'product.update', module: 'products' },
+      { code: 'product.delete', module: 'products' },
 
       // Documentos — separados por tipo porque cada rol crea tipos distintos
       { code: 'document.create.CM', module: 'documents' },
@@ -29,6 +30,7 @@ export async function seedPermissions(prisma: PrismaClient) {
       { code: 'thirdparty.create', module: 'third-parties' },
       { code: 'thirdparty.read', module: 'third-parties' },
       { code: 'thirdparty.update', module: 'third-parties' },
+      { code: 'thirdparty.delete', module: 'third-parties' },
 
       // Bodegas — manage porque solo bodega las gestiona completamente
       { code: 'warehouse.manage', module: 'warehouses' },

@@ -26,7 +26,14 @@ export class ProductsService {
     });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} product`;
+  remove(id: string, userId: string) {
+    return this.prisma.product.update({
+      where: { id },
+      data: {
+        active: false,
+        deletedAt: new Date(),
+        deletedById: userId,
+      },
+    });
   }
 }

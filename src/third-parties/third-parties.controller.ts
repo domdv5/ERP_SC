@@ -5,6 +5,8 @@ import {
   UseGuards,
   Patch,
   Param,
+  Delete,
+  Req,
 } from '@nestjs/common';
 import { ThirdPartiesService } from '@/third-parties/third-parties.service';
 import {
@@ -14,6 +16,7 @@ import {
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Permissions } from '@/common/decorators/permissions.decorator';
+import type { RequestWithUser } from '@/common/types';
 
 @Controller('third-parties')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -33,5 +36,11 @@ export class ThirdPartiesController {
     @Body() updateThirdPartyDto: UpdateThirdPartyDto,
   ) {
     return this.thirdPartiesService.update(id, updateThirdPartyDto);
+  }
+
+  @Delete(':id')
+  @Permissions('thirdparty.delete')
+  remove(@Param('id') id: string, @Req() req: RequestWithUser) {
+    return this.thirdPartiesService.remove(id, req.user.sub);
   }
 }

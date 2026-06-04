@@ -59,6 +59,8 @@ model ThirdParty {
   documentNumber String    @unique @map("document_number") @db.VarChar(50)
   firstName      String?   @map("first_name") @db.VarChar(100)
   lastName       String?   @map("last_name") @db.VarChar(100)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+  deletedById    String?   @map("deleted_by_id") @db.Uuid
   createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime? @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -68,6 +70,7 @@ model ThirdParty {
   soldToCustomers    Customer[]           @relation("SellerThirdParty")
   accountsReceivable AccountsReceivable[] @relation("SellerAR")
   equivalenceTables  EquivalenceTable[]
+  deletedBy          User?                @relation("ThirdPartyDeletedBy", fields: [deletedById], references: [id])
 
   @@map("third_parties")
 }
@@ -129,16 +132,19 @@ model Product {
   categoryId    String   @map("category_id") @db.Uuid
   salePrice     Int  @map("sale_price")
   minSalePrice  Int  @map("min_sale_price")
-  active        Boolean  @default(true)
-  stockCache    Int  @default(0) @map("stock_cache")
-  avgCost       Decimal  @default(0) @map("avg_cost") @db.Decimal(14, 4)
-  lastCost      Decimal  @default(0) @map("last_cost") @db.Decimal(14, 4)
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  active        Boolean   @default(true)
+  stockCache    Int       @default(0) @map("stock_cache")
+  avgCost       Decimal   @default(0) @map("avg_cost") @db.Decimal(14, 4)
+  lastCost      Decimal   @default(0) @map("last_cost") @db.Decimal(14, 4)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
+  deletedById   String?   @map("deleted_by_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  brand    Brand    @relation(fields: [brandId], references: [id])
-  gender   Gender   @relation(fields: [genderId], references: [id])
-  category Category @relation(fields: [categoryId], references: [id])
+  brand     Brand    @relation(fields: [brandId], references: [id])
+  gender    Gender   @relation(fields: [genderId], references: [id])
+  category  Category @relation(fields: [categoryId], references: [id])
+  deletedBy User?    @relation("ProductDeletedBy", fields: [deletedById], references: [id])
 
   documentItems      DocumentItem[]
   inventoryRecords   Inventory[]
@@ -322,9 +328,11 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  userRoles          UserRole[]
-  documents          Document[]
-  inventoryMovements InventoryMovement[]
+  userRoles             UserRole[]
+  documents             Document[]
+  inventoryMovements    InventoryMovement[]
+  deletedProducts       Product[]     @relation("ProductDeletedBy")
+  deletedThirdParties   ThirdParty[]  @relation("ThirdPartyDeletedBy")
 
   @@map("user")
 }

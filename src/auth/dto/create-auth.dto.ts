@@ -4,6 +4,8 @@ import {
   IsUUID,
   IsArray,
   ArrayNotEmpty,
+  IsOptional,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateAuthDto {
@@ -23,5 +25,7 @@ export class CreateAuthDto {
   @IsUUID('4', { each: true })
   roleIds!: string[];
 
+  @IsOptional()
+  @IsBoolean()
   active: boolean = true;
 }

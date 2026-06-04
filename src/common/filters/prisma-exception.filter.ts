@@ -37,6 +37,11 @@ export class PrismaExceptionFilter implements ExceptionFilter {
             message: 'Referencia a un registro que no existe',
             field: exception.meta?.field_name,
           });
+        case 'P2007':
+          return response.status(HttpStatus.BAD_REQUEST).json({
+            statusCode: 400,
+            message: 'Formato de datos inválido',
+          });
         default:
           return response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
             statusCode: 500,

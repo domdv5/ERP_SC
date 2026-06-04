@@ -52,6 +52,17 @@ export class ThirdPartiesService {
     });
   }
 
+  remove(id: string, userId: string) {
+    return this.prisma.thirdParty.update({
+      where: { id },
+      data: {
+        isActive: false,
+        deletedAt: new Date(),
+        deletedById: userId,
+      },
+    });
+  }
+
   async update(id: string, updateThirdPartyDto: UpdateThirdPartyDto) {
     const {
       isCustomer,
