@@ -41,8 +41,7 @@ export function Header() {
           <input
             type="text"
             placeholder="Buscar..."
-            className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all"
-            style={{ '--tw-ring-color': '#07bc34' } as React.CSSProperties}
+            className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
           />
         </div>
       </div>
@@ -50,10 +49,7 @@ export function Header() {
       <div className="flex items-center gap-4">
         <button className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
           <Bell className="w-5 h-5" />
-          <span
-            className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-            style={{ background: '#07bc34' }}
-          />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-secondary" />
         </button>
 
         {/* User dropdown */}
@@ -69,10 +65,7 @@ export function Header() {
               <p className="text-sm font-medium text-gray-800 leading-tight">{user?.name ?? 'Usuario'}</p>
               <p className="text-xs text-gray-400">{user?.username}</p>
             </div>
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-              style={{ background: 'linear-gradient(135deg, #141a17, #07bc34)' }}
-            >
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 gradient-user">
               {user?.name?.[0]?.toUpperCase() ?? 'U'}
             </div>
           </button>
@@ -82,10 +75,7 @@ export function Header() {
             <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-gray-100 shadow-xl bg-white overflow-hidden z-50">
               <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
                 <div className="flex items-center gap-2">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                    style={{ background: 'linear-gradient(135deg, #141a17, #07bc34)' }}
-                  >
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
                     {user?.name?.[0]?.toUpperCase() ?? 'U'}
                   </div>
                   <div className="min-w-0">

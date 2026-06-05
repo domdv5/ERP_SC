@@ -192,6 +192,37 @@ return res.data.data
 | `/accounts-receivable` | Placeholder | ComingSoonPage |
 | `/accounts-payable` | Placeholder | ComingSoonPage |
 
+### Design Tokens
+
+All colors and gradients are tokenized — **never use hardcoded hex values** in components.
+
+**Color classes** (defined in `src/index.css` `@theme`):
+- `bg-brand-primary` / `text-brand-primary` — `#141a17` (sidebar, dark surfaces)
+- `bg-brand-secondary` / `text-brand-secondary` — `#07bc34` (CTAs, active states)
+- `bg-brand-surface` — `#1e2820` (dropdowns on dark backgrounds)
+- `bg-brand-primary-dark` — `#0d1210` (page background on login)
+- Opacity modifiers work natively: `bg-brand-secondary/10`, `bg-brand-primary/15`
+
+**Gradient utilities** (use as className, never as inline `style`):
+- `gradient-action` — green CTA: buttons, active pagination
+- `gradient-dark` — dark surface: empty state icons
+- `gradient-user` — user avatars: dark-to-green
+- `nav-active` — sidebar active NavLink
+- `glass` — glassmorphism for dark panel forms
+- `text-gradient-brand` — green gradient text for hero copy
+
+### Typography
+
+Fonts loaded in `index.html` from Google Fonts. Applied globally via `@layer base` in `src/index.css`.
+
+| Font | Weight | Applied to | Class |
+|------|--------|------------|-------|
+| Prompt | Black 900 | h1–h6 (automatic) | — |
+| Barlow | Regular 400 | Body text (default) | `font-sans` |
+| Barlow | Medium Italic 500 | Subtitles, supporting text | `font-accent` |
+
+**Rule:** Do not add `font-bold` to headings — Prompt Black is applied automatically. Use `font-accent` for subtitle/description text (e.g., page subtitles, date labels, placeholder descriptions).
+
 ### UI Conventions
 
 - Error messages in **Spanish** (matches backend)

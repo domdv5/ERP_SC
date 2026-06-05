@@ -55,10 +55,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside
-      className="w-64 flex flex-col h-full shadow-2xl"
-      style={{ background: "#141a17" }}
-    >
+    <aside className="w-64 flex flex-col h-full bg-brand-primary shadow-2xl">
       {/* Logo */}
       <div className="px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-3">
@@ -67,7 +64,7 @@ export function Sidebar() {
             <p className="text-white font-bold text-sm leading-tight tracking-wide">
               EloSC
             </p>
-            <p className="text-white/40 text-xs">Surtidora de Comerciantes</p>
+            <p className="text-white/40 text-xs font-accent">Surtidora de Comerciantes</p>
           </div>
         </div>
       </div>
@@ -85,18 +82,9 @@ export function Sidebar() {
               cn(
                 "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                 isActive
-                  ? "text-white shadow-lg"
+                  ? "nav-active text-white shadow-lg"
                   : "text-white/60 hover:text-white hover:bg-white/5",
               )
-            }
-            style={({ isActive }) =>
-              isActive
-                ? {
-                    background:
-                      "linear-gradient(135deg, rgba(7,188,52,0.2), rgba(7,188,52,0.1))",
-                    borderLeft: "3px solid #07bc34",
-                  }
-                : {}
             }
           >
             <Icon className="w-4 h-4 shrink-0" />
@@ -113,10 +101,7 @@ export function Sidebar() {
       >
         {/* Dropdown menu — opens upward */}
         {menuOpen && (
-          <div
-            className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border border-white/10 shadow-2xl overflow-hidden"
-            style={{ background: "#1e2820" }}
-          >
+          <div className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border border-white/10 shadow-2xl overflow-hidden bg-brand-surface">
             <div className="px-4 py-3 border-b border-white/10">
               <p className="text-white text-xs font-semibold truncate">
                 {user?.name ?? "Usuario"}
@@ -143,10 +128,7 @@ export function Sidebar() {
             menuOpen ? "bg-white/10" : "hover:bg-white/5",
           )}
         >
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-            style={{ background: "linear-gradient(135deg, #07bc34, #059928)" }}
-          >
+          <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-action">
             {user?.name?.[0]?.toUpperCase() ?? "U"}
           </div>
           <div className="flex-1 min-w-0 text-left">
