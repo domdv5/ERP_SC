@@ -1,0 +1,49 @@
+# Dependencies (any depth)
+node_modules/
+
+# Build outputs (any depth)
+dist/
+build/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests / coverage
+coverage/
+.nyc_output/
+
+# IDEs
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Temp
+.temp
+.tmp
+
+# Claude Code internals
+.claude/
+.agents/
+
+# Prisma generated
+generated/prisma
