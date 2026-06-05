@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dbhub": {
+      "command": "npx",
+      "args": ["-y", "@bytebase/dbhub", "--transport", "stdio", "--dsn", "postgresql://erp_user:andres25@localhost:5432/erp_db"]
+    }
+  }
+}

@@ -1,0 +1,201 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+ERP Supply Chain — full-stack application for managing products, inventory, warehouses, customers, suppliers, accounts receivable/payable, and documents.
+
+- **Backend**: NestJS REST API (`backend/`)
+- **Frontend**: React SPA named **EloSC** (`frontend/`), brand colors `#141a17` primary / `#07bc34` secondary
+
+## Commands
+
+All commands run from the `backend/` directory using `pnpm`.
+
+```bash
+# Development
+pnpm start:dev          # Start with hot reload (watch mode)
+pnpm build              # Compile TypeScript via nest build
+pnpm start:prod         # Run compiled output
+
+# Code quality
+pnpm lint               # ESLint with auto-fix
+pnpm format             # Prettier format
+
+# Testing
+pnpm test               # Run all Jest unit tests
+pnpm test:watch         # Watch mode
+pnpm test:cov           # With coverage
+# Run a single test file:
+pnpm exec jest path/to/file.spec.ts
+
+# Database
+pnpm migrate:dev        # Run Prisma migrations (dev)
+pnpm seed               # Seed roles, permissions, and role-permission mappings
+```
+
+## Architecture
+
+### Module Structure
+
+`backend/src/` contains NestJS modules. Implemented modules: `auth`, `prisma`, `third-parties`, `common`.
+
+**Bootstrap** (`main.ts`):
+
+- Global `ValidationPipe` for DTO validation
+- Global `PrismaExceptionFilter` — catches Prisma errors P2002/P2003/P2025 and returns Spanish-language HTTP errors
+- Global `ResponseFormatInterceptor` — wraps all responses as `{ success, data }`
+- Listens on `PORT` env var (default 3000)
+
+**AppModule** imports: `ConfigModule` (global, reads `.env`), `AuthModule`, `PrismaModule`, `ThirdPartiesModule`
+
+**PrismaModule** is global — inject `PrismaService` anywhere without re-importing the module.
+
+**AuthModule**:
+
+- `POST /auth` — create user (requires name, username, password, roleId)
+- `PATCH /auth/:id` — update user
+- `DELETE /auth/:id` — delete user
+- `POST /auth/login` — returns JWT containing `{ sub, name, username, permissions[] }`
+- `JwtAuthGuard` — validates Bearer token; attaches `{ sub, name, username, permissions[] }` to `request.user`
+- JWT expiration: 8 hours
+
+**ThirdPartiesModule**:
+
+- `POST /third-parties` — create a third party (customer and/or supplier); requires `thirdparty.create` permission
+- Supports `personType`: `natural` | `juridica`
+- Supports `documentType`: `CC | NIT | CE | PAS | TI | RC`
+- Conditional validation: natural persons require `firstName`/`lastName`; juridical persons require `businessName`
+- Optional customer fields: `creditLimit`, `discount`, `sellerId`
+- Optional supplier field: `internalNumber`
+- Transactional creation: ThirdParty + Customer/Supplier records in one transaction
+
+**CommonModule** (`src/common/`):
+
+- `decorators/permissions.decorator.ts` — `@Permissions(...perms)` sets required permissions via SetMetadata
+- `guards/jwt-auth.guard.ts` — validates Bearer token, throws 401 on failure
+- `guards/permissions.guard.ts` — checks `request.user.permissions` against required perms, throws 403 if missing
+- `filters/prisma-exception.filter.ts` — maps Prisma errors to HTTP responses (Spanish messages)
+- `interceptors/response-format.interceptor.ts` — wraps responses as `{ success: true, data: T }`
+- `enums/index.ts` — exports `MovementType`, `DocumentType`, `DocumentStatus`
+- `types/index.ts` — exports `JwtPayload`, `RequestWithUser`, `ResponseFormat<T>`
+
+### Authentication & Authorization
+
+JWT includes the user's full permission set (loaded from Role → RolePermission → Permission at login time). Guards check against this in-token permissions array — no per-request DB lookup needed.
+
+RBAC roles defined in seed: `admin`, `purchasing`, `warehouse`, `basket_management`, `billing`, `accounts_payable_admin`, `accounts_receivable_admin`.
+
+Permissions are namespaced by module: `products.*`, `documents.*`, `warehouses.*`, `third_parties.*`, `accounts.*`, `cash.*`, `users.*`, `labels.*`.
+
+### Database (Prisma + PostgreSQL)
+
+Schema: `backend/prisma/schema.prisma`. Uses `@prisma/adapter-pg` for connection pooling.
+
+Key domain models and their relationships:
+
+- **ThirdParty** → base for `Customer` and `Supplier` (one-to-one)
+- **Product** — has pricing, costing, and a `stock` cache field (updated via inventory movements)
+- **Warehouse → Zone → Bin** — three-level location hierarchy
+- **Inventory** — current stock per `(product, bin)` pair
+- **InventoryMovement** — append-only audit trail; `type` enum: `purchase | sale | return | transfer | adjustment | initial_stock | void | production`
+- **Document + DocumentItem** — unified transaction document supporting types: `CM, DVC, RMDVC, PE, EAI, SAJ, COT, POS, REM, DVV, T`
+- **AccountsReceivable / AccountsPayable** — payment tracking with credit support
+- **User → UserRole → Role → RolePermission → Permission** — full RBAC graph
+
+### Conventions
+
+- **Path alias**: `@/*` maps to `src/*` (configured in `tsconfig.json`)
+- **Response format**: Always `{ success: boolean, data: T }` — the interceptor handles wrapping; `message` is optional
+- **Error messages**: Spanish language (matches existing filter messages)
+- **Passwords**: bcrypt, 10 salt rounds
+- **Config**: All secrets via `ConfigService` from `.env` (`DATABASE_URL`, `JWT_SECRET`)
+
+---
+
+## Frontend (EloSC)
+
+### Commands
+
+All commands run from the `frontend/` directory using `pnpm`.
+
+```bash
+pnpm dev          # Start Vite dev server
+pnpm build        # Production build
+pnpm preview      # Preview production build
+pnpm lint         # ESLint
+```
+
+### Stack
+
+| Tool | Use |
+|------|-----|
+| React 19 + Vite | UI / bundler |
+| React Router v7 | SPA routing with lazy routes |
+| Tailwind CSS v4 | Utility styles |
+| TanStack Query v5 | Server state, cache, mutations |
+| Zustand | Client state (`useAuthStore`) |
+| Sonner | Toasts/notifications |
+| react-hook-form + zod | Form validation |
+| lucide-react | Icons |
+
+### Structure
+
+```
+frontend/src/
+  components/
+    layout/       ← AppLayout, Sidebar, Header, AuthGuard
+    shared/       ← PageLoader (branded 3-ring gyroscope)
+  pages/
+    auth/         ← LoginPage
+    dashboard/    ← DashboardPage
+    third-parties/← ThirdPartiesPage + ThirdPartyForm + DeleteConfirmDialog
+    coming-soon/  ← ComingSoonPage (placeholder for unimplemented modules)
+  router/         ← index.tsx (lazy routes, authenticated layout)
+  services/       ← third-parties.service.ts, api.ts (axios instance)
+  stores/         ← auth.store.ts (Zustand)
+  types/          ← shared TypeScript types
+  lib/            ← utils (cn), queryClient
+```
+
+### Key Patterns
+
+**API responses** — Backend wraps everything as `{ success, data: T }`. Services unwrap before returning:
+```ts
+const res = await api.get<ApiResponse<T>>('/endpoint', { params })
+return res.data.data
+```
+
+**Queries** — Always include `staleTime: 5 * 60 * 1000` to avoid redundant refetches on cached keys. Use `keepPreviousData` on paginated/searchable lists to prevent flicker.
+
+**Debounced search** — 400 ms debounce via `useEffect` + `setTimeout`; reset `page` to 1 when search changes.
+
+**Pagination** — Backend returns `{ items, meta: { total, page, limit, totalPages } }`. Query key includes `[..., page]`. Pagination controls show ellipsis for large page counts.
+
+**Mutations** — Always call `queryClient.invalidateQueries({ queryKey: ['resource'] })` on success.
+
+**Logout dropdown** — Built with `useState` + `useRef` + `document.addEventListener('mousedown', ...)` for click-outside detection. No external library.
+
+**Protected routes** — `AuthGuard` checks `useAuthStore` token; redirects to `/login` if not authenticated.
+
+### Implemented Modules
+
+| Route | Status | Notes |
+|-------|--------|-------|
+| `/login` | Done | JWT auth, redirects to `/` if already logged in |
+| `/` (dashboard) | Partial | Stats cards — Terceros shows real count, rest are static `—` |
+| `/third-parties` | Done | Full CRUD, server-side search, debounce, pagination, cache |
+| `/products` | Placeholder | ComingSoonPage |
+| `/warehouses` | Placeholder | ComingSoonPage |
+| `/documents` | Placeholder | ComingSoonPage |
+| `/accounts-receivable` | Placeholder | ComingSoonPage |
+| `/accounts-payable` | Placeholder | ComingSoonPage |
+
+### UI Conventions
+
+- Error messages in **Spanish** (matches backend)
+- Toast pattern: `toast.success` / `toast.error` / `toast.info` (Sonner)
+- All stats show `animate-pulse` skeleton while loading, never blank/undefined
+- Action buttons hidden (`opacity-0`) on table rows, revealed on `group-hover`
+- Path alias `@/*` → `src/*` (same as backend)
