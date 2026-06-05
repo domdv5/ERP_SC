@@ -7,10 +7,13 @@ import {
   Param,
   Delete,
   Req,
+  Get,
+  Query,
 } from '@nestjs/common';
 import { ThirdPartiesService } from '@/third-parties/third-parties.service';
 import {
   CreateThirdPartyDto,
+  FindAllThirdPartiesDto,
   UpdateThirdPartyDto,
 } from '@/third-parties/dto/index';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
@@ -22,6 +25,12 @@ import type { RequestWithUser } from '@/common/types';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ThirdPartiesController {
   constructor(private readonly thirdPartiesService: ThirdPartiesService) {}
+
+  @Get()
+  @Permissions('thirdparty.read')
+  findAll(@Query() findAllThirdPartiesDto: FindAllThirdPartiesDto) {
+    return this.thirdPartiesService.findAll(findAllThirdPartiesDto);
+  }
 
   @Post()
   @Permissions('thirdparty.create')
