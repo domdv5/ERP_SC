@@ -28,6 +28,24 @@ export class ProductsController {
     return this.productsService.findAll(findAllProductsDto);
   }
 
+  @Get('brands')
+  @Permissions('product.read')
+  getBrands() {
+    return this.productsService.getBrands();
+  }
+
+  @Get('genders')
+  @Permissions('product.read')
+  getGenders() {
+    return this.productsService.getGenders();
+  }
+
+  @Get('categories')
+  @Permissions('product.read')
+  getCategories() {
+    return this.productsService.getCategories();
+  }
+
   @Get(':id')
   @Permissions('product.read')
   findOne(@Param('id') id: string) {

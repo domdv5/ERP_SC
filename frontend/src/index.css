@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: .dark on <html> activates dark: variants */
+@custom-variant dark (&:is(.dark *));
+
 @theme {
   /* Brand colors */
   --color-brand-primary:       #141a17;
@@ -13,6 +16,55 @@
   /* Fonts — Tailwind v4 convention */
   --font-sans:    "Barlow", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Prompt", ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+  Semantic tokens — values flip between light and dark.
+  Components use bg-surface, text-content, border-ui-border, etc.
+  Never hardcode gray-* in components; use these instead.
+*/
+@theme inline {
+  --color-page:               var(--page);
+  --color-surface:            var(--surface);
+  --color-surface-raised:     var(--surface-raised);
+  --color-surface-hover:      var(--surface-hover);
+  --color-ui-border:          var(--ui-border);
+  --color-ui-border-medium:   var(--ui-border-medium);
+  --color-ui-divide:          var(--ui-divide);
+  --color-content:            var(--content);
+  --color-content-secondary:  var(--content-secondary);
+  --color-content-muted:      var(--content-muted);
+  --color-content-faint:      var(--content-faint);
+}
+
+/* Light mode values (default) */
+:root {
+  --page:               #f9fafb;
+  --surface:            #ffffff;
+  --surface-raised:     #f9fafb;
+  --surface-hover:      #f3f4f6;
+  --ui-border:          #f3f4f6;
+  --ui-border-medium:   #e5e7eb;
+  --ui-divide:          #f9fafb;
+  --content:            #111827;
+  --content-secondary:  #374151;
+  --content-muted:      #6b7280;
+  --content-faint:      #9ca3af;
+}
+
+/* Dark mode values — applied when <html class="dark"> */
+.dark {
+  --page:               #0d1210;
+  --surface:            #1e2820;
+  --surface-raised:     #141a17;
+  --surface-hover:      #1f2b24;
+  --ui-border:          rgba(255, 255, 255, 0.08);
+  --ui-border-medium:   rgba(255, 255, 255, 0.12);
+  --ui-divide:          rgba(255, 255, 255, 0.05);
+  --content:            #f9fafb;
+  --content-secondary:  #e5e7eb;
+  --content-muted:      rgba(255, 255, 255, 0.6);
+  --content-faint:      rgba(255, 255, 255, 0.4);
 }
 
 @layer base {

@@ -26,6 +26,7 @@ model Gender {
 
   products   Product[]
 
+  @@index([active])
   @@map("gender")
 }
 
@@ -39,6 +40,7 @@ model Category {
   products          Product[]
   equivalenceTables EquivalenceTable[]
 
+  @@index([active])
   @@map("category")
 }
 
@@ -72,6 +74,10 @@ model ThirdParty {
   equivalenceTables  EquivalenceTable[]
   deletedBy          User?                @relation("ThirdPartyDeletedBy", fields: [deletedById], references: [id])
 
+  @@index([isActive])
+  @@index([isCustomer])
+  @@index([isSupplier])
+  @@index([createdAt])
   @@map("third_parties")
 }
 
@@ -117,6 +123,8 @@ model Brand {
   supplier Supplier @relation(fields: [supplierId], references: [id])
   products Product[]
 
+  @@index([active])
+  @@index([supplierId])
   @@map("brand")
 }
 
@@ -151,6 +159,14 @@ model Product {
   inventoryMovements InventoryMovement[]
   inventorySnapshots InventorySnapshot[]
 
+  @@index([active])
+  @@index([brandId])
+  @@index([genderId])
+  @@index([categoryId])
+  @@index([createdAt])
+  @@index([active, brandId])
+  @@index([active, categoryId])
+  @@index([active, genderId])
   @@map("product")
 }
 

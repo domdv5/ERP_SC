@@ -186,7 +186,7 @@ return res.data.data
 | `/login` | Done | JWT auth, redirects to `/` if already logged in |
 | `/` (dashboard) | Partial | Stats cards — Terceros shows real count, rest are static `—` |
 | `/third-parties` | Done | Full CRUD, server-side search, debounce, pagination, cache |
-| `/products` | Placeholder | ComingSoonPage |
+| `/products` | Done | Full CRUD, server-side search, debounce, pagination, cache |
 | `/warehouses` | Placeholder | ComingSoonPage |
 | `/documents` | Placeholder | ComingSoonPage |
 | `/accounts-receivable` | Placeholder | ComingSoonPage |
@@ -231,6 +231,66 @@ Fonts loaded in `index.html` from Google Fonts. Applied globally via `@layer bas
 - Action buttons hidden (`opacity-0`) on table rows, revealed on `group-hover`
 - Path alias `@/*` → `src/*` (same as backend)
 
+### Shared Components
+
+`components/shared/` contains reusable primitives for all list/table pages. **Always import from the barrel** `@/components/shared`, never from individual files.
+
+```tsx
+// ✅ correct
+import { StatsGrid, TableToolbar, TableSkeleton, EmptyState, ErrorState, TablePagination } from '@/components/shared'
+
+// ❌ wrong — bypasses barrel
+import { StatsGrid } from '@/components/shared/StatsGrid'
+```
+
+| Component | Key props | Use when |
+|-----------|-----------|----------|
+| `StatsGrid` | `cards: StatCard[]`, `isLoading` | 3-card stat row at top of every list page |
+| `TableToolbar` | `search`, `onSearchChange`, `placeholder`, `isLoading`, `itemCount`, `total`, `onRefresh` | Search + count + refresh bar above table |
+| `TableSkeleton` | `rows?`, `widths: [w1, w2, w3, w4]` | Animated placeholder while data loads |
+| `EmptyState` | `icon`, `title`, `description` | No-data / no-results state inside table |
+| `ErrorState` | `message`, `onRetry` | Fetch error state inside table |
+| `TablePagination` | `page`, `totalPages`, `total`, `onPageChange` | Footer pagination; auto-hides if `totalPages ≤ 1` |
+| `PageLoader` | — | Full-page branded loading spinner |
+
+**Rule:** Before writing inline skeleton, error state, empty state, stats grid, toolbar, or pagination in a new page — check this list first and use the shared component.
+
+### Dark Mode — MANDATORY for every new component
+
+The app has a dark/light toggle. **Every component must be dark-mode-ready from the start.** The rule is simple: never use hardcoded Tailwind gray classes. Use semantic tokens instead.
+
+| Instead of… | Use… |
+|-------------|------|
+| `bg-white` | `bg-surface` |
+| `bg-gray-50` (elevated area, toolbar, footer) | `bg-surface-raised` |
+| `bg-gray-100` (hover state, skeleton) | `bg-surface-hover` |
+| `hover:bg-gray-50` | `hover:bg-surface-raised` |
+| `hover:bg-gray-100` | `hover:bg-surface-hover` |
+| `border-gray-50` / `divide-gray-50` | `border-ui-divide` / `divide-ui-divide` |
+| `border-gray-100` | `border-ui-border` |
+| `border-gray-200` | `border-ui-border-medium` |
+| `text-gray-900` / `text-gray-800` | `text-content` |
+| `text-gray-700` / `text-gray-600` | `text-content-secondary` |
+| `text-gray-500` | `text-content-muted` |
+| `text-gray-400` / `text-gray-300` | `text-content-faint` |
+| `bg-gray-50` (page background) | `bg-page` |
+
+**Inline styles with hex colors are forbidden.** Replace with CSS utility classes:
+- `style={{ background: 'linear-gradient(135deg, #141a17, #1f2b24)' }}` → `className="gradient-dark"`
+- `style={{ background: 'linear-gradient(135deg, #07bc34, #059928)' }}` → `className="gradient-action"`
+- `style={{ background: '#141a17' }}` → `className="bg-brand-primary"`
+
+**Status / category pill badges** use Tailwind color classes (green, blue, amber…) which are acceptable, but must include dark-mode variants:
+```tsx
+// ✅ correct
+'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+
+// ❌ wrong — no dark variant
+'bg-green-100 text-green-700'
+```
+
+The `dark:` variant works because `@custom-variant dark (&:is(.dark *))` is declared in `index.css` and `<html class="dark">` is toggled by `useThemeStore` via `AppLayout`.
+
 ---
 
 ## Routing Rules
@@ -242,6 +302,7 @@ Defines when to delegate to a subagent or invoke a skill. Read the trigger condi
 | Trigger | Subagent | Notes |
 |---------|----------|-------|
 | "crea el componente / página / hook / feature de…" en el frontend | `react-code-crafter` | Genera código React alineado con los patrones del proyecto (TanStack Query, react-hook-form, tokens de diseño, debounce, paginación) |
+| "agrega índices", "revisa el schema", "audita las tablas", "optimiza queries de BD", "mira mis tablas" | `prisma-db-architect` | Audita el schema.prisma, identifica índices faltantes y los agrega según los queries reales del backend |
 | Exploración de código abierta que requiere >3 búsquedas: "¿dónde está X?", "¿qué archivos usan Y?" | `Explore` | Solo lectura; no usar para review ni análisis cross-file profundo |
 | Investigación compleja multistep o búsqueda sin dirección clara en el código | `general-purpose` | Cuando Explore o Grep solos no son suficientes |
 | "diseña / planifica la arquitectura de…", "¿cómo deberíamos estructurar…?" | `Plan` | Devuelve plan paso a paso antes de implementar |

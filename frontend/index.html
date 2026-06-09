@@ -13,6 +13,20 @@
     />
   </head>
   <body>
+    <!-- Applies dark class synchronously before React renders to prevent flash -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('erp-theme')
+          if (stored) {
+            var s = JSON.parse(stored)
+            if (s && s.state && s.state.theme === 'dark') {
+              document.documentElement.classList.add('dark')
+            }
+          }
+        } catch (e) {}
+      })()
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

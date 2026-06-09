@@ -60,12 +60,12 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl text-gray-900">
+          <h1 className="text-2xl text-content">
             Bienvenido, <span className="capitalize">{user?.name?.split(' ')[0]}</span>
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5 capitalize font-accent">{dateLabel}</p>
+          <p className="text-content-muted text-sm mt-0.5 capitalize font-accent">{dateLabel}</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-400 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+        <div className="flex items-center gap-2 text-xs text-content-faint bg-surface-raised px-3 py-1.5 rounded-lg border border-ui-border">
           <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary animate-pulse" />
           Sistema activo
         </div>
@@ -77,20 +77,20 @@ export default function DashboardPage() {
           <div
             key={label}
             onClick={() => navigate(path)}
-            className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all group cursor-pointer"
+            className="bg-surface rounded-2xl p-6 border border-ui-border shadow-sm hover:shadow-md transition-all group cursor-pointer"
           >
             <div className="flex items-start justify-between mb-5">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}>
                 <Icon className={`w-5 h-5 ${iconColor}`} />
               </div>
-              <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              <ArrowUpRight className="w-4 h-4 text-content-faint group-hover:text-content-muted group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
             </div>
-            <p className="text-3xl text-gray-900 mb-1">—</p>
-            <p className="text-sm font-medium text-gray-700">{label}</p>
-            <p className={`text-xs text-gray-400 mt-0.5 font-accent`}>{subtitle}</p>
-            <div className="mt-4 pt-4 border-t border-gray-50 flex items-center gap-1.5">
+            <p className="text-3xl text-content mb-1">—</p>
+            <p className="text-sm font-medium text-content-secondary">{label}</p>
+            <p className="text-xs text-content-faint mt-0.5 font-accent">{subtitle}</p>
+            <div className="mt-4 pt-4 border-t border-ui-border flex items-center gap-1.5">
               <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-              <span className="text-xs text-gray-400">{context}</span>
+              <span className="text-xs text-content-faint">{context}</span>
             </div>
           </div>
         ))}
@@ -102,32 +102,32 @@ export default function DashboardPage() {
           <div
             key={label}
             onClick={() => navigate(path)}
-            className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-all group cursor-pointer flex items-center gap-3"
+            className="bg-surface rounded-2xl p-4 border border-ui-border shadow-sm hover:shadow-md transition-all group cursor-pointer flex items-center gap-3"
           >
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-brand-secondary/10">
               <Icon className="w-4 h-4 text-brand-secondary" />
             </div>
             <div className="flex-1 min-w-0">
               {value === null ? (
-                <div className="h-5 w-10 bg-gray-100 rounded animate-pulse mb-0.5" />
+                <div className="h-5 w-10 bg-surface-hover rounded animate-pulse mb-0.5" />
               ) : (
-                <p className="text-lg text-gray-900 leading-none">{value}</p>
+                <p className="text-lg text-content leading-none">{value}</p>
               )}
-              <p className="text-xs text-gray-400 mt-0.5 truncate">{label}</p>
+              <p className="text-xs text-content-faint mt-0.5 truncate">{label}</p>
             </div>
-            <ArrowUpRight className="w-3.5 h-3.5 text-gray-200 group-hover:text-gray-400 transition-colors shrink-0" />
+            <ArrowUpRight className="w-3.5 h-3.5 text-content-faint group-hover:text-content-muted transition-colors shrink-0" />
           </div>
         ))}
       </div>
 
       {/* Activity */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm">
+        <div className="px-5 py-4 border-b border-ui-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-gray-400" />
-            <h2 className="text-sm text-gray-800">Actividad reciente</h2>
+            <Activity className="w-4 h-4 text-content-faint" />
+            <h2 className="text-sm text-content">Actividad reciente</h2>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          <div className="flex items-center gap-1.5 text-xs text-content-faint">
             <Clock className="w-3 h-3" />
             <span>Hoy</span>
           </div>
@@ -136,8 +136,8 @@ export default function DashboardPage() {
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3 gradient-dark">
             <Activity className="w-5 h-5 text-white/50" />
           </div>
-          <p className="text-gray-500 text-sm">No hay actividad reciente</p>
-          <p className="text-gray-400 text-xs mt-1 font-accent">Los movimientos aparecerán aquí</p>
+          <p className="text-content-muted text-sm">No hay actividad reciente</p>
+          <p className="text-content-faint text-xs mt-1 font-accent">Los movimientos aparecerán aquí</p>
         </div>
       </div>
     </div>

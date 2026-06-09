@@ -53,7 +53,7 @@ const DOCUMENT_LABELS: Record<string, string> = {
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-content-secondary mb-1">{label}</label>
       {children}
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
@@ -63,7 +63,10 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={cn('w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#07bc34]/30 focus:border-[#07bc34] transition-all', className)}
+      className={cn(
+        'w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
+        className,
+      )}
       {...props}
     />
   )
@@ -72,7 +75,10 @@ function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputEleme
 function Select({ className, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={cn('w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#07bc34]/30 focus:border-[#07bc34] transition-all bg-white', className)}
+      className={cn(
+        'w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
+        className,
+      )}
       {...props}
     >
       {children}
@@ -88,12 +94,12 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
       className={cn(
         'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all',
         checked
-          ? 'border-[#07bc34] bg-[#07bc34]/10 text-[#059928]'
-          : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300',
+          ? 'border-brand-secondary bg-brand-secondary/10 text-brand-secondary-dark'
+          : 'border-ui-border-medium bg-surface text-content-muted hover:border-ui-border',
       )}
     >
       <span className={cn('w-4 h-4 rounded border-2 flex items-center justify-center transition-all',
-        checked ? 'border-[#07bc34] bg-[#07bc34]' : 'border-gray-300'
+        checked ? 'border-brand-secondary bg-brand-secondary' : 'border-ui-border-medium'
       )}>
         {checked && <span className="text-white text-[10px] leading-none">✓</span>}
       </span>
@@ -153,10 +159,9 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100"
-          style={{ background: 'linear-gradient(135deg, #141a17, #1f2b24)' }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-ui-border gradient-dark">
           <div>
             <h2 className="text-white font-semibold">{isEdit ? 'Editar tercero' : 'Nuevo tercero'}</h2>
             <p className="text-white/50 text-xs mt-0.5">Completa la información del tercero</p>
@@ -172,7 +177,7 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
 
             {/* Tipo de persona */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de persona</label>
+              <label className="block text-sm font-medium text-content-secondary mb-2">Tipo de persona</label>
               <div className="grid grid-cols-2 gap-2">
                 {(['natural', 'juridica'] as const).map((type) => (
                   <button
@@ -182,10 +187,9 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
                     className={cn(
                       'py-2.5 rounded-xl text-sm font-medium border transition-all',
                       personType === type
-                        ? 'text-white border-transparent shadow-sm'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-300',
+                        ? 'text-white border-transparent shadow-sm gradient-dark'
+                        : 'border-ui-border-medium text-content-muted bg-surface hover:border-ui-border',
                     )}
-                    style={personType === type ? { background: 'linear-gradient(135deg, #141a17, #1f2b24)' } : {}}
                   >
                     {type === 'natural' ? 'Persona Natural' : 'Persona Jurídica'}
                   </button>
@@ -245,7 +249,7 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
 
             {/* Roles */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Roles del tercero</label>
+              <label className="block text-sm font-medium text-content-secondary mb-2">Roles del tercero</label>
               <div className="flex flex-wrap gap-2">
                 <Toggle checked={!!isCustomer} onChange={(v) => setValue('isCustomer', v)} label="Cliente" />
                 <Toggle checked={!!isSupplier} onChange={(v) => setValue('isSupplier', v)} label="Proveedor" />
@@ -255,8 +259,8 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
 
             {/* Campos de cliente */}
             {isCustomer && (
-              <div className="p-4 rounded-xl border border-[#07bc34]/20 bg-[#07bc34]/5 space-y-4">
-                <p className="text-sm font-medium text-[#059928]">Datos de cliente</p>
+              <div className="p-4 rounded-xl border border-brand-secondary/20 bg-brand-secondary/5 space-y-4">
+                <p className="text-sm font-medium text-brand-secondary-dark">Datos de cliente</p>
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Límite de crédito" error={errors.creditLimit?.message}>
                     <Input {...register('creditLimit')} type="number" step="0.01" placeholder="0.00" />
@@ -270,13 +274,13 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
 
             {/* Campos de proveedor */}
             {isSupplier && (
-              <div className="p-4 rounded-xl border border-blue-100 bg-blue-50 space-y-4">
-                <p className="text-sm font-medium text-blue-700">Datos de proveedor</p>
+              <div className="p-4 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-500/20 dark:bg-blue-500/10 space-y-4">
+                <p className="text-sm font-medium text-blue-700 dark:text-blue-400">Datos de proveedor</p>
                 <Field label="Número interno" error={errors.internalNumber?.message}>
                   <Input {...register('internalNumber')} type="number" placeholder="Ej. 1001" />
                 </Field>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Marcas</label>
+                  <label className="block text-sm font-medium text-content-secondary mb-1">Marcas</label>
                   <div className="flex gap-2 mb-2">
                     <Input
                       value={brandInput}
@@ -285,17 +289,16 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
                       placeholder="Nombre de la marca"
                     />
                     <button type="button" onClick={addBrand}
-                      className="px-3 py-2 rounded-lg text-white transition-colors flex items-center gap-1 text-sm shrink-0"
-                      style={{ background: '#141a17' }}>
+                      className="px-3 py-2 rounded-lg text-white bg-brand-primary hover:bg-brand-primary-light transition-colors flex items-center gap-1 text-sm shrink-0">
                       <Plus className="w-4 h-4" />
                     </button>
                   </div>
                   {errors.brands && <p className="text-red-500 text-xs mb-2">{errors.brands.message}</p>}
                   <div className="flex flex-wrap gap-1.5">
                     {brands.map((brand) => (
-                      <span key={brand} className="flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-full text-xs text-gray-700">
+                      <span key={brand} className="flex items-center gap-1 px-2.5 py-1 bg-surface border border-ui-border-medium rounded-full text-xs text-content-secondary">
                         {brand}
-                        <button type="button" onClick={() => removeBrand(brand)} className="text-gray-400 hover:text-red-500 transition-colors">
+                        <button type="button" onClick={() => removeBrand(brand)} className="text-content-faint hover:text-red-500 transition-colors">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </span>
@@ -307,14 +310,13 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+          <div className="px-6 py-4 border-t border-ui-border flex justify-end gap-3 bg-surface-raised">
             <button type="button" onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+              className="px-4 py-2 text-sm font-medium text-content-secondary bg-surface border border-ui-border-medium rounded-lg hover:bg-surface-raised transition-colors">
               Cancelar
             </button>
             <button type="submit" disabled={isPending}
-              className="px-5 py-2 text-sm font-medium text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #07bc34, #059928)' }}>
+              className="px-5 py-2 text-sm font-medium text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-50 gradient-action">
               {isPending ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear tercero'}
             </button>
           </div>

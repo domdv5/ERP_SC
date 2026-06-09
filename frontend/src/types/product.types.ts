@@ -2,6 +2,7 @@ export interface Brand {
   id: string
   name: string
   active: boolean
+  supplier: { internalNumber: number } | null
 }
 
 export interface Gender {

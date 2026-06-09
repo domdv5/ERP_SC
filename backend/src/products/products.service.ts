@@ -81,4 +81,20 @@ export class ProductsService {
       },
     });
   }
+
+  getBrands() {
+    return this.prisma.brand.findMany({
+      where: { active: true },
+      orderBy: { name: 'asc' },
+      include: { supplier: { select: { internalNumber: true } } },
+    });
+  }
+
+  getGenders() {
+    return this.prisma.gender.findMany({ where: { active: true }, orderBy: { name: 'asc' } });
+  }
+
+  getCategories() {
+    return this.prisma.category.findMany({ where: { active: true }, orderBy: { name: 'asc' } });
+  }
 }
