@@ -1,22 +1,67 @@
 import { Injectable } from '@nestjs/common';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
+import { Prisma } from '@prisma/client';
+import { CreateProductDto, FindAllProductsDto, UpdateProductDto } from '@/products/dto/index';
 import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findAll(findAllProductsDto: FindAllProductsDto) {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      active,
+      categoryId,
+      brandId,
+      genderId,
+    } = findAllProductsDto;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ProductWhereInput = {
+      ...(active !== undefined ? { active } : {}),
+      ...(categoryId && { categoryId }),
+      ...(brandId && { brandId }),
+      ...(genderId && { genderId }),
+      ...(search && {
+        OR: [
+          { code: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ],
+      }),
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.product.findMany({
+        where,
+        include: {
+          brand: true,
+          gender: true,
+          category: true,
+        },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return {
+      items,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
   create(createProductDto: CreateProductDto) {
     return this.prisma.product.create({ data: { ...createProductDto } });
   }
 
-  findAll() {
-    return `This action returns all products`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} product`;
+  findOne(id: string) {
+    return this.prisma.product.findUnique({
+      where: { id },
+      include: { brand: true, gender: true, category: true },
+    });
   }
 
   update(id: string, updateProductDto: UpdateProductDto) {

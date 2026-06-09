@@ -7,10 +7,11 @@ import {
   Param,
   Delete,
   Req,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ProductsService } from '@/products/products.service';
-import { CreateProductDto, UpdateProductDto } from '@/products/dto/index';
+import { CreateProductDto, FindAllProductsDto, UpdateProductDto } from '@/products/dto/index';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Permissions } from '@/common/decorators/permissions.decorator';
@@ -21,22 +22,22 @@ import type { RequestWithUser } from '@/common/types';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  @Post()
-  @Permissions('product.create')
-  create(@Body() createProductDto: CreateProductDto) {
-    return this.productsService.create(createProductDto);
-  }
-
   @Get()
   @Permissions('product.read')
-  findAll() {
-    return this.productsService.findAll();
+  findAll(@Query() findAllProductsDto: FindAllProductsDto) {
+    return this.productsService.findAll(findAllProductsDto);
   }
 
   @Get(':id')
   @Permissions('product.read')
   findOne(@Param('id') id: string) {
-    return this.productsService.findOne(+id);
+    return this.productsService.findOne(id);
+  }
+
+  @Post()
+  @Permissions('product.create')
+  create(@Body() createProductDto: CreateProductDto) {
+    return this.productsService.create(createProductDto);
   }
 
   @Patch(':id')

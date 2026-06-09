@@ -1,4 +1,5 @@
 export type { ThirdParty, CreateThirdPartyPayload, UpdateThirdPartyPayload, PersonType, DocumentType } from './third-party.types'
+export type { Product } from './product.types'
 
 export interface ApiResponse<T> {
   success: boolean

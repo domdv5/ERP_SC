@@ -7,6 +7,7 @@ import { PageLoader } from '@/components/shared/PageLoader'
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'))
 const ThirdPartiesPage = lazy(() => import('@/pages/third-parties/ThirdPartiesPage'))
+const ProductsPage = lazy(() => import('@/pages/products/ProductsPage'))
 const ComingSoonPage = lazy(() => import('@/pages/coming-soon/ComingSoonPage'))
 
 function Lazy({ children }: { children: React.ReactNode }) {
@@ -31,7 +32,7 @@ export const router = createBrowserRouter([
         path: 'third-parties',
         element: <Lazy><ThirdPartiesPage /></Lazy>,
       },
-      { path: 'products',            element: <Lazy><ComingSoonPage /></Lazy> },
+      { path: 'products',            element: <Lazy><ProductsPage /></Lazy> },
       { path: 'warehouses',          element: <Lazy><ComingSoonPage /></Lazy> },
       { path: 'documents',           element: <Lazy><ComingSoonPage /></Lazy> },
       { path: 'accounts-receivable', element: <Lazy><ComingSoonPage /></Lazy> },

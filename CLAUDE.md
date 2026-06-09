@@ -230,3 +230,76 @@ Fonts loaded in `index.html` from Google Fonts. Applied globally via `@layer bas
 - All stats show `animate-pulse` skeleton while loading, never blank/undefined
 - Action buttons hidden (`opacity-0`) on table rows, revealed on `group-hover`
 - Path alias `@/*` → `src/*` (same as backend)
+
+---
+
+## Routing Rules
+
+Defines when to delegate to a subagent or invoke a skill. Read the trigger condition; if it matches, use that tool **before** generating any response.
+
+### Subagents
+
+| Trigger | Subagent | Notes |
+|---------|----------|-------|
+| "crea el componente / página / hook / feature de…" en el frontend | `react-code-crafter` | Genera código React alineado con los patrones del proyecto (TanStack Query, react-hook-form, tokens de diseño, debounce, paginación) |
+| Exploración de código abierta que requiere >3 búsquedas: "¿dónde está X?", "¿qué archivos usan Y?" | `Explore` | Solo lectura; no usar para review ni análisis cross-file profundo |
+| Investigación compleja multistep o búsqueda sin dirección clara en el código | `general-purpose` | Cuando Explore o Grep solos no son suficientes |
+| "diseña / planifica la arquitectura de…", "¿cómo deberíamos estructurar…?" | `Plan` | Devuelve plan paso a paso antes de implementar |
+| Preguntas sobre Claude Code CLI, Agent SDK, o la API de Anthropic | `claude-code-guide` | Antes de responder desde memoria, verificar si hay un agente activo que continuar |
+
+### Skills — Frontend
+
+| Trigger | Skill |
+|---------|-------|
+| Dudas de layout, jerarquía visual, UX de paneles/dashboards/tablas | `interface-design` |
+| Optimización de rendimiento en componentes React: re-renders, memoización, bundle, code splitting | `vercel-react-best-practices` |
+| Tipos TypeScript complejos: genéricos, tipos condicionales, mapped types, utility types | `typescript-advanced-types` |
+
+### Skills — Backend
+
+| Trigger | Skill |
+|---------|-------|
+| Crear / revisar módulos NestJS: providers, guards, interceptors, pipes, decorators | `nestjs-best-practices` |
+| Patrones de middleware, autenticación, error handling, diseño de API REST en Node.js | `nodejs-backend-patterns` |
+| Decisiones de arquitectura Node.js: selección de framework, async patterns, seguridad general | `nodejs-best-practices` |
+
+### Skills — Prisma / Base de Datos
+
+| Trigger | Skill |
+|---------|-------|
+| Comandos `prisma init`, `prisma generate`, `prisma migrate`, `prisma db`, `prisma studio` | `prisma-cli` |
+| Escribir queries: `findMany`, `create`, `update`, `delete`, `$transaction`, filtros, operadores | `prisma-client-api` |
+| Configurar Prisma con un nuevo proveedor (PostgreSQL, MySQL, SQLite, MongoDB) | `prisma-database-setup` |
+| Crear / operar bases de datos Prisma Postgres (Console, Management API, `create-db`) | `prisma-postgres` |
+
+### Skills — Calidad de Código
+
+| Trigger | Skill |
+|---------|-------|
+| "revisa el diff / PR" buscando bugs, correctness, reutilización | `code-review` |
+| "simplifica / refactoriza el código cambiado" | `simplify` |
+| "haz una revisión de seguridad de los cambios" | `security-review` |
+| "verifica que el cambio funciona en la app", "confirma que el fix está bien" | `verify` |
+| "arranca la app", "corre el proyecto", "muéstrame el resultado en pantalla" | `run` |
+| "revisa el PR #N" (GitHub PR review) | `review` |
+
+### Skills — Claude API
+
+| Trigger | Skill |
+|---------|-------|
+| Cualquier mención de `claude-*`, `anthropic`, `Opus/Sonnet/Haiku`, precios de modelos, streaming, tool use, MCP, caching de tokens | `claude-api` |
+
+### Skills — Configuración de Claude Code
+
+| Trigger | Skill |
+|---------|-------|
+| "desde ahora cuando X…", "cada vez que X…", "agrega permiso para…", "configura el hook…", cambios a `settings.json` | `update-config` |
+| "cambia el shortcut", "reasigna la tecla", modificar `keybindings.json` | `keybindings-help` |
+| Reducir prompts de permisos repetitivos | `fewer-permission-prompts` |
+
+### Skills — Automatización
+
+| Trigger | Skill |
+|---------|-------|
+| "ejecuta X cada N minutos", "repite este comando periódicamente" | `loop` |
+| "programa una tarea para las 3pm", "crea un cron job para Claude" | `schedule` |
