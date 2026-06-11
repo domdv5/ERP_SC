@@ -6,6 +6,8 @@ export interface ThirdPartyMeta {
   page: number
   limit: number
   totalPages: number
+  customerCount: number
+  supplierCount: number
 }
 
 export interface GetThirdPartiesParams {

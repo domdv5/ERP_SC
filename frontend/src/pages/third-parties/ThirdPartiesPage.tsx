@@ -38,9 +38,11 @@ export default function ThirdPartiesPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const totalPages = data?.meta.totalPages ?? 1
-  const items      = data?.items ?? []
-  const total      = data?.meta.total ?? 0
+  const totalPages    = data?.meta.totalPages ?? 1
+  const items         = data?.items ?? []
+  const total         = data?.meta.total ?? 0
+  const customerCount = data?.meta.customerCount ?? 0
+  const supplierCount = data?.meta.supplierCount ?? 0
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['third-parties'] })
 
@@ -62,14 +64,6 @@ export default function ThirdPartiesPage() {
     onSuccess: () => { invalidate(); setDeleting(null); toast.success('Tercero eliminado correctamente') },
     onError:   () => toast.error('Error al eliminar el tercero'),
   })
-
-  // Single pass over items to avoid three separate filter iterations
-  let customerCount = 0
-  let supplierCount = 0
-  for (const t of items) {
-    if (t.isCustomer) customerCount++
-    if (t.isSupplier) supplierCount++
-  }
 
   const statCards = [
     { label: 'Total',       value: total,          icon: Users,     bg: 'bg-brand-primary/10',   fg: 'text-brand-primary dark:text-content' },

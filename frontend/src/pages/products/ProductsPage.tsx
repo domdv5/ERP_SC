@@ -37,9 +37,11 @@ export default function ProductsPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const totalPages = data?.meta.totalPages ?? 1
-  const items      = data?.items ?? []
-  const total      = data?.meta.total ?? 0
+  const totalPages  = data?.meta.totalPages ?? 1
+  const items       = data?.items ?? []
+  const total       = data?.meta.total ?? 0
+  const activeCount = data?.meta.activeCount ?? 0
+  const inStockCount = data?.meta.inStockCount ?? 0
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['products'] })
 
@@ -61,14 +63,6 @@ export default function ProductsPage() {
     onSuccess: () => { invalidate(); setDeleting(null); toast.success('Producto eliminado correctamente') },
     onError:   () => toast.error('Error al eliminar el producto'),
   })
-
-  // Single pass over items to avoid two separate filter iterations
-  let activeCount = 0
-  let inStockCount = 0
-  for (const p of items) {
-    if (p.active) activeCount++
-    if (p.stockCache > 0) inStockCount++
-  }
 
   const statCards = [
     { label: 'Total',     value: total,        icon: Package,      bg: 'bg-brand-primary/10',   fg: 'text-brand-primary dark:text-content' },

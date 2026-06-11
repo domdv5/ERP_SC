@@ -32,7 +32,7 @@ export class ProductsService {
       }),
     };
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total, activeCount, inStockCount] = await this.prisma.$transaction([
       this.prisma.product.findMany({
         where,
         include: {
@@ -45,11 +45,20 @@ export class ProductsService {
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.product.count({ where }),
+      this.prisma.product.count({ where: { ...where, active: true } }),
+      this.prisma.product.count({ where: { ...where, stockCache: { gt: 0 } } }),
     ]);
 
     return {
       items,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        activeCount,
+        inStockCount,
+      },
     };
   }
 

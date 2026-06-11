@@ -34,7 +34,7 @@ export class ThirdPartiesService {
       }),
     };
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total, customerCount, supplierCount] = await this.prisma.$transaction([
       this.prisma.thirdParty.findMany({
         where,
         include: {
@@ -46,11 +46,20 @@ export class ThirdPartiesService {
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.thirdParty.count({ where }),
+      this.prisma.thirdParty.count({ where: { ...where, isCustomer: true } }),
+      this.prisma.thirdParty.count({ where: { ...where, isSupplier: true } }),
     ]);
 
     return {
       items,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        customerCount,
+        supplierCount,
+      },
     };
   }
 
