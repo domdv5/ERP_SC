@@ -6,6 +6,8 @@ export interface ProductMeta {
   page: number
   limit: number
   totalPages: number
+  activeCount: number
+  inStockCount: number
 }
 
 export interface GetProductsParams {

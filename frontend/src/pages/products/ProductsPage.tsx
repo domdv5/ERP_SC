@@ -25,14 +25,16 @@ export default function ProductsPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const totalPages = data?.meta.totalPages ?? 1
-  const items      = data?.items ?? []
-  const total      = data?.meta.total ?? 0
+  const totalPages  = data?.meta.totalPages ?? 1
+  const items       = data?.items ?? []
+  const total       = data?.meta.total ?? 0
+  const activeCount = data?.meta.activeCount ?? 0
+  const inStockCount = data?.meta.inStockCount ?? 0
 
   const statCards = [
-    { label: 'Total',      value: total,                                        icon: Package,      bg: 'bg-brand-primary/10',   fg: 'text-brand-primary' },
-    { label: 'Activos',    value: items.filter((p) => p.active).length,         icon: CheckCircle2, bg: 'bg-brand-secondary/10', fg: 'text-brand-secondary' },
-    { label: 'Con stock',  value: items.filter((p) => p.stockCache > 0).length, icon: BarChart2,    bg: 'bg-blue-500/10',        fg: 'text-blue-500' },
+    { label: 'Total',      value: total,        icon: Package,      bg: 'bg-brand-primary/10',   fg: 'text-brand-primary' },
+    { label: 'Activos',    value: activeCount,  icon: CheckCircle2, bg: 'bg-brand-secondary/10', fg: 'text-brand-secondary' },
+    { label: 'Con stock',  value: inStockCount, icon: BarChart2,    bg: 'bg-blue-500/10',        fg: 'text-blue-500' },
   ]
 
   return (

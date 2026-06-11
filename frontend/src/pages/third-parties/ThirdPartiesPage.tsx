@@ -36,9 +36,11 @@ export default function ThirdPartiesPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const totalPages = data?.meta.totalPages ?? 1
-  const items      = data?.items ?? []
-  const total      = data?.meta.total ?? 0
+  const totalPages    = data?.meta.totalPages ?? 1
+  const items         = data?.items ?? []
+  const total         = data?.meta.total ?? 0
+  const customerCount = data?.meta.customerCount ?? 0
+  const supplierCount = data?.meta.supplierCount ?? 0
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['third-parties'] })
 
@@ -62,9 +64,9 @@ export default function ThirdPartiesPage() {
   })
 
   const statCards = [
-    { label: 'Total',       value: total,                                    icon: Users,     bg: 'bg-brand-primary/10',   fg: 'text-brand-primary' },
-    { label: 'Clientes',    value: items.filter((t) => t.isCustomer).length, icon: User,      bg: 'bg-brand-secondary/10', fg: 'text-brand-secondary' },
-    { label: 'Proveedores', value: items.filter((t) => t.isSupplier).length, icon: Building2, bg: 'bg-blue-500/10',        fg: 'text-blue-500' },
+    { label: 'Total',       value: total,         icon: Users,     bg: 'bg-brand-primary/10',   fg: 'text-brand-primary' },
+    { label: 'Clientes',    value: customerCount,  icon: User,      bg: 'bg-brand-secondary/10', fg: 'text-brand-secondary' },
+    { label: 'Proveedores', value: supplierCount,  icon: Building2, bg: 'bg-blue-500/10',        fg: 'text-blue-500' },
   ]
 
   return (
