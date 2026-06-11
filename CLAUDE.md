@@ -64,12 +64,16 @@ pnpm seed               # Seed roles, permissions, and role-permission mappings
 **ThirdPartiesModule**:
 
 - `POST /third-parties` — create a third party (customer and/or supplier); requires `thirdparty.create` permission
+- `PATCH /third-parties/:id` — update; requires `thirdparty.update`
+- `DELETE /third-parties/:id` — soft-delete; requires `thirdparty.delete`
+- `PATCH /third-parties/:id/brands/:brandId` — rename a brand in-place; requires `thirdparty.update`
 - Supports `personType`: `natural` | `juridica`
 - Supports `documentType`: `CC | NIT | CE | PAS | TI | RC`
 - Conditional validation: natural persons require `firstName`/`lastName`; juridical persons require `businessName`
 - Optional customer fields: `creditLimit`, `discount`, `sellerId`
 - Optional supplier field: `internalNumber`
 - Transactional creation: ThirdParty + Customer/Supplier records in one transaction
+- **Brand rules**: brands can only be added or renamed — never deleted (products reference them). `update` does `createMany` + `skipDuplicates`; frontend sends only new brands (not already in `brandIds` map). Roles (`isCustomer`/`isSupplier`) are derived from the presence of `customer`/`supplier` relations, not boolean columns.
 
 **CommonModule** (`src/common/`):
 
