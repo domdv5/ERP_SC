@@ -131,7 +131,7 @@ export default function ProductsPage() {
               </thead>
               <tbody className="divide-y divide-ui-divide">
                 {items.map((p: Product) => (
-                  <tr key={p.id} className="hover:bg-surface-raised transition-colors group">
+                  <tr key={p.id} onClick={() => setEditing(p)} className="hover:bg-surface-raised transition-colors group cursor-pointer">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-action">
@@ -163,13 +163,13 @@ export default function ProductsPage() {
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={() => setEditing(p)}
+                          onClick={(e) => { e.stopPropagation(); setEditing(p) }}
                           className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => setDeleting(p)}
+                          onClick={(e) => { e.stopPropagation(); setDeleting(p) }}
                           className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

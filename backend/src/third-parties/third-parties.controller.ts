@@ -47,6 +47,16 @@ export class ThirdPartiesController {
     return this.thirdPartiesService.update(id, updateThirdPartyDto);
   }
 
+  @Patch(':id/brands/:brandId')
+  @Permissions('thirdparty.update')
+  renameBrand(
+    @Param('id') id: string,
+    @Param('brandId') brandId: string,
+    @Body('name') name: string,
+  ) {
+    return this.thirdPartiesService.renameBrand(id, brandId, name);
+  }
+
   @Delete(':id')
   @Permissions('thirdparty.delete')
   remove(@Param('id') id: string, @Req() req: RequestWithUser) {

@@ -34,21 +34,22 @@ export class ThirdPartiesService {
       }),
     };
 
-    const [items, total, customerCount, supplierCount] = await this.prisma.$transaction([
-      this.prisma.thirdParty.findMany({
-        where,
-        include: {
-          customer: true,
-          supplier: { include: { brands: true } },
-        },
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.thirdParty.count({ where }),
-      this.prisma.thirdParty.count({ where: { ...where, isCustomer: true } }),
-      this.prisma.thirdParty.count({ where: { ...where, isSupplier: true } }),
-    ]);
+    const [items, total, customerCount, supplierCount] =
+      await this.prisma.$transaction([
+        this.prisma.thirdParty.findMany({
+          where,
+          include: {
+            customer: true,
+            supplier: { include: { brands: { where: { active: true } } } },
+          },
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.thirdParty.count({ where }),
+        this.prisma.thirdParty.count({ where: { ...where, isCustomer: true } }),
+        this.prisma.thirdParty.count({ where: { ...where, isSupplier: true } }),
+      ]);
 
     return {
       items,
@@ -105,6 +106,13 @@ export class ThirdPartiesService {
     });
   }
 
+  renameBrand(supplierId: string, brandId: string, name: string) {
+    return this.prisma.brand.update({
+      where: { id: brandId, supplierId },
+      data: { name },
+    });
+  }
+
   remove(id: string, userId: string) {
     return this.prisma.thirdParty.update({
       where: { id },
@@ -124,24 +132,27 @@ export class ThirdPartiesService {
       discount,
       sellerId,
       internalNumber,
+      brands,
       ...thirdPartyData
     } = updateThirdPartyDto;
 
-    return await this.prisma.thirdParty.update({
-      where: { id },
-      data: {
-        ...thirdPartyData,
-        customer: isCustomer
-          ? {
-              update: { creditLimit, discount, sellerId },
-            }
-          : undefined,
-        supplier: isSupplier
-          ? {
-              update: { internalNumber },
-            }
-          : undefined,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      if (isSupplier && brands !== undefined) {
+        await tx.brand.createMany({
+          data: (brands as string[]).map((name) => ({ name, supplierId: id })),
+          skipDuplicates: true,
+        });
+      }
+
+      return tx.thirdParty.update({
+        where: { id },
+        data: {
+          ...thirdPartyData,
+          customer: isCustomer ? { update: { creditLimit, discount, sellerId } } : undefined,
+          supplier: isSupplier && internalNumber !== undefined ? { update: { internalNumber } } : undefined,
+        },
+        include: { customer: true, supplier: { include: { brands: true } } },
+      });
     });
   }
 }

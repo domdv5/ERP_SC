@@ -33,6 +33,10 @@ export async function updateThirdParty(id: string, payload: UpdateThirdPartyPayl
   return res.data.data
 }
 
+export async function renameBrand(thirdPartyId: string, brandId: string, name: string): Promise<void> {
+  await api.patch(`/third-parties/${thirdPartyId}/brands/${brandId}`, { name })
+}
+
 export async function deleteThirdParty(id: string): Promise<void> {
   await api.delete(`/third-parties/${id}`)
 }

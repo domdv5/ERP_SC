@@ -177,6 +177,8 @@ return res.data.data
 
 **Logout dropdown** — Built with `useState` + `useRef` + `document.addEventListener('mousedown', ...)` for click-outside detection. No external library.
 
+**Row click to edit** — Every list page `<tr>` must have `onClick={() => setEditing(item)}` and `cursor-pointer`. The delete button must call `e.stopPropagation()` to prevent bubbling. The pencil button also gets `e.stopPropagation()` (it becomes redundant but keeps explicitness). Apply this pattern to every new module.
+
 **Protected routes** — `AuthGuard` checks `useAuthStore` token; redirects to `/login` if not authenticated.
 
 ### Implemented Modules

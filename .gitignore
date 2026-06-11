@@ -47,3 +47,5 @@ coverage/
 
 # Prisma generated
 generated/prisma
+
+plans

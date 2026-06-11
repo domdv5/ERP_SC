@@ -18,6 +18,8 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('user.manage')
   create(@Body() createAuthDto: CreateAuthDto) {
     return this.authService.create(createAuthDto);
   }
@@ -35,6 +37,8 @@ export class AuthController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('user.manage')
   remove(@Param('id') id: string) {
     return this.authService.remove(id);
   }

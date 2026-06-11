@@ -3,7 +3,7 @@ import { useDebounce } from 'use-debounce'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Users, Building2, User } from 'lucide-react'
-import { getThirdParties, createThirdParty, updateThirdParty, deleteThirdParty } from '@/services/third-parties.service'
+import { getThirdParties, createThirdParty, updateThirdParty, deleteThirdParty, renameBrand } from '@/services/third-parties.service'
 import { ThirdPartyForm } from './components/ThirdPartyForm'
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
 import { StatsGrid, TableToolbar, TableSkeleton, EmptyState, ErrorState, TablePagination } from '@/components/shared'
@@ -57,6 +57,13 @@ export default function ThirdPartiesPage() {
       updateThirdParty(id, payload),
     onSuccess: () => { invalidate(); setEditing(null); toast.success('Tercero actualizado correctamente') },
     onError:   () => toast.error('Error al actualizar el tercero'),
+  })
+
+  const { mutateAsync: rename } = useMutation({
+    mutationFn: ({ brandId, name }: { brandId: string; name: string }) =>
+      renameBrand(editing!.id, brandId, name),
+    onSuccess: () => invalidate(),
+    onError: () => toast.error('Error al renombrar la marca'),
   })
 
   const { mutate: remove, isPending: isDeleting } = useMutation({
@@ -132,7 +139,7 @@ export default function ThirdPartiesPage() {
               </thead>
               <tbody className="divide-y divide-ui-divide">
                 {items.map((t) => (
-                  <tr key={t.id} className="hover:bg-surface-raised transition-colors group">
+                  <tr key={t.id} onClick={() => setEditing(t)} className="hover:bg-surface-raised transition-colors group cursor-pointer">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
@@ -170,13 +177,13 @@ export default function ThirdPartiesPage() {
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={() => setEditing(t)}
+                          onClick={(e) => { e.stopPropagation(); setEditing(t) }}
                           className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => setDeleting(t)}
+                          onClick={(e) => { e.stopPropagation(); setDeleting(t) }}
                           className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -211,6 +218,7 @@ export default function ThirdPartiesPage() {
         open={!!editing}
         onClose={() => setEditing(null)}
         onSubmit={(data) => update({ id: editing!.id, payload: data })}
+        onRenameBrand={(brandId, name) => rename({ brandId, name })}
         isPending={isUpdating}
         defaultValues={editing ?? undefined}
       />

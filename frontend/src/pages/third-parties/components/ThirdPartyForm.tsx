@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { X, Plus, Trash2 } from 'lucide-react'
+import { X, Plus, Trash2, Lock } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { ThirdParty } from '@/types'
 
@@ -40,6 +41,7 @@ interface ThirdPartyFormProps {
   open: boolean
   onClose: () => void
   onSubmit: (data: FormValues) => void
+  onRenameBrand?: (brandId: string, newName: string) => Promise<void>
   isPending: boolean
   defaultValues?: ThirdParty
 }
@@ -108,8 +110,35 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   )
 }
 
-export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValues }: ThirdPartyFormProps) {
+function flattenDefaults(tp: ThirdParty): Partial<FormValues> {
+  return {
+    name: tp.name,
+    personType: tp.personType,
+    documentType: tp.documentType,
+    documentNumber: tp.documentNumber,
+    firstName: tp.firstName,
+    lastName: tp.lastName,
+    email: tp.email ?? '',
+    phone: tp.phone,
+    address: tp.address,
+    isSeller: tp.isSeller ?? false,
+    isCustomer: tp.customer != null,
+    isSupplier: tp.supplier != null,
+    creditLimit: tp.customer?.creditLimit,
+    discount: tp.customer?.discount,
+    internalNumber: tp.supplier?.internalNumber,
+    brands: tp.supplier?.brands?.map((b) => b.name) ?? [],
+  }
+}
+
+export function ThirdPartyForm({ open, onClose, onSubmit, onRenameBrand, isPending, defaultValues }: ThirdPartyFormProps) {
   const [brandInput, setBrandInput] = useState('')
+  const [editingBrand, setEditingBrand] = useState<string | null>(null)
+  const [editingValue, setEditingValue] = useState('')
+  const [brandIds, setBrandIds] = useState<Map<string, string>>(
+    () => new Map(defaultValues?.supplier?.brands?.map((b) => [b.name, b.id]) ?? [])
+  )
+  const cancelRenameRef = useRef(false)
   const isEdit = !!defaultValues
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormValues>({
@@ -121,20 +150,24 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
       isSupplier: false,
       isSeller: false,
       brands: [],
-      ...defaultValues,
+      ...(defaultValues ? flattenDefaults(defaultValues) : {}),
     },
   })
 
   useEffect(() => {
-    if (open) reset({
-      personType: 'natural',
-      documentType: 'CC',
-      isCustomer: false,
-      isSupplier: false,
-      isSeller: false,
-      brands: [],
-      ...defaultValues,
-    })
+    if (open) {
+      reset({
+        personType: 'natural',
+        documentType: 'CC',
+        isCustomer: false,
+        isSupplier: false,
+        isSeller: false,
+        brands: [],
+        ...(defaultValues ? flattenDefaults(defaultValues) : {}),
+      })
+      setBrandIds(new Map(defaultValues?.supplier?.brands?.map((b) => [b.name, b.id]) ?? []))
+      setEditingBrand(null)
+    }
   }, [open, defaultValues, reset])
 
   const personType = watch('personType')
@@ -145,12 +178,43 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
   function addBrand() {
     const trimmed = brandInput.trim()
     if (!trimmed || brands.includes(trimmed)) return
-    setValue('brands', [...brands, trimmed])
+    setValue('brands', [...brands, trimmed], { shouldValidate: true, shouldDirty: true })
     setBrandInput('')
   }
 
   function removeBrand(brand: string) {
-    setValue('brands', brands.filter((b) => b !== brand))
+    if (brandIds.has(brand)) {
+      toast.info('Las marcas existentes no se pueden eliminar porque pueden tener productos asignados.')
+      return
+    }
+    setValue('brands', brands.filter((b) => b !== brand), { shouldValidate: true, shouldDirty: true })
+  }
+
+  function startRename(brand: string) {
+    setEditingBrand(brand)
+    setEditingValue(brand)
+  }
+
+  // Only brands not already persisted (not in brandIds) should be created on submit.
+  // Renamed brands live in brandIds with their new name, so they won't be re-created.
+  // Send undefined (not []) when there are no new brands, so the backend skips the
+  // brand block entirely — an empty array would trip @ArrayNotEmpty validation.
+  const submitForm = (data: FormValues) => {
+    const newBrands = (data.brands ?? []).filter((n) => !brandIds.has(n))
+    onSubmit({ ...data, brands: newBrands.length ? newBrands : undefined })
+  }
+
+  async function confirmRename(oldName: string) {
+    setEditingBrand(null)
+    if (cancelRenameRef.current) { cancelRenameRef.current = false; return }
+    const newName = editingValue.trim()
+    if (!newName || newName === oldName) return
+    const brandId = brandIds.get(oldName)
+    if (brandId && onRenameBrand) {
+      await onRenameBrand(brandId, newName)
+      setBrandIds((prev) => { const m = new Map(prev); m.delete(oldName); m.set(newName, brandId); return m })
+    }
+    setValue('brands', brands.map((b) => (b === oldName ? newName : b)), { shouldValidate: true, shouldDirty: true })
   }
 
   if (!open) return null
@@ -172,7 +236,7 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit(onSubmit as never)} className="flex flex-col flex-1 overflow-hidden">
+        <form onSubmit={handleSubmit(submitForm as never)} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
             {/* Tipo de persona */}
@@ -251,9 +315,9 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
             <div>
               <label className="block text-sm font-medium text-content-secondary mb-2">Roles del tercero</label>
               <div className="flex flex-wrap gap-2">
-                <Toggle checked={!!isCustomer} onChange={(v) => setValue('isCustomer', v)} label="Cliente" />
-                <Toggle checked={!!isSupplier} onChange={(v) => setValue('isSupplier', v)} label="Proveedor" />
-                <Toggle checked={!!watch('isSeller')} onChange={(v) => setValue('isSeller', v)} label="Vendedor" />
+                <Toggle checked={!!isCustomer} onChange={(v) => { setValue('isCustomer', v); if (v) { setValue('isSupplier', false); setValue('isSeller', false); } }} label="Cliente" />
+                <Toggle checked={!!isSupplier} onChange={(v) => { setValue('isSupplier', v); if (v) { setValue('isCustomer', false); setValue('isSeller', false); } }} label="Proveedor" />
+                <Toggle checked={!!watch('isSeller')} onChange={(v) => { setValue('isSeller', v); if (v) { setValue('isCustomer', false); setValue('isSupplier', false); } }} label="Vendedor" />
               </div>
             </div>
 
@@ -295,14 +359,37 @@ export function ThirdPartyForm({ open, onClose, onSubmit, isPending, defaultValu
                   </div>
                   {errors.brands && <p className="text-red-500 text-xs mb-2">{errors.brands.message}</p>}
                   <div className="flex flex-wrap gap-1.5">
-                    {brands.map((brand) => (
-                      <span key={brand} className="flex items-center gap-1 px-2.5 py-1 bg-surface border border-ui-border-medium rounded-full text-xs text-content-secondary">
-                        {brand}
-                        <button type="button" onClick={() => removeBrand(brand)} className="text-content-faint hover:text-red-500 transition-colors">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))}
+                    {brands.map((brand) => {
+                      const isOriginal = brandIds.has(brand)
+                      if (editingBrand === brand) {
+                        return (
+                          <span key={brand} className="flex items-center gap-1 px-1.5 py-0.5 bg-surface border border-brand-secondary rounded-full">
+                            <input
+                              autoFocus
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              onBlur={() => confirmRename(brand)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+                                if (e.key === 'Escape') { e.preventDefault(); cancelRenameRef.current = true; e.currentTarget.blur() }
+                              }}
+                              className="text-xs bg-transparent text-content outline-none w-28"
+                            />
+                          </span>
+                        )
+                      }
+                      return (
+                        <span key={brand} className="flex items-center gap-1 px-2.5 py-1 bg-surface border border-ui-border-medium rounded-full text-xs text-content-secondary">
+                          <span onDoubleClick={() => startRename(brand)} className="cursor-text select-none" title="Doble clic para editar">{brand}</span>
+                          <button type="button" onClick={() => removeBrand(brand)}
+                            className={cn('transition-colors', isOriginal ? 'text-content-faint cursor-not-allowed' : 'text-content-faint hover:text-red-500')}
+                            title={isOriginal ? 'No se puede eliminar' : 'Eliminar marca'}
+                          >
+                            {isOriginal ? <Lock className="w-3 h-3" /> : <Trash2 className="w-3 h-3" />}
+                          </button>
+                        </span>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
