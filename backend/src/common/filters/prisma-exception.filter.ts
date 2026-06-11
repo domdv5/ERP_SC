@@ -3,12 +3,15 @@ import {
   Catch,
   ExceptionFilter,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Response } from 'express';
 
 @Catch(Prisma.PrismaClientKnownRequestError, Prisma.PrismaClientValidationError)
 export class PrismaExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(PrismaExceptionFilter.name);
+
   catch(
     exception:
       | Prisma.PrismaClientKnownRequestError
@@ -46,13 +49,12 @@ export class PrismaExceptionFilter implements ExceptionFilter {
           return response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
             statusCode: 500,
             message: 'Error de base de datos',
-            code: exception.code,
           });
       }
     }
 
     if (exception instanceof Prisma.PrismaClientValidationError) {
-      console.log(exception);
+      this.logger.error(exception);
       return response.status(HttpStatus.BAD_REQUEST).json({
         statusCode: 400,
         message: 'Datos inválidos',
