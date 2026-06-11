@@ -44,6 +44,8 @@ coverage/
 # Claude Code internals
 .claude/
 .agents/
+.interface-design/
+skills-lock.json
 
 # Prisma generated
 generated/prisma
