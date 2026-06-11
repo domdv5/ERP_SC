@@ -46,6 +46,7 @@ coverage/
 .agents/
 .interface-design/
 skills-lock.json
+.mcp.json
 
 # Prisma generated
 generated/prisma
