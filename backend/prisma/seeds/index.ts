@@ -3,3 +3,4 @@ export * from './genders.seed';
 export * from './permissions.seed';
 export * from './roles.seed';
 export * from './role-permissions.seed';
+export * from './warehouses.seed';

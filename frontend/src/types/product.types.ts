@@ -30,7 +30,6 @@ export interface Product {
   salePrice: number
   minSalePrice: number
   active: boolean
-  stockCache: number
   avgCost: string
   lastCost: string
   createdAt: string

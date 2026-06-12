@@ -141,7 +141,6 @@ model Product {
   salePrice     Int  @map("sale_price")
   minSalePrice  Int  @map("min_sale_price")
   active        Boolean   @default(true)
-  stockCache    Int       @default(0) @map("stock_cache")
   avgCost       Decimal   @default(0) @map("avg_cost") @db.Decimal(14, 4)
   lastCost      Decimal   @default(0) @map("last_cost") @db.Decimal(14, 4)
   deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
@@ -189,11 +188,15 @@ model EquivalenceTable {
 
 // ─── Warehouse / location ─────────────────────────────────────────────────────
 
+enum WarehouseType {
+  store
+  warehouse
+}
+
 model Warehouse {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @db.VarChar(100)
-  /// store | warehouse
-  type      String   @db.VarChar(10)
+  id        String        @id @default(uuid()) @db.Uuid
+  name      String        @db.VarChar(100)
+  type      WarehouseType
   active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 

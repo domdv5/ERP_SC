@@ -8,19 +8,11 @@ export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(findAllProductsDto: FindAllProductsDto) {
-    const {
-      page = 1,
-      limit = 20,
-      search,
-      active,
-      categoryId,
-      brandId,
-      genderId,
-    } = findAllProductsDto;
+    const { page = 1, limit = 20, search, active, categoryId, brandId, genderId } = findAllProductsDto;
     const skip = (page - 1) * limit;
 
     const where: Prisma.ProductWhereInput = {
-      ...(active !== undefined ? { active } : {}),
+      ...(active !== undefined && { active }),
       ...(categoryId && { categoryId }),
       ...(brandId && { brandId }),
       ...(genderId && { genderId }),
@@ -35,30 +27,19 @@ export class ProductsService {
     const [items, total, activeCount, inStockCount] = await this.prisma.$transaction([
       this.prisma.product.findMany({
         where,
-        include: {
-          brand: true,
-          gender: true,
-          category: true,
-        },
+        include: { brand: true, gender: true, category: true },
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.product.count({ where }),
       this.prisma.product.count({ where: { ...where, active: true } }),
-      this.prisma.product.count({ where: { ...where, stockCache: { gt: 0 } } }),
+      this.prisma.product.count({ where: { ...where, inventoryRecords: { some: { quantity: { gt: 0 } } } } }),
     ]);
 
     return {
       items,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        activeCount,
-        inStockCount,
-      },
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit), activeCount, inStockCount },
     };
   }
 

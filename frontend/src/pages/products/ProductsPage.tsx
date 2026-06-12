@@ -150,16 +150,7 @@ export default function ProductsPage() {
                     <td className="px-5 py-3.5 text-content-muted text-xs">{p.gender.name}</td>
                     <td className="px-5 py-3.5 text-content-muted text-xs">{p.category.name}</td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs">{formatCOP(p.salePrice)}</td>
-                    <td className="px-5 py-3.5">
-                      <span className={cn(
-                        'px-2 py-0.5 rounded-full text-xs font-medium',
-                        p.stockCache > 0
-                          ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-                          : 'bg-surface-hover text-content-muted'
-                      )}>
-                        {p.stockCache}
-                      </span>
-                    </td>
+                    <td className="px-5 py-3.5 text-content-faint text-xs">—</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button

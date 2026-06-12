@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Session Start
+
+**Read this file completely at the start of every session before taking any action.**
+
 ## Project Overview
 
 ERP Supply Chain — full-stack application for managing products, inventory, warehouses, customers, suppliers, accounts receivable/payable, and documents.
@@ -31,15 +35,21 @@ pnpm test:cov           # With coverage
 pnpm exec jest path/to/file.spec.ts
 
 # Database
-pnpm migrate:dev        # Run Prisma migrations (dev)
-pnpm seed               # Seed roles, permissions, and role-permission mappings
+pnpm migrate:dev        # Run Prisma migrations (dev) — requires interactive TTY
+pnpm seed               # Seed roles, permissions, warehouses, categories, genders
 ```
+
+> **Migration workaround** — `migrate:dev` needs an interactive terminal and fails in Claude Code. Use instead:
+> 1. `pnpm exec prisma migrate diff --config prisma/prisma.config.ts --from-config-datasource --to-schema prisma/schema.prisma --script` → get SQL
+> 2. Create `prisma/migrations/<timestamp>_<name>/migration.sql` manually with that SQL
+> 3. `pnpm exec prisma migrate deploy --config prisma/prisma.config.ts` → apply
+> 4. `pnpm exec prisma generate --config prisma/prisma.config.ts` → regenerate client
 
 ## Architecture
 
 ### Module Structure
 
-`backend/src/` contains NestJS modules. Implemented modules: `auth`, `prisma`, `third-parties`, `common`.
+`backend/src/` contains NestJS modules. Implemented modules: `auth`, `prisma`, `third-parties`, `products`, `warehouses`, `common`.
 
 **Bootstrap** (`main.ts`):
 
@@ -48,7 +58,7 @@ pnpm seed               # Seed roles, permissions, and role-permission mappings
 - Global `ResponseFormatInterceptor` — wraps all responses as `{ success, data }`
 - Listens on `PORT` env var (default 3000)
 
-**AppModule** imports: `ConfigModule` (global, reads `.env`), `AuthModule`, `PrismaModule`, `ThirdPartiesModule`
+**AppModule** imports: `ConfigModule` (global, reads `.env`), `AuthModule`, `PrismaModule`, `ThirdPartiesModule`, `ProductsModule`, `WarehousesModule`
 
 **PrismaModule** is global — inject `PrismaService` anywhere without re-importing the module.
 
@@ -75,6 +85,18 @@ pnpm seed               # Seed roles, permissions, and role-permission mappings
 - Transactional creation: ThirdParty + Customer/Supplier records in one transaction
 - **Brand rules**: brands can only be added or renamed — never deleted (products reference them). `update` does `createMany` + `skipDuplicates`; frontend sends only new brands (not already in `brandIds` map). Roles (`isCustomer`/`isSupplier`) are derived from the presence of `customer`/`supplier` relations, not boolean columns.
 
+**WarehousesModule**:
+
+- `GET /warehouses` — list all warehouses (optional `?active=true|false`); JWT required
+- `GET /warehouses/:id` — detail with zones → bins hierarchy; JWT required
+- `POST /warehouses` — create; requires `warehouse.manage` permission
+- `PATCH /warehouses/:id` — update; requires `warehouse.manage` permission
+- `DELETE /warehouses/:id` — soft-delete (`active: false`); requires `warehouse.manage` permission
+- `type` is `WarehouseType` enum: `store` (almacén, sellable stock) | `warehouse` (bodega, storage only)
+- Seed creates two records: `Almacén` (store) and `Bodega` (warehouse)
+- Sales operations must only validate against `store`-type warehouse inventory
+- Single permission `warehouse.manage` covers all write operations
+
 **CommonModule** (`src/common/`):
 
 - `decorators/permissions.decorator.ts` — `@Permissions(...perms)` sets required permissions via SetMetadata
@@ -100,9 +122,9 @@ Schema: `backend/prisma/schema.prisma`. Uses `@prisma/adapter-pg` for connection
 Key domain models and their relationships:
 
 - **ThirdParty** → base for `Customer` and `Supplier` (one-to-one)
-- **Product** — has pricing, costing, and a `stock` cache field (updated via inventory movements)
-- **Warehouse → Zone → Bin** — three-level location hierarchy
-- **Inventory** — current stock per `(product, bin)` pair
+- **Product** — has pricing (`salePrice`, `minSalePrice`) and costing (`avgCost`, `lastCost`). No stock cache field — stock is always queried from `Inventory`.
+- **Warehouse → Zone → Bin** — three-level location hierarchy. `Warehouse.type` is a `WarehouseType` enum (`store` | `warehouse`).
+- **Inventory** — current stock per `(productId, warehouseId)` composite PK. Query this table for stock, never cache on Product.
 - **InventoryMovement** — append-only audit trail; `type` enum: `purchase | sale | return | transfer | adjustment | initial_stock | void | production`
 - **Document + DocumentItem** — unified transaction document supporting types: `CM, DVC, RMDVC, PE, EAI, SAJ, COT, POS, REM, DVV, T`
 - **AccountsReceivable / AccountsPayable** — payment tracking with credit support
@@ -193,7 +215,7 @@ return res.data.data
 | `/` (dashboard) | Partial | Stats cards — Terceros shows real count, rest are static `—` |
 | `/third-parties` | Done | Full CRUD, server-side search, debounce, pagination, cache |
 | `/products` | Done | Full CRUD, server-side search, debounce, pagination, cache |
-| `/warehouses` | Placeholder | ComingSoonPage |
+| `/warehouses` | Done | Full CRUD, type badge (store/warehouse), soft-delete |
 | `/documents` | Placeholder | ComingSoonPage |
 | `/accounts-receivable` | Placeholder | ComingSoonPage |
 | `/accounts-payable` | Placeholder | ComingSoonPage |

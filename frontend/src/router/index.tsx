@@ -8,6 +8,7 @@ const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'))
 const ThirdPartiesPage = lazy(() => import('@/pages/third-parties/ThirdPartiesPage'))
 const ProductsPage = lazy(() => import('@/pages/products/ProductsPage'))
+const WarehousesPage = lazy(() => import('@/pages/warehouses/WarehousesPage'))
 const ComingSoonPage = lazy(() => import('@/pages/coming-soon/ComingSoonPage'))
 
 function Lazy({ children }: { children: React.ReactNode }) {
@@ -33,7 +34,7 @@ export const router = createBrowserRouter([
         element: <Lazy><ThirdPartiesPage /></Lazy>,
       },
       { path: 'products',            element: <Lazy><ProductsPage /></Lazy> },
-      { path: 'warehouses',          element: <Lazy><ComingSoonPage /></Lazy> },
+      { path: 'warehouses',          element: <Lazy><WarehousesPage /></Lazy> },
       { path: 'documents',           element: <Lazy><ComingSoonPage /></Lazy> },
       { path: 'accounts-receivable', element: <Lazy><ComingSoonPage /></Lazy> },
       { path: 'accounts-payable',    element: <Lazy><ComingSoonPage /></Lazy> },
