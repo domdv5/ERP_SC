@@ -9,7 +9,6 @@ import { ProductForm } from './components/ProductForm'
 import type { FormValues } from './components/ProductForm'
 import { DeleteProductDialog } from './components/DeleteProductDialog'
 import { StatsGrid, TableToolbar, TableSkeleton, EmptyState, ErrorState, TablePagination } from '@/components/shared'
-import { cn } from '@/lib/utils'
 import type { Product } from '@/types'
 
 const formatCOP = (value: number) =>

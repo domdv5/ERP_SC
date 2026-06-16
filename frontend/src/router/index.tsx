@@ -10,6 +10,9 @@ const ThirdPartiesPage = lazy(() => import('@/pages/third-parties/ThirdPartiesPa
 const ProductsPage = lazy(() => import('@/pages/products/ProductsPage'))
 const WarehousesPage = lazy(() => import('@/pages/warehouses/WarehousesPage'))
 const ComingSoonPage = lazy(() => import('@/pages/coming-soon/ComingSoonPage'))
+const DocumentsPage = lazy(() => import('@/pages/documents/DocumentsPage'))
+const DocumentFormPage = lazy(() => import('@/pages/documents/DocumentFormPage'))
+const DocumentDetailPage = lazy(() => import('@/pages/documents/DocumentDetailPage'))
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>
@@ -33,11 +36,14 @@ export const router = createBrowserRouter([
         path: 'third-parties',
         element: <Lazy><ThirdPartiesPage /></Lazy>,
       },
-      { path: 'products',            element: <Lazy><ProductsPage /></Lazy> },
-      { path: 'warehouses',          element: <Lazy><WarehousesPage /></Lazy> },
-      { path: 'documents',           element: <Lazy><ComingSoonPage /></Lazy> },
-      { path: 'accounts-receivable', element: <Lazy><ComingSoonPage /></Lazy> },
-      { path: 'accounts-payable',    element: <Lazy><ComingSoonPage /></Lazy> },
+      { path: 'products',              element: <Lazy><ProductsPage /></Lazy> },
+      { path: 'warehouses',            element: <Lazy><WarehousesPage /></Lazy> },
+      { path: 'documents',             element: <Lazy><DocumentsPage /></Lazy> },
+      { path: 'documents/new',         element: <Lazy><DocumentFormPage /></Lazy> },
+      { path: 'documents/:id',         element: <Lazy><DocumentDetailPage /></Lazy> },
+      { path: 'documents/:id/edit',    element: <Lazy><DocumentFormPage /></Lazy> },
+      { path: 'accounts-receivable',   element: <Lazy><ComingSoonPage /></Lazy> },
+      { path: 'accounts-payable',      element: <Lazy><ComingSoonPage /></Lazy> },
     ],
   },
 ])

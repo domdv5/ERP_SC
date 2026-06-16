@@ -16,14 +16,31 @@ import {
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth.store";
 
-const navItems = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/products", icon: Package, label: "Productos" },
-  { to: "/warehouses", icon: Warehouse, label: "Bodegas" },
-  { to: "/third-parties", icon: Users, label: "Terceros" },
-  { to: "/documents", icon: FileText, label: "Documentos" },
-  { to: "/accounts-receivable", icon: TrendingUp, label: "Cuentas x Cobrar" },
-  { to: "/accounts-payable", icon: TrendingDown, label: "Cuentas x Pagar" },
+const navGroups = [
+  {
+    items: [{ to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" }],
+  },
+  {
+    label: "Maestros",
+    items: [
+      { to: "/third-parties", icon: Users, label: "Terceros" },
+      { to: "/products", icon: Package, label: "Productos" },
+      { to: "/warehouses", icon: Warehouse, label: "Bodegas" },
+    ],
+  },
+  {
+    label: "Operaciones",
+    items: [
+      { to: "/documents", icon: FileText, label: "Operaciones" },
+    ],
+  },
+  {
+    label: "Finanzas",
+    items: [
+      { to: "/accounts-receivable", icon: TrendingUp, label: "Cuentas × Cobrar" },
+      { to: "/accounts-payable", icon: TrendingDown, label: "Cuentas × Pagar" },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -70,27 +87,33 @@ export function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <p className="text-white/30 text-xs font-medium uppercase tracking-widest px-3 mb-3">
-          Menú principal
-        </p>
-        {navItems.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              cn(
-                "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                isActive
-                  ? "nav-active text-white shadow-lg"
-                  : "text-white/60 hover:text-white hover:bg-white/5",
-              )
-            }
-          >
-            <Icon className="w-4 h-4 shrink-0" />
-            <span className="flex-1">{label}</span>
-            <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-          </NavLink>
+      <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-4">
+        {navGroups.map((group, i) => (
+          <div key={i} className="space-y-0.5">
+            {group.label && (
+              <p className="text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
+                {group.label}
+              </p>
+            )}
+            {group.items.map(({ to, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  cn(
+                    "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "nav-active text-white shadow-lg"
+                      : "text-white/60 hover:text-white hover:bg-white/5",
+                  )
+                }
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="flex-1">{label}</span>
+                <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+              </NavLink>
+            ))}
+          </div>
         ))}
       </nav>
 

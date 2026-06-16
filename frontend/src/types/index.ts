@@ -1,6 +1,23 @@
-export type { ThirdParty, CreateThirdPartyPayload, UpdateThirdPartyPayload, PersonType, DocumentType } from './third-party.types'
+export type { ThirdParty, CreateThirdPartyPayload, UpdateThirdPartyPayload, PersonType, DocumentType as ThirdPartyDocumentType } from './third-party.types'
 export type { Product } from './product.types'
 export type { Warehouse, WarehouseType, CreateWarehousePayload, UpdateWarehousePayload } from './warehouse.types'
+export type {
+  DocumentType,
+  DocumentStatus,
+  DocumentListItem,
+  Document,
+  DocumentItem,
+  DocumentMeta,
+  DocumentWarehouse,
+  DocumentThirdParty,
+  DocumentUser,
+  DocumentBin,
+  DocumentSourceRef,
+  GetDocumentsParams,
+  CreateDocumentPayload,
+  UpdateDocumentPayload,
+  CreateDocumentItemPayload,
+} from './document.types'
 
 export interface ApiResponse<T> {
   success: boolean
