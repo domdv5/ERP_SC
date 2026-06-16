@@ -49,7 +49,7 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 
 ### Module Structure
 
-`backend/src/` contains NestJS modules. Implemented modules: `auth`, `prisma`, `third-parties`, `products`, `warehouses`, `common`.
+`backend/src/` contains NestJS modules. Implemented modules: `auth`, `prisma`, `third-parties`, `products`, `warehouses`, `documents`, `common`.
 
 **Bootstrap** (`main.ts`):
 
@@ -58,7 +58,7 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 - Global `ResponseFormatInterceptor` — wraps all responses as `{ success, data }`
 - Listens on `PORT` env var (default 3000)
 
-**AppModule** imports: `ConfigModule` (global, reads `.env`), `AuthModule`, `PrismaModule`, `ThirdPartiesModule`, `ProductsModule`, `WarehousesModule`
+**AppModule** imports: `ConfigModule` (global, reads `.env`), `AuthModule`, `PrismaModule`, `ThirdPartiesModule`, `ProductsModule`, `WarehousesModule`, `DocumentsModule`
 
 **PrismaModule** is global — inject `PrismaService` anywhere without re-importing the module.
 
@@ -96,6 +96,20 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 - Seed creates two records: `Almacén` (store) and `Bodega` (warehouse)
 - Sales operations must only validate against `store`-type warehouse inventory
 - Single permission `warehouse.manage` covers all write operations
+
+**DocumentsModule**:
+
+- `GET /documents` — list with filters (type, status, dateFrom, dateTo, search); requires `document.read`
+- `GET /documents/:id` — detail with items, parties, warehouses; requires `document.read`
+- `POST /documents` — create draft; permission checked dynamically: `document.create.{type}`
+- `PATCH /documents/:id` — update draft (replaces items); same dynamic permission
+- `POST /documents/:id/confirm` — apply effects (stock, kardex, accounts); same dynamic permission
+- `POST /documents/:id/void` — reverse movements, delete CxP; same dynamic permission
+- `DELETE /documents/:id` — delete draft only; same dynamic permission
+- **Strategy pattern**: `DocumentEffectsRegistry` maps type → strategy; add new types without touching service
+- **Warehouse rule**: for all types except `T`, service always resolves the active `store`-type warehouse; client never sends `warehouseId` for non-transfer docs
+- **Implemented strategies (phase 1)**: `CM` (purchase), `DVC` (supplier return), `EAI` (stock adjustment in), `SAJ` (stock adjustment out), `T` (transfer)
+- **Phase 2 types** (not yet implemented): `COT`, `POS`, `DVV`, `REM`, `RMDVC`, `PE` — each needs only a new Strategy class
 
 **CommonModule** (`src/common/`):
 
@@ -177,9 +191,10 @@ frontend/src/
     auth/         ← LoginPage
     dashboard/    ← DashboardPage
     third-parties/← ThirdPartiesPage + ThirdPartyForm + DeleteConfirmDialog
+    documents/    ← DocumentsPage + DocumentFormPage + DocumentDetailPage
     coming-soon/  ← ComingSoonPage (placeholder for unimplemented modules)
   router/         ← index.tsx (lazy routes, authenticated layout)
-  services/       ← third-parties.service.ts, api.ts (axios instance)
+  services/       ← third-parties.service.ts, documents.service.ts, api.ts (axios instance)
   stores/         ← auth.store.ts (Zustand)
   types/          ← shared TypeScript types
   lib/            ← utils (cn), queryClient
@@ -207,6 +222,10 @@ return res.data.data
 
 **Protected routes** — `AuthGuard` checks `useAuthStore` token; redirects to `/login` if not authenticated.
 
+**Combobox with portal** — When a searchable dropdown lives inside a container with `overflow-hidden` or `overflow-x-auto` (e.g. inside a table or card), use `createPortal` + `position: fixed` to avoid clipping. Pattern in `DocumentFormPage.tsx`: `triggerRef.getBoundingClientRect()` sets `top/left/width`; the dropdown renders in `document.body`. Required for any Combobox inside the items table or overflow containers.
+
+**Search-on-type Combobox** — For fields with large datasets (products), set `enabled: debouncedSearch.length >= 1` on the query. Show "Escribe para buscar..." when empty, "Sin resultados" when search returns nothing. Prevents loading thousands of records on dropdown open. When an item is already selected and search is empty, show only that item via a synthetic option built from local state.
+
 ### Implemented Modules
 
 | Route | Status | Notes |
@@ -216,7 +235,7 @@ return res.data.data
 | `/third-parties` | Done | Full CRUD, server-side search, debounce, pagination, cache |
 | `/products` | Done | Full CRUD, server-side search, debounce, pagination, cache |
 | `/warehouses` | Done | Full CRUD, type badge (store/warehouse), soft-delete |
-| `/documents` | Placeholder | ComingSoonPage |
+| `/documents` | Done | List + form (create/edit/confirm/void), portal Combobox, search-on-type |
 | `/accounts-receivable` | Placeholder | ComingSoonPage |
 | `/accounts-payable` | Placeholder | ComingSoonPage |
 
