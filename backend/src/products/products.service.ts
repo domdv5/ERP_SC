@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { CreateProductDto, FindAllProductsDto, UpdateProductDto } from '@/products/dto/index';
+import {
+  CreateProductDto,
+  FindAllProductsDto,
+  UpdateProductDto,
+} from '@/products/dto/index';
 import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
@@ -8,7 +12,15 @@ export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(findAllProductsDto: FindAllProductsDto) {
-    const { page = 1, limit = 20, search, active, categoryId, brandId, genderId } = findAllProductsDto;
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      active,
+      categoryId,
+      brandId,
+      genderId,
+    } = findAllProductsDto;
     const skip = (page - 1) * limit;
 
     const where: Prisma.ProductWhereInput = {
@@ -24,22 +36,35 @@ export class ProductsService {
       }),
     };
 
-    const [items, total, activeCount, inStockCount] = await this.prisma.$transaction([
-      this.prisma.product.findMany({
-        where,
-        include: { brand: true, gender: true, category: true },
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.product.count({ where }),
-      this.prisma.product.count({ where: { ...where, active: true } }),
-      this.prisma.product.count({ where: { ...where, inventoryRecords: { some: { quantity: { gt: 0 } } } } }),
-    ]);
+    const [items, total, activeCount, inStockCount] =
+      await this.prisma.$transaction([
+        this.prisma.product.findMany({
+          where,
+          include: { brand: true, gender: true, category: true },
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.product.count({ where }),
+        this.prisma.product.count({ where: { ...where, active: true } }),
+        this.prisma.product.count({
+          where: {
+            ...where,
+            inventoryRecords: { some: { quantity: { gt: 0 } } },
+          },
+        }),
+      ]);
 
     return {
       items,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit), activeCount, inStockCount },
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        activeCount,
+        inStockCount,
+      },
     };
   }
 
@@ -81,10 +106,16 @@ export class ProductsService {
   }
 
   getGenders() {
-    return this.prisma.gender.findMany({ where: { active: true }, orderBy: { name: 'asc' } });
+    return this.prisma.gender.findMany({
+      where: { active: true },
+      orderBy: { name: 'asc' },
+    });
   }
 
   getCategories() {
-    return this.prisma.category.findMany({ where: { active: true }, orderBy: { name: 'asc' } });
+    return this.prisma.category.findMany({
+      where: { active: true },
+      orderBy: { name: 'asc' },
+    });
   }
 }

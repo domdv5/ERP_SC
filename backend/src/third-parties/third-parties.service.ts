@@ -139,7 +139,7 @@ export class ThirdPartiesService {
     return this.prisma.$transaction(async (tx) => {
       if (isSupplier && brands !== undefined) {
         await tx.brand.createMany({
-          data: (brands as string[]).map((name) => ({ name, supplierId: id })),
+          data: brands.map((name) => ({ name, supplierId: id })),
           skipDuplicates: true,
         });
       }
@@ -148,8 +148,13 @@ export class ThirdPartiesService {
         where: { id },
         data: {
           ...thirdPartyData,
-          customer: isCustomer ? { update: { creditLimit, discount, sellerId } } : undefined,
-          supplier: isSupplier && internalNumber !== undefined ? { update: { internalNumber } } : undefined,
+          customer: isCustomer
+            ? { update: { creditLimit, discount, sellerId } }
+            : undefined,
+          supplier:
+            isSupplier && internalNumber !== undefined
+              ? { update: { internalNumber } }
+              : undefined,
         },
         include: { customer: true, supplier: { include: { brands: true } } },
       });

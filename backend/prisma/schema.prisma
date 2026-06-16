@@ -204,6 +204,8 @@ model Warehouse {
   inventoryRecords   Inventory[]
   inventoryMovements InventoryMovement[]
   inventorySnapshots InventorySnapshot[]
+  documents          Document[]          @relation("DocumentWarehouse")
+  destDocuments      Document[]          @relation("DocumentDestWarehouse")
 
   @@map("warehouse")
 }
@@ -232,6 +234,7 @@ model Bin {
   inventoryRecords   Inventory[]
   inventoryMovements InventoryMovement[]
   inventorySnapshots InventorySnapshot[]
+  destDocuments      Document[]          @relation("DocumentDestBin")
 
   @@map("bin")
 }
@@ -252,13 +255,23 @@ model Inventory {
   @@map("inventory")
 }
 
+enum MovementType {
+  purchase
+  sale
+  return
+  transfer
+  adjustment
+  initial_stock
+  void
+  production
+}
+
 model InventoryMovement {
-  id           String   @id @default(uuid()) @db.Uuid
-  productId    String   @map("product_id") @db.Uuid
-  warehouseId  String   @map("warehouse_id") @db.Uuid
-  binId        String?  @map("bin_id") @db.Uuid
-  /// purchase | sale | return | transfer | adjustment | initial_stock | void | production
-  movementType String   @map("movement_type") @db.VarChar(20)
+  id           String       @id @default(uuid()) @db.Uuid
+  productId    String       @map("product_id") @db.Uuid
+  warehouseId  String       @map("warehouse_id") @db.Uuid
+  binId        String?      @map("bin_id") @db.Uuid
+  movementType MovementType @map("movement_type")
   /// positive or negative
   quantity     Decimal  @db.Decimal(14, 3)
   unitCost     Decimal  @default(0) @map("unit_cost") @db.Decimal(14, 4)
@@ -369,27 +382,54 @@ model UserRole {
 
 // ─── Documents ────────────────────────────────────────────────────────────────
 
-model Document {
-  id               String   @id @default(uuid()) @db.Uuid
-  /// CM | DVC | RMDVC | PE | EAI | SAJ | COT | POS | REM | DVV | T
-  type             String   @db.VarChar(10)
-  number           String   @db.VarChar(30)
-  date             DateTime @db.Date
-  thirdPartyId     String?  @map("third_party_id") @db.Uuid
-  userId           String   @map("user_id") @db.Uuid
-  /// draft | confirmed | voided
-  status           String   @default("draft") @db.VarChar(15)
-  total            Decimal  @default(0) @db.Decimal(16, 2)
-  freight          Decimal? @db.Decimal(14, 2)
-  notes            String?
-  sourceDocumentId String?  @map("source_document_id") @db.Uuid
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+enum DocumentType {
+  CM // Compra — entrada inventario + CxP
+  DVC // Devolución en compra — salida inventario + reduce CxP
+  RMDVC // Remisión dev. compra — temporal, sin efecto inventario
+  PE // Pedido — temporal, se convierte en CM
+  EAI // Entrada ajuste inventario
+  SAJ // Salida ajuste inventario
+  COT // Venta a crédito — salida inventario + CxC
+  POS // Venta de contado — salida inventario
+  REM // Remisión — temporal, se convierte en COT/POS
+  DVV // Devolución en venta — entrada inventario + saldo a favor
+  T // Traslado entre bodegas
+}
 
-  thirdParty      ThirdParty?     @relation(fields: [thirdPartyId], references: [id])
-  user            User            @relation(fields: [userId], references: [id])
-  sourceDocument  Document?       @relation("DocumentSource", fields: [sourceDocumentId], references: [id])
-  derivedDocuments Document[]     @relation("DocumentSource")
+enum DocumentStatus {
+  draft
+  confirmed
+  voided
+}
+
+model Document {
+  id               String         @id @default(uuid()) @db.Uuid
+  type             DocumentType
+  number           String         @db.VarChar(30)
+  date             DateTime       @db.Date
+  thirdPartyId     String?        @map("third_party_id") @db.Uuid
+  userId           String         @map("user_id") @db.Uuid
+  status           DocumentStatus @default(draft)
+  total            Decimal        @default(0) @db.Decimal(16, 2)
+  freight          Decimal?       @db.Decimal(14, 2)
+  notes            String?
+  /// Bodega principal: destino en CM/EAI, origen en DVC/SAJ/T
+  warehouseId      String?        @map("warehouse_id") @db.Uuid
+  /// Bodega destino — solo traslados (T)
+  destWarehouseId  String?        @map("dest_warehouse_id") @db.Uuid
+  /// Bulto destino — solo traslados hacia bodega de almacenamiento
+  destBinId        String?        @map("dest_bin_id") @db.Uuid
+  sourceDocumentId String?        @map("source_document_id") @db.Uuid
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  thirdParty       ThirdParty? @relation(fields: [thirdPartyId], references: [id])
+  user             User        @relation(fields: [userId], references: [id])
+  warehouse        Warehouse?  @relation("DocumentWarehouse", fields: [warehouseId], references: [id])
+  destWarehouse    Warehouse?  @relation("DocumentDestWarehouse", fields: [destWarehouseId], references: [id])
+  destBin          Bin?        @relation("DocumentDestBin", fields: [destBinId], references: [id])
+  sourceDocument   Document?   @relation("DocumentSource", fields: [sourceDocumentId], references: [id])
+  derivedDocuments Document[]  @relation("DocumentSource")
 
   documentItems      DocumentItem[]
   inventoryMovements InventoryMovement[]
@@ -397,6 +437,10 @@ model Document {
   accountsPayable    AccountsPayable[]
   customerCredits    CustomerCredit[]
 
+  @@unique([type, number])
+  @@index([type, status])
+  @@index([date])
+  @@index([thirdPartyId])
   @@map("document")
 }
 

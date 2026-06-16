@@ -1,0 +1,68 @@
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { DocumentType } from '@/common/enums';
+
+export class CreateDocumentItemDto {
+  @IsUUID()
+  productId!: string;
+
+  @IsNumber()
+  @IsPositive()
+  quantity!: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  unitCost?: number;
+}
+
+export class CreateDocumentDto {
+  @IsEnum(DocumentType)
+  type!: DocumentType;
+
+  @IsDateString()
+  date!: string;
+
+  @IsOptional()
+  @IsUUID()
+  thirdPartyId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  warehouseId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  destWarehouseId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  destBinId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  freight?: number;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsArray()
+  @ArrayNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => CreateDocumentItemDto)
+  items!: CreateDocumentItemDto[];
+}
