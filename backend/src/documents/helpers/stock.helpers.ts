@@ -1,11 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { DocumentWithItems } from './document-effect.strategy';
-
-/**
- * Helpers de inventario compartidos entre las estrategias y el service
- * (void() los reutiliza para reversar movimientos).
- */
+import type { DocumentWithItems } from '@/documents/strategies/document-effect.strategy';
 
 /** Lee el stock actual del par (producto, bodega), aplica el delta y upserta Inventory. */
 export async function applyStockChange(

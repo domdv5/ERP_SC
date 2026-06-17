@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { DocumentType, MovementType } from '@/common/enums';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
-import { computeNewAvgCost } from './stock.helpers';
+import { computeNewAvgCost } from '@/documents/helpers/stock.helpers';
 
 /** EAI — Entrada por ajuste de inventario: suma stock; re-pondera costo si trae unitCost. */
 @Injectable()

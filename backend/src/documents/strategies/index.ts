@@ -1,5 +1,4 @@
 export * from './document-effect.strategy';
-export * from './stock.helpers';
 export * from './base-effect.strategy';
 export * from './cm-effect.strategy';
 export * from './dvc-effect.strategy';

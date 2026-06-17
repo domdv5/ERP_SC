@@ -15,10 +15,8 @@ import {
   FindAllDocumentsDto,
   UpdateDocumentDto,
 } from '@/documents/dto/index';
-import {
-  applyStockChange,
-  DocumentEffectsRegistry,
-} from '@/documents/strategies/index';
+import { applyStockChange } from '@/documents/helpers/stock.helpers';
+import { DocumentEffectsRegistry } from '@/documents/strategies/index';
 
 const DETAIL_INCLUDE = {
   documentItems: {

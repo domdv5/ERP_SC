@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { DocumentType, MovementType } from '@/common/enums';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
-import { assertSufficientStock } from './stock.helpers';
+import { assertSufficientStock } from '@/documents/helpers/stock.helpers';
 
 /** SAJ — Salida por ajuste de inventario: resta stock al costo promedio vigente. */
 @Injectable()

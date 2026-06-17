@@ -4,7 +4,7 @@ import { DocumentType, MovementType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
-import { computeNewAvgCost } from './stock.helpers';
+import { computeNewAvgCost } from '@/documents/helpers/stock.helpers';
 
 /** CM — Compra de mercancía: entrada de stock, re-ponderación de costos y CxP. */
 @Injectable()

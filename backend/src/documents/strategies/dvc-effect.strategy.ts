@@ -4,7 +4,7 @@ import { DocumentType, MovementType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
-import { assertSufficientStock } from './stock.helpers';
+import { assertSufficientStock } from '@/documents/helpers/stock.helpers';
 
 /** DVC — Devolución a proveedor: salida de stock y nota crédito en CxP. */
 @Injectable()

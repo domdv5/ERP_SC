@@ -6,7 +6,7 @@ import type {
   DocumentEffectStrategy,
   DocumentWithItems,
 } from './document-effect.strategy';
-import { applyStockChange } from './stock.helpers';
+import { applyStockChange } from '@/documents/helpers/stock.helpers';
 
 /**
  * Base de las estrategias de efectos: concentra la lógica compartida
