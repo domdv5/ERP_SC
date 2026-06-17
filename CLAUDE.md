@@ -64,12 +64,15 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 
 **AuthModule**:
 
-- `POST /auth` — create user (requires name, username, password, roleId)
-- `PATCH /auth/:id` — update user
-- `DELETE /auth/:id` — delete user
+- `GET /auth` — list all users with roles; requires `user.manage`
+- `GET /auth/roles` — list all active roles with their permissions; requires `user.manage`
+- `POST /auth` — create user (requires name, username, password, roleIds[]); requires `user.manage`
+- `PATCH /auth/:id` — update user (password and roleIds optional); requires `user.manage`
+- `DELETE /auth/:id` — delete user (hard delete); requires `user.manage`
 - `POST /auth/login` — returns JWT containing `{ sub, name, username, permissions[] }`
 - `JwtAuthGuard` — validates Bearer token; attaches `{ sub, name, username, permissions[] }` to `request.user`
 - JWT expiration: 8 hours
+- **Route order rule**: `GET /auth/roles` must be declared before any future `GET /auth/:id` to prevent NestJS treating `"roles"` as an id param
 
 **ThirdPartiesModule**:
 
@@ -192,10 +195,12 @@ frontend/src/
     dashboard/    ← DashboardPage
     third-parties/← ThirdPartiesPage + ThirdPartyForm + DeleteConfirmDialog
     documents/    ← DocumentsPage + DocumentFormPage + DocumentDetailPage
+    users/        ← UsersPage + components/UserForm + components/DeleteUserDialog
     coming-soon/  ← ComingSoonPage (placeholder for unimplemented modules)
   router/         ← index.tsx (lazy routes, authenticated layout)
-  services/       ← third-parties.service.ts, documents.service.ts, api.ts (axios instance)
+  services/       ← third-parties.service.ts, documents.service.ts, users.service.ts, api.ts (axios instance)
   stores/         ← auth.store.ts (Zustand)
+  hooks/          ← usePermission.ts (checks user.permissions[] from JWT)
   types/          ← shared TypeScript types
   lib/            ← utils (cn), queryClient
 ```
@@ -226,6 +231,16 @@ return res.data.data
 
 **Search-on-type Combobox** — For fields with large datasets (products), set `enabled: debouncedSearch.length >= 1` on the query. Show "Escribe para buscar..." when empty, "Sin resultados" when search returns nothing. Prevents loading thousands of records on dropdown open. When an item is already selected and search is empty, show only that item via a synthetic option built from local state.
 
+**Permission-based UI** — Use `usePermission(...perms)` from `@/hooks/usePermission` to show/hide UI elements. The JWT already carries `permissions[]` so no extra request is needed. Pattern:
+```tsx
+const canManage = usePermission('user.manage')
+// Hide action buttons, sidebar sections, entire CTAs:
+{canManage && <button>Nuevo usuario</button>}
+```
+For sidebar sections that must be hidden for some roles, render the `<NavLink>` conditionally inside the component (not in the static `navGroups` array). See `Sidebar.tsx` "Administración" section as reference.
+
+**Role display names** — Spanish labels for roles live in `users.service.ts` as `ROLE_LABELS: Record<string, string>` with a `getRoleLabel(name)` helper that falls back to `replace(/_/g, ' ')`. Import from there when displaying role names anywhere in the UI.
+
 ### Implemented Modules
 
 | Route | Status | Notes |
@@ -236,6 +251,7 @@ return res.data.data
 | `/products` | Done | Full CRUD, server-side search, debounce, pagination, cache |
 | `/warehouses` | Done | Full CRUD, type badge (store/warehouse), soft-delete |
 | `/documents` | Done | List + form (create/edit/confirm/void), portal Combobox, search-on-type |
+| `/users` | Done | Full CRUD, role checkboxes, password confirmation, permission-gated sidebar |
 | `/accounts-receivable` | Placeholder | ComingSoonPage |
 | `/accounts-payable` | Placeholder | ComingSoonPage |
 
