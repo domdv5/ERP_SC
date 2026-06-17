@@ -112,4 +112,39 @@ export class AuthService {
     await this.prisma.user.findFirstOrThrow({ where: { id } });
     await this.prisma.user.delete({ where: { id } });
   }
+
+  async findAll() {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        active: true,
+        createdAt: true,
+        userRoles: {
+          select: {
+            role: { select: { id: true, name: true, description: true } },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async findAllRoles() {
+    return this.prisma.role.findMany({
+      where: { active: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        rolePermissions: {
+          select: {
+            permission: { select: { id: true, code: true, module: true } },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
 }

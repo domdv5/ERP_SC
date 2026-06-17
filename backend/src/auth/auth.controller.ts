@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
   Patch,
@@ -16,6 +17,20 @@ import { Permissions } from '@/common/decorators/permissions.decorator';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Get()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('user.manage')
+  findAll() {
+    return this.authService.findAll();
+  }
+
+  @Get('roles')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('user.manage')
+  findAllRoles() {
+    return this.authService.findAllRoles();
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
