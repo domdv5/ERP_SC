@@ -13,6 +13,7 @@ const ComingSoonPage = lazy(() => import('@/pages/coming-soon/ComingSoonPage'))
 const DocumentsPage = lazy(() => import('@/pages/documents/DocumentsPage'))
 const DocumentFormPage = lazy(() => import('@/pages/documents/DocumentFormPage'))
 const DocumentDetailPage = lazy(() => import('@/pages/documents/DocumentDetailPage'))
+const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: 'documents/:id/edit',    element: <Lazy><DocumentFormPage /></Lazy> },
       { path: 'accounts-receivable',   element: <Lazy><ComingSoonPage /></Lazy> },
       { path: 'accounts-payable',      element: <Lazy><ComingSoonPage /></Lazy> },
+      { path: 'users',                 element: <Lazy><UsersPage /></Lazy> },
     ],
   },
 ])

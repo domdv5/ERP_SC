@@ -12,9 +12,11 @@ import {
   ChevronRight,
   LogOut,
   ChevronUp,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth.store";
+import { usePermission } from "@/hooks/usePermission";
 
 const navGroups = [
   {
@@ -47,6 +49,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const canManageUsers = usePermission('user.manage');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -115,6 +118,29 @@ export function Sidebar() {
             ))}
           </div>
         ))}
+
+        {canManageUsers && (
+          <div className="space-y-0.5">
+            <p className="text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
+              Administración
+            </p>
+            <NavLink
+              to="/users"
+              className={({ isActive }) =>
+                cn(
+                  "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                  isActive
+                    ? "nav-active text-white shadow-lg"
+                    : "text-white/60 hover:text-white hover:bg-white/5",
+                )
+              }
+            >
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              <span className="flex-1">Usuarios</span>
+              <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+            </NavLink>
+          </div>
+        )}
       </nav>
 
       {/* Footer — user dropdown */}
