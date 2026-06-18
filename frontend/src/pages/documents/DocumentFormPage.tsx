@@ -20,6 +20,7 @@ import { getDocument, createDocument, updateDocument } from '@/services/document
 import { getWarehouses, getWarehouse } from '@/services/warehouses.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import { getProducts } from '@/services/products.service'
+import { useAuthStore } from '@/stores/auth.store'
 import { cn } from '@/lib/utils'
 
 import type { DocumentType } from '@/types/document.types'
@@ -365,6 +366,11 @@ export default function DocumentFormPage() {
   const isEditing   = Boolean(id)
   const queryClient = useQueryClient()
 
+  const userPermissions = useAuthStore((s) => s.user?.permissions ?? [])
+  const availableTypes = DOC_TYPE_OPTIONS.filter((opt) =>
+    userPermissions.includes(`document.create.${opt.value}`)
+  )
+
   // Third-party search
   const [tpSearch, setTpSearch] = useState('')
   const [debouncedTpSearch] = useDebounce(tpSearch, 400)
@@ -382,7 +388,7 @@ export default function DocumentFormPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(formSchema) as any,
     defaultValues: {
-      type:  'CM',
+      type:  (availableTypes[0]?.value ?? 'CM') as FormValues['type'],
       date:  TODAY,
       items: [],
     },
@@ -630,7 +636,7 @@ export default function DocumentFormPage() {
                       isEditing ? 'opacity-60 cursor-not-allowed' : 'border-ui-border-medium',
                     )}
                   >
-                    {DOC_TYPE_OPTIONS.map((opt) => (
+                    {availableTypes.map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
                       </option>

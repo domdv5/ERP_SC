@@ -3,6 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { getThirdParties } from '@/services/third-parties.service'
+import { getProducts } from '@/services/products.service'
+import { getWarehouses } from '@/services/warehouses.service'
+import { getDocuments } from '@/services/documents.service'
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user)
@@ -11,6 +14,24 @@ export default function DashboardPage() {
   const { data: thirdPartiesData, isLoading: loadingThirdParties } = useQuery({
     queryKey: ['third-parties-count'],
     queryFn: () => getThirdParties({ limit: 1 }),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: productsData, isLoading: loadingProducts } = useQuery({
+    queryKey: ['products-count'],
+    queryFn: () => getProducts({ limit: 1 }),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: warehousesData, isLoading: loadingWarehouses } = useQuery({
+    queryKey: ['warehouses-count'],
+    queryFn: () => getWarehouses(),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: documentsData, isLoading: loadingDocuments } = useQuery({
+    queryKey: ['documents-count'],
+    queryFn: () => getDocuments({ limit: 1 }),
     staleTime: 5 * 60 * 1000,
   })
 
@@ -35,24 +56,47 @@ export default function DashboardPage() {
       label: 'Cuentas por Pagar',
       subtitle: 'Obligaciones con proveedores',
       icon: TrendingDown,
-      iconBg: 'bg-blue-500/10',
-      iconColor: 'text-blue-500',
-      dotColor: 'bg-blue-500',
+      iconBg: 'bg-amber-500/10',
+      iconColor: 'text-amber-500 dark:text-amber-400',
+      dotColor: 'bg-amber-500',
       path: '/accounts-payable',
       context: 'Módulo en desarrollo',
     },
   ]
 
   const operationalCards = [
-    { label: 'Productos',   value: '—',    icon: Package,   path: '/products' },
+    {
+      label: 'Productos',
+      value: loadingProducts ? null : String(productsData?.meta.total ?? '—'),
+      icon: Package,
+      iconBg: 'bg-amber-500/10',
+      iconColor: 'text-amber-600 dark:text-amber-400',
+      path: '/products',
+    },
     {
       label: 'Terceros',
       value: loadingThirdParties ? null : String(thirdPartiesData?.meta.total ?? '—'),
       icon: Users,
+      iconBg: 'bg-blue-500/10',
+      iconColor: 'text-blue-600 dark:text-blue-400',
       path: '/third-parties',
     },
-    { label: 'Bodegas',    value: '—',    icon: Warehouse, path: '/warehouses' },
-    { label: 'Documentos', value: '—',    icon: FileText,  path: '/documents' },
+    {
+      label: 'Bodegas',
+      value: loadingWarehouses ? null : String(warehousesData?.length ?? '—'),
+      icon: Warehouse,
+      iconBg: 'bg-violet-500/10',
+      iconColor: 'text-violet-600 dark:text-violet-400',
+      path: '/warehouses',
+    },
+    {
+      label: 'Documentos',
+      value: loadingDocuments ? null : String(documentsData?.meta.total ?? '—'),
+      icon: FileText,
+      iconBg: 'bg-teal-500/10',
+      iconColor: 'text-teal-600 dark:text-teal-400',
+      path: '/documents',
+    },
   ]
 
   return (
@@ -98,14 +142,14 @@ export default function DashboardPage() {
 
       {/* Operational zone — secondary */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        {operationalCards.map(({ label, value, icon: Icon, path }) => (
+        {operationalCards.map(({ label, value, icon: Icon, iconBg, iconColor, path }) => (
           <div
             key={label}
             onClick={() => navigate(path)}
             className="bg-surface rounded-2xl p-4 border border-ui-border shadow-sm hover:shadow-md transition-all group cursor-pointer flex items-center gap-3"
           >
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-brand-secondary/10">
-              <Icon className="w-4 h-4 text-brand-secondary" />
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <Icon className={`w-4 h-4 ${iconColor}`} />
             </div>
             <div className="flex-1 min-w-0">
               {value === null ? (

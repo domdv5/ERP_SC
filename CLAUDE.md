@@ -358,72 +358,72 @@ The `dark:` variant works because `@custom-variant dark (&:is(.dark *))` is decl
 
 ## Routing Rules
 
-Defines when to delegate to a subagent or invoke a skill. Read the trigger condition; if it matches, use that tool **before** generating any response.
+Defines when to delegate to a subagent or invoke a skill. **Read the trigger condition; if it matches, invoke that tool BEFORE generating any response.** Triggers are written en lenguaje natural — reconocer la intención aunque la frase exacta difiera.
 
 ### Subagents
 
 | Trigger | Subagent | Notes |
 |---------|----------|-------|
-| "crea el componente / página / hook / feature de…" en el frontend | `react-code-crafter` | Genera código React alineado con los patrones del proyecto (TanStack Query, react-hook-form, tokens de diseño, debounce, paginación) |
-| "agrega índices", "revisa el schema", "audita las tablas", "optimiza queries de BD", "mira mis tablas" | `prisma-db-architect` | Audita el schema.prisma, identifica índices faltantes y los agrega según los queries reales del backend |
-| Exploración de código abierta que requiere >3 búsquedas: "¿dónde está X?", "¿qué archivos usan Y?" | `Explore` | Solo lectura; no usar para review ni análisis cross-file profundo |
-| Investigación compleja multistep o búsqueda sin dirección clara en el código | `general-purpose` | Cuando Explore o Grep solos no son suficientes |
-| "diseña / planifica la arquitectura de…", "¿cómo deberíamos estructurar…?" | `Plan` | Devuelve plan paso a paso antes de implementar |
-| Preguntas sobre Claude Code CLI, Agent SDK, o la API de Anthropic | `claude-code-guide` | Antes de responder desde memoria, verificar si hay un agente activo que continuar |
+| Crear/agregar página, componente, hook, feature, formulario, tabla o sección nueva en el frontend — "hazme una página de…", "agrega el módulo de…", "necesito la pantalla de…", "crea el form para…" | `react-code-crafter` | Genera código React alineado con los patrones del proyecto (TanStack Query, react-hook-form, tokens de diseño, debounce, paginación) |
+| Base de datos / Prisma: "agrega índices", "revisa el schema", "audita las tablas", "optimiza queries", "mira mis tablas", "hay duplicados en…", "el query es lento", "diseña las tablas para…", "cómo modelar…" | `prisma-db-architect` | Audita schema.prisma, identifica índices faltantes, modela relaciones, optimiza queries |
+| Exploración de código abierta >3 búsquedas: "¿dónde está X?", "¿qué archivos usan Y?", "busca dónde se define…" | `Explore` | Solo lectura; no usar para review ni análisis cross-file profundo |
+| Investigación compleja multistep o búsqueda sin dirección clara | `general-purpose` | Cuando Explore o Grep solos no son suficientes |
+| Diseñar arquitectura o planificar antes de implementar: "¿cómo deberíamos estructurar…?", "diseña el flujo de…", "planifica la implementación de…", "qué enfoque recomiendas para…" | `Plan` | Devuelve plan paso a paso antes de implementar |
+| Preguntas sobre Claude Code CLI, hooks, settings, Agent SDK, API de Anthropic | `claude-code-guide` | Verificar si hay un agente activo antes de lanzar uno nuevo |
 
-### Skills — Frontend
-
-| Trigger | Skill |
-|---------|-------|
-| Dudas de layout, jerarquía visual, UX de paneles/dashboards/tablas | `interface-design` |
-| Optimización de rendimiento en componentes React: re-renders, memoización, bundle, code splitting | `vercel-react-best-practices` |
-| Tipos TypeScript complejos: genéricos, tipos condicionales, mapped types, utility types | `typescript-advanced-types` |
-
-### Skills — Backend
+### Skills — Diseño UI / Frontend
 
 | Trigger | Skill |
 |---------|-------|
-| Crear / revisar módulos NestJS: providers, guards, interceptors, pipes, decorators | `nestjs-best-practices` |
-| Patrones de middleware, autenticación, error handling, diseño de API REST en Node.js | `nodejs-backend-patterns` |
-| Decisiones de arquitectura Node.js: selección de framework, async patterns, seguridad general | `nodejs-best-practices` |
+| Preguntas sobre diseño visual, UX, colores, qué se ve mejor, cómo mejorar visualmente, jerarquía, layout, espaciado, qué color usar, iconos, contraste, modo oscuro, dashboard looks, recomendación de UI — "¿cómo se ve?", "¿qué recomiendas para…?", "¿queda bien así?", "mejora el diseño de…", "hay mucho verde", "quiero variedad de colores", "no me gusta cómo se ve" | `interface-design` |
+| Rendimiento React: re-renders innecesarios, memoización, useMemo/useCallback, bundle size, code splitting, lazy loading | `vercel-react-best-practices` |
+| TypeScript avanzado: genéricos, tipos condicionales, mapped types, infer, utility types, errores de tipo difíciles | `typescript-advanced-types` |
+
+### Skills — Backend NestJS / Node.js
+
+| Trigger | Skill |
+|---------|-------|
+| Crear o revisar módulos NestJS: providers, guards, interceptors, pipes, decorators, módulos, controladores — "cómo hago un guard", "necesito un interceptor", "agrega un pipe de validación" | `nestjs-best-practices` |
+| Patrones de middleware, autenticación JWT, error handling, diseño de endpoints REST, rate limiting, CORS — "cómo manejo el error de…", "cómo estructuro este endpoint", "necesito middleware para…" | `nodejs-backend-patterns` |
+| Decisiones de arquitectura Node.js: framework, async/await patterns, seguridad, variables de entorno, estructura de proyecto | `nodejs-best-practices` |
 
 ### Skills — Prisma / Base de Datos
 
 | Trigger | Skill |
 |---------|-------|
-| Comandos `prisma init`, `prisma generate`, `prisma migrate`, `prisma db`, `prisma studio` | `prisma-cli` |
-| Escribir queries: `findMany`, `create`, `update`, `delete`, `$transaction`, filtros, operadores | `prisma-client-api` |
-| Configurar Prisma con un nuevo proveedor (PostgreSQL, MySQL, SQLite, MongoDB) | `prisma-database-setup` |
-| Crear / operar bases de datos Prisma Postgres (Console, Management API, `create-db`) | `prisma-postgres` |
+| Comandos CLI de Prisma: `migrate`, `generate`, `db push`, `studio`, `seed`, `introspect` — "cómo corro la migración", "el generate está fallando" | `prisma-cli` |
+| Escribir queries Prisma: `findMany`, `create`, `update`, `upsert`, `$transaction`, `include`, `select`, filtros, paginación — "cómo hago un query que…", "necesito filtrar por…" | `prisma-client-api` |
+| Configurar Prisma con PostgreSQL, MySQL, SQLite, MongoDB — conexión, datasource, adapter | `prisma-database-setup` |
+| Prisma Postgres cloud (Console, Management API) | `prisma-postgres` |
 
 ### Skills — Calidad de Código
 
 | Trigger | Skill |
 |---------|-------|
-| "revisa el diff / PR" buscando bugs, correctness, reutilización | `code-review` |
-| "simplifica / refactoriza el código cambiado" | `simplify` |
-| "haz una revisión de seguridad de los cambios" | `security-review` |
-| "verifica que el cambio funciona en la app", "confirma que el fix está bien" | `verify` |
-| "arranca la app", "corre el proyecto", "muéstrame el resultado en pantalla" | `run` |
-| "revisa el PR #N" (GitHub PR review) | `review` |
+| Revisar código por bugs, correctness o reutilización: "revisa el diff", "revisa el PR", "¿está bien esto?", "busca errores en…" | `code-review` |
+| Simplificar o refactorizar: "simplifica esto", "está muy largo", "refactoriza el código de…", "hay mucha repetición" | `simplify` |
+| Revisión de seguridad: "¿es seguro esto?", "revisa vulnerabilidades", "hay algún problema de seguridad" | `security-review` |
+| Verificar que algo funciona en la app: "confirma que el fix está bien", "prueba que funciona", "¿quedó bien el cambio?" | `verify` |
+| Arrancar la app o mostrar resultado en pantalla: "corre el proyecto", "muéstrame cómo queda", "arranca el servidor" | `run` |
+| Revisar un PR de GitHub por número: "revisa el PR #N" | `review` |
 
 ### Skills — Claude API
 
 | Trigger | Skill |
 |---------|-------|
-| Cualquier mención de `claude-*`, `anthropic`, `Opus/Sonnet/Haiku`, precios de modelos, streaming, tool use, MCP, caching de tokens | `claude-api` |
+| Mención de modelos claude-*, Anthropic API, Opus/Sonnet/Haiku, streaming, tool use, MCP, caching de tokens, precios de modelos | `claude-api` |
 
 ### Skills — Configuración de Claude Code
 
 | Trigger | Skill |
 |---------|-------|
-| "desde ahora cuando X…", "cada vez que X…", "agrega permiso para…", "configura el hook…", cambios a `settings.json` | `update-config` |
-| "cambia el shortcut", "reasigna la tecla", modificar `keybindings.json` | `keybindings-help` |
+| Cambiar comportamiento de Claude Code: "desde ahora cuando X…", "agrega permiso para…", "configura el hook…", "quiero que siempre…", cambios a `settings.json` | `update-config` |
+| Cambiar atajos de teclado: "cambia el shortcut de…", "reasigna la tecla…", `keybindings.json` | `keybindings-help` |
 | Reducir prompts de permisos repetitivos | `fewer-permission-prompts` |
 
 ### Skills — Automatización
 
 | Trigger | Skill |
 |---------|-------|
-| "ejecuta X cada N minutos", "repite este comando periódicamente" | `loop` |
-| "programa una tarea para las 3pm", "crea un cron job para Claude" | `schedule` |
+| Repetir una tarea periódicamente: "ejecuta X cada N minutos", "repite este comando", "corre esto en loop" | `loop` |
+| Programar una tarea a una hora específica: "programa esto para las 3pm", "crea un cron job" | `schedule` |

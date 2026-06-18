@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Users, Building2, User } from 'lucide-react'
 import { getThirdParties, createThirdParty, updateThirdParty, deleteThirdParty, renameBrand } from '@/services/third-parties.service'
+import { usePermission } from '@/hooks/usePermission'
 import { ThirdPartyForm } from './components/ThirdPartyForm'
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
 import { StatsGrid, TableToolbar, TableSkeleton, EmptyState, ErrorState, TablePagination } from '@/components/shared'
@@ -18,6 +19,10 @@ const ROLE_BADGES = [
 
 export default function ThirdPartiesPage() {
   const queryClient = useQueryClient()
+
+  const canCreate = usePermission('thirdparty.create')
+  const canUpdate = usePermission('thirdparty.update')
+  const canDelete = usePermission('thirdparty.delete')
 
   const [search, setSearch]   = useState('')
   const [page, setPage]       = useState(1)
@@ -86,13 +91,15 @@ export default function ThirdPartiesPage() {
           <h1 className="text-2xl text-content">Terceros</h1>
           <p className="text-content-muted text-sm mt-0.5 font-accent">Clientes, proveedores y vendedores</p>
         </div>
-        <button
-          onClick={() => setFormOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo tercero
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setFormOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
+          >
+            <Plus className="w-4 h-4" />
+            Nuevo tercero
+          </button>
+        )}
       </div>
 
       <StatsGrid cards={statCards} isLoading={isLoading} />
@@ -139,7 +146,11 @@ export default function ThirdPartiesPage() {
               </thead>
               <tbody className="divide-y divide-ui-divide">
                 {items.map((t) => (
-                  <tr key={t.id} onClick={() => setEditing(t)} className="hover:bg-surface-raised transition-colors group cursor-pointer">
+                  <tr
+                    key={t.id}
+                    onClick={canUpdate ? () => setEditing(t) : undefined}
+                    className={cn('hover:bg-surface-raised transition-colors group', canUpdate && 'cursor-pointer')}
+                  >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
@@ -176,18 +187,22 @@ export default function ThirdPartiesPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditing(t) }}
-                          className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeleting(t) }}
-                          className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {canUpdate && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditing(t) }}
+                            className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeleting(t) }}
+                            className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -80,6 +80,7 @@ export interface GetDocumentsParams {
   page?: number
   limit?: number
   type?: DocumentType
+  types?: string
   status?: DocumentStatus
   dateFrom?: string
   dateTo?: string

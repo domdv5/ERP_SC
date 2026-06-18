@@ -14,6 +14,7 @@ import { UserForm } from './components/UserForm'
 import type { UserFormValues } from './components/UserForm'
 import { DeleteUserDialog } from './components/DeleteUserDialog'
 import { StatsGrid, TableSkeleton, EmptyState, ErrorState } from '@/components/shared'
+import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
@@ -51,6 +52,7 @@ function UserAvatar({ name }: { name: string }) {
 
 export default function UsersPage() {
   const queryClient = useQueryClient()
+  const canManage = usePermission('user.manage')
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing]   = useState<AppUser | null>(null)
@@ -128,13 +130,15 @@ export default function UsersPage() {
           <h1 className="text-2xl text-content">Usuarios</h1>
           <p className="text-content-muted text-sm mt-0.5 font-accent">Gestión de accesos y roles del sistema</p>
         </div>
-        <button
-          onClick={() => setFormOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo usuario
-        </button>
+        {canManage && (
+          <button
+            onClick={() => setFormOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
+          >
+            <Plus className="w-4 h-4" />
+            Nuevo usuario
+          </button>
+        )}
       </div>
 
       <StatsGrid cards={statCards} isLoading={isLoading} />
@@ -189,8 +193,8 @@ export default function UsersPage() {
                 {items.map((u) => (
                   <tr
                     key={u.id}
-                    onClick={() => setEditing(u)}
-                    className="hover:bg-surface-raised transition-colors group cursor-pointer"
+                    onClick={canManage ? () => setEditing(u) : undefined}
+                    className={cn('hover:bg-surface-raised transition-colors group', canManage && 'cursor-pointer')}
                   >
                     {/* Name + avatar */}
                     <td className="px-5 py-3.5">
@@ -231,20 +235,22 @@ export default function UsersPage() {
 
                     {/* Actions */}
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditing(u) }}
-                          className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeleting(u) }}
-                          className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      {canManage && (
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditing(u) }}
+                            className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeleting(u) }}
+                            className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

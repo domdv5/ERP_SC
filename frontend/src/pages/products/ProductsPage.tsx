@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Package, BarChart2, CheckCircle2, Plus, Pencil, Trash2 } from 'lucide-react'
 import { getProducts, createProduct, updateProduct, deleteProduct } from '@/services/products.service'
 import type { CreateProductPayload } from '@/services/products.service'
+import { usePermission } from '@/hooks/usePermission'
 import { ProductForm } from './components/ProductForm'
 import type { FormValues } from './components/ProductForm'
 import { DeleteProductDialog } from './components/DeleteProductDialog'
@@ -16,6 +17,10 @@ const formatCOP = (value: number) =>
 
 export default function ProductsPage() {
   const queryClient = useQueryClient()
+
+  const canCreate = usePermission('product.create')
+  const canUpdate = usePermission('product.update')
+  const canDelete = usePermission('product.delete')
 
   const [search, setSearch] = useState('')
   const [page, setPage]     = useState(1)
@@ -77,13 +82,15 @@ export default function ProductsPage() {
           <h1 className="text-2xl text-content">Productos</h1>
           <p className="text-content-muted text-sm mt-0.5 font-accent">Catálogo de artículos</p>
         </div>
-        <button
-          onClick={() => setFormOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo producto
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setFormOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
+          >
+            <Plus className="w-4 h-4" />
+            Nuevo producto
+          </button>
+        )}
       </div>
 
       <StatsGrid cards={statCards} isLoading={isLoading} />
@@ -130,7 +137,11 @@ export default function ProductsPage() {
               </thead>
               <tbody className="divide-y divide-ui-divide">
                 {items.map((p: Product) => (
-                  <tr key={p.id} onClick={() => setEditing(p)} className="hover:bg-surface-raised transition-colors group cursor-pointer">
+                  <tr
+                    key={p.id}
+                    onClick={canUpdate ? () => setEditing(p) : undefined}
+                    className={`hover:bg-surface-raised transition-colors group${canUpdate ? ' cursor-pointer' : ''}`}
+                  >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-action">
@@ -152,18 +163,22 @@ export default function ProductsPage() {
                     <td className="px-5 py-3.5 text-content-faint text-xs">—</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditing(p) }}
-                          className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeleting(p) }}
-                          className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {canUpdate && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditing(p) }}
+                            className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeleting(p) }}
+                            className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

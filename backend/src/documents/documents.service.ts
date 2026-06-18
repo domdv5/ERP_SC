@@ -44,6 +44,7 @@ export class DocumentsService {
       page = 1,
       limit = 20,
       type,
+      types,
       status,
       dateFrom,
       dateTo,
@@ -51,8 +52,12 @@ export class DocumentsService {
     } = findAllDocumentsDto;
     const skip = (page - 1) * limit;
 
+    const typeList = types
+      ? (types.split(',').filter(Boolean) as DocumentType[])
+      : undefined;
+
     const where: Prisma.DocumentWhereInput = {
-      ...(type && { type }),
+      ...(typeList?.length ? { type: { in: typeList } } : type && { type }),
       ...(status && { status }),
       ...((dateFrom || dateTo) && {
         date: {

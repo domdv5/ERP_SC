@@ -21,6 +21,7 @@ export async function login(username: string, password: string): Promise<LoginRe
     name: payload.name,
     username: payload.username,
     permissions: payload.permissions,
+    roles: payload.roles ?? [],
   }
 
   return { token, user }

@@ -47,11 +47,14 @@ export async function seedRolePermissions(prisma: PrismaClient) {
       'product.read',
       'product.update',
       'product.delete',
-      'document.create.CM', // Purchase order
-      'document.create.REM', // Remisión
+      'document.create.CM',
+      'document.create.REM',
+      'document.create.EAI',
+      'document.create.SAJ',
       'document.read',
       'thirdparty.read',
       'thirdparty.create',
+      'thirdparty.update',
       'thirdparty.delete',
       'ap.read',
       'ap.manage',
@@ -60,6 +63,8 @@ export async function seedRolePermissions(prisma: PrismaClient) {
     warehouse: [
       'product.read',
       'document.read',
+      'document.create.T',
+      'thirdparty.read',
       'label.print',
       'warehouse.manage',
       'inventory.manage',
@@ -86,6 +91,8 @@ export async function seedRolePermissions(prisma: PrismaClient) {
       'product.read',
       'document.read',
       'thirdparty.read',
+      'thirdparty.create',
+      'thirdparty.update',
       'ap.read',
       'ap.manage',
       'cash.read',
@@ -94,32 +101,25 @@ export async function seedRolePermissions(prisma: PrismaClient) {
       'product.read',
       'document.read',
       'thirdparty.read',
+      'thirdparty.create',
+      'thirdparty.update',
       'ar.read',
       'ar.manage',
       'cash.read',
     ],
   };
 
-  // Crear las relaciones role-permission
+  // Reemplazar por completo los permisos de cada rol (delete + create)
   for (const role of roles) {
     const permissionCodes = rolePermissions[role.name] || [];
 
+    await prisma.rolePermission.deleteMany({ where: { roleId: role.id } });
+
     for (const code of permissionCodes) {
       const permissionId = permissionMap.get(code);
-
       if (permissionId) {
-        await prisma.rolePermission.upsert({
-          where: {
-            roleId_permissionId: {
-              roleId: role.id,
-              permissionId,
-            },
-          },
-          update: {},
-          create: {
-            roleId: role.id,
-            permissionId,
-          },
+        await prisma.rolePermission.create({
+          data: { roleId: role.id, permissionId },
         });
       }
     }

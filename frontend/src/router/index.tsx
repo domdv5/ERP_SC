@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AuthGuard } from '@/components/layout/AuthGuard'
+import { PermissionGuard } from '@/components/layout/PermissionGuard'
 import { PageLoader } from '@/components/shared/PageLoader'
 
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
@@ -45,7 +46,7 @@ export const router = createBrowserRouter([
       { path: 'documents/:id/edit',    element: <Lazy><DocumentFormPage /></Lazy> },
       { path: 'accounts-receivable',   element: <Lazy><ComingSoonPage /></Lazy> },
       { path: 'accounts-payable',      element: <Lazy><ComingSoonPage /></Lazy> },
-      { path: 'users',                 element: <Lazy><UsersPage /></Lazy> },
+      { path: 'users',                 element: <Lazy><PermissionGuard permission="user.manage"><UsersPage /></PermissionGuard></Lazy> },
     ],
   },
 ])

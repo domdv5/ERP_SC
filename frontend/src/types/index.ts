@@ -30,6 +30,7 @@ export interface JwtPayload {
   name: string
   username: string
   permissions: string[]
+  roles: string[]
 }
 
 export interface User {
@@ -37,4 +38,5 @@ export interface User {
   name: string
   username: string
   permissions: string[]
+  roles: string[]
 }

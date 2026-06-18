@@ -71,11 +71,14 @@ export class AuthService {
       ),
     );
 
+    const roles = user.userRoles.map((ur) => ur.role.name);
+
     const payload = {
       sub: user.id,
       name: user.name,
       username: user.username,
       permissions,
+      roles,
     };
 
     return { access_token: this.jwt.sign(payload) };

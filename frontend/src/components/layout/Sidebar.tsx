@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   Package,
   Warehouse,
-  Users,
   FileText,
   TrendingUp,
   TrendingDown,
@@ -13,23 +12,20 @@ import {
   LogOut,
   ChevronUp,
   ShieldCheck,
+  Contact,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth.store";
 import { usePermission } from "@/hooks/usePermission";
+import { getRoleLabel } from "@/services/users.service";
 
-const navGroups = [
+const topGroups = [
   {
     items: [{ to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" }],
   },
-  {
-    label: "Maestros",
-    items: [
-      { to: "/third-parties", icon: Users, label: "Terceros" },
-      { to: "/products", icon: Package, label: "Productos" },
-      { to: "/warehouses", icon: Warehouse, label: "Bodegas" },
-    ],
-  },
+];
+
+const bottomGroups = [
   {
     label: "Operaciones",
     items: [
@@ -45,11 +41,17 @@ const navGroups = [
   },
 ];
 
+const maestrosStaticItems = [
+  { to: "/products", icon: Package, label: "Productos" },
+  { to: "/warehouses", icon: Warehouse, label: "Bodegas" },
+];
+
 export function Sidebar() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const canManageUsers = usePermission('user.manage');
+  const canReadThirdParties = usePermission('thirdparty.read');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -91,13 +93,78 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-4">
-        {navGroups.map((group, i) => (
+        {/* Dashboard */}
+        {topGroups.map((group, i) => (
           <div key={i} className="space-y-0.5">
-            {group.label && (
-              <p className="text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
-                {group.label}
-              </p>
-            )}
+            {group.items.map(({ to, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  cn(
+                    "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "nav-active text-white shadow-lg"
+                      : "text-white/60 hover:text-white hover:bg-white/5",
+                  )
+                }
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="flex-1">{label}</span>
+                <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+              </NavLink>
+            ))}
+          </div>
+        ))}
+
+        {/* Maestros — Terceros only visible when user has thirdparty.read */}
+        <div className="space-y-0.5">
+          <p className="text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
+            Maestros
+          </p>
+          {canReadThirdParties && (
+            <NavLink
+              to="/third-parties"
+              className={({ isActive }) =>
+                cn(
+                  "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                  isActive
+                    ? "nav-active text-white shadow-lg"
+                    : "text-white/60 hover:text-white hover:bg-white/5",
+                )
+              }
+            >
+              <Contact className="w-4 h-4 shrink-0" />
+              <span className="flex-1">Terceros</span>
+              <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+            </NavLink>
+          )}
+          {maestrosStaticItems.map(({ to, icon: Icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                cn(
+                  "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                  isActive
+                    ? "nav-active text-white shadow-lg"
+                    : "text-white/60 hover:text-white hover:bg-white/5",
+                )
+              }
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="flex-1">{label}</span>
+              <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+            </NavLink>
+          ))}
+        </div>
+
+        {/* Operaciones + Finanzas */}
+        {bottomGroups.map((group, i) => (
+          <div key={i} className="space-y-0.5">
+            <p className="text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
+              {group.label}
+            </p>
             {group.items.map(({ to, icon: Icon, label }) => (
               <NavLink
                 key={to}
@@ -156,6 +223,18 @@ export function Sidebar() {
                 {user?.name ?? "Usuario"}
               </p>
               <p className="text-white/40 text-xs truncate">{user?.username}</p>
+              {user?.roles && user.roles.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {user.roles.map((r) => (
+                    <span
+                      key={r}
+                      className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-brand-secondary/20 text-brand-secondary"
+                    >
+                      {getRoleLabel(r)}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="p-1">
               <button
@@ -185,7 +264,7 @@ export function Sidebar() {
               {user?.name ?? "Usuario"}
             </p>
             <p className="text-white/40 text-xs truncate">
-              {user?.username ?? "Sesión activa"}
+              {user?.roles?.map(getRoleLabel).join(", ") ?? user?.username ?? "Sesión activa"}
             </p>
           </div>
           <ChevronUp

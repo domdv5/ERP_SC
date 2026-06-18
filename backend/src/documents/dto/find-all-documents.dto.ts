@@ -29,6 +29,10 @@ export class FindAllDocumentsDto {
   type?: DocumentType;
 
   @IsOptional()
+  @IsString()
+  types?: string;
+
+  @IsOptional()
   @IsEnum(DocumentStatus)
   status?: DocumentStatus;
 

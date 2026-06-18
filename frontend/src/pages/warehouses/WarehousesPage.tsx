@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Warehouse, Store, Plus, Pencil, Trash2 } from 'lucide-react'
 import { getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse } from '@/services/warehouses.service'
+import { usePermission } from '@/hooks/usePermission'
 import { WarehouseForm } from './components/WarehouseForm'
 import type { WarehouseFormValues } from './components/WarehouseForm'
 import { DeleteWarehouseDialog } from './components/DeleteWarehouseDialog'
@@ -17,6 +18,8 @@ const TYPE_LABELS: Record<string, { label: string; className: string }> = {
 
 export default function WarehousesPage() {
   const queryClient = useQueryClient()
+
+  const canManage = usePermission('warehouse.manage')
 
   const [formOpen, setFormOpen]   = useState(false)
   const [editing, setEditing]     = useState<WarehouseType | null>(null)
@@ -68,13 +71,15 @@ export default function WarehousesPage() {
           <h1 className="text-2xl text-content">Bodegas</h1>
           <p className="text-content-muted text-sm mt-0.5 font-accent">Gestión de bodegas y almacenes</p>
         </div>
-        <button
-          onClick={() => setFormOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
-        >
-          <Plus className="w-4 h-4" />
-          Nueva bodega
-        </button>
+        {canManage && (
+          <button
+            onClick={() => setFormOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
+          >
+            <Plus className="w-4 h-4" />
+            Nueva bodega
+          </button>
+        )}
       </div>
 
       <StatsGrid cards={statCards} isLoading={isLoading} />
@@ -131,14 +136,16 @@ export default function WarehousesPage() {
                   return (
                     <tr
                       key={w.id}
-                      onClick={() => setEditing(w)}
-                      className="hover:bg-surface-raised transition-colors group cursor-pointer"
+                      onClick={canManage ? () => setEditing(w) : undefined}
+                      className={cn('hover:bg-surface-raised transition-colors group', canManage && 'cursor-pointer')}
                     >
                       {/* Name */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 gradient-dark">
-                            <Warehouse className="w-4 h-4 text-white/70" />
+                            {w.type === 'store'
+                              ? <Store className="w-4 h-4 text-white/70" />
+                              : <Warehouse className="w-4 h-4 text-white/70" />}
                           </div>
                           <p className="font-medium text-content">{w.name}</p>
                         </div>
@@ -174,20 +181,22 @@ export default function WarehousesPage() {
 
                       {/* Actions */}
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setEditing(w) }}
-                            className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeleting(w) }}
-                            className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        {canManage && (
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setEditing(w) }}
+                              className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDeleting(w) }}
+                              className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )

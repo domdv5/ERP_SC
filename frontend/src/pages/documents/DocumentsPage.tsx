@@ -4,6 +4,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { FileText, CheckCircle2, Clock, Plus } from 'lucide-react'
 import { getDocuments } from '@/services/documents.service'
+import { useAuthStore } from '@/stores/auth.store'
 import {
   StatsGrid,
   TableToolbar,
@@ -67,6 +68,18 @@ const ALL_STATUSES: { value: string; label: string }[] = [
 
 export default function DocumentsPage() {
   const navigate = useNavigate()
+  const userPermissions = useAuthStore((s) => s.user?.permissions ?? [])
+  const canCreateAnyDoc = userPermissions.some((p) => p.startsWith('document.create.'))
+
+  // Types this user is allowed to create/work with — used to scope the list
+  const allowedTypes = userPermissions
+    .filter((p) => p.startsWith('document.create.'))
+    .map((p) => p.replace('document.create.', '') as DocumentType)
+
+  // Filter dropdown: only show types the user can work with (keep "Todos" option)
+  const visibleTypeOptions = allowedTypes.length > 0
+    ? ALL_TYPES.filter((t) => t.value === '' || allowedTypes.includes(t.value as DocumentType))
+    : ALL_TYPES
 
   const [search, setSearch]         = useState('')
   const [typeFilter, setTypeFilter] = useState<DocumentType | ''>('')
@@ -79,11 +92,13 @@ export default function DocumentsPage() {
   useEffect(() => { setPage(1) }, [debouncedSearch, typeFilter, statusFilter])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['documents', debouncedSearch, typeFilter, statusFilter, page],
+    queryKey: ['documents', debouncedSearch, typeFilter, statusFilter, page, allowedTypes],
     queryFn: () =>
       getDocuments({
         search: debouncedSearch || undefined,
         type: typeFilter || undefined,
+        // Scope list to allowed types when user has specific create permissions
+        types: !typeFilter && allowedTypes.length > 0 ? allowedTypes.join(',') : undefined,
         status: statusFilter || undefined,
         page,
         limit: 20,
@@ -136,13 +151,15 @@ export default function DocumentsPage() {
             Compras, ajustes y traslados de inventario
           </p>
         </div>
-        <button
-          onClick={() => navigate('/documents/new')}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
-        >
-          <Plus className="w-4 h-4" />
-          Nueva operación
-        </button>
+        {canCreateAnyDoc && (
+          <button
+            onClick={() => navigate('/documents/new')}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
+          >
+            <Plus className="w-4 h-4" />
+            Nueva operación
+          </button>
+        )}
       </div>
 
       <StatsGrid cards={statCards} isLoading={isLoading} />
@@ -167,7 +184,7 @@ export default function DocumentsPage() {
               onChange={(e) => setTypeFilter(e.target.value as DocumentType | '')}
               className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
             >
-              {ALL_TYPES.map((t) => (
+              {visibleTypeOptions.map((t) => (
                 <option key={t.value} value={t.value}>
                   {t.label}
                 </option>
