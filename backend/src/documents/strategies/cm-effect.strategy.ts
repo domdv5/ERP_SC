@@ -30,7 +30,7 @@ export class CmEffectStrategy extends BaseEffectStrategy {
     }
 
     for (const item of document.documentItems) {
-      const quantity = Number(item.quantity);
+      const quantity = item.quantity;
       const unitCost = Number(item.unitCost);
 
       // Costo ponderado sobre el stock global ANTES de la entrada.

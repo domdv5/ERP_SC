@@ -18,7 +18,7 @@ export class SajEffectStrategy extends BaseEffectStrategy {
     const warehouseId = this.requireWarehouse(document);
 
     for (const item of document.documentItems) {
-      const quantity = Number(item.quantity);
+      const quantity = item.quantity;
 
       await assertSufficientStock(tx, item, warehouseId, quantity);
 

@@ -3,6 +3,7 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsInt,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -18,7 +19,7 @@ export class CreateDocumentItemDto {
   @IsUUID()
   productId!: string;
 
-  @IsNumber()
+  @IsInt()
   @IsPositive()
   quantity!: number;
 

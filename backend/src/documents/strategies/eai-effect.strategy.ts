@@ -18,7 +18,7 @@ export class EaiEffectStrategy extends BaseEffectStrategy {
     const warehouseId = this.requireWarehouse(document);
 
     for (const item of document.documentItems) {
-      const quantity = Number(item.quantity);
+      const quantity = item.quantity;
       const itemUnitCost = Number(item.unitCost);
       const hasUnitCost = itemUnitCost > 0;
       const unitCost = hasUnitCost

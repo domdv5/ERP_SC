@@ -30,7 +30,7 @@ export class DvcEffectStrategy extends BaseEffectStrategy {
     }
 
     for (const item of document.documentItems) {
-      const quantity = Number(item.quantity);
+      const quantity = item.quantity;
 
       await assertSufficientStock(tx, item, warehouseId, quantity);
 

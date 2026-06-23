@@ -119,14 +119,22 @@ export class DocumentsService {
   }
 
   async create(createDocumentDto: CreateDocumentDto, user: JwtPayload) {
-    const { type, date, items, ...rest } = createDocumentDto;
+    const {
+      type,
+      date,
+      items,
+      thirdPartyId,
+      destWarehouseId,
+      destBinId,
+      freight,
+      notes,
+      ...rest
+    } = createDocumentDto;
 
     this.assertDocumentPermission(user, type);
 
     // Lanza BadRequestException si el tipo aún no tiene estrategia (fase 2).
     const strategy = this.effectsRegistry.get(type);
-
-    const { thirdPartyId, destWarehouseId, destBinId, freight, notes } = rest;
 
     await strategy.validateCreate?.(createDocumentDto);
 
@@ -331,7 +339,7 @@ export class DocumentsService {
         // Nota: avgCost/lastCost NO se recalculan al anular — el kardex
         // conserva la trazabilidad (limitación documentada).
         for (const movement of document.inventoryMovements) {
-          const quantity = Number(movement.quantity);
+          const quantity = movement.quantity;
 
           const { previousStock, newStock } = await applyStockChange(tx, {
             productId: movement.productId,

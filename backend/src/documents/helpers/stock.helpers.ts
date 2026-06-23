@@ -18,7 +18,7 @@ export async function applyStockChange(
     where: { productId_warehouseId: { productId, warehouseId } },
   });
 
-  const previousStock = Number(inventory?.quantity ?? 0);
+  const previousStock = inventory?.quantity ?? 0;
   const newStock = previousStock + delta;
 
   await tx.inventory.upsert({
@@ -43,7 +43,7 @@ export async function assertSufficientStock(
     },
   });
 
-  if (Number(inventory?.quantity ?? 0) < quantity) {
+  if ((inventory?.quantity ?? 0) < quantity) {
     throw new ConflictException(
       `Stock insuficiente para el producto ${item.product.code} en la bodega`,
     );
@@ -62,7 +62,7 @@ export async function computeNewAvgCost(
     _sum: { quantity: true },
     where: { productId },
   });
-  const globalStock = Number(aggregate._sum.quantity ?? 0);
+  const globalStock = aggregate._sum.quantity ?? 0;
   const denominator = globalStock + quantity;
 
   if (denominator <= 0) return unitCost;
