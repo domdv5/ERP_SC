@@ -99,6 +99,11 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 - Seed creates two records: `Almacén` (store) and `Bodega` (warehouse)
 - Sales operations must only validate against `store`-type warehouse inventory
 - Single permission `warehouse.manage` covers all write operations
+- **Sub-resources (Aggregate Root pattern)**: Zone and Bin live inside WarehousesModule — no separate module. URLs: `POST /warehouses/:id/zones`, `PATCH /warehouses/:id/zones/:zoneId`, `DELETE /warehouses/:id/zones/:zoneId`, and equivalent `/bins` nested under `/zones/:zoneId/bins`. Justification: Zone/Bin have no lifecycle outside Warehouse; all endpoints require `:warehouseId` as first param.
+- **Zone fields**: `name` (unique per warehouse via `@@unique([warehouseId, name])`), `active` (soft-delete)
+- **Bin fields**: `code` (string, not `name` — it's a physical number like "42" or "B-12", unique per zone via `@@unique([zoneId, code])`), `active` (soft-delete)
+- **Business rules**: `removeZone` must verify no active bins; `removeBin` must verify `Inventory.quantity === 0`
+- **findOne filter**: must return only `active: true` zones and bins (TASK 5, pending)
 
 **DocumentsModule**:
 
@@ -240,6 +245,8 @@ const canManage = usePermission('user.manage')
 ```
 For sidebar sections that must be hidden for some roles, render the `<NavLink>` conditionally inside the component (not in the static `navGroups` array). See `Sidebar.tsx` "Administración" section as reference.
 
+**Sidebar accordion nav items** — When a nav section needs collapsible sub-items (e.g. Bodegas), create a dedicated component (`WarehousesSidebarItem`) instead of a static NavLink. Use `useLocation` + `useState` for open/close; `max-height` CSS transition for animation; `useQuery` to load sub-items from API. Sub-item links use `Link` (not `NavLink`) with manual `isActive` computed from `location.search` — React Router's NavLink `isActive` ignores query params and would mark all sub-items active simultaneously.
+
 **Role display names** — Spanish labels for roles live in `users.service.ts` as `ROLE_LABELS: Record<string, string>` with a `getRoleLabel(name)` helper that falls back to `replace(/_/g, ' ')`. Import from there when displaying role names anywhere in the UI.
 
 ### Implemented Modules
@@ -250,7 +257,7 @@ For sidebar sections that must be hidden for some roles, render the `<NavLink>` 
 | `/` (dashboard) | Partial | Stats cards — Terceros shows real count, rest are static `—` |
 | `/third-parties` | Done | Full CRUD, server-side search, debounce, pagination, cache |
 | `/products` | Done | Full CRUD, server-side search, debounce, pagination, cache |
-| `/warehouses` | Done | Full CRUD, type badge (store/warehouse), soft-delete |
+| `/warehouses` | Partial | Full CRUD warehouses; sidebar accordion shows sub-items per warehouse; URL-based selection via `?id=`; zones/bin CRUD pending (TASKS 6-8) |
 | `/documents` | Done | List + form (create/edit/confirm/void), portal Combobox, search-on-type |
 | `/users` | Done | Full CRUD, role checkboxes, password confirmation, permission-gated sidebar |
 | `/accounts-receivable` | Placeholder | ComingSoonPage |
