@@ -1,6 +1,12 @@
 export type { ThirdParty, CreateThirdPartyPayload, UpdateThirdPartyPayload, PersonType, DocumentType as ThirdPartyDocumentType } from './third-party.types'
 export type { Product } from './product.types'
-export type { Warehouse, WarehouseType, CreateWarehousePayload, UpdateWarehousePayload } from './warehouse.types'
+export type {
+  Warehouse, WarehouseType, WarehouseDetail,
+  Zone, Bin,
+  CreateWarehousePayload, UpdateWarehousePayload,
+  CreateZonePayload, UpdateZonePayload,
+  CreateBinPayload, UpdateBinPayload,
+} from './warehouse.types'
 export type {
   DocumentType,
   DocumentStatus,

@@ -1,10 +1,12 @@
-import { useRef, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useRef, useState, useEffect } from "react";
+import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Package,
   Warehouse,
+  Store,
   FileText,
   TrendingUp,
   TrendingDown,
@@ -18,6 +20,7 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth.store";
 import { usePermission } from "@/hooks/usePermission";
 import { getRoleLabel } from "@/services/users.service";
+import { getWarehouses } from "@/services/warehouses.service";
 
 const topGroups = [
   {
@@ -41,17 +44,79 @@ const bottomGroups = [
   },
 ];
 
-const maestrosStaticItems = [
-  { to: "/products", icon: Package, label: "Productos" },
-  { to: "/warehouses", icon: Warehouse, label: "Bodegas" },
-];
+function WarehousesSidebarItem() {
+  const location = useLocation();
+  const isActive = location.pathname.startsWith("/warehouses");
+  const currentId = new URLSearchParams(location.search).get("id");
+  const [open, setOpen] = useState(isActive);
+
+  useEffect(() => {
+    if (isActive) setOpen(true);
+  }, [isActive]);
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses"],
+    queryFn: getWarehouses,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+          isActive
+            ? "nav-active text-white shadow-lg"
+            : "text-white/60 hover:text-white hover:bg-white/5",
+        )}
+      >
+        <Warehouse className="w-4 h-4 shrink-0" />
+        <span className="flex-1 text-left">Bodegas</span>
+        <ChevronRight
+          className={cn(
+            "w-3 h-3 transition-transform duration-200",
+            open && "rotate-90",
+          )}
+        />
+      </button>
+
+      <div
+        className="overflow-hidden transition-all ease-in-out"
+        style={{ maxHeight: open ? "300px" : "0px", transitionDuration: "200ms" }}
+      >
+        <div className="ml-3 mt-0.5 mb-1 border-l border-white/10 pl-2 space-y-0.5">
+          {warehouses.map((w) => {
+            const WIcon = w.type === "store" ? Store : Warehouse;
+            const isItemActive = currentId === w.id;
+            return (
+              <Link
+                key={w.id}
+                to={`/warehouses?id=${w.id}`}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
+                  isItemActive
+                    ? "text-white bg-brand-secondary/20"
+                    : "text-white/50 hover:text-white hover:bg-white/5",
+                )}
+              >
+                <WIcon className="w-3 h-3 shrink-0" />
+                <span className="truncate">{w.name}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function Sidebar() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const canManageUsers = usePermission('user.manage');
-  const canReadThirdParties = usePermission('thirdparty.read');
+  const canManageUsers = usePermission("user.manage");
+  const canReadThirdParties = usePermission("thirdparty.read");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -102,7 +167,7 @@ export function Sidebar() {
                 to={to}
                 className={({ isActive }) =>
                   cn(
-                    "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                     isActive
                       ? "nav-active text-white shadow-lg"
                       : "text-white/60 hover:text-white hover:bg-white/5",
@@ -111,13 +176,12 @@ export function Sidebar() {
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 <span className="flex-1">{label}</span>
-                <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-              </NavLink>
+                              </NavLink>
             ))}
           </div>
         ))}
 
-        {/* Maestros — Terceros only visible when user has thirdparty.read */}
+        {/* Maestros */}
         <div className="space-y-0.5">
           <p className="text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
             Maestros
@@ -127,7 +191,7 @@ export function Sidebar() {
               to="/third-parties"
               className={({ isActive }) =>
                 cn(
-                  "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                   isActive
                     ? "nav-active text-white shadow-lg"
                     : "text-white/60 hover:text-white hover:bg-white/5",
@@ -136,27 +200,25 @@ export function Sidebar() {
             >
               <Contact className="w-4 h-4 shrink-0" />
               <span className="flex-1">Terceros</span>
-              <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-            </NavLink>
+                          </NavLink>
           )}
-          {maestrosStaticItems.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                cn(
-                  "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "nav-active text-white shadow-lg"
-                    : "text-white/60 hover:text-white hover:bg-white/5",
-                )
-              }
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              <span className="flex-1">{label}</span>
-              <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-            </NavLink>
-          ))}
+          <NavLink
+            to="/products"
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                isActive
+                  ? "nav-active text-white shadow-lg"
+                  : "text-white/60 hover:text-white hover:bg-white/5",
+              )
+            }
+          >
+            <Package className="w-4 h-4 shrink-0" />
+            <span className="flex-1">Productos</span>
+                      </NavLink>
+
+          {/* Bodegas — acordeón */}
+          <WarehousesSidebarItem />
         </div>
 
         {/* Operaciones + Finanzas */}
@@ -171,7 +233,7 @@ export function Sidebar() {
                 to={to}
                 className={({ isActive }) =>
                   cn(
-                    "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                     isActive
                       ? "nav-active text-white shadow-lg"
                       : "text-white/60 hover:text-white hover:bg-white/5",
@@ -180,8 +242,7 @@ export function Sidebar() {
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 <span className="flex-1">{label}</span>
-                <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-              </NavLink>
+                              </NavLink>
             ))}
           </div>
         ))}
@@ -195,7 +256,7 @@ export function Sidebar() {
               to="/users"
               className={({ isActive }) =>
                 cn(
-                  "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                   isActive
                     ? "nav-active text-white shadow-lg"
                     : "text-white/60 hover:text-white hover:bg-white/5",
@@ -204,18 +265,13 @@ export function Sidebar() {
             >
               <ShieldCheck className="w-4 h-4 shrink-0" />
               <span className="flex-1">Usuarios</span>
-              <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-            </NavLink>
+                          </NavLink>
           </div>
         )}
       </nav>
 
       {/* Footer — user dropdown */}
-      <div
-        className="px-3 py-4 border-t border-white/10 relative"
-        ref={menuRef}
-      >
-        {/* Dropdown menu — opens upward */}
+      <div className="px-3 py-4 border-t border-white/10 relative" ref={menuRef}>
         {menuOpen && (
           <div className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border border-white/10 shadow-2xl overflow-hidden bg-brand-surface">
             <div className="px-4 py-3 border-b border-white/10">
@@ -247,8 +303,6 @@ export function Sidebar() {
             </div>
           </div>
         )}
-
-        {/* Trigger */}
         <button
           onClick={toggleMenu}
           className={cn(
