@@ -141,8 +141,9 @@ Key domain models and their relationships:
 - **ThirdParty** → base for `Customer` and `Supplier` (one-to-one)
 - **Product** — has pricing (`salePrice`, `minSalePrice`) and costing (`avgCost`, `lastCost`). No stock cache field — stock is always queried from `Inventory`.
 - **Warehouse → Zone → Bin** — three-level location hierarchy. `Warehouse.type` is a `WarehouseType` enum (`store` | `warehouse`).
-- **Inventory** — current stock per `(productId, warehouseId)` composite PK. Query this table for stock, never cache on Product.
-- **InventoryMovement** — append-only audit trail; `type` enum: `purchase | sale | return | transfer | adjustment | initial_stock | void | production`
+- **Inventory** — current stock per `(productId, warehouseId)` composite PK. `quantity` is `Int` (business sells clothing — always whole units). Query this table for stock, never cache on Product.
+- **InventoryMovement** — append-only audit trail; `type` enum: `purchase | sale | return | transfer | adjustment | initial_stock | void | production`. `quantity`, `previousStock`, `newStock` are `Int`.
+- **DocumentItem** — `quantity` is `Int`. Costs/prices (`unitCost`, `unitPrice`, `subtotal`) remain `Decimal`.
 - **Document + DocumentItem** — unified transaction document supporting types: `CM, DVC, RMDVC, PE, EAI, SAJ, COT, POS, REM, DVV, T`
 - **AccountsReceivable / AccountsPayable** — payment tracking with credit support
 - **User → UserRole → Role → RolePermission → Permission** — full RBAC graph
