@@ -373,7 +373,7 @@ Defines when to delegate to a subagent or invoke a skill. **Read the trigger con
 
 | Trigger | Subagent | Notes |
 |---------|----------|-------|
-| Crear/agregar página, componente, hook, feature, formulario, tabla o sección nueva en el frontend — "hazme una página de…", "agrega el módulo de…", "necesito la pantalla de…", "crea el form para…" | `react-code-crafter` | Genera código React alineado con los patrones del proyecto (TanStack Query, react-hook-form, tokens de diseño, debounce, paginación) |
+| Cualquier implementación de frontend: crear O modificar páginas, componentes, hooks, features, formularios, tablas, secciones — "hazme una página de…", "agrega el módulo de…", "necesito la pantalla de…", "crea el form para…", "arregla el bug en…", "cambia el componente de…", "edita la tabla de…", "modifica el form de…" | `react-code-crafter` | Invocar skill `vercel-react-best-practices` ANTES de lanzar el agente, e incluir las reglas relevantes en el prompt. Genera código React alineado con los patrones del proyecto (TanStack Query, react-hook-form, tokens de diseño, debounce, paginación) |
 | Base de datos / Prisma: "agrega índices", "revisa el schema", "audita las tablas", "optimiza queries", "mira mis tablas", "hay duplicados en…", "el query es lento", "diseña las tablas para…", "cómo modelar…" | `prisma-db-architect` | Audita schema.prisma, identifica índices faltantes, modela relaciones, optimiza queries |
 | Exploración de código abierta >3 búsquedas: "¿dónde está X?", "¿qué archivos usan Y?", "busca dónde se define…" | `Explore` | Solo lectura; no usar para review ni análisis cross-file profundo |
 | Investigación compleja multistep o búsqueda sin dirección clara | `general-purpose` | Cuando Explore o Grep solos no son suficientes |
@@ -385,7 +385,7 @@ Defines when to delegate to a subagent or invoke a skill. **Read the trigger con
 | Trigger | Skill |
 |---------|-------|
 | Preguntas sobre diseño visual, UX, colores, qué se ve mejor, cómo mejorar visualmente, jerarquía, layout, espaciado, qué color usar, iconos, contraste, modo oscuro, dashboard looks, recomendación de UI — "¿cómo se ve?", "¿qué recomiendas para…?", "¿queda bien así?", "mejora el diseño de…", "hay mucho verde", "quiero variedad de colores", "no me gusta cómo se ve" | `interface-design` |
-| Rendimiento React: re-renders innecesarios, memoización, useMemo/useCallback, bundle size, code splitting, lazy loading | `vercel-react-best-practices` |
+| Cualquier trabajo de frontend React: crear, modificar, revisar, o hablar sobre componentes, páginas, hooks, estado, performance, bundle — siempre invocar antes de delegar al agente `react-code-crafter` | `vercel-react-best-practices` |
 | TypeScript avanzado: genéricos, tipos condicionales, mapped types, infer, utility types, errores de tipo difíciles | `typescript-advanced-types` |
 
 ### Skills — Backend NestJS / Node.js
