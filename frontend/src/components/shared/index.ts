@@ -1,3 +1,5 @@
+export { Combobox } from './Combobox'
+export type { ComboboxOption } from './Combobox'
 export { EmptyState } from './EmptyState'
 export { ErrorState } from './ErrorState'
 export { PageLoader } from './PageLoader'

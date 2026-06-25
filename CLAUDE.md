@@ -200,7 +200,7 @@ frontend/src/
     auth/         ← LoginPage
     dashboard/    ← DashboardPage
     third-parties/← ThirdPartiesPage + ThirdPartyForm + DeleteConfirmDialog
-    documents/    ← DocumentsPage + DocumentFormPage + DocumentDetailPage
+    documents/    ← DocumentsPage + DocumentFormPage + DocumentDetailPage + components/ProductRow + document-form.schema.ts
     users/        ← UsersPage + components/UserForm + components/DeleteUserDialog
     coming-soon/  ← ComingSoonPage (placeholder for unimplemented modules)
   router/         ← index.tsx (lazy routes, authenticated layout)
@@ -233,9 +233,7 @@ return res.data.data
 
 **Protected routes** — `AuthGuard` checks `useAuthStore` token; redirects to `/login` if not authenticated.
 
-**Combobox with portal** — When a searchable dropdown lives inside a container with `overflow-hidden` or `overflow-x-auto` (e.g. inside a table or card), use `createPortal` + `position: fixed` to avoid clipping. Pattern in `DocumentFormPage.tsx`: `triggerRef.getBoundingClientRect()` sets `top/left/width`; the dropdown renders in `document.body`. Required for any Combobox inside the items table or overflow containers.
-
-**Search-on-type Combobox** — For fields with large datasets (products), set `enabled: debouncedSearch.length >= 1` on the query. Show "Escribe para buscar..." when empty, "Sin resultados" when search returns nothing. Prevents loading thousands of records on dropdown open. When an item is already selected and search is empty, show only that item via a synthetic option built from local state.
+**Combobox (shared)** — Use `<Combobox>` from `@/components/shared` for all searchable dropdowns. Two modes: (1) **Controlled** — pass `searchValue`/`onSearchChange` for server-side debounce; show "Escribe para buscar..." when empty, let caller manage `enabled` on the query; (2) **Uncontrolled** — omit both props, component filters `options` client-side. Always uses `createPortal` → safe inside overflow containers. Option interface: `{ id, label, sublabel? }`. `onChange` signature: `(id: string, option: ComboboxOption) => void`. For server-side search, add a synthetic option when an item is already selected and search is empty (prevents the trigger showing blank).
 
 **Permission-based UI** — Use `usePermission(...perms)` from `@/hooks/usePermission` to show/hide UI elements. The JWT already carries `permissions[]` so no extra request is needed. Pattern:
 ```tsx
@@ -308,7 +306,7 @@ Fonts loaded in `index.html` from Google Fonts. Applied globally via `@layer bas
 
 ```tsx
 // ✅ correct
-import { StatsGrid, TableToolbar, TableSkeleton, EmptyState, ErrorState, TablePagination } from '@/components/shared'
+import { Combobox, StatsGrid, TableToolbar, TableSkeleton, EmptyState, ErrorState, TablePagination } from '@/components/shared'
 
 // ❌ wrong — bypasses barrel
 import { StatsGrid } from '@/components/shared/StatsGrid'
@@ -316,6 +314,7 @@ import { StatsGrid } from '@/components/shared/StatsGrid'
 
 | Component | Key props | Use when |
 |-----------|-----------|----------|
+| `Combobox` | `value`, `onChange(id, opt)`, `options: ComboboxOption[]`, `searchValue?`, `onSearchChange?`, `isLoading?`, `placeholder?`, `disabled?`, `error?` | Searchable dropdown. Controlled mode (pass `searchValue`/`onSearchChange`) for server-side debounce; uncontrolled (omit both) for small client-side datasets. Uses `createPortal` — safe inside overflow containers. |
 | `StatsGrid` | `cards: StatCard[]`, `isLoading` | 3-card stat row at top of every list page |
 | `TableToolbar` | `search`, `onSearchChange`, `placeholder`, `isLoading`, `itemCount`, `total`, `onRefresh` | Search + count + refresh bar above table |
 | `TableSkeleton` | `rows?`, `widths: [w1, w2, w3, w4]` | Animated placeholder while data loads |
@@ -324,7 +323,9 @@ import { StatsGrid } from '@/components/shared/StatsGrid'
 | `TablePagination` | `page`, `totalPages`, `total`, `onPageChange` | Footer pagination; auto-hides if `totalPages ≤ 1` |
 | `PageLoader` | — | Full-page branded loading spinner |
 
-**Rule:** Before writing inline skeleton, error state, empty state, stats grid, toolbar, or pagination in a new page — check this list first and use the shared component.
+**Rule:** Before writing inline skeleton, error state, empty state, stats grid, toolbar, pagination, or searchable combobox in a new page — check this list first and use the shared component.
+
+**Component splitting rule** — Extract an inline component when: (a) it exceeds ~100 lines AND has a clearly differentiable responsibility, OR (b) it's duplicated in 2+ files. Do NOT extract when: it's <50 lines and used only once, or when extraction adds more indirection than clarity. Helpers that are just styled wrappers (~10-15 lines) stay inline. Pages >600 lines should be reviewed for extractable sections.
 
 ### Dark Mode — MANDATORY for every new component
 

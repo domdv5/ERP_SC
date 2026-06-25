@@ -3,7 +3,6 @@ import {
   useState,
   useRef,
   useMemo,
-  type ChangeEvent,
   type ReactNode,
   type InputHTMLAttributes,
   type SelectHTMLAttributes,
@@ -11,9 +10,10 @@ import {
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { X, ChevronDown } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
+import { Combobox } from '@/components/shared'
 import { getBrands, getGenders, getCategories } from '@/services/products.service'
 import type { Product } from '@/types'
 
@@ -88,110 +88,6 @@ function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSele
     >
       {children}
     </select>
-  )
-}
-
-interface ComboboxOption { value: string; label: string }
-
-function Combobox({
-  value,
-  onChange,
-  options,
-  placeholder,
-  error,
-  disabled,
-}: {
-  value: string
-  onChange: (v: string) => void
-  options: ComboboxOption[]
-  placeholder?: string
-  error?: boolean
-  disabled?: boolean
-}) {
-  const [open, setOpen]   = useState(false)
-  const [query, setQuery] = useState('')
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handle)
-    return () => document.removeEventListener('mousedown', handle)
-  }, [])
-
-  const selectedLabel = options.find((o) => o.value === value)?.label ?? ''
-
-  if (disabled) {
-    return (
-      <input
-        type="text"
-        value={selectedLabel}
-        disabled
-        className="w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content opacity-60 cursor-not-allowed"
-      />
-    )
-  }
-
-  const filtered = options.filter((o) =>
-    o.label.toLowerCase().includes(query.toLowerCase()),
-  )
-
-  function handleSelect(opt: ComboboxOption) {
-    onChange(opt.value)
-    setQuery('')
-    setOpen(false)
-  }
-
-  function handleInputChange(e: ChangeEvent<HTMLInputElement>) {
-    setQuery(e.target.value)
-    setOpen(true)
-    if (!e.target.value) onChange('')
-  }
-
-  return (
-    <div ref={ref} className="relative">
-      <input
-        type="text"
-        value={open ? query : selectedLabel}
-        onChange={handleInputChange}
-        onFocus={() => setOpen(true)}
-        placeholder={placeholder}
-        autoComplete="off"
-        className={cn(
-          'w-full px-3 py-2 pr-8 text-sm border rounded-lg bg-surface text-content',
-          'placeholder:text-content-faint focus:outline-none focus:ring-2',
-          'focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
-          error ? 'border-red-500' : 'border-ui-border-medium',
-        )}
-      />
-      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-content-faint pointer-events-none" />
-
-      {open && filtered.length > 0 && (
-        <ul className="absolute z-10 w-full mt-1 max-h-52 overflow-y-auto bg-surface border border-ui-border-medium rounded-lg shadow-lg">
-          {filtered.map((opt) => (
-            <li
-              key={opt.value}
-              onMouseDown={() => handleSelect(opt)}
-              className={cn(
-                'px-3 py-2 text-sm cursor-pointer transition-colors',
-                opt.value === value
-                  ? 'bg-brand-secondary/10 text-brand-secondary'
-                  : 'text-content hover:bg-surface-hover',
-              )}
-            >
-              {opt.label}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {open && filtered.length === 0 && query && (
-        <div className="absolute z-10 w-full mt-1 px-3 py-2 bg-surface border border-ui-border-medium rounded-lg shadow-lg text-sm text-content-faint">
-          Sin resultados para &ldquo;{query}&rdquo;
-        </div>
-      )}
-    </div>
   )
 }
 
@@ -403,8 +299,8 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                     render={({ field }) => (
                       <Combobox
                         value={field.value}
-                        onChange={field.onChange}
-                        options={brands.map((b) => ({ value: b.id, label: b.name }))}
+                        onChange={(id) => field.onChange(id)}
+                        options={brands.map((b) => ({ id: b.id, label: b.name }))}
                         placeholder="Buscar marca..."
                         error={!!errors.brandId}
                         disabled={isEdit}

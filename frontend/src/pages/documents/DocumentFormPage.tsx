@@ -1,32 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { toast } from 'sonner'
 import { useDebounce } from 'use-debounce'
-import {
-  ArrowLeft,
-  Plus,
-  Trash2,
-  Search,
-  ChevronDown,
-  Loader2,
-} from 'lucide-react'
+import { ArrowLeft, Plus, Loader2 } from 'lucide-react'
 
 import { getDocument, createDocument, updateDocument } from '@/services/documents.service'
 import { getWarehouses, getWarehouse } from '@/services/warehouses.service'
 import { getThirdParties } from '@/services/third-parties.service'
-import { getProducts } from '@/services/products.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { Combobox } from '@/components/shared'
+import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
+import { formSchema, type FormValues } from './document-form.schema'
+import { ProductRow } from './components/ProductRow'
 
 import type { DocumentType } from '@/types/document.types'
 import type { Warehouse } from '@/types/warehouse.types'
 import type { ThirdParty } from '@/types/third-party.types'
-import type { Product } from '@/types/product.types'
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
@@ -46,317 +39,6 @@ const DOC_TYPE_OPTIONS: { value: DocumentType; label: string }[] = [
 ]
 
 const TODAY = new Date().toISOString().slice(0, 10)
-
-// ─── zod schema ──────────────────────────────────────────────────────────────
-
-const itemSchema = z.object({
-  productId:   z.string().min(1, 'Selecciona un producto'),
-  productCode: z.string(),
-  productDesc: z.string(),
-  quantity:    z.coerce.number().positive('La cantidad debe ser mayor a 0'),
-  unitCost:    z.coerce.number().nonnegative('El costo no puede ser negativo').optional(),
-})
-
-const formSchema = z.object({
-  type:            z.enum(['CM', 'DVC', 'EAI', 'SAJ', 'T'] as const),
-  date:            z.string().min(1, 'La fecha es requerida'),
-  thirdPartyId:    z.string().optional(),
-  warehouseId:     z.string().optional(),
-  destWarehouseId: z.string().optional(),
-  destBinId:       z.string().optional(),
-  freight:         z.coerce.number().nonnegative('El flete no puede ser negativo').optional(),
-  notes:           z.string().optional(),
-  items:           z.array(itemSchema).min(1, 'Agrega al menos un ítem'),
-}).superRefine((data, ctx) => {
-  if (data.type === 'CM' || data.type === 'DVC') {
-    if (!data.thirdPartyId) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'El proveedor es requerido', path: ['thirdPartyId'] })
-    }
-  }
-  if (data.type === 'T') {
-    if (!data.warehouseId) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'La bodega origen es requerida', path: ['warehouseId'] })
-    }
-    if (!data.destWarehouseId) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'La bodega destino es requerida', path: ['destWarehouseId'] })
-    }
-    if (data.warehouseId && data.destWarehouseId && data.warehouseId === data.destWarehouseId) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Las bodegas origen y destino deben ser distintas', path: ['destWarehouseId'] })
-    }
-  }
-})
-
-type FormValues = z.infer<typeof formSchema>
-
-// ─── tiny combobox ───────────────────────────────────────────────────────────
-
-interface ComboboxOption {
-  id: string
-  label: string
-  sublabel?: string
-}
-
-interface ComboboxProps {
-  value: string
-  onChange: (id: string, option: ComboboxOption) => void
-  options: ComboboxOption[]
-  isLoading?: boolean
-  placeholder: string
-  searchValue: string
-  onSearchChange: (v: string) => void
-  disabled?: boolean
-  error?: string
-}
-
-function Combobox({
-  value,
-  onChange,
-  options,
-  isLoading,
-  placeholder,
-  searchValue,
-  onSearchChange,
-  disabled,
-  error,
-}: ComboboxProps) {
-  const [open, setOpen] = useState(false)
-  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({})
-  const triggerRef = useRef<HTMLDivElement>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  const selectedLabel = options.find((o) => o.id === value)?.label ?? ''
-
-  const updatePosition = () => {
-    if (!triggerRef.current) return
-    const rect = triggerRef.current.getBoundingClientRect()
-    setDropdownStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width })
-  }
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (
-        triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
-        dropdownRef.current && !dropdownRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  return (
-    <div ref={triggerRef} className="relative">
-      <div
-        role="combobox"
-        aria-expanded={open}
-        onClick={() => { if (!disabled) { updatePosition(); setOpen((o) => !o) } }}
-        className={cn(
-          'flex items-center justify-between px-3 py-2 text-sm rounded-lg border cursor-pointer transition-all',
-          'bg-surface-raised border-ui-border-medium text-content',
-          'focus-within:ring-2 focus-within:ring-brand-secondary/30 focus-within:border-brand-secondary',
-          error && 'border-red-500',
-          disabled && 'opacity-50 cursor-not-allowed',
-        )}
-      >
-        <span className={cn('truncate', !selectedLabel && 'text-content-faint')}>
-          {selectedLabel || placeholder}
-        </span>
-        <ChevronDown className={cn('w-4 h-4 text-content-faint shrink-0 transition-transform', open && 'rotate-180')} />
-      </div>
-
-      {open && !disabled && createPortal(
-        <div
-          ref={dropdownRef}
-          style={{ position: 'fixed', zIndex: 9999, ...dropdownStyle }}
-          className="bg-surface border border-ui-border-medium rounded-xl shadow-xl overflow-hidden"
-        >
-          <div className="p-2 border-b border-ui-divide">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-content-faint" />
-              <input
-                autoFocus
-                value={searchValue}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Buscar..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface-raised border border-ui-border rounded-lg text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30"
-              />
-            </div>
-          </div>
-          <div className="max-h-52 overflow-y-auto">
-            {isLoading && (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="w-4 h-4 animate-spin text-content-faint" />
-              </div>
-            )}
-            {!isLoading && options.length === 0 && (
-              <p className="text-xs text-content-faint text-center py-4">
-                {searchValue.length === 0 ? 'Escribe para buscar...' : 'Sin resultados'}
-              </p>
-            )}
-            {!isLoading && options.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => {
-                  onChange(opt.id, opt)
-                  setOpen(false)
-                  onSearchChange('')
-                }}
-                className={cn(
-                  'w-full text-left px-3 py-2 text-sm transition-colors hover:bg-surface-hover',
-                  value === opt.id && 'bg-brand-secondary/10 text-brand-secondary',
-                )}
-              >
-                <p className="font-medium text-xs text-content">{opt.label}</p>
-                {opt.sublabel && (
-                  <p className="text-xs text-content-faint">{opt.sublabel}</p>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>,
-        document.body,
-      )}
-    </div>
-  )
-}
-
-// ─── product search row ──────────────────────────────────────────────────────
-
-interface ProductRowProps {
-  index: number
-  docType: DocumentType
-  onRemove: () => void
-  register: ReturnType<typeof useForm<FormValues>>['register']
-  setValue: ReturnType<typeof useForm<FormValues>>['setValue']
-  watch: ReturnType<typeof useForm<FormValues>>['watch']
-  errors: ReturnType<typeof useForm<FormValues>>['formState']['errors']
-}
-
-function ProductRow({ index, docType, onRemove, register, setValue, watch, errors }: ProductRowProps) {
-  const [productSearch, setProductSearch] = useState('')
-  const [debouncedProductSearch] = useDebounce(productSearch, 400)
-
-  const productId   = watch(`items.${index}.productId`)
-  const productCode = watch(`items.${index}.productCode`)
-  const productDesc = watch(`items.${index}.productDesc`)
-  const quantity    = watch(`items.${index}.quantity`) ?? 0
-  const unitCost    = watch(`items.${index}.unitCost`) ?? 0
-
-  const subtotal = Number(quantity) * Number(unitCost)
-  const showCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
-  const costOptional = docType === 'EAI'
-
-  const hasSearch = debouncedProductSearch.length >= 1
-
-  const { data: productData, isLoading: isLoadingProducts } = useQuery({
-    queryKey: ['products-search', debouncedProductSearch],
-    queryFn: () => getProducts({ search: debouncedProductSearch, page: 1, limit: 30 }),
-    staleTime: 2 * 60 * 1000,
-    enabled: hasSearch,
-  })
-
-  const productOptions: ComboboxOption[] = (productData?.items ?? []).map((p: Product) => ({
-    id: p.id,
-    label: `${p.code} — ${p.description}`,
-    sublabel: `Costo prom: ${formatCOP(Number(p.avgCost))}`,
-  }))
-
-  const displayOptions: ComboboxOption[] = productId && !hasSearch
-    ? [{ id: productId, label: `${productCode} — ${productDesc}` }]
-    : productOptions
-
-  const rowErrors = errors.items?.[index]
-
-  return (
-    <tr className="group">
-      {/* Product combobox */}
-      <td className="px-3 py-2 min-w-[260px]">
-        <Combobox
-          value={productId ?? ''}
-          onChange={(id) => {
-            const product = productData?.items.find((p: Product) => p.id === id)
-            setValue(`items.${index}.productId`, id)
-            setValue(`items.${index}.productCode`, product?.code ?? '')
-            setValue(`items.${index}.productDesc`, product?.description ?? '')
-            if (showCost && product?.avgCost) {
-              setValue(`items.${index}.unitCost`, Number(product.avgCost))
-            }
-          }}
-          options={displayOptions}
-          isLoading={isLoadingProducts}
-          placeholder="Selecciona un producto..."
-          searchValue={productSearch}
-          onSearchChange={setProductSearch}
-          error={rowErrors?.productId?.message}
-        />
-        {rowErrors?.productId && (
-          <p className="text-xs text-red-500 mt-1">{rowErrors.productId.message}</p>
-        )}
-        <input type="hidden" {...register(`items.${index}.productId`)} />
-        <input type="hidden" {...register(`items.${index}.productCode`)} />
-        <input type="hidden" {...register(`items.${index}.productDesc`)} />
-      </td>
-
-      {/* Quantity */}
-      <td className="px-3 py-2 w-28">
-        <input
-          type="number"
-          min={1}
-          step={1}
-          {...register(`items.${index}.quantity`)}
-          className={cn(
-            'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content',
-            'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
-            rowErrors?.quantity ? 'border-red-500' : 'border-ui-border-medium',
-          )}
-        />
-        {rowErrors?.quantity && (
-          <p className="text-xs text-red-500 mt-1">{rowErrors.quantity.message}</p>
-        )}
-      </td>
-
-      {/* Unit cost */}
-      {showCost && (
-        <td className="px-3 py-2 w-36">
-          <input
-            type="number"
-            min={0}
-            step={0.01}
-            placeholder={costOptional ? 'Costo promedio' : undefined}
-            {...register(`items.${index}.unitCost`)}
-            className={cn(
-              'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint',
-              'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
-              rowErrors?.unitCost ? 'border-red-500' : 'border-ui-border-medium',
-            )}
-          />
-          {rowErrors?.unitCost && (
-            <p className="text-xs text-red-500 mt-1">{rowErrors.unitCost.message}</p>
-          )}
-        </td>
-      )}
-
-      {/* Subtotal */}
-      <td className="px-3 py-2 w-32 text-right">
-        <span className="text-sm text-content-secondary font-medium">
-          {showCost ? formatCOP(subtotal) : '—'}
-        </span>
-      </td>
-
-      {/* Remove */}
-      <td className="px-3 py-2 w-12 text-center">
-        <button
-          type="button"
-          onClick={onRemove}
-          className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </td>
-    </tr>
-  )
-}
 
 // ─── main page ───────────────────────────────────────────────────────────────
 
@@ -468,7 +150,6 @@ export default function DocumentFormPage() {
     Boolean(destWarehouseId) &&
     warehouses.find((w: Warehouse) => w.id === destWarehouseId)?.type === 'warehouse'
 
-  // Zones and bins for cascade (Warehouse type extended with zones from detail endpoint)
   type WarehouseWithZones = Warehouse & {
     zones?: { id: string; name: string; bins: { id: string; name: string }[] }[]
   }
