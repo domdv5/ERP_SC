@@ -6,17 +6,13 @@ import {
   Patch,
   Param,
   Delete,
-  UseGuards,
   Query,
 } from '@nestjs/common';
 import { WarehousesService } from '@/warehouses/warehouses.service';
 import { CreateWarehouseDto, UpdateWarehouseDto } from '@/warehouses/dto/index';
-import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
-import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 
 @Controller('warehouses')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class WarehousesController {
   constructor(private readonly warehousesService: WarehousesService) {}
 

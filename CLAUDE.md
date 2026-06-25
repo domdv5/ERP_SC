@@ -101,7 +101,7 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 - Single permission `warehouse.manage` covers all write operations
 - **Sub-resources (Aggregate Root pattern)**: Zone and Bin live inside WarehousesModule — no separate module. URLs: `POST /warehouses/:id/zones`, `PATCH /warehouses/:id/zones/:zoneId`, `DELETE /warehouses/:id/zones/:zoneId`, and equivalent `/bins` nested under `/zones/:zoneId/bins`. Justification: Zone/Bin have no lifecycle outside Warehouse; all endpoints require `:warehouseId` as first param.
 - **Zone fields**: `name` (unique per warehouse via `@@unique([warehouseId, name])`), `active` (soft-delete)
-- **Bin fields**: `code` (string, not `name` — it's a physical number like "42" or "B-12", unique per zone via `@@unique([zoneId, code])`), `active` (soft-delete)
+- **Bin fields**: `code` (`Int`, numeric bin number 1..n, unique per zone via `@@unique([zoneId, code])`), `active` (soft-delete)
 - **Business rules**: `removeZone` must verify no active bins; `removeBin` must verify `Inventory.quantity === 0`
 - **findOne filter**: must return only `active: true` zones and bins (TASK 5, pending)
 
@@ -122,8 +122,9 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 **CommonModule** (`src/common/`):
 
 - `decorators/permissions.decorator.ts` — `@Permissions(...perms)` sets required permissions via SetMetadata
-- `guards/jwt-auth.guard.ts` — validates Bearer token, throws 401 on failure
-- `guards/permissions.guard.ts` — checks `request.user.permissions` against required perms, throws 403 if missing
+- `decorators/public.decorator.ts` — `@Public()` marks a route as unauthenticated (skips JWT guard)
+- `guards/jwt-auth.guard.ts` — global guard (registered via `APP_GUARD` in `AppModule`); checks `IS_PUBLIC_KEY` via Reflector before validating Bearer token; throws 401 on failure
+- `guards/permissions.guard.ts` — global guard (registered via `APP_GUARD`); checks `request.user.permissions` against required perms, throws 403 if missing. `@Permissions` can be placed at class level (applies to all methods) or method level (overrides class)
 - `filters/prisma-exception.filter.ts` — maps Prisma errors to HTTP responses (Spanish messages)
 - `interceptors/response-format.interceptor.ts` — wraps responses as `{ success: true, data: T }`
 - `enums/index.ts` — exports `MovementType`, `DocumentType`, `DocumentStatus`
@@ -146,7 +147,8 @@ Key domain models and their relationships:
 - **ThirdParty** → base for `Customer` and `Supplier` (one-to-one)
 - **Product** — has pricing (`salePrice`, `minSalePrice`) and costing (`avgCost`, `lastCost`). No stock cache field — stock is always queried from `Inventory`.
 - **Warehouse → Zone → Bin** — three-level location hierarchy. `Warehouse.type` is a `WarehouseType` enum (`store` | `warehouse`).
-- **Inventory** — current stock per `(productId, warehouseId)` composite PK. `quantity` is `Int` (business sells clothing — always whole units). Query this table for stock, never cache on Product.
+- **Inventory** — current stock per `(productId, warehouseId)` composite PK. `quantity` is `Int`. Query this table for stock totals (used by sales/POS). Never cache on Product.
+- **BinStock** — bin-level stock per `(productId, binId)` composite PK. Has denormalized `warehouseId` to avoid 3-level JOIN. Only populated by transfer documents (type `T`). Purchases (CM) only update `Inventory` — all incoming stock enters the warehouse without bin assignment. Invariant: `SUM(BinStock.quantity WHERE warehouseId=W) === Inventory.quantity WHERE warehouseId=W`.
 - **InventoryMovement** — append-only audit trail; `type` enum: `purchase | sale | return | transfer | adjustment | initial_stock | void | production`. `quantity`, `previousStock`, `newStock` are `Int`.
 - **DocumentItem** — `quantity` is `Int`. Costs/prices (`unitCost`, `unitPrice`, `subtotal`) remain `Decimal`.
 - **Document + DocumentItem** — unified transaction document supporting types: `CM, DVC, RMDVC, PE, EAI, SAJ, COT, POS, REM, DVV, T`

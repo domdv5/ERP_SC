@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Body,
-  UseGuards,
   Patch,
   Param,
   Delete,
@@ -16,13 +15,10 @@ import {
   FindAllThirdPartiesDto,
   UpdateThirdPartyDto,
 } from '@/third-parties/dto/index';
-import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
-import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import type { RequestWithUser } from '@/common/types';
 
 @Controller('third-parties')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ThirdPartiesController {
   constructor(private readonly thirdPartiesService: ThirdPartiesService) {}
 

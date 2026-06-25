@@ -8,7 +8,6 @@ import {
   Delete,
   Req,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { ProductsService } from '@/products/products.service';
 import {
@@ -16,13 +15,10 @@ import {
   FindAllProductsDto,
   UpdateProductDto,
 } from '@/products/dto/index';
-import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
-import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import type { RequestWithUser } from '@/common/types';
 
 @Controller('products')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 

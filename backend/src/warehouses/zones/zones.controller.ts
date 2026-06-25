@@ -6,26 +6,22 @@ import {
   Delete,
   Body,
   Param,
-  UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { CreateZoneDto, UpdateZoneDto } from '@/warehouses/zones/dto';
-import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
-import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { ZonesService } from '@/warehouses/zones/zones.service';
 
 @Controller('warehouses/:warehouseId/zones')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Permissions('warehouse.manage')
 export class ZonesController {
   constructor(private readonly zonesService: ZonesService) {}
 
-  @Permissions('warehouse.manage')
-  @Get(':id')
+  @Get()
   findAll(@Param('warehouseId') id: string) {
     return this.zonesService.findAll(id);
   }
 
-  @Permissions('warehouse.manage')
   @Post()
   create(
     @Body() createZoneDto: CreateZoneDto,
@@ -34,12 +30,11 @@ export class ZonesController {
     return this.zonesService.create(createZoneDto, id);
   }
 
-  @Permissions('warehouse.manage')
-  @Patch(':id')
+  @Patch(':zoneId')
   update(
+    @Param('zoneId', ParseUUIDPipe) zoneId: string,
     @Body() updateZoneDto: UpdateZoneDto,
-    @Param('warehouseId') id: string,
   ) {
-    return this.zonesService.update(updateZoneDto, id);
+    return this.zonesService.update(updateZoneDto, zoneId);
   }
 }
