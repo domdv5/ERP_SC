@@ -68,7 +68,6 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
       productId: params.productId,
       warehouseId: params.warehouseId,
       delta: params.quantity,
-      binId: params.binId,
     });
 
     await tx.inventoryMovement.create({

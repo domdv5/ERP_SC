@@ -9,10 +9,9 @@ export async function applyStockChange(
     productId: string;
     warehouseId: string;
     delta: number;
-    binId?: string | null;
   },
 ) {
-  const { productId, warehouseId, delta, binId } = params;
+  const { productId, warehouseId, delta } = params;
 
   const inventory = await tx.inventory.findUnique({
     where: { productId_warehouseId: { productId, warehouseId } },
@@ -23,8 +22,8 @@ export async function applyStockChange(
 
   await tx.inventory.upsert({
     where: { productId_warehouseId: { productId, warehouseId } },
-    create: { productId, warehouseId, quantity: newStock, binId },
-    update: { quantity: newStock, ...(binId != null && { binId }) },
+    create: { productId, warehouseId, quantity: newStock },
+    update: { quantity: newStock },
   });
 
   return { previousStock, newStock };
