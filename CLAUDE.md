@@ -190,6 +190,10 @@ pnpm preview      # Preview production build
 pnpm lint         # ESLint
 ```
 
+### Testing frontend changes
+
+When verifying any frontend behavior end-to-end (forms, flows, bug fixes), use the **Playwright CLI in headed mode** — write an ad-hoc script using the `playwright` package already installed in `frontend/` (`chromium.launch({ headless: false })`) and run it with `node`. Not the chrome-devtools MCP tools, not headless. The user wants to see the browser window while the flow runs.
+
 ### Stack
 
 React 19 + Vite, React Router v7 (lazy routes), Tailwind CSS v4, TanStack Query v5, Zustand (`useAuthStore` for client state), Sonner (toasts), react-hook-form + zod, lucide-react.
