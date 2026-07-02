@@ -6,6 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Read this file completely at the start of every session before taking any action.**
 
+## Safety Rules
+
+Do NOT change without explicit instruction and confirmation first:
+
+- **Auth flow** (`AuthModule`, `JwtAuthGuard`, `PermissionsGuard`, JWT payload shape) — every route in the app depends on the current token contract; a silent change locks out users or opens routes.
+- **Prisma schema migrations** — always use the manual workaround in Commands above; never run destructive migration commands (`migrate reset`, `db push --force-reset`).
+- **Global bootstrap wiring in `main.ts`** (`ValidationPipe`, `PrismaExceptionFilter`, `ResponseFormatInterceptor`, `APP_GUARD` registrations) — these are cross-cutting; breaking one breaks every endpoint's response shape or auth behavior at once.
+- **RBAC seed data** (`roles`, `permissions`, `RolePermission` mappings in seed script) — changing names/keys here desyncs already-issued JWTs (permissions are baked into the token, not re-checked against DB).
+- **`BinStock` / `Inventory` invariant** (`SUM(BinStock.quantity WHERE warehouseId=W) === Inventory.quantity WHERE warehouseId=W`) — any stock-mutation code must preserve this; breaking it corrupts reported stock silently.
+
+If a change requires touching any of the above, state clearly what and why, and wait for confirmation before implementing.
+
 ## Project Overview
 
 ERP Supply Chain — full-stack application for managing products, inventory, warehouses, customers, suppliers, accounts receivable/payable, and documents.
@@ -180,16 +192,7 @@ pnpm lint         # ESLint
 
 ### Stack
 
-| Tool | Use |
-|------|-----|
-| React 19 + Vite | UI / bundler |
-| React Router v7 | SPA routing with lazy routes |
-| Tailwind CSS v4 | Utility styles |
-| TanStack Query v5 | Server state, cache, mutations |
-| Zustand | Client state (`useAuthStore`) |
-| Sonner | Toasts/notifications |
-| react-hook-form + zod | Form validation |
-| lucide-react | Icons |
+React 19 + Vite, React Router v7 (lazy routes), Tailwind CSS v4, TanStack Query v5, Zustand (`useAuthStore` for client state), Sonner (toasts), react-hook-form + zod, lucide-react.
 
 ### Structure
 
@@ -257,7 +260,7 @@ For sidebar sections that must be hidden for some roles, render the `<NavLink>` 
 | `/` (dashboard) | Partial | Stats cards — Terceros shows real count, rest are static `—` |
 | `/third-parties` | Done | Full CRUD, server-side search, debounce, pagination, cache |
 | `/products` | Done | Full CRUD, server-side search, debounce, pagination, cache |
-| `/warehouses` | Partial | Full CRUD warehouses; sidebar accordion shows sub-items per warehouse; URL-based selection via `?id=`; zones/bin CRUD pending (TASKS 6-8) |
+| `/warehouses` | Partial | Full CRUD warehouses + zones/bins (backend controllers implemented); sidebar accordion shows sub-items per warehouse; URL-based selection via `?id=` |
 | `/documents` | Done | List + form (create/edit/confirm/void), portal Combobox, search-on-type |
 | `/users` | Done | Full CRUD, role checkboxes, password confirmation, permission-gated sidebar |
 | `/accounts-receivable` | Placeholder | ComingSoonPage |
@@ -408,7 +411,6 @@ Defines when to delegate to a subagent or invoke a skill. **Read the trigger con
 | Prisma Postgres cloud (Console, Management API) | `prisma-postgres` |
 
 ### Skills — Calidad de Código
-
 | Trigger | Skill |
 |---------|-------|
 | Revisar código por bugs, correctness o reutilización: "revisa el diff", "revisa el PR", "¿está bien esto?", "busca errores en…" | `code-review` |
