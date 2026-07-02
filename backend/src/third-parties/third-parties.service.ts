@@ -77,7 +77,13 @@ export class ThirdPartiesService {
     } = createThirdPartyDto;
 
     return this.prisma.$transaction(async (tx) => {
-      const thirdParty = await tx.thirdParty.create({ data: thirdPartyData });
+      const thirdParty = await tx.thirdParty.create({
+        data: {
+          ...thirdPartyData,
+          isCustomer: !!isCustomer,
+          isSupplier: !!isSupplier,
+        },
+      });
 
       let customer: Customer | null = null;
       let supplier: Supplier | null = null;
@@ -137,6 +143,34 @@ export class ThirdPartiesService {
     } = updateThirdPartyDto;
 
     return this.prisma.$transaction(async (tx) => {
+      // The supplier relation must exist before brands can reference it via
+      // supplierId, so the upsert below has to run before brand.createMany.
+      await tx.thirdParty.update({
+        where: { id },
+        data: {
+          ...thirdPartyData,
+          ...(isCustomer !== undefined && { isCustomer }),
+          ...(isSupplier !== undefined && { isSupplier }),
+          customer: isCustomer
+            ? {
+                upsert: {
+                  create: { creditLimit, discount, sellerId },
+                  update: { creditLimit, discount, sellerId },
+                },
+              }
+            : undefined,
+          supplier:
+            isSupplier && internalNumber !== undefined
+              ? {
+                  upsert: {
+                    create: { internalNumber },
+                    update: { internalNumber },
+                  },
+                }
+              : undefined,
+        },
+      });
+
       if (isSupplier && brands !== undefined) {
         await tx.brand.createMany({
           data: brands.map((name) => ({ name, supplierId: id })),
@@ -144,18 +178,8 @@ export class ThirdPartiesService {
         });
       }
 
-      return tx.thirdParty.update({
+      return tx.thirdParty.findUniqueOrThrow({
         where: { id },
-        data: {
-          ...thirdPartyData,
-          customer: isCustomer
-            ? { update: { creditLimit, discount, sellerId } }
-            : undefined,
-          supplier:
-            isSupplier && internalNumber !== undefined
-              ? { update: { internalNumber } }
-              : undefined,
-        },
         include: { customer: true, supplier: { include: { brands: true } } },
       });
     });

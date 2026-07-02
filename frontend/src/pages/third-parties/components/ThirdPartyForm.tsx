@@ -315,9 +315,9 @@ export function ThirdPartyForm({ open, onClose, onSubmit, onRenameBrand, isPendi
             <div>
               <label className="block text-sm font-medium text-content-secondary mb-2">Roles del tercero</label>
               <div className="flex flex-wrap gap-2">
-                <Toggle checked={!!isCustomer} onChange={(v) => { setValue('isCustomer', v); if (v) { setValue('isSupplier', false); setValue('isSeller', false); } }} label="Cliente" />
-                <Toggle checked={!!isSupplier} onChange={(v) => { setValue('isSupplier', v); if (v) { setValue('isCustomer', false); setValue('isSeller', false); } }} label="Proveedor" />
-                <Toggle checked={!!watch('isSeller')} onChange={(v) => { setValue('isSeller', v); if (v) { setValue('isCustomer', false); setValue('isSupplier', false); } }} label="Vendedor" />
+                <Toggle checked={!!isCustomer} onChange={(v) => setValue('isCustomer', v)} label="Cliente" />
+                <Toggle checked={!!isSupplier} onChange={(v) => setValue('isSupplier', v)} label="Proveedor" />
+                <Toggle checked={!!watch('isSeller')} onChange={(v) => setValue('isSeller', v)} label="Vendedor" />
               </div>
             </div>
 

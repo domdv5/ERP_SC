@@ -12,6 +12,7 @@ import {
   IsUUID,
   ValidateIf,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateThirdPartyDto {
   @IsString()
@@ -42,6 +43,7 @@ export class CreateThirdPartyDto {
   @IsNotEmpty()
   lastName?: string;
 
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsOptional()
   @IsEmail()
   email?: string;
