@@ -8,6 +8,7 @@ import { ProductsModule } from './products/products.module';
 import { WarehousesModule } from './warehouses/warehouses.module';
 import { DocumentsModule } from './documents/documents.module';
 import { AccountsPayableModule } from '@/accounts-payable/accounts-payable.module';
+import { AccountsReceivableModule } from '@/accounts-receivable/accounts-receivable.module';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 
@@ -23,6 +24,7 @@ import { PermissionsGuard } from '@/common/guards/permissions.guard';
     WarehousesModule,
     DocumentsModule,
     AccountsPayableModule,
+    AccountsReceivableModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

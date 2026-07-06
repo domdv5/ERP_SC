@@ -61,7 +61,7 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 
 ### Module Structure
 
-`backend/src/` contains NestJS modules. Implemented modules: `auth`, `prisma`, `third-parties`, `products`, `warehouses`, `documents`, `common`.
+`backend/src/` contains NestJS modules. Implemented modules: `auth`, `prisma`, `third-parties`, `products`, `warehouses`, `documents`, `accounts-payable`, `accounts-receivable`, `common`.
 
 **Bootstrap** (`main.ts`):
 
@@ -70,7 +70,7 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 - Global `ResponseFormatInterceptor` — wraps all responses as `{ success, data }`
 - Listens on `PORT` env var (default 3000)
 
-**AppModule** imports: `ConfigModule` (global, reads `.env`), `AuthModule`, `PrismaModule`, `ThirdPartiesModule`, `ProductsModule`, `WarehousesModule`, `DocumentsModule`
+**AppModule** imports: `ConfigModule` (global, reads `.env`), `AuthModule`, `PrismaModule`, `ThirdPartiesModule`, `ProductsModule`, `WarehousesModule`, `DocumentsModule`, `AccountsPayableModule`, `AccountsReceivableModule`
 
 **PrismaModule** is global — inject `PrismaService` anywhere without re-importing the module.
 
@@ -130,6 +130,19 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 - **Warehouse rule**: for all types except `T`, service always resolves the active `store`-type warehouse; client never sends `warehouseId` for non-transfer docs
 - **Implemented strategies (phase 1)**: `CM` (purchase), `DVC` (supplier return), `EAI` (stock adjustment in), `SAJ` (stock adjustment out), `T` (transfer)
 - **Phase 2 types** (not yet implemented): `COT`, `POS`, `DVV`, `REM`, `RMDVC`, `PE` — each needs only a new Strategy class
+
+**AccountsPayableModule**:
+
+- `GET /accounts-payable` — list paginated, filters by `status`/`supplierId`/`search` (supplier name); requires `ap.read`
+- `GET /accounts-payable/:id` — detail with `supplier.thirdParty`, `document`, `payablePayments` (desc); requires `ap.read`
+- `POST /accounts-payable/:id/payments` — register a payment; requires `ap.manage`. Runs in `$transaction`, validates payment doesn't exceed pending balance (compared in integer cents via `toCents()` to avoid float drift), recomputes `status` (`pending` | `partial` | `paid`)
+- Created automatically by `CM`/`DVC` document strategies on confirm; deleted on void (blocked if it already has payments)
+
+**AccountsReceivableModule**:
+
+- Mirrors `AccountsPayableModule` exactly, client side instead of supplier side — same endpoints (`GET /accounts-receivable`, `GET /accounts-receivable/:id`, `POST /accounts-receivable/:id/payments`), same `$transaction` + cents-based balance validation pattern, requires `ar.read` / `ar.manage`
+- **Schema differences from AccountsPayable — do not copy blindly**: `AccountsReceivable` has two party relations (`client` via `Customer.thirdParty`, and `seller` via `ThirdParty` directly, relation name `SellerAR`) instead of AP's single `supplier`; `ReceivablePayment` has no `bankDestination` field (AP's `PayablePayment` does)
+- Not yet wired to any document strategy (sales document types `COT`/`POS`/`DVV` are still Phase 2 — see DocumentsModule below), so records currently must be created manually until those strategies exist
 
 **CommonModule** (`src/common/`):
 
