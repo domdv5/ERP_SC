@@ -12,7 +12,7 @@ export interface Warehouse {
 export interface Bin {
   id: string
   zoneId: string
-  name: string
+  code: number
   active: boolean
   createdAt: string
 }
@@ -44,5 +44,9 @@ export interface UpdateWarehousePayload {
 export interface CreateZonePayload { name: string }
 export interface UpdateZonePayload { name?: string; active?: boolean }
 
-export interface CreateBinPayload { name: string }
-export interface UpdateBinPayload { name?: string; active?: boolean }
+export interface CreateBinPayload { code: number }
+export interface UpdateBinPayload { code?: number; active?: boolean }
+
+// Zone/Bin creation & update endpoints return the plain Prisma row —
+// zones without their nested `bins` relation.
+export type ZoneSummary = Omit<Zone, 'bins'>

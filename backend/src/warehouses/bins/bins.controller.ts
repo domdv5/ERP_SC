@@ -7,9 +7,9 @@ import {
   Param,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { CreateBinDto, UpdateBinDto } from '@/warehouses/bins/dto';
+import { CreateBinDto, UpdateBinDto } from './dto';
 import { Permissions } from '@/common/decorators/permissions.decorator';
-import { BinsService } from '@/warehouses/bins/bins.service';
+import { BinsService } from './bins.service';
 
 @Controller('warehouses/:warehouseId/zones/:zoneId/bins')
 @Permissions('warehouse.manage')

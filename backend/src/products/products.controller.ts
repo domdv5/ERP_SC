@@ -9,12 +9,12 @@ import {
   Req,
   Query,
 } from '@nestjs/common';
-import { ProductsService } from '@/products/products.service';
+import { ProductsService } from './products.service';
 import {
   CreateProductDto,
   FindAllProductsDto,
   UpdateProductDto,
-} from '@/products/dto/index';
+} from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import type { RequestWithUser } from '@/common/types';
 

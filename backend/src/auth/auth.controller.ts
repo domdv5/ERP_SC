@@ -7,8 +7,8 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { AuthService } from '@/auth/auth.service';
-import { CreateAuthDto, UpdateAuthDto, LoginAuthDto } from '@/auth/dto/index';
+import { AuthService } from './auth.service';
+import { CreateAuthDto, UpdateAuthDto, LoginAuthDto } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { Public } from '@/common/decorators/public.decorator';
 

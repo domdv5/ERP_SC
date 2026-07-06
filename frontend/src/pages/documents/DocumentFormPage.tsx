@@ -18,7 +18,7 @@ import { formSchema, type FormValues } from './document-form.schema'
 import { ProductRow } from './components/ProductRow'
 
 import type { DocumentType } from '@/types/document.types'
-import type { Warehouse } from '@/types/warehouse.types'
+import type { Warehouse, WarehouseDetail } from '@/types/warehouse.types'
 import type { ThirdParty } from '@/types/third-party.types'
 
 // ─── constants ───────────────────────────────────────────────────────────────
@@ -150,10 +150,7 @@ export default function DocumentFormPage() {
     Boolean(destWarehouseId) &&
     warehouses.find((w: Warehouse) => w.id === destWarehouseId)?.type === 'warehouse'
 
-  type WarehouseWithZones = Warehouse & {
-    zones?: { id: string; name: string; bins: { id: string; name: string }[] }[]
-  }
-  const destZones = (destWarehouseDetail as WarehouseWithZones | undefined)?.zones ?? []
+  const destZones = (destWarehouseDetail as WarehouseDetail | undefined)?.zones ?? []
 
   const [selectedZoneId, setSelectedZoneId] = useState('')
   useEffect(() => { setSelectedZoneId('') }, [destWarehouseId])
@@ -493,7 +490,7 @@ export default function DocumentFormPage() {
                             <option value="">Selecciona un bulto</option>
                             {destBins.map((b) => (
                               <option key={b.id} value={b.id}>
-                                {b.name}
+                                Bulto {b.code}
                               </option>
                             ))}
                           </select>

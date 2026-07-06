@@ -4,7 +4,7 @@ import {
   CreateProductDto,
   FindAllProductsDto,
   UpdateProductDto,
-} from '@/products/dto/index';
+} from './dto/index';
 import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()

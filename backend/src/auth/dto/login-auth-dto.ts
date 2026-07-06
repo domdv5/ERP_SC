@@ -1,5 +1,5 @@
 import { OmitType } from '@nestjs/mapped-types';
-import { CreateAuthDto } from '@/auth/dto/create-auth.dto';
+import { CreateAuthDto } from './create-auth.dto';
 
 export class LoginAuthDto extends OmitType(CreateAuthDto, [
   'name',

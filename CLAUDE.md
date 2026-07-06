@@ -169,7 +169,7 @@ Key domain models and their relationships:
 
 ### Conventions
 
-- **Path alias**: `@/*` maps to `src/*` (configured in `tsconfig.json`)
+- **Path alias**: `@/*` maps to `src/*` (configured in `tsconfig.json`). Verified working at build time: `nest build`'s compiler resolves `@/` to relative paths in the emitted `dist/` output, so it's safe at runtime too. **Import rule (hybrid — matches `import/no-relative-parent-imports`, Airbnb/Google style guides): use `@/` only when the import would otherwise need to go up a directory (`../`). Same-directory or subdirectory-of-current-directory imports (`./create-x.dto`, `./strategies/index`) stay relative.** This keeps modules portable (movable without rewriting their internal imports) and preserves `./` as a signal of "lives right next to me" vs `@/` as "cross-cutting dependency from elsewhere in the app." Example: `documents/dto/index.ts` re-exporting `./create-document.dto` stays relative (same folder); a file needing something from `common/` two levels up uses `@/common/x` instead of `../../common/x`.
 - **Response format**: Always `{ success: boolean, data: T }` — the interceptor handles wrapping; `message` is optional
 - **Error messages**: Spanish language (matches existing filter messages)
 - **Passwords**: bcrypt, 10 salt rounds
@@ -307,7 +307,7 @@ Fonts loaded in `index.html` from Google Fonts. Applied globally via `@layer bas
 - Toast pattern: `toast.success` / `toast.error` / `toast.info` (Sonner)
 - All stats show `animate-pulse` skeleton while loading, never blank/undefined
 - Action buttons hidden (`opacity-0`) on table rows, revealed on `group-hover`
-- Path alias `@/*` → `src/*` (same as backend)
+- Path alias `@/*` → `src/*` (same as backend). **Import rule (hybrid — matches `import/no-relative-parent-imports`, Airbnb/Google style guides): use `@/` only when the import would otherwise need to go up a directory (`../`). Same-directory or subdirectory-of-current-directory imports (`./components/X`, `./x.constants`) stay relative.** This keeps feature folders portable (movable without rewriting their internal imports) and preserves `./` as a signal of "lives right next to me" vs `@/` as "cross-cutting dependency from elsewhere in the app." Example: `pages/accounts-payable/AccountsPayableDetailPage.tsx` importing its own `./components/StatusBadge` stays relative; that same component reaching up one level for `../accounts-payable.constants` becomes `@/pages/accounts-payable/accounts-payable.constants` instead.
 
 ### Shared Components
 
@@ -383,6 +383,7 @@ Defines when to delegate to a subagent or invoke a skill. **Read the trigger con
 | Trigger | Subagent | Notes |
 |---------|----------|-------|
 | Cualquier implementación de frontend: crear O modificar páginas, componentes, hooks, features, formularios, tablas, secciones — "hazme una página de…", "agrega el módulo de…", "necesito la pantalla de…", "crea el form para…", "arregla el bug en…", "cambia el componente de…", "edita la tabla de…", "modifica el form de…" | `react-code-crafter` | Invocar skill `vercel-react-best-practices` ANTES de lanzar el agente, e incluir las reglas relevantes en el prompt. Genera código React alineado con los patrones del proyecto (TanStack Query, react-hook-form, tokens de diseño, debounce, paginación) |
+| Cualquier implementación de backend NestJS: crear O modificar módulos, controllers, services, DTOs, guards, interceptors, estrategias — "agrega el endpoint de…", "crea el módulo de…", "arregla el bug en el service de…", "cambia el controller de…", "implementa la estrategia para…" | `nestjs-code-crafter` | Invocar skill `nestjs-best-practices` ANTES de lanzar el agente, e incluir las reglas relevantes en el prompt. Genera código NestJS alineado con la arquitectura del proyecto (RBAC, DTOs, Prisma, response format, regla híbrida de imports); respeta las Safety Rules — si la tarea toca AuthModule/migraciones/bootstrap/seed RBAC/invariante BinStock, debe detenerse y pedir confirmación en vez de proceder |
 | Base de datos / Prisma: "agrega índices", "revisa el schema", "audita las tablas", "optimiza queries", "mira mis tablas", "hay duplicados en…", "el query es lento", "diseña las tablas para…", "cómo modelar…" | `prisma-db-architect` | Audita schema.prisma, identifica índices faltantes, modela relaciones, optimiza queries |
 | Exploración de código abierta >3 búsquedas: "¿dónde está X?", "¿qué archivos usan Y?", "busca dónde se define…" | `Explore` | Solo lectura; no usar para review ni análisis cross-file profundo |
 | Investigación compleja multistep o búsqueda sin dirección clara | `general-purpose` | Cuando Explore o Grep solos no son suficientes |
@@ -401,7 +402,7 @@ Defines when to delegate to a subagent or invoke a skill. **Read the trigger con
 
 | Trigger | Skill |
 |---------|-------|
-| Crear o revisar módulos NestJS: providers, guards, interceptors, pipes, decorators, módulos, controladores — "cómo hago un guard", "necesito un interceptor", "agrega un pipe de validación" | `nestjs-best-practices` |
+| Crear o revisar módulos NestJS: providers, guards, interceptors, pipes, decorators, módulos, controladores — "cómo hago un guard", "necesito un interceptor", "agrega un pipe de validación" — siempre invocar antes de delegar al agente `nestjs-code-crafter` | `nestjs-best-practices` |
 | Patrones de middleware, autenticación JWT, error handling, diseño de endpoints REST, rate limiting, CORS — "cómo manejo el error de…", "cómo estructuro este endpoint", "necesito middleware para…" | `nodejs-backend-patterns` |
 | Decisiones de arquitectura Node.js: framework, async/await patterns, seguridad, variables de entorno, estructura de proyecto | `nodejs-best-practices` |
 

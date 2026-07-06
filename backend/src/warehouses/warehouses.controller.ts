@@ -8,8 +8,8 @@ import {
   Delete,
   Query,
 } from '@nestjs/common';
-import { WarehousesService } from '@/warehouses/warehouses.service';
-import { CreateWarehouseDto, UpdateWarehouseDto } from '@/warehouses/dto/index';
+import { WarehousesService } from './warehouses.service';
+import { CreateWarehouseDto, UpdateWarehouseDto } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 
 @Controller('warehouses')

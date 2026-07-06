@@ -9,12 +9,12 @@ import {
   Get,
   Query,
 } from '@nestjs/common';
-import { ThirdPartiesService } from '@/third-parties/third-parties.service';
+import { ThirdPartiesService } from './third-parties.service';
 import {
   CreateThirdPartyDto,
   FindAllThirdPartiesDto,
   UpdateThirdPartyDto,
-} from '@/third-parties/dto/index';
+} from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import type { RequestWithUser } from '@/common/types';
 

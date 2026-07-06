@@ -4,7 +4,7 @@ import {
   CreateThirdPartyDto,
   FindAllThirdPartiesDto,
   UpdateThirdPartyDto,
-} from '@/third-parties/dto/index';
+} from './dto/index';
 import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()

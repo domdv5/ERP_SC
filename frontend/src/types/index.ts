@@ -2,7 +2,7 @@ export type { ThirdParty, CreateThirdPartyPayload, UpdateThirdPartyPayload, Pers
 export type { Product } from './product.types'
 export type {
   Warehouse, WarehouseType, WarehouseDetail,
-  Zone, Bin,
+  Zone, Bin, ZoneSummary,
   CreateWarehousePayload, UpdateWarehousePayload,
   CreateZonePayload, UpdateZonePayload,
   CreateBinPayload, UpdateBinPayload,
@@ -24,6 +24,17 @@ export type {
   UpdateDocumentPayload,
   CreateDocumentItemPayload,
 } from './document.types'
+export type {
+  AccountsPayableStatus,
+  AccountsPayable,
+  AccountsPayableDetail,
+  AccountsPayableSupplier,
+  AccountsPayableDocument,
+  AccountsPayableMeta,
+  PayablePayment,
+  GetAccountsPayableParams,
+  RegisterPayablePaymentPayload,
+} from './accounts-payable.types'
 
 export interface ApiResponse<T> {
   success: boolean

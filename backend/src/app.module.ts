@@ -7,6 +7,7 @@ import { ThirdPartiesModule } from './third-parties/third-parties.module';
 import { ProductsModule } from './products/products.module';
 import { WarehousesModule } from './warehouses/warehouses.module';
 import { DocumentsModule } from './documents/documents.module';
+import { AccountsPayableModule } from '@/accounts-payable/accounts-payable.module';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 
@@ -21,6 +22,7 @@ import { PermissionsGuard } from '@/common/guards/permissions.guard';
     ProductsModule,
     WarehousesModule,
     DocumentsModule,
+    AccountsPayableModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

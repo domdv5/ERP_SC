@@ -10,12 +10,13 @@ const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'))
 const ThirdPartiesPage = lazy(() => import('@/pages/third-parties/ThirdPartiesPage'))
 const ProductsPage = lazy(() => import('@/pages/products/ProductsPage'))
 const WarehousesPage = lazy(() => import('@/pages/warehouses/WarehousesPage'))
-const WarehouseDetailPage = lazy(() => import('@/pages/warehouses/WarehouseDetailPage'))
 const ComingSoonPage = lazy(() => import('@/pages/coming-soon/ComingSoonPage'))
 const DocumentsPage = lazy(() => import('@/pages/documents/DocumentsPage'))
 const DocumentFormPage = lazy(() => import('@/pages/documents/DocumentFormPage'))
 const DocumentDetailPage = lazy(() => import('@/pages/documents/DocumentDetailPage'))
 const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
+const AccountsPayableListPage = lazy(() => import('@/pages/accounts-payable/AccountsPayableListPage'))
+const AccountsPayableDetailPage = lazy(() => import('@/pages/accounts-payable/AccountsPayableDetailPage'))
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>
@@ -41,13 +42,13 @@ export const router = createBrowserRouter([
       },
       { path: 'products',              element: <Lazy><ProductsPage /></Lazy> },
       { path: 'warehouses',            element: <Lazy><WarehousesPage /></Lazy> },
-      { path: 'warehouses/:id',        element: <Lazy><WarehouseDetailPage /></Lazy> },
       { path: 'documents',             element: <Lazy><DocumentsPage /></Lazy> },
       { path: 'documents/new',         element: <Lazy><DocumentFormPage /></Lazy> },
       { path: 'documents/:id',         element: <Lazy><DocumentDetailPage /></Lazy> },
       { path: 'documents/:id/edit',    element: <Lazy><DocumentFormPage /></Lazy> },
       { path: 'accounts-receivable',   element: <Lazy><ComingSoonPage /></Lazy> },
-      { path: 'accounts-payable',      element: <Lazy><ComingSoonPage /></Lazy> },
+      { path: 'accounts-payable',      element: <Lazy><AccountsPayableListPage /></Lazy> },
+      { path: 'accounts-payable/:id',  element: <Lazy><AccountsPayableDetailPage /></Lazy> },
       { path: 'users',                 element: <Lazy><PermissionGuard permission="user.manage"><UsersPage /></PermissionGuard></Lazy> },
     ],
   },

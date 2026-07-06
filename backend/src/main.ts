@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { AppModule } from '@/app.module';
+import { AppModule } from './app.module';
 import { PrismaExceptionFilter } from '@/common/filters/prisma-exception.filter';
 import { ResponseFormatInterceptor } from '@/common/interceptors/response-format.interceptor';
 
