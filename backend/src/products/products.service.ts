@@ -36,11 +36,16 @@ export class ProductsService {
       }),
     };
 
-    const [items, total, activeCount, inStockCount] =
+    const [items, total, activeCount, inStockCount, activeWarehouses] =
       await this.prisma.$transaction([
         this.prisma.product.findMany({
           where,
-          include: { brand: true, gender: true, category: true },
+          include: {
+            brand: true,
+            gender: true,
+            category: true,
+            inventoryRecords: { select: { warehouseId: true, quantity: true } },
+          },
           skip,
           take: limit,
           orderBy: { createdAt: 'desc' },
@@ -53,10 +58,21 @@ export class ProductsService {
             inventoryRecords: { some: { quantity: { gt: 0 } } },
           },
         }),
+        this.prisma.warehouse.findMany({
+          where: { active: true },
+          select: { id: true, name: true },
+          orderBy: { name: 'asc' },
+        }),
       ]);
 
     return {
-      items,
+      items: items.map((item) => {
+        const { inventoryRecords, ...rest } = item;
+        return {
+          ...rest,
+          ...this.buildStockBreakdown(inventoryRecords, activeWarehouses),
+        };
+      }),
       meta: {
         total,
         page,
@@ -66,6 +82,25 @@ export class ProductsService {
         inStockCount,
       },
     };
+  }
+
+  private buildStockBreakdown(
+    inventoryRecords: { warehouseId: string; quantity: number }[],
+    warehouses: { id: string; name: string }[],
+  ) {
+    const stockByWarehouse = warehouses.map((w) => ({
+      warehouseId: w.id,
+      warehouseName: w.name,
+      quantity:
+        inventoryRecords.find((r) => r.warehouseId === w.id)?.quantity ?? 0,
+    }));
+
+    const totalStock = stockByWarehouse.reduce(
+      (sum, s) => sum + s.quantity,
+      0,
+    );
+
+    return { stockByWarehouse, totalStock };
   }
 
   create(createProductDto: CreateProductDto) {

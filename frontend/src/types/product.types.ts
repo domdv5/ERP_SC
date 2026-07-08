@@ -19,6 +19,12 @@ export interface ProductCategory {
   active: boolean
 }
 
+export interface StockByWarehouse {
+  warehouseId: string
+  warehouseName: string
+  quantity: number
+}
+
 export interface Product {
   id: string
   code: string
@@ -37,4 +43,6 @@ export interface Product {
   brand: Brand
   gender: Gender
   category: ProductCategory
+  stockByWarehouse: StockByWarehouse[]
+  totalStock: number
 }

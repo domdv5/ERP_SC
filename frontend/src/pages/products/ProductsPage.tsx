@@ -160,7 +160,14 @@ export default function ProductsPage() {
                     <td className="px-5 py-3.5 text-content-muted text-xs">{p.gender.name}</td>
                     <td className="px-5 py-3.5 text-content-muted text-xs">{p.category.name}</td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs">{formatCOP(p.salePrice)}</td>
-                    <td className="px-5 py-3.5 text-content-faint text-xs">—</td>
+                    <td className="px-5 py-3.5">
+                      <p className="text-content font-medium text-xs">{p.totalStock}</p>
+                      {p.stockByWarehouse.length > 0 && (
+                        <p className="text-xs text-content-faint">
+                          {p.stockByWarehouse.map((s) => `${s.warehouseName}: ${s.quantity}`).join(' · ')}
+                        </p>
+                      )}
+                    </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         {canUpdate && (
