@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AuthGuard } from '@/components/layout/AuthGuard'
 import { PermissionGuard } from '@/components/layout/PermissionGuard'
@@ -18,8 +18,21 @@ const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
 const AccountsPayableListPage = lazy(() => import('@/pages/accounts-payable/AccountsPayableListPage'))
 const AccountsPayableDetailPage = lazy(() => import('@/pages/accounts-payable/AccountsPayableDetailPage'))
 
+function DelayedPageLoader() {
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => setShow(true), 200)
+    return () => clearTimeout(timeoutId)
+  }, [])
+
+  if (!show) return null
+
+  return <PageLoader />
+}
+
 function Lazy({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<PageLoader />}>{children}</Suspense>
+  return <Suspense fallback={<DelayedPageLoader />}>{children}</Suspense>
 }
 
 export const router = createBrowserRouter([

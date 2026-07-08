@@ -67,6 +67,36 @@
   --content-faint:      rgba(255, 255, 255, 0.4);
 }
 
+/* Theme toggle — expanding circle wipe (View Transition API) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  /* Chrome's default plus-lighter blend mode is meant for cross-fades; with a
+     clip-path reveal it additively mixes the two opaque layers and produces
+     a bright color-flash artifact instead of a clean wipe. */
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  animation: none;
+}
+
+::view-transition-new(root) {
+  /* forwards keeps the fully-revealed clip-path after the animation ends —
+     without it, the property snaps back to circle(0%) (fully clipped/invisible)
+     the instant the animation finishes, flashing the old theme for a frame
+     before the browser tears down the transition and shows the live DOM. */
+  animation: theme-toggle-reveal 0.5s ease-in-out forwards;
+}
+
+@keyframes theme-toggle-reveal {
+  from {
+    clip-path: circle(0% at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%));
+  }
+  to {
+    clip-path: circle(150% at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%));
+  }
+}
+
 @layer base {
   body {
     font-family: var(--font-sans);

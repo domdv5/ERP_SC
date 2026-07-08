@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Bell, Search, LogOut, User, Sun, Moon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -35,6 +36,24 @@ export function Header() {
     })
   }
 
+  const handleThemeToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const documentWithViewTransition = document as Document & {
+      startViewTransition?: (callback: () => void) => void
+    }
+
+    if (typeof documentWithViewTransition.startViewTransition !== 'function') {
+      toggleTheme()
+      return
+    }
+
+    document.documentElement.style.setProperty('--theme-toggle-x', `${e.clientX}px`)
+    document.documentElement.style.setProperty('--theme-toggle-y', `${e.clientY}px`)
+
+    documentWithViewTransition.startViewTransition(() => {
+      flushSync(() => toggleTheme())
+    })
+  }
+
   return (
     <header className="h-16 bg-surface border-b border-ui-border flex items-center justify-between px-6 shadow-sm shrink-0">
       <div className="flex items-center gap-3 w-80">
@@ -51,7 +70,7 @@ export function Header() {
       <div className="flex items-center gap-2">
         {/* Theme toggle */}
         <button
-          onClick={toggleTheme}
+          onClick={handleThemeToggle}
           title={theme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
           className="p-2 text-content-faint hover:text-content-muted hover:bg-surface-hover rounded-lg transition-colors"
         >
