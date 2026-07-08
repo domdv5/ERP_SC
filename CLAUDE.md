@@ -129,6 +129,7 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 - **Strategy pattern**: `DocumentEffectsRegistry` maps type → strategy; add new types without touching service
 - **Warehouse rule**: for all types except `T`, service always resolves the active `store`-type warehouse; client never sends `warehouseId` for non-transfer docs
 - **Implemented strategies (phase 1)**: `CM` (purchase), `DVC` (supplier return), `EAI` (stock adjustment in), `SAJ` (stock adjustment out), `T` (transfer)
+- **BinStock population**: `BaseEffectStrategy.moveStock` upserts `BinStock` automatically whenever a `binId` is passed alongside `warehouseId` — today only `TransferEffectStrategy`'s destination-entry call does this. The origin/exit leg of a transfer never passes `binId` (no `sourceBinId` wiring in the frontend form yet, even though `Document.sourceBinId` exists in the schema), so moving stock that's already bin-located further out doesn't decrement its `BinStock` row — known gap, out of scope until a "multi-hop transfer" need shows up. See `plans/007-binstock-traslados-inventario-real.md` (gitignored, local) for the broader gap analysis against the real warehouse inventory (talla, unidad de medida, carga masiva) — blocked on a stakeholder meeting.
 - **Phase 2 types** (not yet implemented): `COT`, `POS`, `DVV`, `REM`, `RMDVC`, `PE` — each needs only a new Strategy class
 
 **AccountsPayableModule**:
@@ -267,6 +268,10 @@ For sidebar sections that must be hidden for some roles, render the `<NavLink>` 
 
 **Sidebar accordion nav items** — When a nav section needs collapsible sub-items (e.g. Bodegas), create a dedicated component (`WarehousesSidebarItem`) instead of a static NavLink. Use `useLocation` + `useState` for open/close; `max-height` CSS transition for animation; `useQuery` to load sub-items from API. Sub-item links use `Link` (not `NavLink`) with manual `isActive` computed from `location.search` — React Router's NavLink `isActive` ignores query params and would mark all sub-items active simultaneously.
 
+**Lazy route loading** — `router/index.tsx`'s `Lazy` wrapper uses a `DelayedPageLoader` (200ms `setTimeout` before rendering `PageLoader`) as the `Suspense` fallback, not `PageLoader` directly. Route chunks that resolve faster than 200ms (already-loaded chunks, fast dev-server reloads) never show the full-screen loader — only genuinely slow loads do. Don't revert this to a bare `<PageLoader />` fallback; it reintroduces a flash on every navigation.
+
+**Theme toggle animation** — `Header.tsx`'s theme button uses the View Transition API (`document.startViewTransition`) for an expanding-circle wipe, with a plain `toggleTheme()` fallback when unsupported. Three gotchas if touching this: (1) wrap the state update in `flushSync` inside the transition callback — the `.dark` class toggle in `AppLayout.tsx`'s `useEffect` must apply synchronously before the browser snapshots the new state; (2) `index.css` resets `mix-blend-mode: normal` on `::view-transition-old(root)`/`::view-transition-new(root)` — Chrome's default `plus-lighter` blend additively mixes the two layers during a clip-path reveal, producing a color-flash; (3) the reveal keyframe animation needs `fill-mode: forwards`, otherwise `clip-path` snaps back to `circle(0%)` the instant the animation ends, flashing the old theme for a frame.
+
 **Role display names** — Spanish labels for roles live in `users.service.ts` as `ROLE_LABELS: Record<string, string>` with a `getRoleLabel(name)` helper that falls back to `replace(/_/g, ' ')`. Import from there when displaying role names anywhere in the UI.
 
 ### Implemented Modules
@@ -276,7 +281,7 @@ For sidebar sections that must be hidden for some roles, render the `<NavLink>` 
 | `/login` | Done | JWT auth, redirects to `/` if already logged in |
 | `/` (dashboard) | Partial | Stats cards — Terceros shows real count, rest are static `—` |
 | `/third-parties` | Done | Full CRUD, server-side search, debounce, pagination, cache |
-| `/products` | Done | Full CRUD, server-side search, debounce, pagination, cache |
+| `/products` | Done | Full CRUD, server-side search, debounce, pagination, cache, stock column (total + per-warehouse breakdown) |
 | `/warehouses` | Partial | Full CRUD warehouses + zones/bins (backend controllers implemented); sidebar accordion shows sub-items per warehouse; URL-based selection via `?id=` |
 | `/documents` | Done | List + form (create/edit/confirm/void), portal Combobox, search-on-type |
 | `/users` | Done | Full CRUD, role checkboxes, password confirmation, permission-gated sidebar |
