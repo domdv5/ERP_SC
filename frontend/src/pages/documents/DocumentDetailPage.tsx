@@ -152,6 +152,7 @@ export default function DocumentDetailPage() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['documents'] })
     queryClient.invalidateQueries({ queryKey: ['document', id] })
+    queryClient.invalidateQueries({ queryKey: ['products'] })
   }
 
   const { mutate: doConfirm, isPending: isConfirming } = useMutation({
