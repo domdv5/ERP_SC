@@ -29,6 +29,31 @@ export async function applyStockChange(
   return { previousStock, newStock };
 }
 
+/** Lee el BinStock actual del par (producto, bin), aplica el delta y upserta. */
+export async function applyBinStockChange(
+  tx: Prisma.TransactionClient,
+  params: {
+    productId: string;
+    binId: string;
+    warehouseId: string;
+    delta: number;
+  },
+) {
+  const { productId, binId, warehouseId, delta } = params;
+
+  const binStock = await tx.binStock.findUnique({
+    where: { productId_binId: { productId, binId } },
+  });
+
+  const newQuantity = (binStock?.quantity ?? 0) + delta;
+
+  await tx.binStock.upsert({
+    where: { productId_binId: { productId, binId } },
+    create: { productId, binId, warehouseId, quantity: newQuantity },
+    update: { quantity: newQuantity },
+  });
+}
+
 /** Valida que haya stock suficiente del producto en la bodega para la salida. */
 export async function assertSufficientStock(
   tx: Prisma.TransactionClient,

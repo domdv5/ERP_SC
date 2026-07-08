@@ -6,7 +6,10 @@ import type {
   DocumentEffectStrategy,
   DocumentWithItems,
 } from './document-effect.strategy';
-import { applyStockChange } from '@/documents/helpers/stock.helpers';
+import {
+  applyBinStockChange,
+  applyStockChange,
+} from '@/documents/helpers/stock.helpers';
 
 /**
  * Base de las estrategias de efectos: concentra la lógica compartida
@@ -69,6 +72,15 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
       warehouseId: params.warehouseId,
       delta: params.quantity,
     });
+
+    if (params.binId) {
+      await applyBinStockChange(tx, {
+        productId: params.productId,
+        binId: params.binId,
+        warehouseId: params.warehouseId,
+        delta: params.quantity,
+      });
+    }
 
     await tx.inventoryMovement.create({
       data: {
