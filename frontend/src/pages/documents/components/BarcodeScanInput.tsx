@@ -61,11 +61,12 @@ export function BarcodeScanInput({ docType, append, getValues, setValue, onProdu
         const avgCost = Number(product.avgCost)
         const shouldPrefillCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
         append({
-          productId:   product.id,
-          productCode: product.code,
-          productDesc: product.description,
-          quantity:    1,
-          unitCost:    shouldPrefillCost ? avgCost : undefined,
+          productId:     product.id,
+          productCode:   product.code,
+          productDesc:   product.description,
+          quantity:      1,
+          unitCost:      shouldPrefillCost ? avgCost : undefined,
+          observaciones: undefined,
         })
         onProductScanned(product.id, avgCost, product.unitOfMeasure)
         toast.success(`${product.code} agregado`)

@@ -178,6 +178,7 @@ export class DocumentsService {
               quantity: item.quantity,
               unitCost: item.unitCost ?? 0,
               subtotal: item.quantity * (item.unitCost ?? 0),
+              observaciones: item.observaciones ?? null,
             })),
           },
         },
@@ -219,6 +220,7 @@ export class DocumentsService {
             quantity: item.quantity,
             unitCost: item.unitCost ?? 0,
             subtotal: item.quantity * (item.unitCost ?? 0),
+            observaciones: item.observaciones ?? null,
           })),
         });
       }

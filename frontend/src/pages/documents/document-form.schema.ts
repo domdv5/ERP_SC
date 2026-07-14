@@ -1,11 +1,14 @@
 import { z } from 'zod'
 
 export const itemSchema = z.object({
-  productId:   z.string().min(1, 'Selecciona un producto'),
-  productCode: z.string(),
-  productDesc: z.string(),
-  quantity:    z.coerce.number().positive('La cantidad debe ser mayor a 0'),
-  unitCost:    z.coerce.number().nonnegative('El costo no puede ser negativo').optional(),
+  productId:     z.string().min(1, 'Selecciona un producto'),
+  productCode:   z.string(),
+  productDesc:   z.string(),
+  quantity:      z.coerce.number().positive('La cantidad debe ser mayor a 0'),
+  unitCost:      z.coerce.number().nonnegative('El costo no puede ser negativo').optional(),
+  // Nota de talla por línea — solo se usa/muestra en traslados (T), ver showObservaciones en
+  // ProductRow.tsx. z.literal('') admite el input vacío del formulario sin fallar la validación.
+  observaciones: z.string().max(500, 'Máximo 500 caracteres').optional().or(z.literal('')),
 })
 
 export const formSchema = z.object({

@@ -118,11 +118,12 @@ export default function DocumentFormPage() {
       freight:         existingDoc.freight ?? undefined,
       notes:           existingDoc.notes ?? undefined,
       items: existingDoc.documentItems.map((item) => ({
-        productId:   item.productId,
-        productCode: item.product.code,
-        productDesc: item.product.description,
-        quantity:    item.quantity,
-        unitCost:    item.unitCost ?? undefined,
+        productId:     item.productId,
+        productCode:   item.product.code,
+        productDesc:   item.product.description,
+        quantity:      item.quantity,
+        unitCost:      item.unitCost ?? undefined,
+        observaciones: item.observaciones ?? undefined,
       })),
     })
   }, [existingDoc, reset, navigate])
@@ -230,9 +231,10 @@ export default function DocumentFormPage() {
       freight:         values.freight !== undefined && !isNaN(values.freight) ? values.freight : undefined,
       notes:           values.notes || undefined,
       items: values.items.map((item) => ({
-        productId: item.productId,
-        quantity:  item.quantity,
-        unitCost:  item.unitCost !== undefined && !isNaN(item.unitCost) ? item.unitCost : undefined,
+        productId:     item.productId,
+        quantity:      item.quantity,
+        unitCost:      item.unitCost !== undefined && !isNaN(item.unitCost) ? item.unitCost : undefined,
+        observaciones: item.observaciones || undefined,
       })),
     }
 
@@ -266,9 +268,11 @@ export default function DocumentFormPage() {
   const needsTransfer   = docType === 'T'
   const needsFreight    = docType === 'CM'
   const showCostColumn  = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
-  // SAJ también necesita la columna de costo (de solo lectura) para que el número de <td> por fila
-  // siga alineado con el <thead> — antes la columna quedaba totalmente ausente para SAJ.
-  const hasCostColumn   = showCostColumn || docType === 'SAJ'
+  // SAJ y T también necesitan la columna de costo (de solo lectura) para que el número de <td> por
+  // fila siga alineado con el <thead> — antes la columna quedaba totalmente ausente para ambos.
+  const hasCostColumn   = showCostColumn || docType === 'SAJ' || docType === 'T'
+  // Nota de talla por línea — solo traslados (T), ver showObservaciones en ProductRow.tsx.
+  const showObservacionesColumn = docType === 'T'
 
   return (
     <div className="space-y-6 pb-10">
@@ -564,7 +568,14 @@ export default function DocumentFormPage() {
             <button
               type="button"
               onClick={() =>
-                append({ productId: '', productCode: '', productDesc: '', quantity: 1, unitCost: undefined })
+                append({
+                  productId:     '',
+                  productCode:   '',
+                  productDesc:   '',
+                  quantity:      1,
+                  unitCost:      undefined,
+                  observaciones: undefined,
+                })
               }
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white rounded-lg gradient-action hover:opacity-90 transition-opacity"
             >
@@ -604,13 +615,18 @@ export default function DocumentFormPage() {
                     <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-28">
                       Cantidad
                     </th>
+                    {showObservacionesColumn && (
+                      <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-40">
+                        Observaciones
+                      </th>
+                    )}
                     {hasCostColumn && (
                       <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-36">
                         Costo unit.{' '}
                         {docType === 'EAI' && (
                           <span className="text-content-faint normal-case">(opc.)</span>
                         )}
-                        {docType === 'SAJ' && (
+                        {(docType === 'SAJ' || docType === 'T') && (
                           <span className="text-content-faint normal-case">(autom.)</span>
                         )}
                       </th>

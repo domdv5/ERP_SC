@@ -55,11 +55,15 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   const unitCost    = watch(`items.${index}.unitCost`) ?? 0
 
   const subtotal    = Number(quantity) * Number(unitCost)
+  // Nota de talla por línea — solo aplica a traslados (T): permite registrar el mismo código
+  // de producto repartido en varios bultos, cada uno con una talla distinta.
+  const showObservaciones = docType === 'T'
   const showCost    = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
-  // SAJ nunca permite digitar el costo — el backend siempre usa el avgCost vigente del producto
-  // (SajEffectStrategy). Aquí solo lo mostramos como referencia informativa, de solo lectura.
-  const showCostReadonly = docType === 'SAJ'
-  // SAJ no llena items.${index}.unitCost (no hay input ni autofill), así que el subtotal
+  // SAJ y T nunca permiten digitar el costo: SAJ porque el backend siempre usa el avgCost vigente
+  // del producto (SajEffectStrategy); T porque un traslado no tiene costo real, solo se muestra
+  // el avgCost como referencia informativa para que el subtotal de la fila tenga sentido.
+  const showCostReadonly = docType === 'SAJ' || docType === 'T'
+  // Ni SAJ ni T llenan items.${index}.unitCost (no hay input ni autofill), así que el subtotal
   // basado en ese campo siempre daría 0 — se calcula aparte con el avgCost seleccionado.
   const readonlySubtotal = selectedAvgCost !== null ? Number(quantity) * selectedAvgCost : null
   const costOptional = docType === 'EAI'
@@ -154,6 +158,26 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
         )}
       </td>
 
+      {/* Observaciones (talla) — solo traslados (T) */}
+      {showObservaciones && (
+        <td className="px-3 py-2 w-40">
+          <input
+            type="text"
+            maxLength={500}
+            placeholder="Talla / nota..."
+            {...register(`items.${index}.observaciones`)}
+            className={cn(
+              'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint',
+              'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
+              rowErrors?.observaciones ? 'border-red-500' : 'border-ui-border-medium',
+            )}
+          />
+          {rowErrors?.observaciones && (
+            <p className="text-xs text-red-500 mt-1">{rowErrors.observaciones.message}</p>
+          )}
+        </td>
+      )}
+
       {/* Unit cost */}
       {showCost && (
         <td className="px-3 py-2 w-36">
@@ -181,7 +205,7 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
         </td>
       )}
 
-      {/* Unit cost — read-only for SAJ: backend always uses the product's current avgCost */}
+      {/* Unit cost — read-only for SAJ and T: backend always uses the product's current avgCost */}
       {showCostReadonly && (
         <td className="px-3 py-2 w-36">
           <span className="inline-flex items-center gap-1 text-sm text-content-muted">

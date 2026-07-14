@@ -248,6 +248,15 @@ export default function DocumentDetailPage() {
   const isVoided     = doc.status === 'voided'
 
   const itemsTotal = doc.documentItems.reduce((sum, item) => sum + item.subtotal, 0)
+  // Nota de talla por línea — solo se muestra en traslados (T), donde el mismo código de producto
+  // puede repartirse en varios bultos con tallas distintas. Ver ProductRow.tsx showObservaciones.
+  const showObservaciones = doc.type === 'T'
+  const itemHeaders = showObservaciones
+    ? ['Código', 'Descripción', 'Cantidad', 'Observaciones', 'Costo unit.', 'Subtotal']
+    : ['Código', 'Descripción', 'Cantidad', 'Costo unit.', 'Subtotal']
+  // Celdas vacías a saltar en el pie de tabla antes de la etiqueta "Total" — debe alinearse
+  // bajo la columna "Costo unit." sin importar si Observaciones está presente o no.
+  const footerSkipCols = showObservaciones ? 4 : 3
 
   return (
     <div className="space-y-6 pb-10">
@@ -439,7 +448,7 @@ export default function DocumentDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Código', 'Descripción', 'Cantidad', 'Costo unit.', 'Subtotal'].map((h) => (
+                  {itemHeaders.map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -461,6 +470,11 @@ export default function DocumentDetailPage() {
                     <td className="px-5 py-3.5 text-content-muted text-xs">
                       {item.quantity.toLocaleString('es-CO')}
                     </td>
+                    {showObservaciones && (
+                      <td className="px-5 py-3.5 text-content-muted text-xs max-w-[200px]">
+                        <span className="truncate block">{item.observaciones || '—'}</span>
+                      </td>
+                    )}
                     <td className="px-5 py-3.5 text-content-muted text-xs">
                       {item.unitCost > 0 ? formatCOP(item.unitCost) : '—'}
                     </td>
@@ -472,7 +486,7 @@ export default function DocumentDetailPage() {
               </tbody>
               <tfoot>
                 <tr className="border-t border-ui-border bg-surface-raised">
-                  <td colSpan={3} />
+                  <td colSpan={footerSkipCols} />
                   <td className="px-5 py-3.5 text-xs font-semibold text-content-faint uppercase tracking-wider">
                     Total
                   </td>

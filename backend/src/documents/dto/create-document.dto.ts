@@ -9,6 +9,7 @@ import {
   IsPositive,
   IsString,
   IsUUID,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -27,6 +28,11 @@ export class CreateDocumentItemDto {
   @IsNumber()
   @Min(0)
   unitCost?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  observaciones?: string;
 }
 
 export class CreateDocumentDto {

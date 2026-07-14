@@ -37,6 +37,9 @@ export interface DocumentItem {
   unitPrice: number
   unitCost: number
   subtotal: number
+  // Nota de talla por línea, solo aplica a traslados (T) — permite registrar un mismo código
+  // de producto dividido en varios bultos, cada uno con una talla distinta.
+  observaciones?: string | null
   product: {
     id: string
     code: string
@@ -91,6 +94,7 @@ export interface CreateDocumentItemPayload {
   productId: string
   quantity: number
   unitCost?: number
+  observaciones?: string
 }
 
 export interface CreateDocumentPayload {

@@ -483,6 +483,7 @@ model DocumentItem {
   unitPrice     Decimal  @default(0) @map("unit_price") @db.Decimal(14, 4)
   unitCost      Decimal  @default(0) @map("unit_cost") @db.Decimal(14, 4)
   subtotal      Decimal  @default(0) @db.Decimal(16, 2)
+  observaciones String?  @db.VarChar(500)
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   document Document @relation(fields: [documentId], references: [id])
