@@ -16,6 +16,7 @@ import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
 import { formSchema, type FormValues } from './document-form.schema'
 import { ProductRow } from './components/ProductRow'
+import { BarcodeScanInput } from './components/BarcodeScanInput'
 
 import type { DocumentType } from '@/types/document.types'
 import type { Warehouse, WarehouseDetail } from '@/types/warehouse.types'
@@ -58,12 +59,21 @@ export default function DocumentFormPage() {
   const [debouncedTpSearch] = useDebounce(tpSearch, 400)
   const [tpSelectedName, setTpSelectedName] = useState('')
 
+  // avgCost + unitOfMeasure por producto conocidos al momento de agregarlo vía escaneo de código
+  // de barras — permite que ProductRow inicialice su selectedAvgCost/selectedUnitOfMeasure aunque
+  // la fila no se haya creado a través del combobox propio de la fila (ver initialAvgCost /
+  // initialUnitOfMeasure en ProductRow).
+  const [scannedProductInfo, setScannedProductInfo] = useState<
+    Record<string, { avgCost: number; unitOfMeasure: 'unidad' | 'docena' }>
+  >({})
+
   const {
     control,
     register,
     handleSubmit,
     watch,
     setValue,
+    getValues,
     reset,
     formState: { errors },
   } = useForm<FormValues>({
@@ -76,7 +86,7 @@ export default function DocumentFormPage() {
     },
   })
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'items' })
+  const { fields, append, remove, replace } = useFieldArray({ control, name: 'items' })
 
   const docType         = watch('type')
   const warehouseId     = watch('warehouseId')
@@ -155,9 +165,10 @@ export default function DocumentFormPage() {
   const [selectedZoneId, setSelectedZoneId] = useState('')
   useEffect(() => { setSelectedZoneId('') }, [destWarehouseId])
 
-  const destBins = selectedZoneId
+  const destBins = (selectedZoneId
     ? destZones.find((z) => z.id === selectedZoneId)?.bins ?? []
     : destZones.flatMap((z) => z.bins)
+  ).filter((bin) => !bin.occupied)
 
   // Third-party options
   const tpOptions: ComboboxOption[] = (tpData?.items ?? []).map((tp: ThirdParty) => ({
@@ -255,6 +266,9 @@ export default function DocumentFormPage() {
   const needsTransfer   = docType === 'T'
   const needsFreight    = docType === 'CM'
   const showCostColumn  = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
+  // SAJ también necesita la columna de costo (de solo lectura) para que el número de <td> por fila
+  // siga alineado con el <thead> — antes la columna quedaba totalmente ausente para SAJ.
+  const hasCostColumn   = showCostColumn || docType === 'SAJ'
 
   return (
     <div className="space-y-6 pb-10">
@@ -307,6 +321,7 @@ export default function DocumentFormPage() {
                       setValue('destWarehouseId', undefined)
                       setValue('destBinId', undefined)
                       setValue('freight', undefined)
+                      replace([])
                     }}
                     className={cn(
                       'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all',
@@ -558,6 +573,16 @@ export default function DocumentFormPage() {
             </button>
           </div>
 
+          <BarcodeScanInput
+            docType={docType}
+            append={append}
+            getValues={getValues}
+            setValue={setValue}
+            onProductScanned={(productId, avgCost, unitOfMeasure) =>
+              setScannedProductInfo((prev) => ({ ...prev, [productId]: { avgCost, unitOfMeasure } }))
+            }
+          />
+
           {typeof errors.items?.message === 'string' && (
             <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/20">
               <p className="text-sm text-red-500">{errors.items.message}</p>
@@ -579,11 +604,14 @@ export default function DocumentFormPage() {
                     <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-28">
                       Cantidad
                     </th>
-                    {showCostColumn && (
+                    {hasCostColumn && (
                       <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-36">
                         Costo unit.{' '}
                         {docType === 'EAI' && (
                           <span className="text-content-faint normal-case">(opc.)</span>
+                        )}
+                        {docType === 'SAJ' && (
+                          <span className="text-content-faint normal-case">(autom.)</span>
                         )}
                       </th>
                     )}
@@ -604,6 +632,8 @@ export default function DocumentFormPage() {
                       setValue={setValue}
                       watch={watch}
                       errors={errors}
+                      initialAvgCost={scannedProductInfo[field.productId]?.avgCost}
+                      initialUnitOfMeasure={scannedProductInfo[field.productId]?.unitOfMeasure}
                     />
                   ))}
                 </tbody>
