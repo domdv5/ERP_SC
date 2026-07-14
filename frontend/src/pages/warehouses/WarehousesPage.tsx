@@ -133,15 +133,15 @@ export default function WarehousesPage() {
   const { mutate: createBinMutate, isPending: isCreatingBin } = useMutation({
     mutationFn: ({ warehouseId, zoneId, payload }: { warehouseId: string; zoneId: string; payload: BinFormValues }) =>
       createBin(warehouseId, zoneId, { code: payload.code }),
-    onSuccess: () => { invalidateDetail(); setBinModal(null); toast.success('Bolsa creada correctamente') },
-    onError:   () => toast.error('Error al crear la bolsa'),
+    onSuccess: () => { invalidateDetail(); setBinModal(null); toast.success('Bulto creado correctamente') },
+    onError:   () => toast.error('Error al crear el bulto'),
   })
 
   const { mutate: updateBinMutate, isPending: isUpdatingBin } = useMutation({
     mutationFn: ({ warehouseId, zoneId, binId, payload }: { warehouseId: string; zoneId: string; binId: string; payload: BinFormValues }) =>
       updateBin(warehouseId, zoneId, binId, payload),
-    onSuccess: () => { invalidateDetail(); setBinModal(null); toast.success('Bolsa actualizada correctamente') },
-    onError:   () => toast.error('Error al actualizar la bolsa'),
+    onSuccess: () => { invalidateDetail(); setBinModal(null); toast.success('Bulto actualizado correctamente') },
+    onError:   () => toast.error('Error al actualizar el bulto'),
   })
 
   return (

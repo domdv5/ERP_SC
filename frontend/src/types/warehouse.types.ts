@@ -15,6 +15,7 @@ export interface Bin {
   code: number
   active: boolean
   createdAt: string
+  occupied: boolean
 }
 
 export interface Zone {

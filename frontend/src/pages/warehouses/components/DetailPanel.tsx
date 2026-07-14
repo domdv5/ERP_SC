@@ -54,7 +54,7 @@ function ZoneSummaryCard({
           )}
         </div>
         <p className="text-xs text-content-faint font-accent">
-          {zone.bins.length === 0 ? 'Sin bolsas' : `${zone.bins.length} ${zone.bins.length === 1 ? 'bolsa' : 'bolsas'}`}
+          {zone.bins.length === 0 ? 'Sin bultos' : `${zone.bins.length} ${zone.bins.length === 1 ? 'bulto' : 'bultos'}`}
         </p>
       </div>
       <ChevronRight className="w-4 h-4 text-content-faint shrink-0" />
@@ -63,7 +63,7 @@ function ZoneSummaryCard({
           <button
             type="button"
             onClick={onAddBin}
-            title="Agregar bolsa"
+            title="Agregar bulto"
             className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -94,12 +94,12 @@ function BinCard({
         <Package className="w-3.5 h-3.5 text-brand-secondary" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-content truncate">Bolsa {bin.code}</p>
+        <p className="text-xs font-medium text-content truncate">Bulto {bin.code}</p>
         <p className={cn(
           'text-[10px] font-accent',
           bin.active ? 'text-brand-secondary' : 'text-content-muted',
         )}>
-          {bin.active ? 'Activa' : 'Inactiva'}
+          {bin.active ? 'Activo' : 'Inactivo'}
         </p>
       </div>
       {canManage && (
@@ -190,7 +190,7 @@ export function DetailPanel({
               </span>
             </div>
             <p className="text-content-muted text-sm mt-0.5 font-accent">
-              Zonas y bolsas de almacenamiento
+              Zonas y bultos de almacenamiento
             </p>
           </div>
           {canManage && (
@@ -203,7 +203,7 @@ export function DetailPanel({
           <div className="flex divide-x divide-ui-divide">
             {[
               { label: 'Zonas',  value: wh.zones.length, Icon: FolderOpen, isText: false },
-              { label: 'Bolsas', value: totalBins, Icon: Package, isText: false },
+              { label: 'Bultos', value: totalBins, Icon: Package, isText: false },
               { label: 'Estado', value: wh.active ? 'Activa' : 'Inactiva', Icon: TypeIcon, isText: true },
             ].map(stat => (
               <div key={stat.label} className="flex-1 flex items-center gap-3 px-5 py-4">
@@ -230,7 +230,7 @@ export function DetailPanel({
               <p className="text-xs text-content-faint font-accent mt-0.5">
                 {wh.zones.length === 0
                   ? 'Sin zonas registradas'
-                  : `${wh.zones.length} zonas · ${totalBins} bolsas en total`}
+                  : `${wh.zones.length} zonas · ${totalBins} bultos en total`}
               </p>
             </div>
             {canManage && (
@@ -302,7 +302,7 @@ export function DetailPanel({
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl text-content">{zone.name}</h1>
             <p className="text-content-muted text-sm mt-0.5 font-accent">
-              {zone.bins.length === 0 ? 'Sin bolsas' : `${zone.bins.length} ${zone.bins.length === 1 ? 'bolsa' : 'bolsas'}`}
+              {zone.bins.length === 0 ? 'Sin bultos' : `${zone.bins.length} ${zone.bins.length === 1 ? 'bulto' : 'bultos'}`}
             </p>
           </div>
           {canManage && (
@@ -313,14 +313,14 @@ export function DetailPanel({
         {/* Bins grid */}
         <div className="bg-surface rounded-2xl border border-ui-border overflow-hidden">
           <div className="px-5 py-4 border-b border-ui-border flex items-center justify-between">
-            <p className="text-sm font-medium text-content">Bolsas</p>
+            <p className="text-sm font-medium text-content">Bultos</p>
             {canManage && (
               <button
                 onClick={() => onAddBin(zone)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 active:scale-[0.98] gradient-action"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Nueva bolsa
+                Nuevo bulto
               </button>
             )}
           </div>
@@ -328,8 +328,8 @@ export function DetailPanel({
             {zone.bins.length === 0 ? (
               <EmptyState
                 icon={Package}
-                title="Sin bolsas en esta zona"
-                description="Crea la primera bolsa para asignar ubicaciones de stock"
+                title="Sin bultos en esta zona"
+                description="Crea el primer bulto para asignar ubicaciones de stock"
               />
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -358,7 +358,7 @@ export function DetailPanel({
       return (
         <EmptyState
           icon={Package}
-          title="Bolsa no encontrada"
+          title="Bulto no encontrado"
           description="Es posible que haya sido eliminada o que el enlace sea incorrecto"
         />
       )
@@ -382,7 +382,7 @@ export function DetailPanel({
             {zone.name}
           </button>
           <ChevronRight className="w-3 h-3" />
-          <span className="text-content-secondary">Bolsa {bin.code}</span>
+          <span className="text-content-secondary">Bulto {bin.code}</span>
         </div>
 
         {/* Header */}
@@ -391,9 +391,9 @@ export function DetailPanel({
             <Package className="w-6 h-6 text-brand-secondary" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl text-content">Bolsa {bin.code}</h1>
+            <h1 className="text-2xl text-content">Bulto {bin.code}</h1>
             <p className="text-content-muted text-sm mt-0.5 font-accent">
-              Bolsa de almacenamiento — {zone.name}
+              Bulto de almacenamiento — {zone.name}
             </p>
           </div>
           {canManage && (
@@ -411,7 +411,7 @@ export function DetailPanel({
               { label: 'Número', value: String(bin.code) },
               { label: 'Zona',   value: zone.name },
               { label: 'Bodega', value: wh.name },
-              { label: 'Estado', value: bin.active ? 'Activa' : 'Inactiva' },
+              { label: 'Estado', value: bin.active ? 'Activo' : 'Inactivo' },
             ].map(row => (
               <div key={row.label} className="flex items-center justify-between px-5 py-3.5">
                 <span className="text-xs text-content-muted font-accent">{row.label}</span>

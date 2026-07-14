@@ -97,10 +97,10 @@ export function BinForm({ open, onClose, onSubmit, isPending, zone, defaultValue
         <div className="flex items-center justify-between px-6 py-4 border-b border-ui-border gradient-dark">
           <div>
             <h2 className="text-white font-semibold">
-              {isEdit ? 'Editar bolsa' : 'Nueva bolsa'}
+              {isEdit ? 'Editar bulto' : 'Nuevo bulto'}
             </h2>
             <p className="text-white/50 text-xs mt-0.5 font-accent">
-              {zone ? `Zona ${zone.name}` : isEdit ? 'Modifica la información de la bolsa' : 'Completa la información de la bolsa'}
+              {zone ? `Zona ${zone.name}` : isEdit ? 'Modifica la información del bulto' : 'Completa la información del bulto'}
             </p>
           </div>
           <button type="button" onClick={onClose} className="text-white/50 hover:text-white transition-colors">
@@ -112,7 +112,7 @@ export function BinForm({ open, onClose, onSubmit, isPending, zone, defaultValue
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
           <div className="px-6 py-5 space-y-4">
 
-            <Field label="Número de bolsa" error={errors.code?.message}>
+            <Field label="Número de bulto" error={errors.code?.message}>
               <Input
                 {...register('code')}
                 type="number"
@@ -131,7 +131,7 @@ export function BinForm({ open, onClose, onSubmit, isPending, zone, defaultValue
                     {...register('active')}
                     className="w-4 h-4 rounded border-ui-border-medium accent-brand-secondary"
                   />
-                  <span className="text-sm text-content-secondary">Activa</span>
+                  <span className="text-sm text-content-secondary">Activo</span>
                 </label>
               </Field>
             )}
@@ -152,7 +152,7 @@ export function BinForm({ open, onClose, onSubmit, isPending, zone, defaultValue
               disabled={isPending}
               className="px-5 py-2 text-sm font-medium text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-50 gradient-action"
             >
-              {isPending ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear bolsa'}
+              {isPending ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear bulto'}
             </button>
           </div>
         </form>

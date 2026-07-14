@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateWarehouseDto, UpdateWarehouseDto } from './dto/index';
+
+type BinWithStocks = Prisma.BinGetPayload<{
+  include: { binStocks: { select: { quantity: true } } };
+}>;
 
 @Injectable()
 export class WarehousesService {
@@ -14,11 +19,36 @@ export class WarehousesService {
     });
   }
 
-  findOne(id: string) {
-    return this.prisma.warehouse.findUnique({
+  async findOne(id: string) {
+    const warehouse = await this.prisma.warehouse.findUnique({
       where: { id },
-      include: { zones: { include: { bins: true } } },
+      include: {
+        zones: {
+          include: {
+            bins: { include: { binStocks: { select: { quantity: true } } } },
+          },
+        },
+      },
     });
+
+    if (!warehouse) {
+      return warehouse;
+    }
+
+    return {
+      ...warehouse,
+      zones: warehouse.zones.map((zone) => ({
+        ...zone,
+        bins: zone.bins.map((bin) => this.buildBinOccupancy(bin)),
+      })),
+    };
+  }
+
+  private buildBinOccupancy(bin: BinWithStocks) {
+    const { binStocks, ...rest } = bin;
+    const occupied = binStocks.reduce((sum, s) => sum + s.quantity, 0) > 0;
+
+    return { ...rest, occupied };
   }
 
   create(createWarehouseDto: CreateWarehouseDto) {
