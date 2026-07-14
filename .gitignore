@@ -54,3 +54,7 @@ generated/prisma
 plans
 docs-strategies.txt
 TASKS.TXT
+.vscode
+
+# Notas manuscritas internas, ya volcadas a task/
+task
