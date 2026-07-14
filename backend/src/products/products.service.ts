@@ -95,10 +95,7 @@ export class ProductsService {
         inventoryRecords.find((r) => r.warehouseId === w.id)?.quantity ?? 0,
     }));
 
-    const totalStock = stockByWarehouse.reduce(
-      (sum, s) => sum + s.quantity,
-      0,
-    );
+    const totalStock = stockByWarehouse.reduce((sum, s) => sum + s.quantity, 0);
 
     return { stockByWarehouse, totalStock };
   }

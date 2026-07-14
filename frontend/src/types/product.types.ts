@@ -38,6 +38,7 @@ export interface Product {
   active: boolean
   avgCost: string
   lastCost: string
+  unitOfMeasure: 'unidad' | 'docena'
   createdAt: string
   updatedAt: string
   brand: Brand

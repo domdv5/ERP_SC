@@ -30,6 +30,7 @@ export interface CreateProductPayload {
   salePrice: number
   minSalePrice: number
   legacyCode?: string
+  unitOfMeasure?: 'unidad' | 'docena'
 }
 
 export async function getProducts(params?: GetProductsParams): Promise<{ items: Product[]; meta: ProductMeta }> {

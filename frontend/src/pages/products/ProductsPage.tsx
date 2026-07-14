@@ -1,78 +1,124 @@
-import { useEffect, useState } from 'react'
-import { useDebounce } from 'use-debounce'
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import { Package, BarChart2, CheckCircle2, Plus, Pencil, Trash2 } from 'lucide-react'
-import { getProducts, createProduct, updateProduct, deleteProduct } from '@/services/products.service'
-import type { CreateProductPayload } from '@/services/products.service'
-import { usePermission } from '@/hooks/usePermission'
-import { ProductForm } from './components/ProductForm'
-import type { FormValues } from './components/ProductForm'
-import { DeleteProductDialog } from './components/DeleteProductDialog'
-import { StatsGrid, TableToolbar, TableSkeleton, EmptyState, ErrorState, TablePagination } from '@/components/shared'
-import type { Product } from '@/types'
+import { useEffect, useState } from "react";
+import { useDebounce } from "use-debounce";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Package, BarChart2, CheckCircle2, Plus, Pencil, Trash2 } from "lucide-react";
+import {
+  getProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "@/services/products.service";
+import type { CreateProductPayload } from "@/services/products.service";
+import { usePermission } from "@/hooks/usePermission";
+import { ProductForm } from "./components/ProductForm";
+import type { FormValues } from "./components/ProductForm";
+import { DeleteProductDialog } from "./components/DeleteProductDialog";
+import {
+  StatsGrid,
+  TableToolbar,
+  TableSkeleton,
+  EmptyState,
+  ErrorState,
+  TablePagination,
+} from "@/components/shared";
+import type { Product } from "@/types";
 
 const formatCOP = (value: number) =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value)
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+  }).format(value);
 
 export default function ProductsPage() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
-  const canCreate = usePermission('product.create')
-  const canUpdate = usePermission('product.update')
-  const canDelete = usePermission('product.delete')
+  const canCreate = usePermission("product.create");
+  const canUpdate = usePermission("product.update");
+  const canDelete = usePermission("product.delete");
 
-  const [search, setSearch] = useState('')
-  const [page, setPage]     = useState(1)
-  const [formOpen, setFormOpen]   = useState(false)
-  const [editing, setEditing]     = useState<Product | null>(null)
-  const [deleting, setDeleting]   = useState<Product | null>(null)
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState<Product | null>(null);
 
-  const [debouncedSearch] = useDebounce(search, 400)
+  const [debouncedSearch] = useDebounce(search, 400);
 
   useEffect(() => {
-    setPage(1)
-  }, [debouncedSearch])
+    setPage(1);
+  }, [debouncedSearch]);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['products', debouncedSearch, page],
+    queryKey: ["products", debouncedSearch, page],
     queryFn: () => getProducts({ search: debouncedSearch || undefined, page, limit: 20 }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
-  })
+  });
 
-  const totalPages  = data?.meta.totalPages ?? 1
-  const items       = data?.items ?? []
-  const total       = data?.meta.total ?? 0
-  const activeCount = data?.meta.activeCount ?? 0
-  const inStockCount = data?.meta.inStockCount ?? 0
+  const totalPages = data?.meta.totalPages ?? 1;
+  const items = data?.items ?? [];
+  const total = data?.meta.total ?? 0;
+  const activeCount = data?.meta.activeCount ?? 0;
+  const inStockCount = data?.meta.inStockCount ?? 0;
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['products'] })
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["products"] });
 
   const { mutate: create, isPending: isCreating } = useMutation({
     mutationFn: (payload: CreateProductPayload) => createProduct(payload),
-    onSuccess: () => { invalidate(); setFormOpen(false); toast.success('Producto creado correctamente') },
-    onError:   () => toast.error('Error al crear el producto'),
-  })
+    onSuccess: () => {
+      invalidate();
+      setFormOpen(false);
+      toast.success("Producto creado correctamente");
+    },
+    onError: () => toast.error("Error al crear el producto"),
+  });
 
   const { mutate: update, isPending: isUpdating } = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateProductPayload> }) =>
       updateProduct(id, payload),
-    onSuccess: () => { invalidate(); setEditing(null); toast.success('Producto actualizado correctamente') },
-    onError:   () => toast.error('Error al actualizar el producto'),
-  })
+    onSuccess: () => {
+      invalidate();
+      setEditing(null);
+      toast.success("Producto actualizado correctamente");
+    },
+    onError: () => toast.error("Error al actualizar el producto"),
+  });
 
   const { mutate: remove, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteProduct(id),
-    onSuccess: () => { invalidate(); setDeleting(null); toast.success('Producto eliminado correctamente') },
-    onError:   () => toast.error('Error al eliminar el producto'),
-  })
+    onSuccess: () => {
+      invalidate();
+      setDeleting(null);
+      toast.success("Producto eliminado correctamente");
+    },
+    onError: () => toast.error("Error al eliminar el producto"),
+  });
 
   const statCards = [
-    { label: 'Total',     value: total,        icon: Package,      bg: 'bg-brand-primary/10',   fg: 'text-brand-primary dark:text-content' },
-    { label: 'Activos',   value: activeCount,  icon: CheckCircle2, bg: 'bg-brand-secondary/10', fg: 'text-brand-secondary' },
-    { label: 'Con stock', value: inStockCount, icon: BarChart2,    bg: 'bg-blue-500/10',        fg: 'text-blue-500' },
-  ]
+    {
+      label: "Total",
+      value: total,
+      icon: Package,
+      bg: "bg-brand-primary/10",
+      fg: "text-brand-primary dark:text-content",
+    },
+    {
+      label: "Activos",
+      value: activeCount,
+      icon: CheckCircle2,
+      bg: "bg-brand-secondary/10",
+      fg: "text-brand-secondary",
+    },
+    {
+      label: "Con stock",
+      value: inStockCount,
+      icon: BarChart2,
+      bg: "bg-blue-500/10",
+      fg: "text-blue-500",
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -107,19 +153,23 @@ export default function ProductsPage() {
           onRefresh={refetch}
         />
 
-        {isError && (
-          <ErrorState message="Error al cargar los productos" onRetry={refetch} />
-        )}
+        {isError && <ErrorState message="Error al cargar los productos" onRetry={refetch} />}
 
-        {isLoading && (
-          <TableSkeleton widths={['w-32', 'w-48', 'w-20', 'w-16']} />
-        )}
+        {isLoading && <TableSkeleton widths={["w-32", "w-48", "w-20", "w-16"]} />}
 
         {!isLoading && !isError && items.length === 0 && (
           <EmptyState
             icon={Package}
-            title={debouncedSearch ? `Sin resultados para "${debouncedSearch}"` : 'No hay productos registrados'}
-            description={debouncedSearch ? 'Prueba con otro término de búsqueda' : 'Crea el primero con el botón "Nuevo producto"'}
+            title={
+              debouncedSearch
+                ? `Sin resultados para "${debouncedSearch}"`
+                : "No hay productos registrados"
+            }
+            description={
+              debouncedSearch
+                ? "Prueba con otro término de búsqueda"
+                : 'Crea el primero con el botón "Nuevo producto"'
+            }
           />
         )}
 
@@ -128,9 +178,23 @@ export default function ProductsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Código', 'Descripción', 'Marca', 'Género', 'Categoría', 'Precio Venta', 'Stock', 'Acciones'].map((h) => (
-                    <th key={h} className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3">
-                      {h}
+                  {[
+                    { label: "Código", align: "text-left" },
+                    { label: "Descripción", align: "text-left" },
+                    { label: "Marca", align: "text-left" },
+                    { label: "Género", align: "text-left" },
+                    { label: "Categoría", align: "text-left" },
+                    { label: "Precio Venta", align: "text-right" },
+                    { label: "Stock", align: "text-left" },
+                    { label: "Últ. Costo", align: "text-right" },
+                    { label: "Costo Prom.", align: "text-right" },
+                    { label: "Acciones", align: "text-left" },
+                  ].map((h) => (
+                    <th
+                      key={h.label}
+                      className={`${h.align} text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3`}
+                    >
+                      {h.label}
                     </th>
                   ))}
                 </tr>
@@ -140,7 +204,7 @@ export default function ProductsPage() {
                   <tr
                     key={p.id}
                     onClick={canUpdate ? () => setEditing(p) : undefined}
-                    className={`hover:bg-surface-raised transition-colors group${canUpdate ? ' cursor-pointer' : ''}`}
+                    className={`hover:bg-surface-raised transition-colors group${canUpdate ? " cursor-pointer" : ""}`}
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
@@ -149,7 +213,9 @@ export default function ProductsPage() {
                         </div>
                         <div>
                           <p className="font-mono text-xs font-medium text-content">{p.code}</p>
-                          {p.legacyCode && <p className="text-xs text-content-faint">{p.legacyCode}</p>}
+                          {p.legacyCode && (
+                            <p className="text-xs text-content-faint">{p.legacyCode}</p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -159,20 +225,33 @@ export default function ProductsPage() {
                     <td className="px-5 py-3.5 text-content-muted text-xs">{p.brand.name}</td>
                     <td className="px-5 py-3.5 text-content-muted text-xs">{p.gender.name}</td>
                     <td className="px-5 py-3.5 text-content-muted text-xs">{p.category.name}</td>
-                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs">{formatCOP(p.salePrice)}</td>
+                    <td className="px-5 py-3.5 text-right text-content-secondary font-medium text-xs">
+                      {formatCOP(p.salePrice)}
+                    </td>
                     <td className="px-5 py-3.5">
                       <p className="text-content font-medium text-xs">{p.totalStock}</p>
                       {p.stockByWarehouse.length > 0 && (
                         <p className="text-xs text-content-faint">
-                          {p.stockByWarehouse.map((s) => `${s.warehouseName}: ${s.quantity}`).join(' · ')}
+                          {p.stockByWarehouse
+                            .map((s) => `${s.warehouseName}: ${s.quantity}`)
+                            .join(" · ")}
                         </p>
                       )}
+                    </td>
+                    <td className="px-5 py-3.5 text-right text-content-muted text-xs">
+                      {formatCOP(Number(p.lastCost))}
+                    </td>
+                    <td className="px-5 py-3.5 text-right text-content-muted text-xs">
+                      {formatCOP(Number(p.avgCost))}
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         {canUpdate && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); setEditing(p) }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditing(p);
+                            }}
                             className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
                           >
                             <Pencil className="w-3.5 h-3.5" />
@@ -180,7 +259,10 @@ export default function ProductsPage() {
                         )}
                         {canDelete && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); setDeleting(p) }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleting(p);
+                            }}
                             className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -215,7 +297,9 @@ export default function ProductsPage() {
       <ProductForm
         open={!!editing}
         onClose={() => setEditing(null)}
-        onSubmit={(data: FormValues) => update({ id: editing!.id, payload: data as Partial<CreateProductPayload> })}
+        onSubmit={(data: FormValues) =>
+          update({ id: editing!.id, payload: data as Partial<CreateProductPayload> })
+        }
         isPending={isUpdating}
         defaultValues={editing ?? undefined}
       />
@@ -226,5 +310,5 @@ export default function ProductsPage() {
         isPending={isDeleting}
       />
     </div>
-  )
+  );
 }

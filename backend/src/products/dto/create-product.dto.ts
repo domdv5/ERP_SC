@@ -1,10 +1,13 @@
 import {
+  IsEnum,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsPositive,
   IsString,
   IsUUID,
 } from 'class-validator';
+import { UnitOfMeasure } from '@prisma/client';
 
 export class CreateProductDto {
   @IsString()
@@ -39,4 +42,8 @@ export class CreateProductDto {
   @IsInt()
   @IsNotEmpty()
   minSalePrice!: number;
+
+  @IsOptional()
+  @IsEnum(UnitOfMeasure)
+  unitOfMeasure?: UnitOfMeasure;
 }

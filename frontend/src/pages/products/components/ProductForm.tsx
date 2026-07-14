@@ -31,6 +31,7 @@ const schema = z
     categoryId: z.string().min(1, 'Selecciona una categoría'),
     salePrice: z.coerce.number().int('Debe ser un número entero').positive('Debe ser positivo'),
     minSalePrice: z.coerce.number().int('Debe ser un número entero').min(0, 'No puede ser negativo'),
+    unitOfMeasure: z.enum(['unidad', 'docena']),
   })
   .refine((d) => d.minSalePrice <= d.salePrice, {
     message: 'El precio mínimo no puede superar el precio de venta',
@@ -101,6 +102,8 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
   const [suffix, setSuffix] = useState('')
   // Stores the original code when the form opens in edit mode — used to auto-fill legacyCode
   const originalCodeRef = useRef('')
+  // Once the user edits minSalePrice by hand, stop overwriting it from salePrice
+  const [minSalePriceTouched, setMinSalePriceTouched] = useState(false)
 
   const {
     register,
@@ -120,6 +123,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
       categoryId: '',
       salePrice: 0,
       minSalePrice: 0,
+      unitOfMeasure: 'unidad',
     },
   })
 
@@ -135,8 +139,10 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
         categoryId:   defaultValues?.categoryId   ?? '',
         salePrice:    defaultValues?.salePrice    ?? 0,
         minSalePrice: defaultValues?.minSalePrice ?? 0,
+        unitOfMeasure: defaultValues?.unitOfMeasure ?? 'unidad',
       })
       setSuffix('')
+      setMinSalePriceTouched(false)
     }
   }, [open, defaultValues, reset])
 
@@ -159,6 +165,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
   const genderIdVal   = useWatch({ control, name: 'genderId' })
   const brandIdVal    = useWatch({ control, name: 'brandId' })
   const categoryIdVal = useWatch({ control, name: 'categoryId' })
+  const salePriceVal  = useWatch({ control, name: 'salePrice' })
 
   const prefix = useMemo(() => {
     const g = genders.find((x) => x.id === genderIdVal)
@@ -182,6 +189,13 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
       setValue('legacyCode', defaultValues?.legacyCode ?? '')
     }
   }, [prefix, suffix, isEdit, setValue, defaultValues?.legacyCode])
+
+  // Auto-fill minSalePrice as salePrice - 2% while creating, until the user edits it by hand
+  useEffect(() => {
+    if (isEdit || minSalePriceTouched) return
+    const salePrice = Number(salePriceVal) || 0
+    setValue('minSalePrice', salePrice > 0 ? Math.round(salePrice * 0.98) : 0)
+  }, [salePriceVal, isEdit, minSalePriceTouched, setValue])
 
   if (!open) return null
 
@@ -291,7 +305,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                   </span>
                 )}
               </p>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <Field label="Marca" error={errors.brandId?.message}>
                   <Controller
                     control={control}
@@ -324,6 +338,12 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                     ))}
                   </Select>
                 </Field>
+                <Field label="Unidad de medida" error={errors.unitOfMeasure?.message}>
+                  <Select {...register('unitOfMeasure')}>
+                    <option value="unidad">Unidad</option>
+                    <option value="docena">Docena</option>
+                  </Select>
+                </Field>
               </div>
             </section>
 
@@ -337,7 +357,13 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                   <Input {...register('salePrice')} type="number" min={0} step={1} placeholder="0" />
                 </Field>
                 <Field label="Precio mínimo de venta" error={errors.minSalePrice?.message}>
-                  <Input {...register('minSalePrice')} type="number" min={0} step={1} placeholder="0" />
+                  <Input
+                    {...register('minSalePrice', { onChange: () => setMinSalePriceTouched(true) })}
+                    type="number"
+                    min={0}
+                    step={1}
+                    placeholder="0"
+                  />
                 </Field>
               </div>
             </section>
