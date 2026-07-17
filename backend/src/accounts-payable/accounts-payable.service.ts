@@ -96,6 +96,8 @@ export class AccountsPayableService {
 
     return this.prisma.$transaction(
       async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "accounts_payable" WHERE id = ${id} FOR UPDATE`;
+
         const accountPayable = await tx.accountsPayable.findUnique({
           where: { id },
           include: { payablePayments: true },

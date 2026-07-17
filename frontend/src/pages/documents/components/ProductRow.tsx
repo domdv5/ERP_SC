@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { Trash2, AlertTriangle, Copy } from 'lucide-react'
 import { toast } from 'sonner'
-import type { UseFormRegister, UseFormSetValue, UseFormWatch, FieldErrors } from 'react-hook-form'
+import type { UseFormRegister, UseFormSetValue, UseFormWatch, UseFormGetValues, FieldErrors } from 'react-hook-form'
 import { Combobox } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { getProducts } from '@/services/products.service'
@@ -26,6 +26,7 @@ interface ProductRowProps {
   register: UseFormRegister<FormValues>
   setValue: UseFormSetValue<FormValues>
   watch: UseFormWatch<FormValues>
+  getValues: UseFormGetValues<FormValues>
   errors: FieldErrors<FormValues>
   // Costo promedio ya conocido al momento de crear la fila (ej. vía escaneo de código de barras),
   // para que el warning de desviación EAI y la celda de solo lectura SAJ no queden vacíos solo
@@ -37,7 +38,7 @@ interface ProductRowProps {
   initialUnitOfMeasure?: 'unidad' | 'docena'
 }
 
-export function ProductRow({ index, docType, onRemove, register, setValue, watch, errors, initialAvgCost, initialUnitOfMeasure }: ProductRowProps) {
+export function ProductRow({ index, docType, onRemove, register, setValue, watch, getValues, errors, initialAvgCost, initialUnitOfMeasure }: ProductRowProps) {
   const [productSearch, setProductSearch] = useState('')
   const [debouncedProductSearch] = useDebounce(productSearch, 400)
   // Costo promedio del producto al momento de seleccionarlo — solo para comparar contra lo digitado
@@ -113,6 +114,24 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
           value={productId ?? ''}
           onChange={(id) => {
             const product = productData?.items.find((p: Product) => p.id === id)
+
+            // Excluye el índice propio: una fila que ya tiene este productId (ej. reabrir su
+            // combobox sin cambiar nada) no debe detectarse a sí misma como duplicado.
+            const currentItems = getValues('items')
+            const existingIndex = currentItems.findIndex((item, i) => item.productId === id && i !== index)
+
+            if (existingIndex >= 0) {
+              // Mismo patrón que BarcodeScanInput: el producto ya está en otra fila, se fusiona
+              // la cantidad ahí en vez de dejar dos filas con el mismo productId (causa del bug
+              // de avgCost — ver plans/004-avgcost-stale-read-duplicate-product-lines.md).
+              const currentRowQty = Number(currentItems[index].quantity) || 0
+              const existingQty = Number(currentItems[existingIndex].quantity) || 0
+              setValue(`items.${existingIndex}.quantity`, existingQty + currentRowQty)
+              onRemove()
+              toast.success(`${product?.code} ya estaba en la lista — cantidad sumada`)
+              return
+            }
+
             setValue(`items.${index}.productId`, id)
             setValue(`items.${index}.productCode`, product?.code ?? '')
             setValue(`items.${index}.productDesc`, product?.description ?? '')

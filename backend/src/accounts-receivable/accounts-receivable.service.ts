@@ -98,6 +98,8 @@ export class AccountsReceivableService {
 
     return this.prisma.$transaction(
       async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE id = ${id} FOR UPDATE`;
+
         const accountReceivable = await tx.accountsReceivable.findUnique({
           where: { id },
           include: { receivablePayments: true },

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   CreateProductDto,
@@ -98,6 +98,19 @@ export class ProductsService {
     const totalStock = stockByWarehouse.reduce((sum, s) => sum + s.quantity, 0);
 
     return { stockByWarehouse, totalStock };
+  }
+
+  async findByCode(code: string) {
+    const product = await this.prisma.product.findFirst({
+      where: { code: { equals: code, mode: 'insensitive' } },
+      include: { brand: true, gender: true, category: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Producto no encontrado');
+    }
+
+    return product;
   }
 
   create(createProductDto: CreateProductDto) {

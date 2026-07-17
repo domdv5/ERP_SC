@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { ScanLine } from 'lucide-react'
 import { toast } from 'sonner'
 import type { UseFieldArrayAppend, UseFormGetValues, UseFormSetValue } from 'react-hook-form'
-import { getProducts } from '@/services/products.service'
+import { getProductByCode } from '@/services/products.service'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
@@ -42,12 +42,15 @@ export function BarcodeScanInput({ docType, append, getValues, setValue, onProdu
 
     isProcessingRef.current = true
     try {
-      const { items } = await getProducts({ search: code, page: 1, limit: 5 })
-      const product = items.find((p: Product) => p.code.toLowerCase() === code.toLowerCase())
-
-      if (!product) {
-        toast.error('Código no encontrado')
-        return
+      let product: Product
+      try {
+        product = await getProductByCode(code)
+      } catch (error) {
+        if ((error as { response?: { status?: number } })?.response?.status === 404) {
+          toast.error('Código no encontrado')
+          return
+        }
+        throw error
       }
 
       const currentItems = getValues('items')

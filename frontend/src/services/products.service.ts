@@ -38,6 +38,11 @@ export async function getProducts(params?: GetProductsParams): Promise<{ items: 
   return res.data.data
 }
 
+export async function getProductByCode(code: string): Promise<Product> {
+  const res = await api.get<ApiResponse<Product>>(`/products/by-code/${encodeURIComponent(code)}`)
+  return res.data.data
+}
+
 export async function getBrands(): Promise<Brand[]> {
   const res = await api.get<ApiResponse<Brand[]>>('/products/brands')
   return res.data.data

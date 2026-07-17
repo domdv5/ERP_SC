@@ -647,6 +647,7 @@ export default function DocumentFormPage() {
                       register={register}
                       setValue={setValue}
                       watch={watch}
+                      getValues={getValues}
                       errors={errors}
                       initialAvgCost={scannedProductInfo[field.productId]?.avgCost}
                       initialUnitOfMeasure={scannedProductInfo[field.productId]?.unitOfMeasure}

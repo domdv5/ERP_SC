@@ -85,7 +85,7 @@ export class AuthService {
   }
 
   async update(id: string, updateAuthDto: UpdateAuthDto) {
-    const { roleIds, ...rest } = updateAuthDto;
+    const { roleIds, password, ...rest } = updateAuthDto;
 
     if (roleIds?.length) {
       const roles = await this.prisma.role.findMany({
@@ -96,9 +96,14 @@ export class AuthService {
       }
     }
 
+    const hashedPassword = password
+      ? await bcrypt.hash(password, 10)
+      : undefined;
+
     return this.prisma.user.update({
       where: { id },
       data: {
+        ...(hashedPassword !== undefined && { password: hashedPassword }),
         ...rest,
         ...(roleIds?.length && {
           userRoles: {

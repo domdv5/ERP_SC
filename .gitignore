@@ -58,3 +58,5 @@ TASKS.TXT
 
 # Notas manuscritas internas, ya volcadas a task/
 task
+graphify-out
+.graphifyignore
