@@ -108,11 +108,20 @@ export default function DocumentFormPage() {
       return
     }
     setTpSelectedName(existingDoc.thirdParty?.name ?? '')
+    setScannedProductInfo(
+      Object.fromEntries(
+        existingDoc.documentItems.map((item) => [
+          item.productId,
+          { avgCost: Number(item.product.avgCost), unitOfMeasure: item.product.unitOfMeasure },
+        ]),
+      ),
+    )
     reset({
       type:            existingDoc.type,
       date:            existingDoc.date.slice(0, 10),
       thirdPartyId:    existingDoc.thirdParty?.id ?? undefined,
       warehouseId:     existingDoc.warehouse?.id ?? undefined,
+      sourceBinId:     existingDoc.sourceBin?.id ?? undefined,
       destWarehouseId: existingDoc.destWarehouse?.id ?? undefined,
       destBinId:       existingDoc.destBin?.id ?? undefined,
       freight:         existingDoc.freight ?? undefined,
@@ -142,6 +151,14 @@ export default function DocumentFormPage() {
     enabled: docType === 'CM' || docType === 'DVC',
   })
 
+  // Load source warehouse detail for zone/bin cascade (only for T type)
+  const { data: sourceWarehouseDetail, isLoading: isLoadingSourceDetail } = useQuery({
+    queryKey: ['warehouse-detail', warehouseId],
+    queryFn: () => getWarehouse(warehouseId!),
+    enabled: docType === 'T' && Boolean(warehouseId),
+    staleTime: 5 * 60 * 1000,
+  })
+
   // Load dest warehouse detail for zone/bin cascade (only for T type)
   const { data: destWarehouseDetail, isLoading: isLoadingDestDetail } = useQuery({
     queryKey: ['warehouse-detail', destWarehouseId],
@@ -150,10 +167,21 @@ export default function DocumentFormPage() {
     staleTime: 5 * 60 * 1000,
   })
 
+  // When source warehouse changes, reset sourceBinId and zone selection
+  useEffect(() => {
+    setValue('sourceBinId', undefined)
+  }, [warehouseId, setValue])
+
   // When dest warehouse changes, reset destBinId and zone selection
   useEffect(() => {
     setValue('destBinId', undefined)
   }, [destWarehouseId, setValue])
+
+  // Require bin when source warehouse is of type 'warehouse'
+  const sourceRequiresBin =
+    docType === 'T' &&
+    Boolean(warehouseId) &&
+    warehouses.find((w: Warehouse) => w.id === warehouseId)?.type === 'warehouse'
 
   // Require bin when dest warehouse is of type 'warehouse'
   const destRequiresBin =
@@ -161,15 +189,56 @@ export default function DocumentFormPage() {
     Boolean(destWarehouseId) &&
     warehouses.find((w: Warehouse) => w.id === destWarehouseId)?.type === 'warehouse'
 
+  const sourceZones = (sourceWarehouseDetail as WarehouseDetail | undefined)?.zones ?? []
   const destZones = (destWarehouseDetail as WarehouseDetail | undefined)?.zones ?? []
+
+  const [selectedSourceZoneId, setSelectedSourceZoneId] = useState('')
+  useEffect(() => { setSelectedSourceZoneId('') }, [warehouseId])
 
   const [selectedZoneId, setSelectedZoneId] = useState('')
   useEffect(() => { setSelectedZoneId('') }, [destWarehouseId])
 
-  const destBins = (selectedZoneId
-    ? destZones.find((z) => z.id === selectedZoneId)?.bins ?? []
-    : destZones.flatMap((z) => z.bins)
-  ).filter((bin) => !bin.occupied)
+  const currentSourceBinId = watch('sourceBinId')
+  const currentDestBinId = watch('destBinId')
+
+  // Productos actualmente en el documento — un bulto origen solo califica si ya tiene stock
+  // de alguno de estos productos (normalmente se traslada un solo producto por bulto).
+  const watchedItems = watch('items')
+  const itemProductIds = new Set(
+    (watchedItems ?? []).map((item) => item.productId).filter((pid): pid is string => Boolean(pid)),
+  )
+
+  const sourceBins = (() => {
+    const baseBins = selectedSourceZoneId
+      ? sourceZones.find((z) => z.id === selectedSourceZoneId)?.bins ?? []
+      : sourceZones.flatMap((z) => z.bins)
+
+    const available = baseBins.filter((bin) =>
+      bin.binStocks.some((bs) => bs.quantity > 0 && itemProductIds.has(bs.productId)),
+    )
+
+    if (currentSourceBinId && !available.some((b) => b.id === currentSourceBinId)) {
+      const staleSelected = baseBins.find((b) => b.id === currentSourceBinId)
+      if (staleSelected) return [...available, staleSelected]
+    }
+
+    return available
+  })()
+
+  const destBins = (() => {
+    const baseBins = selectedZoneId
+      ? destZones.find((z) => z.id === selectedZoneId)?.bins ?? []
+      : destZones.flatMap((z) => z.bins)
+
+    const available = baseBins.filter((bin) => !bin.occupied)
+
+    if (currentDestBinId && !available.some((b) => b.id === currentDestBinId)) {
+      const staleSelected = baseBins.find((b) => b.id === currentDestBinId)
+      if (staleSelected) return [...available, staleSelected]
+    }
+
+    return available
+  })()
 
   // Third-party options
   const tpOptions: ComboboxOption[] = (tpData?.items ?? []).map((tp: ThirdParty) => ({
@@ -226,6 +295,7 @@ export default function DocumentFormPage() {
       date:            values.date,
       thirdPartyId:    values.thirdPartyId || undefined,
       warehouseId:     values.type === 'T' ? (values.warehouseId || undefined) : undefined,
+      sourceBinId:     values.sourceBinId || undefined,
       destWarehouseId: values.destWarehouseId || undefined,
       destBinId:       values.destBinId || undefined,
       freight:         values.freight !== undefined && !isNaN(values.freight) ? values.freight : undefined,
@@ -322,6 +392,7 @@ export default function DocumentFormPage() {
                       field.onChange(e)
                       setValue('thirdPartyId', undefined)
                       setValue('warehouseId', undefined)
+                      setValue('sourceBinId', undefined)
                       setValue('destWarehouseId', undefined)
                       setValue('destBinId', undefined)
                       setValue('freight', undefined)
@@ -426,6 +497,66 @@ export default function DocumentFormPage() {
                   )}
                 </div>
 
+                {/* Zone + bin cascade when source is type 'warehouse' */}
+                {sourceRequiresBin && (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-content-secondary">
+                        Zona origen <span className="text-red-500">*</span>
+                      </label>
+                      {isLoadingSourceDetail ? (
+                        <div className="h-9 rounded-lg bg-surface-hover animate-pulse" />
+                      ) : (
+                        <select
+                          value={selectedSourceZoneId}
+                          onChange={(e) => {
+                            setSelectedSourceZoneId(e.target.value)
+                            setValue('sourceBinId', undefined)
+                          }}
+                          className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                        >
+                          <option value="">Selecciona una zona</option>
+                          {sourceZones.map((z) => (
+                            <option key={z.id} value={z.id}>
+                              {z.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-content-secondary">
+                        Bulto origen <span className="text-red-500">*</span>
+                      </label>
+                      <Controller
+                        name="sourceBinId"
+                        control={control}
+                        render={({ field }) => (
+                          <select
+                            value={field.value ?? ''}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            disabled={!selectedSourceZoneId}
+                            className={cn(
+                              'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all',
+                              'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary',
+                              !selectedSourceZoneId && 'opacity-50 cursor-not-allowed',
+                              'border-ui-border-medium',
+                            )}
+                          >
+                            <option value="">Selecciona un bulto</option>
+                            {sourceBins.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                Bulto {b.code}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div className="space-y-1.5">
                   <label className="block text-sm font-medium text-content-secondary">
                     Bodega destino <span className="text-red-500">*</span>
@@ -510,6 +641,7 @@ export default function DocumentFormPage() {
                             {destBins.map((b) => (
                               <option key={b.id} value={b.id}>
                                 Bulto {b.code}
+                                {b.occupied ? ' (ocupado — ya asignado a este borrador)' : ''}
                               </option>
                             ))}
                           </select>
@@ -627,7 +759,7 @@ export default function DocumentFormPage() {
                           <span className="text-content-faint normal-case">(opc.)</span>
                         )}
                         {(docType === 'SAJ' || docType === 'T') && (
-                          <span className="text-content-faint normal-case">(autom.)</span>
+                          <span className="text-content-faint normal-case">(prom.)</span>
                         )}
                       </th>
                     )}

@@ -4,7 +4,10 @@ import { DocumentType, MovementType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
-import { assertSufficientStock } from '@/documents/helpers/stock.helpers';
+import {
+  assertSufficientBinStock,
+  assertSufficientStock,
+} from '@/documents/helpers/stock.helpers';
 
 /** T — Traslado entre bodegas: salida del origen y entrada al destino (con bulto si aplica). */
 @Injectable()
@@ -12,7 +15,8 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.T;
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
-    const { warehouseId, destWarehouseId, destBinId } = createDocumentDto;
+    const { warehouseId, destWarehouseId, destBinId, sourceBinId } =
+      createDocumentDto;
 
     if (!warehouseId || !destWarehouseId || warehouseId === destWarehouseId) {
       throw new BadRequestException(
@@ -33,6 +37,54 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
         'Los traslados hacia bodega requieren un bulto destino',
       );
     }
+
+    if (destBinId) {
+      const bin = await this.prisma.bin.findUnique({
+        where: { id: destBinId },
+        include: { zone: { select: { warehouseId: true } } },
+      });
+
+      if (!bin) {
+        throw new BadRequestException('El bulto destino no existe');
+      }
+
+      if (bin.zone.warehouseId !== destWarehouseId) {
+        throw new BadRequestException(
+          'El bulto destino no pertenece a la bodega de destino seleccionada',
+        );
+      }
+    }
+
+    const sourceWarehouse = await this.prisma.warehouse.findUnique({
+      where: { id: warehouseId },
+    });
+
+    if (!sourceWarehouse) {
+      throw new BadRequestException('La bodega de origen no existe');
+    }
+
+    if (sourceWarehouse.type === 'warehouse' && !sourceBinId) {
+      throw new BadRequestException(
+        'Los traslados desde bodega requieren un bulto origen',
+      );
+    }
+
+    if (sourceBinId) {
+      const bin = await this.prisma.bin.findUnique({
+        where: { id: sourceBinId },
+        include: { zone: { select: { warehouseId: true } } },
+      });
+
+      if (!bin) {
+        throw new BadRequestException('El bulto origen no existe');
+      }
+
+      if (bin.zone.warehouseId !== warehouseId) {
+        throw new BadRequestException(
+          'El bulto origen no pertenece a la bodega de origen seleccionada',
+        );
+      }
+    }
   }
 
   async confirm(
@@ -41,12 +93,38 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
     userId: string,
   ) {
     const warehouseId = this.requireWarehouse(document);
-    const { destWarehouseId, destBinId } = document;
+    const { destWarehouseId, destBinId, sourceBinId } = document;
 
     if (!destWarehouseId) {
       throw new BadRequestException(
         'El traslado requiere bodegas de origen y destino distintas',
       );
+    }
+
+    if (destBinId) {
+      const bin = await tx.bin.findUnique({
+        where: { id: destBinId },
+        include: { zone: { select: { warehouseId: true } } },
+      });
+
+      if (!bin || bin.zone.warehouseId !== destWarehouseId) {
+        throw new BadRequestException(
+          'El bulto destino no pertenece a la bodega de destino seleccionada',
+        );
+      }
+    }
+
+    if (sourceBinId) {
+      const bin = await tx.bin.findUnique({
+        where: { id: sourceBinId },
+        include: { zone: { select: { warehouseId: true } } },
+      });
+
+      if (!bin || bin.zone.warehouseId !== warehouseId) {
+        throw new BadRequestException(
+          'El bulto origen no pertenece a la bodega de origen seleccionada',
+        );
+      }
     }
 
     for (const item of document.documentItems) {
@@ -55,10 +133,15 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
 
       await assertSufficientStock(tx, item, warehouseId, quantity);
 
+      if (sourceBinId) {
+        await assertSufficientBinStock(tx, item, sourceBinId, quantity);
+      }
+
       // Salida de la bodega de origen.
       await this.moveStock(tx, {
         productId: item.productId,
         warehouseId,
+        binId: sourceBinId,
         movementType: MovementType.transfer,
         quantity: -quantity,
         unitCost,

@@ -15,13 +15,21 @@ import {
   FindAllDocumentsDto,
   UpdateDocumentDto,
 } from './dto/index';
-import { applyStockChange } from './helpers/stock.helpers';
+import { applyBinStockChange, applyStockChange } from './helpers/stock.helpers';
 import { DocumentEffectsRegistry } from './strategies/index';
 
 const DETAIL_INCLUDE = {
   documentItems: {
     include: {
-      product: { select: { id: true, code: true, description: true } },
+      product: {
+        select: {
+          id: true,
+          code: true,
+          description: true,
+          avgCost: true,
+          unitOfMeasure: true,
+        },
+      },
     },
   },
   thirdParty: { select: { id: true, name: true } },
@@ -126,6 +134,7 @@ export class DocumentsService {
       thirdPartyId,
       destWarehouseId,
       destBinId,
+      sourceBinId,
       freight,
       notes,
       ...rest
@@ -172,6 +181,7 @@ export class DocumentsService {
           warehouseId,
           destWarehouseId,
           destBinId,
+          sourceBinId,
           documentItems: {
             create: items.map((item) => ({
               productId: item.productId,
@@ -348,6 +358,15 @@ export class DocumentsService {
             warehouseId: movement.warehouseId,
             delta: -quantity,
           });
+
+          if (movement.binId) {
+            await applyBinStockChange(tx, {
+              productId: movement.productId,
+              binId: movement.binId,
+              warehouseId: movement.warehouseId,
+              delta: -quantity,
+            });
+          }
 
           await tx.inventoryMovement.create({
             data: {

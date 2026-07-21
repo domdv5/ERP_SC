@@ -16,6 +16,7 @@ export const formSchema = z.object({
   date:            z.string().min(1, 'La fecha es requerida'),
   thirdPartyId:    z.string().optional(),
   warehouseId:     z.string().optional(),
+  sourceBinId:     z.string().optional(),
   destWarehouseId: z.string().optional(),
   destBinId:       z.string().optional(),
   freight:         z.coerce.number().nonnegative('El flete no puede ser negativo').optional(),

@@ -16,6 +16,7 @@ export interface Bin {
   active: boolean
   createdAt: string
   occupied: boolean
+  binStocks: { productId: string; quantity: number }[]
 }
 
 export interface Zone {

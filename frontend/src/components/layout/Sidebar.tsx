@@ -131,19 +131,20 @@ export function Sidebar() {
     navigate("/login", { replace: true });
   };
 
-  const handleClickOutside = (e: MouseEvent) => {
-    if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-      setMenuOpen(false);
-      document.removeEventListener("mousedown", handleClickOutside);
-    }
-  };
+  useEffect(() => {
+    if (!menuOpen) return;
 
-  const toggleMenu = () => {
-    setMenuOpen((prev) => {
-      if (!prev) document.addEventListener("mousedown", handleClickOutside);
-      return !prev;
-    });
-  };
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
+
+  const toggleMenu = () => setMenuOpen((prev) => !prev);
 
   return (
     <aside className="w-64 flex flex-col h-full bg-surface dark:bg-brand-primary border-r border-ui-border-medium dark:border-white/10 shadow-2xl">

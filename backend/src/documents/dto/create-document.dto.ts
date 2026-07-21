@@ -59,6 +59,10 @@ export class CreateDocumentDto {
   destBinId?: string;
 
   @IsOptional()
+  @IsUUID()
+  sourceBinId?: string;
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   freight?: number;

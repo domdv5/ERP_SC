@@ -44,6 +44,8 @@ export interface DocumentItem {
     id: string
     code: string
     description: string
+    avgCost: string
+    unitOfMeasure: 'unidad' | 'docena'
   }
 }
 
@@ -67,6 +69,7 @@ export interface DocumentListItem {
 export interface Document extends DocumentListItem {
   documentItems: DocumentItem[]
   destBin: DocumentBin | null
+  sourceBin: DocumentBin | null
   sourceDocument: DocumentSourceRef | null
 }
 
@@ -102,6 +105,7 @@ export interface CreateDocumentPayload {
   date: string
   thirdPartyId?: string
   warehouseId?: string
+  sourceBinId?: string
   destWarehouseId?: string
   destBinId?: string
   freight?: number

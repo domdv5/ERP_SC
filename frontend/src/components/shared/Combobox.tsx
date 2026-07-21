@@ -68,6 +68,17 @@ export function Combobox({
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  useEffect(() => {
+    if (!open) return
+    const handleReposition = () => updatePosition()
+    window.addEventListener('scroll', handleReposition, { capture: true, passive: true })
+    window.addEventListener('resize', handleReposition)
+    return () => {
+      window.removeEventListener('scroll', handleReposition, { capture: true } as EventListenerOptions)
+      window.removeEventListener('resize', handleReposition)
+    }
+  }, [open])
+
   return (
     <div ref={triggerRef} className="relative">
       <div

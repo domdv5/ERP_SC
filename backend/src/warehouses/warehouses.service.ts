@@ -4,7 +4,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { CreateWarehouseDto, UpdateWarehouseDto } from './dto/index';
 
 type BinWithStocks = Prisma.BinGetPayload<{
-  include: { binStocks: { select: { quantity: true } } };
+  include: { binStocks: { select: { productId: true; quantity: true } } };
 }>;
 
 @Injectable()
@@ -25,7 +25,11 @@ export class WarehousesService {
       include: {
         zones: {
           include: {
-            bins: { include: { binStocks: { select: { quantity: true } } } },
+            bins: {
+              include: {
+                binStocks: { select: { productId: true, quantity: true } },
+              },
+            },
           },
         },
       },
@@ -46,9 +50,12 @@ export class WarehousesService {
 
   private buildBinOccupancy(bin: BinWithStocks) {
     const { binStocks, ...rest } = bin;
-    const occupied = binStocks.reduce((sum, s) => sum + s.quantity, 0) > 0;
+    const stockDetail = binStocks
+      .filter((s) => s.quantity > 0)
+      .map((s) => ({ productId: s.productId, quantity: s.quantity }));
+    const occupied = stockDetail.length > 0;
 
-    return { ...rest, occupied };
+    return { ...rest, occupied, binStocks: stockDetail };
   }
 
   create(createWarehouseDto: CreateWarehouseDto) {

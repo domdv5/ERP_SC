@@ -247,13 +247,27 @@ export default function DocumentDetailPage() {
   const isConfirmed  = doc.status === 'confirmed'
   const isVoided     = doc.status === 'voided'
 
-  const itemsTotal = doc.documentItems.reduce((sum, item) => sum + item.subtotal, 0)
+  // SAJ y T nunca persisten unitCost/subtotal en DocumentItem (SajEffectStrategy/
+  // TransferEffectStrategy solo usan el avgCost del producto para el kardex, no lo
+  // escriben de vuelta en el ítem) — por eso esos dos tipos derivan el costo/subtotal
+  // en vivo desde item.product.avgCost en lugar de leer los campos siempre-cero.
+  const usesAvgCostFallback = doc.type === 'SAJ' || doc.type === 'T'
+  const itemUnitCost = (item: (typeof doc.documentItems)[number]) =>
+    usesAvgCostFallback ? Number(item.product.avgCost) : item.unitCost
+  const itemSubtotal = (item: (typeof doc.documentItems)[number]) =>
+    usesAvgCostFallback ? item.quantity * Number(item.product.avgCost) : item.subtotal
+
+  const itemsTotal = doc.documentItems.reduce((sum, item) => sum + itemSubtotal(item), 0)
   // Nota de talla por línea — solo se muestra en traslados (T), donde el mismo código de producto
   // puede repartirse en varios bultos con tallas distintas. Ver ProductRow.tsx showObservaciones.
   const showObservaciones = doc.type === 'T'
+  // SAJ y T muestran el costo promedio vigente del producto (avgCost) — ver nota arriba en
+  // usesAvgCostFallback — nunca un costo transaccional tipeado por el usuario. CM/DVC/EAI sí
+  // manejan un costo real ingresado, por eso conservan la etiqueta plana.
+  const costHeaderLabel = usesAvgCostFallback ? 'Costo unit. (prom.)' : 'Costo unit.'
   const itemHeaders = showObservaciones
-    ? ['Código', 'Descripción', 'Cantidad', 'Observaciones', 'Costo unit.', 'Subtotal']
-    : ['Código', 'Descripción', 'Cantidad', 'Costo unit.', 'Subtotal']
+    ? ['Código', 'Descripción', 'Cantidad', 'Observaciones', costHeaderLabel, 'Subtotal']
+    : ['Código', 'Descripción', 'Cantidad', costHeaderLabel, 'Subtotal']
   // Celdas vacías a saltar en el pie de tabla antes de la etiqueta "Total" — debe alinearse
   // bajo la columna "Costo unit." sin importar si Observaciones está presente o no.
   const footerSkipCols = showObservaciones ? 4 : 3
@@ -476,10 +490,10 @@ export default function DocumentDetailPage() {
                       </td>
                     )}
                     <td className="px-5 py-3.5 text-content-muted text-xs">
-                      {item.unitCost > 0 ? formatCOP(item.unitCost) : '—'}
+                      {itemUnitCost(item) > 0 ? formatCOP(itemUnitCost(item)) : '—'}
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs">
-                      {item.subtotal > 0 ? formatCOP(item.subtotal) : '—'}
+                      {itemSubtotal(item) > 0 ? formatCOP(itemSubtotal(item)) : '—'}
                     </td>
                   </tr>
                 ))}

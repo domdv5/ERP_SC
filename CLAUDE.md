@@ -27,29 +27,7 @@ ERP Supply Chain — full-stack application for managing products, inventory, wa
 
 ## Commands
 
-All commands run from the `backend/` directory using `pnpm`.
-
-```bash
-# Development
-pnpm start:dev          # Start with hot reload (watch mode)
-pnpm build              # Compile TypeScript via nest build
-pnpm start:prod         # Run compiled output
-
-# Code quality
-pnpm lint               # ESLint with auto-fix
-pnpm format             # Prettier format
-
-# Testing
-pnpm test               # Run all Jest unit tests
-pnpm test:watch         # Watch mode
-pnpm test:cov           # With coverage
-# Run a single test file:
-pnpm exec jest path/to/file.spec.ts
-
-# Database
-pnpm migrate:dev        # Run Prisma migrations (dev) — requires interactive TTY
-pnpm seed               # Seed roles, permissions, warehouses, categories, genders
-```
+All commands run from the `backend/` directory using `pnpm`. See `backend/package.json` scripts for the full list.
 
 > **Migration workaround** — `migrate:dev` needs an interactive terminal and fails in Claude Code. Use instead:
 > 1. `pnpm exec prisma migrate diff --config prisma/prisma.config.ts --from-config-datasource --to-schema prisma/schema.prisma --script` → get SQL
@@ -60,8 +38,6 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 ## Architecture
 
 ### Module Structure
-
-`backend/src/` contains NestJS modules. Implemented modules: `auth`, `prisma`, `third-parties`, `products`, `warehouses`, `documents`, `accounts-payable`, `accounts-receivable`, `common`.
 
 **Bootstrap** (`main.ts`):
 
@@ -129,9 +105,10 @@ pnpm seed               # Seed roles, permissions, warehouses, categories, gende
 - **Strategy pattern**: `DocumentEffectsRegistry` maps type → strategy; add new types without touching service
 - **Warehouse rule**: for all types except `T`, service always resolves the active `store`-type warehouse; client never sends `warehouseId` for non-transfer docs
 - **Implemented strategies (phase 1)**: `CM` (purchase), `DVC` (supplier return), `EAI` (stock adjustment in), `SAJ` (stock adjustment out), `T` (transfer)
-- **BinStock population**: `BaseEffectStrategy.moveStock` upserts `BinStock` automatically whenever a `binId` is passed alongside `warehouseId` — today only `TransferEffectStrategy`'s destination-entry call does this. The origin/exit leg of a transfer never passes `binId` (no `sourceBinId` wiring in the frontend form yet, even though `Document.sourceBinId` exists in the schema), so moving stock that's already bin-located further out doesn't decrement its `BinStock` row — known gap, out of scope until a "multi-hop transfer" need shows up. See `plans/007-binstock-traslados-inventario-real.md` (gitignored, local) for the broader gap analysis against the real warehouse inventory (talla, unidad de medida, carga masiva) — blocked on a stakeholder meeting.
+- **BinStock population**: `BaseEffectStrategy.moveStock` upserts `BinStock` automatically whenever a `binId` is passed alongside `warehouseId`. `TransferEffectStrategy.confirm()` passes `binId` on **both** legs — `sourceBinId` on the origin/exit leg, `destBinId` on the destination/entry leg — when the respective warehouse is bin-tracked (`type: 'warehouse'`); both `validateCreate()` and `confirm()` verify each bin belongs to its stated warehouse (`Bin → Zone → Warehouse`), and `assertSufficientBinStock` guards the origin leg against insufficient bin-level stock (previously this was a known gap — the origin leg never passed `binId` — now resolved). `documents.service.ts::void()` mirrors this: when reversing a confirmed document it calls `applyBinStockChange` (not just `applyStockChange`) whenever the original movement had a `binId`, so voiding a confirmed transfer no longer leaves phantom stock in the source/dest bin — that gap used to silently break the `SUM(BinStock)===Inventory` invariant (Safety Rule). See `plans/007-binstock-traslados-inventario-real.md` (gitignored, local) for the broader gap analysis against the real warehouse inventory (talla, unidad de medida, carga masiva) — blocked on a stakeholder meeting.
 - **Phase 2 types** (not yet implemented): `COT`, `POS`, `DVV`, `REM`, `RMDVC`, `PE` — each needs only a new Strategy class
 - **Per-type cost UI in `ProductRow.tsx`** (frontend): `SAJ` never lets the user type a cost — `SajEffectStrategy` always uses the product's live `avgCost`, so the form shows it as read-only text (with a copy-to-clipboard button, for manually re-entering that exact value into a follow-up `EAI`) instead of an input. `EAI`'s cost is optional and, when typed, re-weights `avgCost` — a client-side warning (amber, non-blocking) fires if the typed cost deviates >30% from the product's current `avgCost`, since that pattern usually means a digit was dropped, not a real cost change. `CM`/`DVC` show a plain required cost input. Manually moving a product's full cost basis from one product to another (`SAJ` on the source + `EAI` on the destination) requires the operator to type the source's real `avgCost` into the destination `EAI` — there's no atomic "merge product" operation yet; see `plans/007-...` context and `tasks/pendiente-mejoras-operativas.md` (gitignored) for the fuller writeup.
+- **`SAJ`/`T` never persist `unitCost`/`subtotal` on `DocumentItem`** — their strategies only read the product's `avgCost` for the kardex movement, they never write a cost back onto the item (unlike `CM`/`DVC`/`EAI`, which do). `DocumentDetailPage.tsx` accounts for this: for those two types it derives `unitCost`/`subtotal` live from `item.product.avgCost` (`usesAvgCostFallback`) instead of reading the always-zero `item.unitCost`/`item.subtotal` fields, and labels the column "Costo unit. (prom.)" instead of the plain "Costo unit." to signal it's a live average, not a transactional cost. Requires `product.avgCost` to be included in `DocumentsService`'s `DETAIL_INCLUDE` — if a future query drops that field, this silently reverts to showing "—".
 
 **AccountsPayableModule**:
 
@@ -209,32 +186,6 @@ pnpm lint         # ESLint
 
 When verifying any frontend behavior end-to-end (forms, flows, bug fixes), use the **Playwright CLI in headed mode** — write an ad-hoc script using the `playwright` package already installed in `frontend/` (`chromium.launch({ headless: false })`) and run it with `node`. Not the chrome-devtools MCP tools, not headless. The user wants to see the browser window while the flow runs.
 
-### Stack
-
-React 19 + Vite, React Router v7 (lazy routes), Tailwind CSS v4, TanStack Query v5, Zustand (`useAuthStore` for client state), Sonner (toasts), react-hook-form + zod, lucide-react.
-
-### Structure
-
-```
-frontend/src/
-  components/
-    layout/       ← AppLayout, Sidebar, Header, AuthGuard
-    shared/       ← PageLoader (branded 3-ring gyroscope)
-  pages/
-    auth/         ← LoginPage
-    dashboard/    ← DashboardPage
-    third-parties/← ThirdPartiesPage + ThirdPartyForm + DeleteConfirmDialog
-    documents/    ← DocumentsPage + DocumentFormPage + DocumentDetailPage + components/ProductRow + document-form.schema.ts
-    users/        ← UsersPage + components/UserForm + components/DeleteUserDialog
-    coming-soon/  ← ComingSoonPage (placeholder for unimplemented modules)
-  router/         ← index.tsx (lazy routes, authenticated layout)
-  services/       ← third-parties.service.ts, documents.service.ts, users.service.ts, api.ts (axios instance)
-  stores/         ← auth.store.ts (Zustand)
-  hooks/          ← usePermission.ts (checks user.permissions[] from JWT)
-  types/          ← shared TypeScript types
-  lib/            ← utils (cn), queryClient
-```
-
 ### Key Patterns
 
 **API responses** — Backend wraps everything as `{ success, data: T }`. Services unwrap before returning:
@@ -257,15 +208,9 @@ return res.data.data
 
 **Protected routes** — `AuthGuard` checks `useAuthStore` token; redirects to `/login` if not authenticated.
 
-**Combobox (shared)** — Use `<Combobox>` from `@/components/shared` for all searchable dropdowns. Two modes: (1) **Controlled** — pass `searchValue`/`onSearchChange` for server-side debounce; show "Escribe para buscar..." when empty, let caller manage `enabled` on the query; (2) **Uncontrolled** — omit both props, component filters `options` client-side. Always uses `createPortal` → safe inside overflow containers. Option interface: `{ id, label, sublabel? }`. `onChange` signature: `(id: string, option: ComboboxOption) => void`. For server-side search, add a synthetic option when an item is already selected and search is empty (prevents the trigger showing blank). It has no keyboard support (no Enter-to-select, no arrow-key nav) — every selection is mouse-only; that's why the barcode-scan flow below needed its own dedicated input instead of reusing it.
-
-**Barcode-scan input** (`pages/documents/components/BarcodeScanInput.tsx`) — an always-focused, uncontrolled `<input>` (ref-based, not `useState`, to avoid re-rendering per keystroke at scanner-gun typing speed) sitting above the document item table. A scanner types a product code then sends Enter; on Enter the component looks up the product via `GET /products/by-code/:code` (`getProductByCode` in `products.service.ts`) — a dedicated exact-match backend endpoint (`ProductsService.findByCode`, case-insensitive equality), not the paginated `search`+`contains` list endpoint filtered client-side (that approach truncated/mismatched on codes that were prefixes of other codes). A 404 from the endpoint shows the "Código no encontrado" toast; any other error rethrows. On a hit, it appends a new item row (or increments quantity by 1 if that product is already in the list) via the parent's `useFieldArray` `append`/`getValues`/`setValue`, then clears and re-focuses itself so the next scan works with zero clicks. Because rows created this way skip `ProductRow`'s own product-`Combobox` `onChange` (which is normally where `avgCost`/`unitOfMeasure` get captured for that row's local state), `DocumentFormPage.tsx` tracks a `scannedProductInfo: Record<productId, {avgCost, unitOfMeasure}>` populated via the scan input's `onProductScanned` callback, and passes it into `ProductRow` as `initialAvgCost`/`initialUnitOfMeasure` props (lazy `useState` initializers) — required for the EAI cost-deviation warning, SAJ read-only cost, and the `T`-type unit-of-measure hint to work correctly regardless of how a row was created. Follow this same "capture at the point of external row-creation, thread through as an `initial*` prop" pattern for any future field `ProductRow` needs that depends on knowing which product was picked.
-
-**Duplicate product row merge** (`ProductRow.tsx`) — mirrors `BarcodeScanInput`'s dedup behavior for the manual path: the product `Combobox`'s `onChange` now checks (`getValues('items')`, excluding its own index) whether the picked `productId` already exists in another row of the same document, and if so merges the quantity into that existing row (`setValue` on the existing row's quantity, then `onRemove()` on the row just picked) instead of leaving two rows with the same product. Fixes a real costing bug: `CmEffectStrategy`/`EaiEffectStrategy` confirm each item in a `for` loop against a `document.documentItems` snapshot loaded once before the transaction, so a second row of the same product computed its weighted `avgCost` against a stale `currentAvgCost` while `globalStock` had already advanced — two rows of the same product produced a mathematically wrong final `avgCost` with no error. This fix prevents the duplicate at the source (form-level) rather than correcting the backend recalculation; `backend/src/documents/` has no changes for this. See `plans/004-avgcost-stale-read-duplicate-product-lines.md`.
+**Combobox (shared)** — Use `<Combobox>` from `@/components/shared` for all searchable dropdowns. Two modes: (1) **Controlled** — pass `searchValue`/`onSearchChange` for server-side debounce; show "Escribe para buscar..." when empty, let caller manage `enabled` on the query; (2) **Uncontrolled** — omit both props, component filters `options` client-side. Always uses `createPortal` → safe inside overflow containers. Option interface: `{ id, label, sublabel? }`. `onChange` signature: `(id: string, option: ComboboxOption) => void`. For server-side search, add a synthetic option when an item is already selected and search is empty (prevents the trigger showing blank). It has no keyboard support (no Enter-to-select, no arrow-key nav) — every selection is mouse-only; that's why the barcode-scan flow (see `frontend/src/pages/documents/CLAUDE.md`) needed its own dedicated input instead of reusing it.
 
 **`minSalePrice` auto-fill** — `ProductForm.tsx` auto-computes "Precio mínimo de venta" as `salePrice * 0.98` (business rule: 2% floor discount) while creating a product, live as `salePrice` is typed. Stops overwriting the moment the user edits `minSalePrice` by hand (tracked via a `minSalePriceTouched` flag, reset on every form open) — never auto-fills in edit mode, only on create.
-
-**Clear items on document-type change** — `DocumentFormPage.tsx`'s "Tipo de operación" `<select>` `onChange` must call `replace([])` (from `useFieldArray`) alongside its other type-dependent resets (`thirdPartyId`, warehouse fields, `freight`) — item rows carry type-specific semantics (`unitCost` meaning, whether it's even editable) that become invalid the moment the type changes. This was missing for a while; if you add another type-dependent field to that form, make sure it's reset in this same handler too.
 
 **Permission-based UI** — Use `usePermission(...perms)` from `@/hooks/usePermission` to show/hide UI elements. The JWT already carries `permissions[]` so no extra request is needed. Pattern:
 ```tsx
