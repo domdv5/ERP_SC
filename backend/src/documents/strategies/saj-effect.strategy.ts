@@ -22,6 +22,9 @@ export class SajEffectStrategy extends BaseEffectStrategy {
 
       await assertSufficientStock(tx, item, warehouseId, quantity);
 
+      // Ignora item.unitCost por completo (a diferencia de EAI, que sí lo
+      // usa si viene informado): la salida siempre se valora al avgCost
+      // vigente del producto, nunca a un costo digitado por el usuario.
       await this.moveStock(tx, {
         productId: item.productId,
         warehouseId,

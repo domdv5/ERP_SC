@@ -92,6 +92,9 @@ function WarehousesSidebarItem() {
         <div className="ml-3 mt-0.5 mb-1 border-l border-ui-border-medium dark:border-white/10 pl-2 space-y-0.5">
           {warehouses.map((w) => {
             const WIcon = w.type === "store" ? Store : Warehouse;
+            // Link (no NavLink) + isActive manual: NavLink calcula isActive
+            // ignorando los query params, así que con rutas del tipo
+            // /warehouses?id=X marcaría todos los sub-items como activos a la vez.
             const isItemActive = currentId === w.id;
             return (
               <Link

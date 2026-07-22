@@ -98,6 +98,9 @@ export class AccountsReceivableService {
 
     return this.prisma.$transaction(
       async (tx) => {
+        // Bloquea la fila hasta que la transacción termine, serializando pagos
+        // concurrentes sobre la misma cuenta y evitando que dos pagos simultáneos
+        // se validen ambos contra el mismo saldo pendiente (overpayment por race condition).
         await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE id = ${id} FOR UPDATE`;
 
         const accountReceivable = await tx.accountsReceivable.findUnique({
@@ -133,6 +136,7 @@ export class AccountsReceivableService {
           },
         });
 
+        // Recalcula el status a partir del total pagado tras este pago.
         const newPaidCents = paidSoFarCents + amountCents;
         const status =
           newPaidCents >= totalCents

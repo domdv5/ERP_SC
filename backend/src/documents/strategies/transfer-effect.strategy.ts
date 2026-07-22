@@ -95,6 +95,10 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
     const warehouseId = this.requireWarehouse(document);
     const { destWarehouseId, destBinId, sourceBinId } = document;
 
+    // Se revalida bin/bodega acá, no solo en validateCreate: un borrador se
+    // puede editar (PATCH) sin volver a pasar por validateCreate, así que
+    // confirm() no puede asumir que la consistencia sigue vigente.
+
     if (!destWarehouseId) {
       throw new BadRequestException(
         'El traslado requiere bodegas de origen y destino distintas',

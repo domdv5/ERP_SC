@@ -34,6 +34,9 @@ export class DocumentsController {
     return this.documentsService.findOne(id);
   }
 
+  // create/update/confirm/void/remove no llevan @Permissions: el permiso
+  // requerido depende del tipo de documento (document.create.{type}), así
+  // que se resuelve dinámicamente en el service, no con un guard estático.
   @Post()
   create(
     @Body() createDocumentDto: CreateDocumentDto,

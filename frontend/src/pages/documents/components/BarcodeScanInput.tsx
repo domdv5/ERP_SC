@@ -22,9 +22,15 @@ interface BarcodeScanInputProps {
  * times and, on Enter, looks up the product by exact code match and either bumps an
  * existing row's quantity or appends a new one. Sits alongside (does not replace) the
  * manual "Agregar ítem" button/combobox flow.
+ *
+ * No reusa el `Combobox` compartido a propósito: ese componente no tiene soporte de teclado
+ * (sin Enter-to-select, sin navegación con flechas), toda selección ahí es solo con mouse —
+ * incompatible con un lector de código de barras, que solo puede "teclear" texto + Enter.
  */
 export function BarcodeScanInput({ docType, append, getValues, setValue, onProductScanned }: BarcodeScanInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  // Evita procesar un segundo Enter mientras el lookup del primero sigue en vuelo (doble
+  // disparo de scanner, o Enter mantenido) — sin esto podría duplicarse el mismo ítem.
   const isProcessingRef = useRef(false)
 
   useEffect(() => {

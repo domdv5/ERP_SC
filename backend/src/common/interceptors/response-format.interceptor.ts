@@ -20,6 +20,8 @@ export class ResponseFormatInterceptor<T> implements NestInterceptor<
     return next.handle().pipe(
       map((data) => ({
         success: true,
+        // undefined -> null: rutas void (ej. DELETE) no deben perder la key
+        // `data` en el JSON serializado (JSON.stringify omite undefined).
         data: data === undefined ? null : data,
       })),
     );

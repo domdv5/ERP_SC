@@ -23,17 +23,20 @@ export class PrismaExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       switch (exception.code) {
+        // P2002: violación de constraint unique (@@unique / @unique).
         case 'P2002':
           return response.status(HttpStatus.CONFLICT).json({
             statusCode: 409,
             message: 'Ya existe un registro con ese valor',
             field: exception.meta?.target,
           });
+        // P2025: la operación esperaba un registro (update/delete/connect) que no existe.
         case 'P2025':
           return response.status(HttpStatus.NOT_FOUND).json({
             statusCode: 404,
             message: 'Registro no encontrado',
           });
+        // P2003: violación de foreign key (referencia a un id que no existe).
         case 'P2003':
           return response.status(HttpStatus.BAD_REQUEST).json({
             statusCode: 400,

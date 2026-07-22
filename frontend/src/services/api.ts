@@ -16,6 +16,9 @@ api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401) {
+      // JWT expirado o inválido: limpia el store para que AuthGuard bloquee
+      // el acceso; el reload duro (no navigate) limpia todo el estado en
+      // memoria de la app en vez de dejar componentes con datos obsoletos.
       useAuthStore.getState().logout()
       window.location.href = '/login'
     }

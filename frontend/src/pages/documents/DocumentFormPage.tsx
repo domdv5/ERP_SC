@@ -167,23 +167,27 @@ export default function DocumentFormPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  // When source warehouse changes, reset sourceBinId and zone selection
+  // Un bulto pertenece a una bodega específica (Bin → Zone → Warehouse) — si cambia la
+  // bodega origen, el bulto ya seleccionado casi seguro ya no es válido, así que se limpia
+  // junto con la zona (selectedSourceZoneId, ver abajo) en vez de dejar un valor huérfano.
   useEffect(() => {
     setValue('sourceBinId', undefined)
   }, [warehouseId, setValue])
 
-  // When dest warehouse changes, reset destBinId and zone selection
+  // Mismo motivo que el efecto anterior, pero para la bodega destino.
   useEffect(() => {
     setValue('destBinId', undefined)
   }, [destWarehouseId, setValue])
 
-  // Require bin when source warehouse is of type 'warehouse'
+  // Solo las bodegas type 'warehouse' (bodega física) llevan seguimiento por bulto; las
+  // type 'store' (almacén de venta) no tienen ese nivel de granularidad, así que el
+  // traslado no pide zona/bulto cuando el origen es un 'store'.
   const sourceRequiresBin =
     docType === 'T' &&
     Boolean(warehouseId) &&
     warehouses.find((w: Warehouse) => w.id === warehouseId)?.type === 'warehouse'
 
-  // Require bin when dest warehouse is of type 'warehouse'
+  // Mismo criterio que sourceRequiresBin, aplicado a la bodega destino.
   const destRequiresBin =
     docType === 'T' &&
     Boolean(destWarehouseId) &&
@@ -217,6 +221,9 @@ export default function DocumentFormPage() {
       bin.binStocks.some((bs) => bs.quantity > 0 && itemProductIds.has(bs.productId)),
     )
 
+    // Si el bulto ya elegido (ej. al editar un borrador) dejó de calificar por el filtro de
+    // arriba (se agregó/quitó un ítem desde entonces), igual se re-inyecta en la lista para
+    // que el <select> no muestre un value sin <option> correspondiente.
     if (currentSourceBinId && !available.some((b) => b.id === currentSourceBinId)) {
       const staleSelected = baseBins.find((b) => b.id === currentSourceBinId)
       if (staleSelected) return [...available, staleSelected]
@@ -230,8 +237,15 @@ export default function DocumentFormPage() {
       ? destZones.find((z) => z.id === selectedZoneId)?.bins ?? []
       : destZones.flatMap((z) => z.bins)
 
+    // `bin.occupied` es un campo derivado (no persistido) que el backend calcula como
+    // SUM(BinStock.quantity) > 0 para ese bulto — nunca un toggle manual. Un bulto ya
+    // ocupado por un traslado anterior no debe recibir un segundo traslado hasta que su
+    // stock se mueva por completo; se libera solo automáticamente. El panel admin de
+    // bodegas (DetailPanel.tsx) sí lista todos los bultos sin este filtro.
     const available = baseBins.filter((bin) => !bin.occupied)
 
+    // Mismo motivo que en sourceBins: mantener visible el bulto ya seleccionado aunque ya
+    // no califique (p. ej. quedó ocupado por otro cambio) para no dejar un <select> huérfano.
     if (currentDestBinId && !available.some((b) => b.id === currentDestBinId)) {
       const staleSelected = baseBins.find((b) => b.id === currentDestBinId)
       if (staleSelected) return [...available, staleSelected]

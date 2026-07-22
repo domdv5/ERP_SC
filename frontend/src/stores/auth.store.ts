@@ -25,6 +25,8 @@ export const useAuthStore = create<AuthState>()(
         set({ user: null, token: null, isAuthenticated: false }),
 
       hasPermission: (permission) =>
+        // permissions[] viene del JWT decodificado al hacer login, no de una
+        // consulta a la DB — cambios de rol no se reflejan hasta el próximo login.
         get().user?.permissions.includes(permission) ?? false,
     }),
     {

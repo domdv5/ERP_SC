@@ -8,6 +8,10 @@ export function AppLayout() {
   const theme = useThemeStore((s) => s.theme)
 
   useEffect(() => {
+    // Debe aplicarse de forma síncrona respecto al cambio de `theme`: el toggle
+    // de tema en Header.tsx envuelve la actualización de estado en flushSync
+    // precisamente para que esta clase .dark ya esté puesta antes de que
+    // startViewTransition capture el snapshot del nuevo estado.
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
 

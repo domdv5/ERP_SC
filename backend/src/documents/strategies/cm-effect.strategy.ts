@@ -47,6 +47,8 @@ export class CmEffectStrategy extends BaseEffectStrategy {
         data: { avgCost: newAvgCost, lastCost: unitCost },
       });
 
+      // Sin binId: las compras solo entran a Inventory, nunca a BinStock —
+      // el stock queda sin bulto asignado hasta que un traslado lo mueva.
       await this.moveStock(tx, {
         productId: item.productId,
         warehouseId,

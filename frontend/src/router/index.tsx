@@ -18,6 +18,10 @@ const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
 const AccountsPayableListPage = lazy(() => import('@/pages/accounts-payable/AccountsPayableListPage'))
 const AccountsPayableDetailPage = lazy(() => import('@/pages/accounts-payable/AccountsPayableDetailPage'))
 
+// Fallback de Suspense con delay de 200ms antes de mostrar el loader de
+// pantalla completa. Los chunks lazy que ya están en caché del navegador o
+// que cargan rápido en dev nunca llegan a los 200ms, así que la navegación
+// se siente instantánea en vez de parpadear el spinner en cada click.
 function DelayedPageLoader() {
   const [show, setShow] = useState(false)
 

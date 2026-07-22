@@ -73,6 +73,8 @@ export class AuthService {
 
     const roles = user.userRoles.map((ur) => ur.role.name);
 
+    // Los permisos se calculan una sola vez aquí y quedan horneados en el JWT;
+    // los guards los leen del token en cada request sin consultar la DB.
     const payload = {
       sub: user.id,
       name: user.name,

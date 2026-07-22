@@ -22,6 +22,8 @@ export class AuthController {
     return this.authService.findAll();
   }
 
+  // Debe declararse antes de cualquier futuro `GET :id` — Nest resolvería
+  // "roles" como el parámetro `id` si esa ruta se registrara primero.
   @Get('roles')
   @Permissions('user.manage')
   findAllRoles() {

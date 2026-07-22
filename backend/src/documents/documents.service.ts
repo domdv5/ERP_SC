@@ -149,6 +149,9 @@ export class DocumentsService {
 
     let warehouseId: string | undefined;
 
+    // Solo el traslado (T) mueve stock entre dos bodegas elegidas por el
+    // usuario; el resto de tipos siempre opera sobre la única tienda activa,
+    // así que el cliente nunca envía warehouseId salvo para T.
     if (type !== DocumentType.T) {
       const store = await this.prisma.warehouse.findFirst({
         where: { type: 'store', active: true },
@@ -220,6 +223,10 @@ export class DocumentsService {
 
     const { items, date, ...rest } = updateDocumentDto;
 
+    // A diferencia de create(), acá NO se corre strategy.validateCreate: un
+    // borrador se puede editar (ej. cambiar bulto/bodega de un traslado) sin
+    // volver a pasar por esa validación. Por eso TransferEffectStrategy.confirm
+    // revalida bin/bodega desde cero antes de aplicar efectos.
     return this.prisma.$transaction(async (tx) => {
       if (items) {
         await tx.documentItem.deleteMany({ where: { documentId: id } });
@@ -359,6 +366,9 @@ export class DocumentsService {
             delta: -quantity,
           });
 
+          // Solo los movimientos de traslado tienen binId (ver BinStock
+          // population en el módulo); revertirlos también a nivel de bulto
+          // es obligatorio para no romper SUM(BinStock)===Inventory.
           if (movement.binId) {
             await applyBinStockChange(tx, {
               productId: movement.productId,

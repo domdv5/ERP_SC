@@ -20,6 +20,9 @@ export class PermissionsGuard implements CanActivate {
 
     if (!required?.length) return true;
 
+    // `user.permissions` viene directo del JWT (calculado en login) — no hay
+    // lookup a la DB por request; por eso cambiar permisos en un rol no
+    // afecta tokens ya emitidos hasta que el usuario vuelva a autenticarse.
     const { user } = context.switchToHttp().getRequest<RequestWithUser>();
     const hasAll = required.every((p) => user.permissions.includes(p));
 

@@ -18,6 +18,16 @@ Do NOT change without explicit instruction and confirmation first:
 
 If a change requires touching any of the above, state clearly what and why, and wait for confirmation before implementing.
 
+## Code Documentation Conventions
+
+Document the **why**, never the **what** — well-named identifiers already say what code does; a comment earns its place only when the reader can't derive it from the code itself.
+
+- **Document**: non-obvious business rules/invariants, design decisions with real trade-offs, workarounds for a specific bug/limitation, concurrency/locking rationale, non-obvious algorithms or formats (e.g. zero-padding for lexicographic order), anything that would genuinely surprise a future reader.
+- **Don't document**: trivial CRUD, simple getters/destructuring, self-explanatory conditionals, anything a competent reader infers instantly from names/types.
+- **Style**: short inline `//` comments in **Spanish** (matches existing comments across the codebase) for business-logic explanations; JSDoc only on exported functions/classes whose behavior isn't obvious from the signature — never on trivial ones. No multi-paragraph comment blocks.
+- **Before adding a comment**, check the surrounding code for one that already explains the same thing — don't duplicate.
+- This is a comment-only concern — never justifies changing logic, renaming, or refactoring as a side effect of "documenting."
+
 ## Project Overview
 
 ERP Supply Chain — full-stack application for managing products, inventory, warehouses, customers, suppliers, accounts receivable/payable, and documents.
@@ -74,7 +84,7 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 - Optional customer fields: `creditLimit`, `discount`, `sellerId`
 - Optional supplier field: `internalNumber`
 - Transactional creation: ThirdParty + Customer/Supplier records in one transaction
-- **Brand rules**: brands can only be added or renamed — never deleted (products reference them). `update` does `createMany` + `skipDuplicates`; frontend sends only new brands (not already in `brandIds` map). Roles (`isCustomer`/`isSupplier`) are derived from the presence of `customer`/`supplier` relations, not boolean columns.
+- **Brand rules**: brands can only be added or renamed — never deleted (products reference them). `update` does `createMany` + `skipDuplicates`; frontend sends only new brands (not already in `brandIds` map). `isCustomer`/`isSupplier` are real `Boolean` columns on `ThirdParty` (`@default(false)`, indexed) set directly from the DTO in `create`/`update` — they are not derived from the presence of `customer`/`supplier` relations.
 
 **WarehousesModule**:
 
@@ -90,8 +100,8 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 - **Sub-resources (Aggregate Root pattern)**: Zone and Bin live inside WarehousesModule — no separate module. URLs: `POST /warehouses/:id/zones`, `PATCH /warehouses/:id/zones/:zoneId`, `DELETE /warehouses/:id/zones/:zoneId`, and equivalent `/bins` nested under `/zones/:zoneId/bins`. Justification: Zone/Bin have no lifecycle outside Warehouse; all endpoints require `:warehouseId` as first param.
 - **Zone fields**: `name` (unique per warehouse via `@@unique([warehouseId, name])`), `active` (soft-delete)
 - **Bin fields**: `code` (`Int`, numeric bin number 1..n, unique per zone via `@@unique([zoneId, code])`), `active` (soft-delete)
-- **Business rules**: `removeZone` must verify no active bins; `removeBin` must verify `Inventory.quantity === 0`
-- **findOne filter**: must return only `active: true` zones and bins (TASK 5, pending)
+- **Business rules (not yet implemented)**: neither `zones.service.ts` nor `bins.service.ts` has a `remove()`/`DELETE` route today. When added, `removeZone` must verify no active bins; `removeBin` must verify `Inventory.quantity === 0`
+- **findOne filter (pending — TASK 5)**: `warehouses.service.ts::findOne`'s `include` currently returns zones/bins unfiltered (no `where: { active: true }`); it must be changed to return only `active: true` zones and bins
 
 **DocumentsModule**:
 

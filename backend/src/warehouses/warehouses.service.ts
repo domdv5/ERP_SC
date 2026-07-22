@@ -53,6 +53,8 @@ export class WarehousesService {
     const stockDetail = binStocks
       .filter((s) => s.quantity > 0)
       .map((s) => ({ productId: s.productId, quantity: s.quantity }));
+    // `occupied` no se persiste: se deriva en vivo de BinStock para que nunca
+    // quede desincronizado (un bin queda libre automáticamente al vaciarse).
     const occupied = stockDetail.length > 0;
 
     return { ...rest, occupied, binStocks: stockDetail };

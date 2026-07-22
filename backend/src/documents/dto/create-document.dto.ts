@@ -46,6 +46,8 @@ export class CreateDocumentDto {
   @IsUUID()
   thirdPartyId?: string;
 
+  // Solo se envía para type === T (traslado); el resto de tipos siempre
+  // opera sobre la tienda activa, resuelta por el service.
   @IsOptional()
   @IsUUID()
   warehouseId?: string;

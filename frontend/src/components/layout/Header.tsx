@@ -50,6 +50,11 @@ export function Header() {
     document.documentElement.style.setProperty('--theme-toggle-y', `${e.clientY}px`)
 
     documentWithViewTransition.startViewTransition(() => {
+      // flushSync obliga a React a aplicar el cambio de tema de forma síncrona
+      // (y con él, la clase .dark en <html> vía el useEffect de AppLayout) antes
+      // de que el navegador tome la "foto" del nuevo estado para la transición.
+      // Sin esto, la captura ocurriría con el tema viejo y el wipe animaría
+      // hacia un frame idéntico al anterior.
       flushSync(() => toggleTheme())
     })
   }

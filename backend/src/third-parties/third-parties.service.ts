@@ -95,6 +95,8 @@ export class ThirdPartiesService {
       }
 
       if (isSupplier) {
+        // Los brands nunca se borran (los productos los referencian por id);
+        // solo se crean o se renombran vía renameBrand().
         supplier = await tx.supplier.create({
           data: {
             id: thirdParty.id,
@@ -172,6 +174,9 @@ export class ThirdPartiesService {
       });
 
       if (isSupplier && brands !== undefined) {
+        // El frontend solo envía brands nuevos (no los ya existentes en
+        // brandIds), pero skipDuplicates igual protege contra el nombre
+        // duplicado — los brands nunca se eliminan, solo se agregan o renombran.
         await tx.brand.createMany({
           data: brands.map((name) => ({ name, supplierId: id })),
           skipDuplicates: true,
