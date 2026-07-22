@@ -3,13 +3,13 @@ import { Prisma } from '@prisma/client';
 import type { DocumentWithItems } from '@/documents/strategies/document-effect.strategy';
 
 /**
- * Aplica el delta a Inventory de forma atómica en una única sentencia SQL
- * (INSERT ... ON CONFLICT DO UPDATE / UPDATE ... WHERE), en vez de leer y
- * luego escribir en dos pasos separados. Esto evita el lost-update y el
- * oversell bajo confirmaciones concurrentes del mismo (productId, warehouseId):
- * el propio UPDATE/ON CONFLICT DO UPDATE toma el lock de fila por la
- * duración de la sentencia, así que Postgres serializa los deltas en vez de
- * que la segunda transacción sobrescriba el resultado de la primera.
+ * Suma `delta` (positivo = entra stock, negativo = sale stock) a Inventory
+ * en una sola sentencia SQL en vez de leer y luego escribir: el propio
+ * UPDATE/ON CONFLICT bloquea la fila mientras corre, así que si dos
+ * confirmaciones llegan a la vez para el mismo (productId, warehouseId),
+ * Postgres hace que la segunda espere a que la primera termine y recién
+ * ahí aplica su cambio — en vez de que ambas lean el mismo valor inicial
+ * y una pise el resultado de la otra sin darse cuenta.
  */
 export async function applyStockChange(
   tx: Prisma.TransactionClient,
@@ -22,8 +22,7 @@ export async function applyStockChange(
   const { productId, warehouseId, delta } = params;
 
   if (delta >= 0) {
-    // Un incremento siempre es seguro aunque la fila no exista todavía:
-    // ON CONFLICT DO UPDATE crea la fila con la cantidad inicial.
+    // ON CONFLICT crea la fila si no existía todavía (seguro aunque sea el primer stock).
     const rows = await tx.$queryRaw<{ quantity: number }[]>`
       INSERT INTO inventory (product_id, warehouse_id, quantity)
       VALUES (${productId}::uuid, ${warehouseId}::uuid, ${delta})
@@ -35,11 +34,8 @@ export async function applyStockChange(
     return { previousStock: newStock - delta, newStock };
   }
 
-  // Un decremento sobre una fila inexistente no tiene sentido (no puede
-  // haber stock negativo de una fila que nunca existió), así que se usa
-  // UPDATE simple (no INSERT). El WHERE valida en la misma sentencia que
-  // el resultado no sea negativo, haciendo el chequeo de suficiencia
-  // atómico con la escritura.
+  // UPDATE simple, no INSERT: un decremento sobre una fila inexistente no tiene
+  // sentido. El WHERE valida suficiencia en la misma sentencia que escribe.
   const rows = await tx.$queryRaw<{ quantity: number }[]>`
     UPDATE inventory SET quantity = quantity + ${delta}
     WHERE product_id = ${productId}::uuid AND warehouse_id = ${warehouseId}::uuid
