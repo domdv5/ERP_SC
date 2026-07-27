@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import { AccountsPayableService } from './accounts-payable.service';
 import {
   FindAllAccountsPayableDto,
+  FindAvailableCreditsDto,
   RegisterPayablePaymentDto,
 } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
@@ -16,6 +17,18 @@ export class AccountsPayableController {
   @Permissions('ap.read')
   findAll(@Query() findAllAccountsPayableDto: FindAllAccountsPayableDto) {
     return this.accountsPayableService.findAll(findAllAccountsPayableDto);
+  }
+
+  // Debe declararse antes de GET :id — si no, Nest interpreta "credits" como el
+  // param :id (mismo riesgo documentado en CLAUDE.md para GET /auth/roles).
+  @Get('credits')
+  @Permissions('ap.read')
+  findAvailableCredits(
+    @Query() findAvailableCreditsDto: FindAvailableCreditsDto,
+  ) {
+    return this.accountsPayableService.findAvailableCredits(
+      findAvailableCreditsDto,
+    );
   }
 
   @Get(':id')

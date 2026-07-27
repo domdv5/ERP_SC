@@ -1,21 +1,34 @@
 import { useEffect, useMemo, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
-import { X } from 'lucide-react'
+import { X, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatCOP } from '@/pages/accounts-payable/accounts-payable.utils'
+import { getSupplierCredits } from '@/services/accounts-payable.service'
+import { formatCOP, formatDate } from '@/pages/accounts-payable/accounts-payable.utils'
+import type { RegisterPayablePaymentPayload } from '@/types'
 
 // ---------------------------------------------------------------------------
 // Schema
 // ---------------------------------------------------------------------------
 
+// `balance` viaja en cada fila del form solo para validar en el cliente que no se
+// aplique más de lo disponible — se descarta antes de enviar el payload al backend.
+const creditApplicationSchema = z.object({
+  supplierCreditId: z.string(),
+  balance: z.number(),
+  amount: z.coerce.number().min(0, 'El monto no puede ser negativo'),
+})
+
 const baseSchema = z.object({
-  amount: z.coerce.number().positive('El monto debe ser mayor a 0'),
+  // El efectivo ahora puede ser 0: un pago puede saldarse solo con notas crédito (ver plan 020).
+  amount: z.coerce.number().min(0, 'El monto no puede ser negativo'),
   paymentDate: z.string().min(1, 'La fecha es requerida'),
   paymentMethod: z.string().min(1, 'Selecciona un método de pago'),
   bankDestination: z.string().optional(),
   reference: z.string().optional(),
+  creditApplications: z.array(creditApplicationSchema),
 })
 
 export type RegisterPaymentFormValues = z.infer<typeof baseSchema>
@@ -35,10 +48,12 @@ const PAYMENT_METHODS = [
 interface RegisterPaymentFormProps {
   open: boolean
   onClose: () => void
-  onSubmit: (data: RegisterPaymentFormValues) => void
+  onSubmit: (data: RegisterPayablePaymentPayload) => void
   isPending: boolean
   /** Saldo pendiente actual de la cuenta — usado para validar que el pago no lo exceda. */
   pendingBalance: number
+  /** Proveedor dueño de la cuenta — usado para consultar sus notas crédito disponibles. */
+  supplierId: string
 }
 
 // ---------------------------------------------------------------------------
@@ -83,57 +98,172 @@ function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSele
 
 const today = () => new Date().toISOString().slice(0, 10)
 
+const emptyDefaults = (): RegisterPaymentFormValues => ({
+  amount: 0,
+  paymentDate: today(),
+  paymentMethod: '',
+  bankDestination: '',
+  reference: '',
+  creditApplications: [],
+})
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function RegisterPaymentForm({ open, onClose, onSubmit, isPending, pendingBalance }: RegisterPaymentFormProps) {
+export function RegisterPaymentForm({
+  open,
+  onClose,
+  onSubmit,
+  isPending,
+  pendingBalance,
+  supplierId,
+}: RegisterPaymentFormProps) {
+  const { data: credits, isLoading: isLoadingCredits } = useQuery({
+    queryKey: ['accounts-payable', 'credits', supplierId],
+    queryFn: () => getSupplierCredits(supplierId),
+    staleTime: 5 * 60 * 1000,
+    enabled: open && Boolean(supplierId),
+  })
+
+  // superRefine valida ambos lados del pago juntos (efectivo + créditos aplicados) contra
+  // el saldo pendiente, y cada fila de crédito contra su propio balance disponible.
   const schema = useMemo(
     () =>
-      baseSchema.refine((data) => data.amount <= pendingBalance, {
-        message: `El monto no puede superar el saldo pendiente (${formatCOP(pendingBalance)})`,
-        path: ['amount'],
+      baseSchema.superRefine((data, ctx) => {
+        const creditsTotal = data.creditApplications.reduce((sum, c) => sum + c.amount, 0)
+        const total = data.amount + creditsTotal
+
+        if (total <= 0) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Ingresa un monto en efectivo o aplica al menos una nota crédito',
+            path: ['amount'],
+          })
+        }
+
+        if (total > pendingBalance) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `El monto no puede superar el saldo pendiente (${formatCOP(pendingBalance)})`,
+            path: ['amount'],
+          })
+        }
+
+        data.creditApplications.forEach((c, index) => {
+          if (c.amount > c.balance) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `No puede superar el saldo disponible (${formatCOP(c.balance)})`,
+              path: ['creditApplications', index, 'amount'],
+            })
+          }
+        })
       }),
     [pendingBalance],
   )
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<RegisterPaymentFormValues>({
     resolver: zodResolver(schema) as never,
-    defaultValues: {
-      amount: 0,
-      paymentDate: today(),
-      paymentMethod: '',
-      bankDestination: '',
-      reference: '',
-    },
+    defaultValues: emptyDefaults(),
   })
+
+  const { fields } = useFieldArray({ control, name: 'creditApplications' })
 
   useEffect(() => {
     if (open) {
-      reset({
-        amount: 0,
-        paymentDate: today(),
-        paymentMethod: '',
-        bankDestination: '',
-        reference: '',
-      })
+      reset(emptyDefaults())
     }
   }, [open, reset])
 
+  // Puebla las filas de crédito una vez que la consulta resuelve — separado del reset de
+  // apertura porque la consulta de créditos llega después de que `open` pasa a true.
+  useEffect(() => {
+    if (open && credits) {
+      setValue(
+        'creditApplications',
+        credits.map((c) => ({ supplierCreditId: c.id, balance: c.balance, amount: 0 })),
+      )
+    }
+  }, [open, credits, setValue])
+
+  const watchedAmount = watch('amount')
+  const watchedCredits = watch('creditApplications')
+  const totalApplied = (Number(watchedAmount) || 0) + watchedCredits.reduce((sum, c) => sum + (Number(c.amount) || 0), 0)
+
   if (!open) return null
+
+  const submitHandler = (data: RegisterPaymentFormValues) => {
+    const creditApplications = data.creditApplications
+      .filter((c) => c.amount > 0)
+      .map((c) => ({ supplierCreditId: c.supplierCreditId, amount: c.amount }))
+
+    onSubmit({
+      amount: data.amount,
+      paymentDate: data.paymentDate,
+      paymentMethod: data.paymentMethod,
+      bankDestination: data.bankDestination,
+      reference: data.reference,
+      ...(creditApplications.length > 0 ? { creditApplications } : {}),
+    })
+  }
+
+  const creditsSection = isLoadingCredits ? (
+    <div className="space-y-2">
+      {[...Array(2)].map((_, i) => (
+        <div key={i} className="h-14 rounded-lg bg-surface-hover animate-pulse" />
+      ))}
+    </div>
+  ) : credits && credits.length > 0 ? (
+    <div className="space-y-2">
+      {fields.map((field, index) => (
+        <div key={field.id}>
+          <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-ui-border-medium bg-surface-raised">
+            <div className="min-w-0">
+              <p className="text-content text-sm font-medium">
+                Nota crédito &middot; {formatDate(credits[index]?.createdAt ?? null)}
+              </p>
+              <p className="text-content-faint text-xs mt-0.5 font-accent">
+                Disponible: {formatCOP(field.balance)}
+              </p>
+            </div>
+            <Input
+              {...register(`creditApplications.${index}.amount`)}
+              type="number"
+              min={0}
+              max={field.balance}
+              step="0.01"
+              placeholder="0"
+              className="w-28 shrink-0"
+            />
+          </div>
+          {errors.creditApplications?.[index]?.amount && (
+            <p className="text-red-500 text-xs mt-1">{errors.creditApplications[index]?.amount?.message}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p className="text-content-faint text-xs font-accent py-1">
+      Este proveedor no tiene notas crédito disponibles.
+    </p>
+  )
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-ui-border gradient-dark">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-ui-border gradient-dark shrink-0">
           <div>
             <h2 className="text-white font-semibold">Registrar pago</h2>
             <p className="text-white/50 text-xs mt-0.5 font-accent">
@@ -146,9 +276,9 @@ export function RegisterPaymentForm({ open, onClose, onSubmit, isPending, pendin
         </div>
 
         {/* Body + Footer */}
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
-          <div className="px-6 py-5 space-y-4">
-            <Field label="Monto" error={errors.amount?.message}>
+        <form onSubmit={handleSubmit(submitHandler as never)} className="flex flex-col overflow-hidden">
+          <div className="px-6 py-5 space-y-4 overflow-y-auto">
+            <Field label="Monto en efectivo" error={errors.amount?.message}>
               <Input
                 {...register('amount')}
                 type="number"
@@ -183,10 +313,31 @@ export function RegisterPaymentForm({ open, onClose, onSubmit, isPending, pendin
             <Field label="Referencia (opcional)" error={errors.reference?.message}>
               <Input {...register('reference')} placeholder="Ej: N° de comprobante" autoComplete="off" />
             </Field>
+
+            {/* Aplicar saldo a favor */}
+            <div className="pt-2 border-t border-ui-divide">
+              <div className="flex items-center gap-2 mb-2">
+                <Wallet className="w-4 h-4 text-content-muted" />
+                <p className="text-sm font-medium text-content-secondary">Aplicar saldo a favor</p>
+              </div>
+              {creditsSection}
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-1">
+              <span className="text-content-faint font-accent">Total a aplicar</span>
+              <span
+                className={cn(
+                  'font-medium',
+                  totalApplied > pendingBalance ? 'text-red-500' : 'text-content-secondary',
+                )}
+              >
+                {formatCOP(totalApplied)} / {formatCOP(pendingBalance)}
+              </span>
+            </div>
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-ui-border flex justify-end gap-3 bg-surface-raised">
+          <div className="px-6 py-4 border-t border-ui-border flex justify-end gap-3 bg-surface-raised shrink-0">
             <button
               type="button"
               onClick={onClose}

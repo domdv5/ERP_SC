@@ -6,6 +6,7 @@ import type {
   AccountsPayableMeta,
   GetAccountsPayableParams,
   RegisterPayablePaymentPayload,
+  SupplierCredit,
 } from "@/types";
 
 export async function getAccountsPayable(
@@ -20,6 +21,14 @@ export async function getAccountsPayable(
 
 export async function getAccountPayable(id: string): Promise<AccountsPayableDetail> {
   const res = await api.get<ApiResponse<AccountsPayableDetail>>(`/accounts-payable/${id}`);
+  return res.data.data;
+}
+
+/** Créditos (notas crédito de proveedor) disponibles con balance > 0 para aplicar manualmente a un pago. */
+export async function getSupplierCredits(supplierId: string): Promise<SupplierCredit[]> {
+  const res = await api.get<ApiResponse<SupplierCredit[]>>("/accounts-payable/credits", {
+    params: { supplierId },
+  });
   return res.data.data;
 }
 

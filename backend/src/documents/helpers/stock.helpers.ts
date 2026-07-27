@@ -1,5 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { DocumentStatus, MovementType } from '@/common/enums';
 import type { DocumentWithItems } from '@/documents/strategies/document-effect.strategy';
 
 /**
@@ -133,6 +134,16 @@ export async function assertSufficientBinStock(
   }
 }
 
+/** Stock global del producto (sumado entre todas las bodegas). Compartido por
+ * computeNewAvgCost/computeReversedAvgCost, que re-ponderan sobre este mismo total. */
+async function getGlobalStock(tx: Prisma.TransactionClient, productId: string) {
+  const aggregate = await tx.inventory.aggregate({
+    _sum: { quantity: true },
+    where: { productId },
+  });
+  return aggregate._sum.quantity ?? 0;
+}
+
 /** Re-pondera el avgCost sobre el stock global ANTES de la entrada. */
 export async function computeNewAvgCost(
   tx: Prisma.TransactionClient,
@@ -141,14 +152,77 @@ export async function computeNewAvgCost(
   quantity: number,
   unitCost: number,
 ) {
-  const aggregate = await tx.inventory.aggregate({
-    _sum: { quantity: true },
-    where: { productId },
-  });
-  const globalStock = aggregate._sum.quantity ?? 0;
+  const globalStock = await getGlobalStock(tx, productId);
   const denominator = globalStock + quantity;
 
   if (denominator <= 0) return unitCost;
 
   return (globalStock * currentAvgCost + quantity * unitCost) / denominator;
+}
+
+/**
+ * Reversa una re-ponderación previa de avgCost (fórmula inversa de
+ * computeNewAvgCost). Solo es exacta si no hubo consumo de stock del
+ * producto entre la confirmación original y esta reversión — un consumo
+ * intermedio ya "gastó" stock valorado a un avgCost que incluía la
+ * contribución que ahora se quiere restar, y no hay forma de recuperar
+ * retroactivamente cuánto de ese consumo era pre-compra vs. post-compra
+ * sin rehacer el kardex completo. Por eso el llamador (documents.service.ts
+ * ::void()) debe garantizar esa ausencia de consumo posterior (chequeo de
+ * recencia) antes de invocar esta función.
+ */
+export async function computeReversedAvgCost(
+  tx: Prisma.TransactionClient,
+  productId: string,
+  currentAvgCost: number,
+  quantity: number,
+  unitCost: number,
+) {
+  const globalStock = await getGlobalStock(tx, productId);
+  const denominator = globalStock - quantity;
+
+  if (denominator <= 0) return currentAvgCost;
+
+  return (globalStock * currentAvgCost - quantity * unitCost) / denominator;
+}
+
+/**
+ * Determina qué valor debe tomar Product.lastCost tras anular un CM, o
+ * `undefined` si no debe tocarse. Solo CM escribe lastCost en confirm() (ver
+ * cm-effect.strategy.ts) — EAI nunca lo hace, así que el fallback jamás debe
+ * mirar movimientos de tipo adjustment. Si ya existe una compra CM viva más
+ * reciente que la que se anula, lastCost ya refleja correctamente esa compra
+ * y no se toca; solo si la que se anula era la compra vigente más reciente
+ * se busca la compra CM viva inmediatamente anterior (o 0 si no hay ninguna).
+ */
+export async function resolveLastCostAfterVoidingCm(
+  tx: Prisma.TransactionClient,
+  productId: string,
+  voidedDocumentId: string,
+  voidedMovementCreatedAt: Date,
+): Promise<number | undefined> {
+  const laterPurchase = await tx.inventoryMovement.findFirst({
+    where: {
+      productId,
+      documentId: { not: voidedDocumentId },
+      movementType: MovementType.purchase,
+      createdAt: { gt: voidedMovementCreatedAt },
+      document: { status: { not: DocumentStatus.voided } },
+    },
+  });
+
+  if (laterPurchase) return undefined;
+
+  const previousPurchase = await tx.inventoryMovement.findFirst({
+    where: {
+      productId,
+      documentId: { not: voidedDocumentId },
+      movementType: MovementType.purchase,
+      createdAt: { lt: voidedMovementCreatedAt },
+      document: { status: { not: DocumentStatus.voided } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return previousPurchase ? Number(previousPurchase.unitCost) : 0;
 }

@@ -46,13 +46,16 @@ export class DvcEffectStrategy extends BaseEffectStrategy {
       });
     }
 
-    // Nota crédito: monto negativo que reduce el saldo del proveedor.
-    await tx.accountsPayable.create({
+    // Nota crédito de proveedor: saldo a favor aplicable manualmente contra
+    // cualquier cuenta por pagar pendiente de este proveedor (ver Plan 020).
+    const amount = Number(document.total);
+    await tx.supplierCredit.create({
       data: {
         supplierId: supplier.id,
-        documentId: document.id,
-        totalAmount: -Number(document.total),
-        status: 'pending',
+        sourceDocumentId: document.id,
+        amount,
+        balance: amount,
+        status: 'available',
       },
     });
   }

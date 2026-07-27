@@ -92,7 +92,6 @@ model Customer {
   thirdParty         ThirdParty          @relation(fields: [id], references: [id])
   seller             ThirdParty?         @relation("SellerThirdParty", fields: [sellerId], references: [id])
   accountsReceivable AccountsReceivable[]
-  customerCredits    CustomerCredit[]
 
   @@map("customers")
 }
@@ -106,6 +105,7 @@ model Supplier {
   thirdParty      ThirdParty       @relation(fields: [id], references: [id])
   brands          Brand[]
   accountsPayable AccountsPayable[]
+  supplierCredits SupplierCredit[]
 
   @@map("suppliers")
 }
@@ -463,7 +463,7 @@ model Document {
   inventoryMovements InventoryMovement[]
   accountsReceivable AccountsReceivable[]
   accountsPayable    AccountsPayable[]
-  customerCredits    CustomerCredit[]
+  supplierCredits    SupplierCredit[]    @relation("DvcSupplierCredit")
 
   @@unique([type, number])
   @@index([type, status])
@@ -544,9 +544,10 @@ model AccountsPayable {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  supplier        Supplier         @relation(fields: [supplierId], references: [id])
-  document        Document         @relation(fields: [documentId], references: [id])
-  payablePayments PayablePayment[]
+  supplier           Supplier                    @relation(fields: [supplierId], references: [id])
+  document           Document                    @relation(fields: [documentId], references: [id])
+  payablePayments    PayablePayment[]
+  creditApplications SupplierCreditApplication[]
 
   @@map("accounts_payable")
 }
@@ -566,21 +567,44 @@ model PayablePayment {
   @@map("payable_payments")
 }
 
-// ─── Customer credit (saldo a favor) ─────────────────────────────────────────
+// ─── Supplier credit (saldo a favor de proveedor) ────────────────────────────
 
-model CustomerCredit {
+model SupplierCredit {
   id               String   @id @default(uuid()) @db.Uuid
-  thirdPartyId     String   @map("third_party_id") @db.Uuid
+  supplierId       String   @map("supplier_id") @db.Uuid
+  // Monto original de la nota crédito. Se guarda en positivo (a diferencia de la
+  // AccountsPayable negativa que este modelo reemplaza) porque es un saldo a favor.
   amount           Decimal  @db.Decimal(16, 2)
+  // Saldo sin aplicar. Invariante de negocio: 0 <= balance <= amount (nunca negativo
+  // ni mayor que amount); cuando llega a 0, status pasa a 'used'.
   balance          Decimal  @db.Decimal(16, 2)
   sourceDocumentId String?  @map("source_document_id") @db.Uuid
-  /// available | used | expired
-  status           String   @db.VarChar(10)
+  /// available | used
+  status           String   @default("available") @db.VarChar(10)
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  customer       Customer  @relation(fields: [thirdPartyId], references: [id])
-  sourceDocument Document? @relation(fields: [sourceDocumentId], references: [id])
+  supplier       Supplier                    @relation(fields: [supplierId], references: [id])
+  sourceDocument Document?                   @relation("DvcSupplierCredit", fields: [sourceDocumentId], references: [id])
+  applications   SupplierCreditApplication[]
 
-  @@map("customer_credit")
+  @@index([supplierId, status])
+  @@map("supplier_credit")
+}
+
+model SupplierCreditApplication {
+  id               String   @id @default(uuid()) @db.Uuid
+  supplierCreditId String   @map("supplier_credit_id") @db.Uuid
+  accountPayableId String   @map("account_payable_id") @db.Uuid
+  // Monto aplicado en este movimiento, en positivo (parte del balance del crédito
+  // que se descuenta contra esta cuenta por pagar).
+  amount           Decimal  @db.Decimal(16, 2)
+  appliedAt        DateTime @default(now()) @map("applied_at") @db.Timestamptz
+
+  supplierCredit SupplierCredit  @relation(fields: [supplierCreditId], references: [id])
+  accountPayable AccountsPayable @relation(fields: [accountPayableId], references: [id])
+
+  @@index([accountPayableId])
+  @@index([supplierCreditId])
+  @@map("supplier_credit_application")
 }
 

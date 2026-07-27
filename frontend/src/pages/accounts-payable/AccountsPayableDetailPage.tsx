@@ -43,8 +43,12 @@ export default function AccountsPayableDetailPage() {
   const { mutate: registerPayment, isPending: isRegistering } = useMutation({
     mutationFn: (payload: RegisterPayablePaymentPayload) => registerPayablePayment(id!, payload),
     onSuccess: () => {
+      // El prefijo ["accounts-payable"] ya cubre ["accounts-payable", "credits", supplierId] y
+      // ["accounts-payable", id] por coincidencia parcial de query key — se listan explícitas
+      // igual para que quede claro qué se está invalidando tras aplicar un pago con crédito.
       queryClient.invalidateQueries({ queryKey: ["accounts-payable"] });
       queryClient.invalidateQueries({ queryKey: ["accounts-payable", id] });
+      queryClient.invalidateQueries({ queryKey: ["accounts-payable", "credits"] });
       setPaymentFormOpen(false);
       toast.success("Pago registrado correctamente");
     },
@@ -104,8 +108,44 @@ export default function AccountsPayableDetailPage() {
     );
   }
 
-  const paidAmount = account.payablePayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const creditApplications = account.creditApplications ?? [];
+  // El saldo pendiente debe descontar tanto el efectivo como las notas crédito ya aplicadas
+  // (ver plan 020) — omitir creditApplications aquí subestimaría cuánto falta por pagar.
+  const paidAmount =
+    account.payablePayments.reduce((sum, payment) => sum + payment.amount, 0) +
+    creditApplications.reduce((sum, application) => sum + application.amount, 0);
   const pendingBalance = account.totalAmount - paidAmount;
+
+  type SettlementRow = {
+    id: string;
+    date: string;
+    amount: number;
+    kind: "cash" | "credit";
+    paymentMethod: string | null;
+    bankDestination: string | null;
+    reference: string | null;
+  };
+
+  const settlementRows: SettlementRow[] = [
+    ...account.payablePayments.map((payment) => ({
+      id: payment.id,
+      date: payment.paymentDate,
+      amount: payment.amount,
+      kind: "cash" as const,
+      paymentMethod: payment.paymentMethod,
+      bankDestination: payment.bankDestination,
+      reference: payment.reference,
+    })),
+    ...creditApplications.map((application) => ({
+      id: application.id,
+      date: application.appliedAt,
+      amount: application.amount,
+      kind: "credit" as const,
+      paymentMethod: null,
+      bankDestination: null,
+      reference: null,
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <div className="space-y-6 pb-10">
@@ -206,21 +246,21 @@ export default function AccountsPayableDetailPage() {
         <div className="px-6 py-4 border-b border-ui-border">
           <h2 className="text-content font-semibold">Historial de pagos</h2>
           <p className="text-content-muted text-xs mt-0.5 font-accent">
-            {account.payablePayments.length}{" "}
-            {account.payablePayments.length === 1 ? "pago registrado" : "pagos registrados"}
+            {settlementRows.length}{" "}
+            {settlementRows.length === 1 ? "movimiento registrado" : "movimientos registrados"}
           </p>
         </div>
 
-        {account.payablePayments.length === 0 ? (
+        {settlementRows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 gradient-dark">
               <CreditCard className="w-7 h-7 text-white/60" />
             </div>
-            <p className="text-content-muted text-sm font-medium">Aún no hay pagos registrados</p>
+            <p className="text-content-muted text-sm font-medium">Aún no hay movimientos registrados</p>
             <p className="text-content-faint text-xs mt-1 font-accent">
               {canManage
                 ? 'Usa el botón "Registrar pago" para añadir el primero'
-                : "Los pagos aparecerán aquí una vez se registren"}
+                : "Los pagos y aplicaciones de crédito aparecerán aquí una vez se registren"}
             </p>
           </div>
         ) : (
@@ -239,28 +279,34 @@ export default function AccountsPayableDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
-                {account.payablePayments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-surface-raised transition-colors">
+                {settlementRows.map((row) => (
+                  <tr key={`${row.kind}-${row.id}`} className="hover:bg-surface-raised transition-colors">
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatDate(payment.paymentDate)}
+                      {formatDate(row.date)}
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
-                      {formatCOP(payment.amount)}
+                      {formatCOP(row.amount)}
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="flex items-center gap-1.5 text-content-muted text-xs">
-                        <Landmark className="w-3.5 h-3.5 text-content-faint" />
-                        {payment.paymentMethod}
-                      </span>
+                      {row.kind === "credit" ? (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+                          Nota crédito aplicada
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-content-muted text-xs">
+                          <Landmark className="w-3.5 h-3.5 text-content-faint" />
+                          {row.paymentMethod}
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs">
-                      {payment.bankDestination ?? "—"}
+                      {row.bankDestination ?? "—"}
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs">
-                      {payment.reference ? (
+                      {row.reference ? (
                         <span className="flex items-center gap-1.5">
                           <Hash className="w-3.5 h-3.5 text-content-faint" />
-                          {payment.reference}
+                          {row.reference}
                         </span>
                       ) : (
                         "—"
@@ -281,6 +327,7 @@ export default function AccountsPayableDetailPage() {
         onSubmit={(data) => registerPayment(data)}
         isPending={isRegistering}
         pendingBalance={pendingBalance}
+        supplierId={account.supplier.id}
       />
     </div>
   );

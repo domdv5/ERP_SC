@@ -42,8 +42,30 @@ export interface AccountsPayable {
   document: AccountsPayableDocument
 }
 
+/** Saldo a favor de un proveedor (originado por una devolución DVC) aplicable manualmente a cualquier cuenta por pagar suya. Ver plan 020. */
+export interface SupplierCredit {
+  id: string
+  supplierId: string
+  amount: number
+  balance: number
+  sourceDocumentId: string | null
+  status: 'available' | 'used'
+  createdAt: string
+}
+
+/** Registro de auditoría de una aplicación de crédito contra una cuenta por pagar específica. */
+export interface SupplierCreditApplication {
+  id: string
+  supplierCreditId: string
+  accountPayableId: string
+  amount: number
+  appliedAt: string
+}
+
 export interface AccountsPayableDetail extends AccountsPayable {
   payablePayments: PayablePayment[]
+  // Opcional porque el backend puede no incluirlo aún en todas las respuestas — el detalle se degrada a "sin aplicaciones" si falta.
+  creditApplications?: SupplierCreditApplication[]
 }
 
 export interface AccountsPayableMeta {
@@ -61,10 +83,16 @@ export interface GetAccountsPayableParams {
   search?: string
 }
 
+export interface CreditApplicationPayload {
+  supplierCreditId: string
+  amount: number
+}
+
 export interface RegisterPayablePaymentPayload {
   amount: number
   paymentDate?: string
   paymentMethod: string
   bankDestination?: string
   reference?: string
+  creditApplications?: CreditApplicationPayload[]
 }

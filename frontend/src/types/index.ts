@@ -32,8 +32,11 @@ export type {
   AccountsPayableDocument,
   AccountsPayableMeta,
   PayablePayment,
+  SupplierCredit,
+  SupplierCreditApplication,
   GetAccountsPayableParams,
   RegisterPayablePaymentPayload,
+  CreditApplicationPayload,
 } from './accounts-payable.types'
 
 export interface ApiResponse<T> {

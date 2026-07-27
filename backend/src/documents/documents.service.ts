@@ -15,7 +15,12 @@ import {
   FindAllDocumentsDto,
   UpdateDocumentDto,
 } from './dto/index';
-import { applyBinStockChange, applyStockChange } from './helpers/stock.helpers';
+import {
+  applyBinStockChange,
+  applyStockChange,
+  computeReversedAvgCost,
+  resolveLastCostAfterVoidingCm,
+} from './helpers/stock.helpers';
 import { DocumentEffectsRegistry } from './strategies/index';
 
 const DETAIL_INCLUDE = {
@@ -315,8 +320,13 @@ export class DocumentsService {
     const document = await this.prisma.document.findUnique({
       where: { id },
       include: {
-        inventoryMovements: true,
-        accountsPayable: { include: { payablePayments: true } },
+        inventoryMovements: {
+          include: { documentItem: { select: { unitCost: true } } },
+        },
+        accountsPayable: {
+          include: { payablePayments: true, creditApplications: true },
+        },
+        supplierCredits: { include: { applications: true } },
       },
     });
 
@@ -332,13 +342,30 @@ export class DocumentsService {
       );
     }
 
+    // Un pago puede saldarse 100% con nota crédito (amount=0, sin fila
+    // PayablePayment) — sin mirar creditApplications ese caso no bloquea el
+    // void y termina reventando con un error crudo de FK más abajo.
     const hasPayments = document.accountsPayable.some(
-      (payable) => payable.payablePayments.length > 0,
+      (payable) =>
+        payable.payablePayments.length > 0 ||
+        payable.creditApplications.length > 0,
     );
 
     if (hasPayments) {
       throw new ConflictException(
         'No se puede anular: la cuenta por pagar ya tiene pagos registrados',
+      );
+    }
+
+    // Si la nota crédito que generó este DVC ya fue aplicada a otra cuenta
+    // por pagar, anular el documento la dejaría huérfana pero igual gastable.
+    const hasCreditApplications = document.supplierCredits.some(
+      (credit) => credit.applications.length > 0,
+    );
+
+    if (hasCreditApplications) {
+      throw new ConflictException(
+        'No se puede anular: la nota crédito generada por este documento ya fue aplicada a un pago',
       );
     }
 
@@ -355,10 +382,103 @@ export class DocumentsService {
           );
         }
 
-        // Nota: avgCost/lastCost NO se recalculan al anular — el kardex
-        // conserva la trazabilidad (limitación documentada).
+        // avgCost solo se reversa para CM/EAI (únicos tipos que lo re-ponderan
+        // al confirmar) y solo cuando el movimiento a anular es el más
+        // reciente de ese producto — ver computeReversedAvgCost para el
+        // porqué de esa condición.
+        // Memoizada por productId: un CM/EAI con varias líneas del mismo
+        // producto repetiría exactamente la misma query — es segura de
+        // cachear porque filtra documentId: { not: id }, y nada que este
+        // loop mute (movimientos nuevos de tipo void, avgCost) afecta ese
+        // resultado.
+        const recentConsumptionCache = new Map<
+          string,
+          Awaited<ReturnType<typeof tx.inventoryMovement.findFirst>>
+        >();
+
         for (const movement of document.inventoryMovements) {
           const quantity = movement.quantity;
+          const isCostAffecting =
+            document.type === DocumentType.CM ||
+            (document.type === DocumentType.EAI &&
+              Number(movement.documentItem?.unitCost ?? 0) > 0);
+
+          if (isCostAffecting) {
+            // Un CM/EAI puede tener varias líneas del mismo producto (Plan 004
+            // no las prohíbe). Todas comparten documentId con este documento
+            // — se excluyen del chequeo de recencia (son parte del mismo lote
+            // que se está anulando, no consumo externo) comparando createdAt
+            // en vez de solo el id, para no depender del orden de iteración.
+            // Solo bloquea consumo real de stock (quantity < 0, ej. DVC/SAJ):
+            // otra compra/EAI posterior no rompe la reversión (la ponderación
+            // de adiciones puras es asociativa) y un traslado (T) tampoco,
+            // porque su neto sobre el stock global del producto es cero.
+            // Tampoco un void: un void que reversa una compra/EAI anterior
+            // tiene quantity negativa pero no es consumo real (mismo
+            // argumento de asociatividad de arriba, extendido a voids de
+            // compras anteriores) — sin excluirlo, anular CM1 y luego CM2
+            // del mismo producto fallaba aunque debería poder anularse.
+            let mostRecentOther = recentConsumptionCache.get(
+              movement.productId,
+            );
+
+            if (mostRecentOther === undefined) {
+              mostRecentOther = await tx.inventoryMovement.findFirst({
+                where: {
+                  productId: movement.productId,
+                  documentId: { not: id },
+                  quantity: { lt: 0 },
+                  movementType: { notIn: [MovementType.transfer, MovementType.void] },
+                },
+                orderBy: { createdAt: 'desc' },
+              });
+              recentConsumptionCache.set(movement.productId, mostRecentOther);
+            }
+
+            if (
+              mostRecentOther &&
+              mostRecentOther.createdAt > movement.createdAt
+            ) {
+              throw new ConflictException(
+                `No se puede anular: el producto ${movement.productId} tuvo movimientos de stock posteriores a esta compra/ajuste, lo que impide recalcular el costo promedio de forma segura. Use un ajuste manual (EAI/SAJ) o una devolución a proveedor (DVC) en su lugar.`,
+              );
+            }
+
+            const product = await tx.product.findUniqueOrThrow({
+              where: { id: movement.productId },
+            });
+
+            const reversedAvgCost = await computeReversedAvgCost(
+              tx,
+              movement.productId,
+              Number(product.avgCost),
+              quantity,
+              Number(movement.unitCost),
+            );
+
+            // lastCost solo se revierte para CM (EAI nunca lo toca, ni al
+            // confirmar ni acá).
+            const updateData: Prisma.ProductUpdateInput = {
+              avgCost: reversedAvgCost,
+            };
+
+            if (document.type === DocumentType.CM) {
+              const resolvedLastCost = await resolveLastCostAfterVoidingCm(
+                tx,
+                movement.productId,
+                id,
+                movement.createdAt,
+              );
+              if (resolvedLastCost !== undefined) {
+                updateData.lastCost = resolvedLastCost;
+              }
+            }
+
+            await tx.product.update({
+              where: { id: movement.productId },
+              data: updateData,
+            });
+          }
 
           const { previousStock, newStock } = await applyStockChange(tx, {
             productId: movement.productId,
@@ -396,6 +516,15 @@ export class DocumentsService {
         }
 
         await tx.accountsPayable.deleteMany({ where: { documentId: id } });
+
+        // Hard delete, mismo patrón que accountsPayable.deleteMany arriba —
+        // ya se validó antes de entrar a la transacción que ningún crédito
+        // tiene aplicaciones (hasCreditApplications).
+        if (document.supplierCredits.length > 0) {
+          await tx.supplierCredit.deleteMany({
+            where: { sourceDocumentId: id },
+          });
+        }
       },
       { timeout: 30000 },
     );
