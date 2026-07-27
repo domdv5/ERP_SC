@@ -39,6 +39,8 @@ const DETAIL_INCLUDE = {
   },
   thirdParty: { select: { id: true, name: true } },
   user: { select: { id: true, name: true } },
+  confirmedBy: { select: { id: true, name: true } },
+  voidedBy: { select: { id: true, name: true } },
   warehouse: { select: { id: true, name: true } },
   destWarehouse: { select: { id: true, name: true } },
   destBin: { include: { zone: { select: { name: true } } } },
@@ -291,7 +293,7 @@ export class DocumentsService {
         // Bloqueo optimista: si otro proceso confirmó/anuló el doc, no aplicar efectos.
         const claimed = await tx.document.updateMany({
           where: { id, status: DocumentStatus.draft },
-          data: { status: DocumentStatus.confirmed },
+          data: { status: DocumentStatus.confirmed, confirmedById: user.sub },
         });
 
         if (claimed.count === 0) {
@@ -373,7 +375,7 @@ export class DocumentsService {
       async (tx) => {
         const claimed = await tx.document.updateMany({
           where: { id, status: DocumentStatus.confirmed },
-          data: { status: DocumentStatus.voided },
+          data: { status: DocumentStatus.voided, voidedById: user.sub },
         });
 
         if (claimed.count === 0) {

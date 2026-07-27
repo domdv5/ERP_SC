@@ -14,6 +14,7 @@ export default function App() {
         richColors
         closeButton
         duration={4000}
+        offset={{ top: '80px' }}
       />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

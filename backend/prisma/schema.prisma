@@ -387,6 +387,8 @@ model User {
 
   userRoles             UserRole[]
   documents             Document[]
+  confirmedDocuments    Document[]    @relation("DocumentConfirmedBy")
+  voidedDocuments       Document[]    @relation("DocumentVoidedBy")
   inventoryMovements    InventoryMovement[]
   deletedProducts       Product[]     @relation("ProductDeletedBy")
   deletedThirdParties   ThirdParty[]  @relation("ThirdPartyDeletedBy")
@@ -447,11 +449,17 @@ model Document {
   /// Bin destino — solo traslados hacia bodega de almacenamiento
   destBinId        String?        @map("dest_bin_id") @db.Uuid
   sourceDocumentId String?        @map("source_document_id") @db.Uuid
+  /// Quién confirmó — null mientras el documento sigue en borrador
+  confirmedById    String?        @map("confirmed_by_id") @db.Uuid
+  /// Quién anuló — null si nunca fue anulado
+  voidedById       String?        @map("voided_by_id") @db.Uuid
   createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
   thirdParty       ThirdParty? @relation(fields: [thirdPartyId], references: [id])
   user             User        @relation(fields: [userId], references: [id])
+  confirmedBy      User?       @relation("DocumentConfirmedBy", fields: [confirmedById], references: [id])
+  voidedBy         User?       @relation("DocumentVoidedBy", fields: [voidedById], references: [id])
   warehouse        Warehouse?  @relation("DocumentWarehouse", fields: [warehouseId], references: [id])
   destWarehouse    Warehouse?  @relation("DocumentDestWarehouse", fields: [destWarehouseId], references: [id])
   sourceBin        Bin?        @relation("DocumentSourceBin", fields: [sourceBinId], references: [id])

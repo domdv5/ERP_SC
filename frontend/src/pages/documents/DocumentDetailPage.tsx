@@ -318,6 +318,16 @@ export default function DocumentDetailPage() {
               <p className="text-content-muted text-sm mt-1 font-accent">
                 Creado por {doc.user.name}
               </p>
+              {!isDraft && doc.confirmedBy && (
+                <p className="text-content-muted text-sm font-accent">
+                  Confirmado por {doc.confirmedBy.name}
+                </p>
+              )}
+              {doc.status === 'voided' && doc.voidedBy && (
+                <p className="text-content-muted text-sm font-accent">
+                  Anulado por {doc.voidedBy.name}
+                </p>
+              )}
             </div>
           </div>
 

@@ -71,6 +71,8 @@ export interface Document extends DocumentListItem {
   destBin: DocumentBin | null
   sourceBin: DocumentBin | null
   sourceDocument: DocumentSourceRef | null
+  confirmedBy: DocumentUser | null
+  voidedBy: DocumentUser | null
 }
 
 export interface DocumentMeta {
