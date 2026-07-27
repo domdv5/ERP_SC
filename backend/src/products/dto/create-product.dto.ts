@@ -14,6 +14,7 @@ export class CreateProductDto {
   @IsNotEmpty()
   code!: string;
 
+  @IsOptional()
   @IsString()
   legacyCode?: string;
 

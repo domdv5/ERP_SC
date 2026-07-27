@@ -153,6 +153,8 @@ export default function DocumentDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['documents'] })
     queryClient.invalidateQueries({ queryKey: ['document', id] })
     queryClient.invalidateQueries({ queryKey: ['products'] })
+    // CM crea AccountsPayable y DVC crea/elimina SupplierCredit al confirmar/anular
+    queryClient.invalidateQueries({ queryKey: ['accounts-payable'] })
   }
 
   const { mutate: doConfirm, isPending: isConfirming } = useMutation({
