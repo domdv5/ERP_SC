@@ -63,7 +63,11 @@ export default function ProductsPage() {
   const activeCount = data?.meta.activeCount ?? 0;
   const inStockCount = data?.meta.inStockCount ?? 0;
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["products"] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+    // Namespace separado del combobox de producto en documentos (ProductRow) — no cubierto por prefijo.
+    queryClient.invalidateQueries({ queryKey: ["products-search"] });
+  };
 
   const { mutate: create, isPending: isCreating } = useMutation({
     mutationFn: (payload: CreateProductPayload) => createProduct(payload),

@@ -153,6 +153,9 @@ export default function DocumentDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['documents'] })
     queryClient.invalidateQueries({ queryKey: ['document', id] })
     queryClient.invalidateQueries({ queryKey: ['products'] })
+    // Namespace separado del combobox de producto en ProductRow — 'products' no lo cubre por
+    // prefijo, así que sin esto el avgCost mostrado en la siguiente operación queda desactualizado.
+    queryClient.invalidateQueries({ queryKey: ['products-search'] })
     // CM crea AccountsPayable y DVC crea/elimina SupplierCredit al confirmar/anular
     queryClient.invalidateQueries({ queryKey: ['accounts-payable'] })
   }
