@@ -112,7 +112,7 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
       // Namespace separado del combobox de producto en ProductRow — 'products' no lo cubre por
       // prefijo, así que sin esto el disponible mostrado en la siguiente operación queda desactualizado.
       queryClient.invalidateQueries({ queryKey: ["products-search"] });
-      toast.success("Reserva liberada correctamente");
+      toast.success("Stock liberado correctamente");
       onClose();
     },
     onError: (err: unknown) => {

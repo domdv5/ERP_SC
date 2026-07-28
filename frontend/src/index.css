@@ -109,6 +109,17 @@
     font-family: var(--font-display);
     font-weight: 900;
   }
+
+  /* Ocultar spinners nativos de inputs numéricos (feos en modo oscuro) en todos los navegadores */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
 }
 
 @layer utilities {
