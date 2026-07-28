@@ -31,6 +31,10 @@ const formatCOP = (value: number) =>
     minimumFractionDigits: 0,
   }).format(value);
 
+// Los únicos dos warehouses del seed son "Almacén" (store) y "Bodega" (warehouse) — ver WarehousesModule.
+const getStockQuantity = (product: Product, warehouseName: string) =>
+  product.stockByWarehouse.find((s) => s.warehouseName === warehouseName)?.quantity ?? 0;
+
 export default function ProductsPage() {
   const queryClient = useQueryClient();
 
@@ -189,7 +193,8 @@ export default function ProductsPage() {
                     { label: "Género", align: "text-left" },
                     { label: "Categoría", align: "text-left" },
                     { label: "Precio Venta", align: "text-right" },
-                    { label: "Stock", align: "text-left" },
+                    { label: "Almacén", align: "text-right" },
+                    { label: "Bodega", align: "text-right" },
                     { label: "Reservado", align: "text-right" },
                     { label: "Disponible", align: "text-right" },
                     { label: "Últ. Costo", align: "text-right" },
@@ -234,15 +239,11 @@ export default function ProductsPage() {
                     <td className="px-5 py-3.5 text-right text-content-secondary font-medium text-xs">
                       {formatCOP(p.salePrice)}
                     </td>
-                    <td className="px-5 py-3.5">
-                      <p className="text-content font-medium text-xs">{p.totalStock}</p>
-                      {p.stockByWarehouse.length > 0 && (
-                        <p className="text-xs text-content-faint">
-                          {p.stockByWarehouse
-                            .map((s) => `${s.warehouseName}: ${s.quantity}`)
-                            .join(" · ")}
-                        </p>
-                      )}
+                    <td className="px-5 py-3.5 text-right text-content-muted text-xs">
+                      {getStockQuantity(p, "Almacén").toLocaleString("es-CO")}
+                    </td>
+                    <td className="px-5 py-3.5 text-right text-content-muted text-xs">
+                      {getStockQuantity(p, "Bodega").toLocaleString("es-CO")}
                     </td>
                     <td className="px-5 py-3.5 text-right text-content-muted text-xs">
                       {p.reservedQuantity.toLocaleString("es-CO")}
