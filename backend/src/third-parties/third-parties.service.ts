@@ -18,6 +18,7 @@ export class ThirdPartiesService {
       search,
       isCustomer,
       isSupplier,
+      isSeller,
       isActive,
     } = findAllThirdPartiesDto;
     const skip = (page - 1) * limit;
@@ -26,6 +27,7 @@ export class ThirdPartiesService {
       isActive: isActive !== undefined ? isActive : true,
       ...(isCustomer !== undefined && { isCustomer }),
       ...(isSupplier !== undefined && { isSupplier }),
+      ...(isSeller !== undefined && { isSeller }),
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },

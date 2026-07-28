@@ -69,6 +69,7 @@ model ThirdParty {
   customer           Customer?
   supplier           Supplier?
   documents          Document[]
+  sellerDocuments    Document[]           @relation("DocumentSeller")
   soldToCustomers    Customer[]           @relation("SellerThirdParty")
   accountsReceivable AccountsReceivable[] @relation("SellerAR")
   equivalenceTables  EquivalenceTable[]
@@ -77,6 +78,7 @@ model ThirdParty {
   @@index([isActive])
   @@index([isCustomer])
   @@index([isSupplier])
+  @@index([isSeller])
   @@index([createdAt])
   @@map("third_parties")
 }
@@ -392,6 +394,7 @@ model User {
   inventoryMovements    InventoryMovement[]
   deletedProducts       Product[]     @relation("ProductDeletedBy")
   deletedThirdParties   ThirdParty[]  @relation("ThirdPartyDeletedBy")
+  reservationReleases   ReservationRelease[]
 
   @@map("user")
 }
@@ -421,6 +424,7 @@ enum DocumentType {
   REM // Remisión — temporal, se convierte en COT/POS
   DVV // Devolución en venta — entrada inventario + saldo a favor
   T // Traslado entre bodegas
+  PV // Preventa — reserva lógica de inventario, sin movimiento físico
 }
 
 enum DocumentStatus {
@@ -435,6 +439,8 @@ model Document {
   number           String         @db.VarChar(30)
   date             DateTime       @db.Date
   thirdPartyId     String?        @map("third_party_id") @db.Uuid
+  /// Vendedor asignado — solo preventas (PV); ThirdParty con isSeller=true
+  sellerId         String?        @map("seller_id") @db.Uuid
   userId           String         @map("user_id") @db.Uuid
   status           DocumentStatus @default(draft)
   total            Decimal        @default(0) @db.Decimal(16, 2)
@@ -457,6 +463,7 @@ model Document {
   updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
   thirdParty       ThirdParty? @relation(fields: [thirdPartyId], references: [id])
+  seller           ThirdParty? @relation("DocumentSeller", fields: [sellerId], references: [id])
   user             User        @relation(fields: [userId], references: [id])
   confirmedBy      User?       @relation("DocumentConfirmedBy", fields: [confirmedById], references: [id])
   voidedBy         User?       @relation("DocumentVoidedBy", fields: [voidedById], references: [id])
@@ -492,14 +499,41 @@ model DocumentItem {
   unitCost      Decimal  @default(0) @map("unit_cost") @db.Decimal(14, 4)
   subtotal      Decimal  @default(0) @db.Decimal(16, 2)
   observaciones String?  @db.VarChar(500)
+  /// Solo PV: cantidad de la reserva liberada manualmente. La reserva vigente es
+  /// derivada (quantity - releasedQuantity - convertedQuantity), nunca un total persistido.
+  releasedQuantity  Int      @default(0) @map("released_quantity")
+  /// Solo PV: cantidad ya convertida a un documento de venta real.
+  convertedQuantity Int      @default(0) @map("converted_quantity")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   document Document @relation(fields: [documentId], references: [id])
   product  Product  @relation(fields: [productId], references: [id])
 
-  inventoryMovements InventoryMovement[]
+  inventoryMovements  InventoryMovement[]
+  reservationReleases ReservationRelease[]
 
+  @@index([productId])
   @@map("document_item")
+}
+
+// ─── Liberación de reservas (preventa) ───────────────────────────────────────
+
+// Bitácora append-only: cada liberación parcial de una reserva de preventa deja
+// rastro de quién y cuándo. Nunca se actualiza ni se borra — DocumentItem.releasedQuantity
+// es el acumulado de estas filas.
+model ReservationRelease {
+  id             String   @id @default(uuid()) @db.Uuid
+  documentItemId String   @map("document_item_id") @db.Uuid
+  quantity       Int
+  userId         String   @map("user_id") @db.Uuid
+  notes          String?  @db.VarChar(500)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  documentItem DocumentItem @relation(fields: [documentItemId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([documentItemId])
+  @@map("reservation_release")
 }
 
 // ─── Accounts receivable ─────────────────────────────────────────────────────

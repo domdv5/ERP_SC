@@ -14,6 +14,7 @@ import {
   TablePagination,
 } from '@/components/shared'
 import { cn } from '@/lib/utils'
+import { DOC_TYPE_SELECT_OPTIONS, DOC_TYPE_BADGE, DOC_STATUS_BADGE } from './document.constants'
 import type { DocumentListItem, DocumentType, DocumentStatus } from '@/types/document.types'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -34,27 +35,12 @@ const formatDate = (iso: string) =>
 
 // ─── label maps ─────────────────────────────────────────────────────────────
 
-const TYPE_LABELS: Record<DocumentType, { label: string; className: string }> = {
-  CM:  { label: 'Compra',           className: 'bg-blue-100   text-blue-700   dark:bg-blue-500/20   dark:text-blue-400'   },
-  DVC: { label: 'Dev. Compra',      className: 'bg-amber-100  text-amber-700  dark:bg-amber-500/20  dark:text-amber-400'  },
-  EAI: { label: 'Entrada Ajuste',   className: 'bg-teal-100   text-teal-700   dark:bg-teal-500/20   dark:text-teal-400'   },
-  SAJ: { label: 'Salida Ajuste',    className: 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400' },
-  T:   { label: 'Traslado',         className: 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' },
-}
-
-const STATUS_LABELS: Record<DocumentStatus, { label: string; className: string }> = {
-  draft:     { label: 'Borrador',   className: 'bg-gray-100  text-gray-600  dark:bg-gray-500/20  dark:text-gray-400'  },
-  confirmed: { label: 'Confirmado', className: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' },
-  voided:    { label: 'Anulado',    className: 'bg-red-100   text-red-700   dark:bg-red-500/20   dark:text-red-400'   },
-}
+const TYPE_LABELS = DOC_TYPE_BADGE
+const STATUS_LABELS = DOC_STATUS_BADGE
 
 const ALL_TYPES: { value: string; label: string }[] = [
-  { value: '',    label: 'Todos los tipos' },
-  { value: 'CM',  label: 'Compra' },
-  { value: 'DVC', label: 'Devolución compra' },
-  { value: 'EAI', label: 'Entrada ajuste' },
-  { value: 'SAJ', label: 'Salida ajuste' },
-  { value: 'T',   label: 'Traslado' },
+  { value: '', label: 'Todos los tipos' },
+  ...DOC_TYPE_SELECT_OPTIONS,
 ]
 
 const ALL_STATUSES: { value: string; label: string }[] = [

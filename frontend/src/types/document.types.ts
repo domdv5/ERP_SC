@@ -1,4 +1,4 @@
-export type DocumentType = 'CM' | 'DVC' | 'EAI' | 'SAJ' | 'T'
+export type DocumentType = 'CM' | 'DVC' | 'EAI' | 'SAJ' | 'T' | 'PV'
 export type DocumentStatus = 'draft' | 'confirmed' | 'voided'
 
 export interface DocumentWarehouse {
@@ -40,6 +40,10 @@ export interface DocumentItem {
   // Nota de talla por línea, solo aplica a traslados (T) — permite registrar un mismo código
   // de producto dividido en varios bultos, cada uno con una talla distinta.
   observaciones?: string | null
+  // Solo preventas (PV): cantidad ya liberada de la reserva lógica vía POST /documents/:id/release-items.
+  releasedQuantity?: number
+  // Solo preventas (PV): cantidad convertida a la unidad base cuando el producto se maneja por docena.
+  convertedQuantity?: number
   product: {
     id: string
     code: string
@@ -73,6 +77,8 @@ export interface Document extends DocumentListItem {
   sourceDocument: DocumentSourceRef | null
   confirmedBy: DocumentUser | null
   voidedBy: DocumentUser | null
+  // Solo preventas (PV) — vendedora responsable de la operación, distinta del cliente (thirdParty).
+  seller: DocumentThirdParty | null
 }
 
 export interface DocumentMeta {
@@ -99,6 +105,9 @@ export interface CreateDocumentItemPayload {
   productId: string
   quantity: number
   unitCost?: number
+  // Solo preventas (PV) — precio unitario de venta de la línea; opcional (el backend usa
+  // el salePrice vigente del producto si no se envía).
+  unitPrice?: number
   observaciones?: string
 }
 
@@ -106,6 +115,8 @@ export interface CreateDocumentPayload {
   type: DocumentType
   date: string
   thirdPartyId?: string
+  // Solo preventas (PV) — vendedora responsable, a nivel de documento.
+  sellerId?: string
   warehouseId?: string
   sourceBinId?: string
   destWarehouseId?: string
@@ -116,3 +127,13 @@ export interface CreateDocumentPayload {
 }
 
 export type UpdateDocumentPayload = Omit<CreateDocumentPayload, 'type'>
+
+export interface ReleaseDocumentItemPayload {
+  documentItemId: string
+  quantity: number
+}
+
+export interface ReleaseItemsPayload {
+  items: ReleaseDocumentItemPayload[]
+  notes?: string
+}

@@ -1,9 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DocumentType } from '@/common/enums';
-import type { DocumentEffectStrategy } from './document-effect.strategy';
+import type {
+  DocumentEffectStrategy,
+  ReservationEffectStrategy,
+} from './document-effect.strategy';
+import { isReservationStrategy } from './document-effect.strategy';
 import { CmEffectStrategy } from './cm-effect.strategy';
 import { DvcEffectStrategy } from './dvc-effect.strategy';
 import { EaiEffectStrategy } from './eai-effect.strategy';
+import { PvEffectStrategy } from './pv-effect.strategy';
 import { SajEffectStrategy } from './saj-effect.strategy';
 import { TransferEffectStrategy } from './transfer-effect.strategy';
 
@@ -23,6 +28,7 @@ export class DocumentEffectsRegistry {
     eaiEffectStrategy: EaiEffectStrategy,
     sajEffectStrategy: SajEffectStrategy,
     transferEffectStrategy: TransferEffectStrategy,
+    pvEffectStrategy: PvEffectStrategy,
   ) {
     for (const strategy of [
       cmEffectStrategy,
@@ -30,6 +36,7 @@ export class DocumentEffectsRegistry {
       eaiEffectStrategy,
       sajEffectStrategy,
       transferEffectStrategy,
+      pvEffectStrategy,
     ]) {
       this.strategies.set(strategy.type, strategy);
     }
@@ -40,6 +47,19 @@ export class DocumentEffectsRegistry {
 
     if (!strategy) {
       throw new BadRequestException('Tipo de documento aún no soportado');
+    }
+
+    return strategy;
+  }
+
+  /** Igual que get(), pero exige que la estrategia maneje reservas (ver ReservationEffectStrategy). */
+  getReservation(type: DocumentType): ReservationEffectStrategy {
+    const strategy = this.get(type);
+
+    if (!isReservationStrategy(strategy)) {
+      throw new BadRequestException(
+        'Este tipo de documento no maneja reservas',
+      );
     }
 
     return strategy;

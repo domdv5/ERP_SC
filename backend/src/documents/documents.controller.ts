@@ -13,6 +13,7 @@ import { DocumentsService } from './documents.service';
 import {
   CreateDocumentDto,
   FindAllDocumentsDto,
+  ReleaseItemsDto,
   UpdateDocumentDto,
 } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
@@ -62,6 +63,17 @@ export class DocumentsController {
   @Post(':id/void')
   void(@Param('id') id: string, @Req() req: RequestWithUser) {
     return this.documentsService.void(id, req.user);
+  }
+
+  // Igual que create/update/confirm/void: el permiso (document.release.{type})
+  // se resuelve dinámicamente en el service según el tipo del documento.
+  @Post(':id/release-items')
+  releaseItems(
+    @Param('id') id: string,
+    @Body() releaseItemsDto: ReleaseItemsDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.documentsService.releaseItems(id, releaseItemsDto, req.user);
   }
 
   @Delete(':id')

@@ -36,9 +36,13 @@ interface ProductRowProps {
   // mismo motivo que initialAvgCost: la fila no siempre pasa por el combobox propio, que es donde
   // normalmente se resuelve el producto y se llenaría este dato.
   initialUnitOfMeasure?: 'unidad' | 'docena'
+  // Stock disponible (totalStock - reservado) ya conocido al momento de crear la fila (ej. vía
+  // escaneo de código de barras) — mismo patrón que initialAvgCost, usado en PV para el hint de
+  // disponible y el warning de cantidad-supera-disponible bajo el input de cantidad.
+  initialAvailableStock?: number
 }
 
-export function ProductRow({ index, docType, onRemove, register, setValue, watch, getValues, errors, initialAvgCost, initialUnitOfMeasure }: ProductRowProps) {
+export function ProductRow({ index, docType, onRemove, register, setValue, watch, getValues, errors, initialAvgCost, initialUnitOfMeasure, initialAvailableStock }: ProductRowProps) {
   const [productSearch, setProductSearch] = useState('')
   const [debouncedProductSearch] = useDebounce(productSearch, 400)
   // Costo promedio del producto al momento de seleccionarlo — solo para comparar contra lo digitado
@@ -48,12 +52,19 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   const [selectedUnitOfMeasure, setSelectedUnitOfMeasure] = useState<'unidad' | 'docena' | null>(
     () => initialUnitOfMeasure ?? null,
   )
+  // Stock disponible del producto al momento de seleccionarlo — solo preventas (PV), puede ser
+  // negativo (ya sobre-reservado). Solo informativo: el backend rechaza con 409 si de verdad no
+  // alcanza al confirmar, esto es feedback temprano no bloqueante.
+  const [selectedAvailableStock, setSelectedAvailableStock] = useState<number | null>(
+    () => initialAvailableStock ?? null,
+  )
 
   const productId   = watch(`items.${index}.productId`)
   const productCode = watch(`items.${index}.productCode`)
   const productDesc = watch(`items.${index}.productDesc`)
   const quantity    = watch(`items.${index}.quantity`) ?? 0
   const unitCost    = watch(`items.${index}.unitCost`) ?? 0
+  const unitPrice   = watch(`items.${index}.unitPrice`) ?? 0
 
   const subtotal    = Number(quantity) * Number(unitCost)
   // Nota de talla por línea — solo aplica a traslados (T): permite registrar el mismo código
@@ -68,6 +79,16 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   // basado en ese campo siempre daría 0 — se calcula aparte con el avgCost seleccionado.
   const readonlySubtotal = selectedAvgCost !== null ? Number(quantity) * selectedAvgCost : null
   const costOptional = docType === 'EAI'
+
+  // Preventas (PV) — sin costo (es venta, no compra): el campo editable es el precio de venta,
+  // prellenado con el salePrice vigente del producto pero ajustable (ej. descuento puntual).
+  const showPrice = docType === 'PV'
+  const priceSubtotal = Number(quantity) * Number(unitPrice)
+
+  // PV reserva inventario lógicamente — el warning es solo feedback temprano no bloqueante,
+  // el backend ya rechaza con 409 si de verdad no alcanza al confirmar.
+  const showAvailableStockWarning =
+    showPrice && selectedAvailableStock !== null && Number(quantity) > selectedAvailableStock
 
   const costDeviation = selectedAvgCost && selectedAvgCost > 0 && Number(unitCost) > 0
     ? Math.abs(Number(unitCost) - selectedAvgCost) / selectedAvgCost
@@ -86,7 +107,9 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   const productOptions: ComboboxOption[] = (productData?.items ?? []).map((p: Product) => ({
     id: p.id,
     label: `${p.code} — ${p.description}`,
-    sublabel: `Costo prom: ${formatCOP(Number(p.avgCost))}`,
+    // PV muestra el disponible por producto (para elegir con criterio antes de reservar);
+    // el resto de tipos sigue mostrando el costo promedio.
+    sublabel: showPrice ? `Disponible: ${p.availableStock}` : `Costo prom: ${formatCOP(Number(p.avgCost))}`,
   }))
 
   const displayOptions: ComboboxOption[] = productId && !hasSearch
@@ -137,8 +160,12 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
             setValue(`items.${index}.productDesc`, product?.description ?? '')
             setSelectedAvgCost(product?.avgCost ? Number(product.avgCost) : null)
             setSelectedUnitOfMeasure(product?.unitOfMeasure ?? null)
+            setSelectedAvailableStock(product?.availableStock ?? null)
             if (showCost && product?.avgCost) {
               setValue(`items.${index}.unitCost`, Number(product.avgCost))
+            }
+            if (showPrice && product?.salePrice) {
+              setValue(`items.${index}.unitPrice`, Number(product.salePrice))
             }
           }}
           options={displayOptions}
@@ -174,6 +201,24 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
         )}
         {!rowErrors?.quantity && docType === 'T' && selectedUnitOfMeasure === 'docena' && (
           <p className="text-xs text-content-faint mt-1">Se maneja por docena</p>
+        )}
+        {!rowErrors?.quantity && showPrice && selectedAvailableStock !== null && !showAvailableStockWarning && (
+          <p
+            className={cn(
+              'text-xs mt-1',
+              selectedAvailableStock < 0
+                ? 'text-amber-500 dark:text-amber-400'
+                : 'text-content-faint',
+            )}
+          >
+            Disponible: {selectedAvailableStock}
+          </p>
+        )}
+        {!rowErrors?.quantity && showAvailableStockWarning && (
+          <p className="flex items-center gap-1 text-xs text-amber-500 dark:text-amber-400 mt-1">
+            <AlertTriangle className="w-3 h-3 shrink-0" />
+            Supera el disponible ({selectedAvailableStock})
+          </p>
         )}
       </td>
 
@@ -247,6 +292,26 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
         </td>
       )}
 
+      {/* Unit price — solo preventas (PV): editable, prellenado con salePrice, sin costo */}
+      {showPrice && (
+        <td className="px-3 py-2 w-36">
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            {...register(`items.${index}.unitPrice`)}
+            className={cn(
+              'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint',
+              'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
+              rowErrors?.unitPrice ? 'border-red-500' : 'border-ui-border-medium',
+            )}
+          />
+          {rowErrors?.unitPrice && (
+            <p className="text-xs text-red-500 mt-1">{rowErrors.unitPrice.message}</p>
+          )}
+        </td>
+      )}
+
       {/* Subtotal */}
       <td className="px-3 py-2 w-32 text-right">
         <span className="text-sm text-content-secondary font-medium">
@@ -254,7 +319,9 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
             ? formatCOP(subtotal)
             : showCostReadonly && readonlySubtotal !== null
               ? formatCOP(readonlySubtotal)
-              : '—'}
+              : showPrice
+                ? formatCOP(priceSubtotal)
+                : '—'}
         </span>
       </td>
 

@@ -6,6 +6,7 @@ import {
   UpdateProductDto,
 } from './dto/index';
 import { PrismaService } from '@/prisma/prisma.service';
+import { getReservedByProduct } from '@/documents/helpers/reservation.helpers';
 
 @Injectable()
 export class ProductsService {
@@ -65,12 +66,29 @@ export class ProductsService {
         }),
       ]);
 
+    // Fuera de la $transaction principal a propósito: necesita los productId
+    // de la página ya resuelta, y no hace falta que corra en la misma
+    // transacción serializada (reservedQuantity es una lectura derivada, no
+    // afecta ninguna invariante de escritura como BinStock/Inventory).
+    const reservedByProduct = await getReservedByProduct(
+      this.prisma,
+      items.map((item) => item.id),
+    );
+
     return {
       items: items.map((item) => {
         const { inventoryRecords, ...rest } = item;
+        const stockBreakdown = this.buildStockBreakdown(
+          inventoryRecords,
+          activeWarehouses,
+        );
+        const reservedQuantity = reservedByProduct.get(item.id) ?? 0;
+
         return {
           ...rest,
-          ...this.buildStockBreakdown(inventoryRecords, activeWarehouses),
+          ...stockBreakdown,
+          reservedQuantity,
+          availableStock: stockBreakdown.totalStock - reservedQuantity,
         };
       }),
       meta: {

@@ -6,6 +6,7 @@ import {
   DocumentEffectsRegistry,
   DvcEffectStrategy,
   EaiEffectStrategy,
+  PvEffectStrategy,
   SajEffectStrategy,
   TransferEffectStrategy,
 } from './strategies/index';
@@ -19,6 +20,7 @@ import {
     EaiEffectStrategy,
     SajEffectStrategy,
     TransferEffectStrategy,
+    PvEffectStrategy,
     DocumentEffectsRegistry,
   ],
 })

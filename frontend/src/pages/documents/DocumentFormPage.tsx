@@ -15,10 +15,10 @@ import { Combobox } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
 import { formSchema, type FormValues } from './document-form.schema'
+import { DOC_TYPE_SELECT_OPTIONS, DOC_TYPE_ACCENT } from './document.constants'
 import { ProductRow } from './components/ProductRow'
 import { BarcodeScanInput } from './components/BarcodeScanInput'
 
-import type { DocumentType } from '@/types/document.types'
 import type { Warehouse, WarehouseDetail } from '@/types/warehouse.types'
 import type { ThirdParty } from '@/types/third-party.types'
 
@@ -31,13 +31,7 @@ const formatCOP = (v: number) =>
     minimumFractionDigits: 0,
   }).format(v)
 
-const DOC_TYPE_OPTIONS: { value: DocumentType; label: string }[] = [
-  { value: 'CM',  label: 'Compra' },
-  { value: 'DVC', label: 'Devolución compra' },
-  { value: 'EAI', label: 'Entrada ajuste' },
-  { value: 'SAJ', label: 'Salida ajuste' },
-  { value: 'T',   label: 'Traslado' },
-]
+const DOC_TYPE_OPTIONS = DOC_TYPE_SELECT_OPTIONS
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -54,17 +48,26 @@ export default function DocumentFormPage() {
     userPermissions.includes(`document.create.${opt.value}`)
   )
 
-  // Third-party search
+  // Third-party search — proveedor (CM/DVC) o cliente (PV), según docType (ver needsSupplier/needsCustomer)
   const [tpSearch, setTpSearch] = useState('')
   const [debouncedTpSearch] = useDebounce(tpSearch, 400)
   const [tpSelectedName, setTpSelectedName] = useState('')
 
-  // avgCost + unitOfMeasure por producto conocidos al momento de agregarlo vía escaneo de código
-  // de barras — permite que ProductRow inicialice su selectedAvgCost/selectedUnitOfMeasure aunque
-  // la fila no se haya creado a través del combobox propio de la fila (ver initialAvgCost /
-  // initialUnitOfMeasure en ProductRow).
+  // Vendedora — solo preventas (PV)
+  const [sellerSearch, setSellerSearch] = useState('')
+  const [debouncedSellerSearch] = useDebounce(sellerSearch, 400)
+  const [sellerSelectedName, setSellerSelectedName] = useState('')
+
+  // avgCost + unitOfMeasure + availableStock por producto conocidos al momento de agregarlo vía
+  // escaneo de código de barras — permite que ProductRow inicialice su
+  // selectedAvgCost/selectedUnitOfMeasure/selectedAvailableStock aunque la fila no se haya creado
+  // a través del combobox propio de la fila (ver initialAvgCost/initialUnitOfMeasure/
+  // initialAvailableStock en ProductRow). availableStock es opcional: al reconstruir en modo
+  // edición desde existingDoc.documentItems no hay un valor persistido equivalente (no se guarda
+  // en DocumentItem, y mostrar el "vigente" sería engañoso ya que esos ítems ya están reservando
+  // ese stock) — queda sin dato hasta que el combobox propio de la fila lo resuelva.
   const [scannedProductInfo, setScannedProductInfo] = useState<
-    Record<string, { avgCost: number; unitOfMeasure: 'unidad' | 'docena' }>
+    Record<string, { avgCost: number; unitOfMeasure: 'unidad' | 'docena'; availableStock?: number }>
   >({})
 
   const {
@@ -91,6 +94,9 @@ export default function DocumentFormPage() {
   const docType         = watch('type')
   const warehouseId     = watch('warehouseId')
   const destWarehouseId = watch('destWarehouseId')
+  // Ícono + borde de acento del header/card — se recalcula en vivo si el usuario cambia el
+  // selector "Tipo de operación", ya que docType viene de watch().
+  const accent          = DOC_TYPE_ACCENT[docType]
 
   // ── load existing document for edit ──────────────────────────────────────
   const { data: existingDoc, isLoading: isLoadingDoc } = useQuery({
@@ -108,11 +114,15 @@ export default function DocumentFormPage() {
       return
     }
     setTpSelectedName(existingDoc.thirdParty?.name ?? '')
+    setSellerSelectedName(existingDoc.seller?.name ?? '')
     setScannedProductInfo(
       Object.fromEntries(
         existingDoc.documentItems.map((item) => [
           item.productId,
-          { avgCost: Number(item.product.avgCost), unitOfMeasure: item.product.unitOfMeasure },
+          {
+            avgCost: Number(item.product.avgCost),
+            unitOfMeasure: item.product.unitOfMeasure,
+          },
         ]),
       ),
     )
@@ -120,6 +130,7 @@ export default function DocumentFormPage() {
       type:            existingDoc.type,
       date:            existingDoc.date.slice(0, 10),
       thirdPartyId:    existingDoc.thirdParty?.id ?? undefined,
+      sellerId:        existingDoc.seller?.id ?? undefined,
       warehouseId:     existingDoc.warehouse?.id ?? undefined,
       sourceBinId:     existingDoc.sourceBin?.id ?? undefined,
       destWarehouseId: existingDoc.destWarehouse?.id ?? undefined,
@@ -132,6 +143,7 @@ export default function DocumentFormPage() {
         productDesc:   item.product.description,
         quantity:      item.quantity,
         unitCost:      item.unitCost ?? undefined,
+        unitPrice:     item.unitPrice ?? undefined,
         observaciones: item.observaciones ?? undefined,
       })),
     })
@@ -144,11 +156,35 @@ export default function DocumentFormPage() {
     staleTime: 10 * 60 * 1000,
   })
 
+  // CM/DVC piden proveedor; PV pide cliente — mismo combobox, distinto filtro server-side.
+  const needsSupplier = docType === 'CM' || docType === 'DVC'
+  const needsCustomer = docType === 'PV'
+  const needsSeller    = docType === 'PV'
+
+  const hasTpSearch = debouncedTpSearch.length >= 1
+
   const { data: tpData, isLoading: isLoadingTp } = useQuery({
-    queryKey: ['third-parties-search', debouncedTpSearch],
-    queryFn: () => getThirdParties({ search: debouncedTpSearch || undefined, page: 1, limit: 30, isSupplier: true }),
+    queryKey: ['third-parties-search', debouncedTpSearch, needsCustomer],
+    queryFn: () =>
+      getThirdParties({
+        search: debouncedTpSearch || undefined,
+        page: 1,
+        limit: 30,
+        isSupplier: needsSupplier ? true : undefined,
+        isCustomer: needsCustomer ? true : undefined,
+      }),
     staleTime: 2 * 60 * 1000,
-    enabled: docType === 'CM' || docType === 'DVC',
+    enabled: (needsSupplier || needsCustomer) && hasTpSearch,
+  })
+
+  const hasSellerSearch = debouncedSellerSearch.length >= 1
+
+  const { data: sellerData, isLoading: isLoadingSeller } = useQuery({
+    queryKey: ['third-parties-search-seller', debouncedSellerSearch],
+    queryFn: () =>
+      getThirdParties({ search: debouncedSellerSearch || undefined, page: 1, limit: 30, isSeller: true }),
+    staleTime: 2 * 60 * 1000,
+    enabled: needsSeller && hasSellerSearch,
   })
 
   // Load source warehouse detail for zone/bin cascade (only for T type)
@@ -254,11 +290,11 @@ export default function DocumentFormPage() {
     return available
   })()
 
-  // Third-party options
+  // Third-party options (proveedor para CM/DVC, cliente para PV)
   const tpOptions: ComboboxOption[] = (tpData?.items ?? []).map((tp: ThirdParty) => ({
     id: tp.id,
     label: tp.name,
-    sublabel: tp.isSupplier ? 'Proveedor' : undefined,
+    sublabel: needsCustomer ? undefined : tp.isSupplier ? 'Proveedor' : undefined,
   }))
 
   const currentTpId = watch('thirdPartyId') ?? ''
@@ -266,6 +302,18 @@ export default function DocumentFormPage() {
   const tpDisplayOptions: ComboboxOption[] = currentTpId && !debouncedTpSearch
     ? [{ id: currentTpId, label: tpSelectedName }, ...tpOptions.filter((o) => o.id !== currentTpId)]
     : tpOptions
+
+  // Seller options — solo preventas (PV)
+  const sellerOptions: ComboboxOption[] = (sellerData?.items ?? []).map((tp: ThirdParty) => ({
+    id: tp.id,
+    label: tp.name,
+  }))
+
+  const currentSellerId = watch('sellerId') ?? ''
+
+  const sellerDisplayOptions: ComboboxOption[] = currentSellerId && !debouncedSellerSearch
+    ? [{ id: currentSellerId, label: sellerSelectedName }, ...sellerOptions.filter((o) => o.id !== currentSellerId)]
+    : sellerOptions
 
   // ── mutations ─────────────────────────────────────────────────────────────
   const invalidate = useCallback(() => {
@@ -308,6 +356,7 @@ export default function DocumentFormPage() {
       type:            values.type,
       date:            values.date,
       thirdPartyId:    values.thirdPartyId || undefined,
+      sellerId:        values.type === 'PV' ? (values.sellerId || undefined) : undefined,
       warehouseId:     values.type === 'T' ? (values.warehouseId || undefined) : undefined,
       sourceBinId:     values.sourceBinId || undefined,
       destWarehouseId: values.destWarehouseId || undefined,
@@ -318,6 +367,7 @@ export default function DocumentFormPage() {
         productId:     item.productId,
         quantity:      item.quantity,
         unitCost:      item.unitCost !== undefined && !isNaN(item.unitCost) ? item.unitCost : undefined,
+        unitPrice:     item.unitPrice !== undefined && !isNaN(item.unitPrice) ? item.unitPrice : undefined,
         observaciones: item.observaciones || undefined,
       })),
     }
@@ -348,13 +398,15 @@ export default function DocumentFormPage() {
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────
-  const needsThirdParty = docType === 'CM' || docType === 'DVC'
+  const needsThirdParty = needsSupplier || needsCustomer
   const needsTransfer   = docType === 'T'
   const needsFreight    = docType === 'CM'
   const showCostColumn  = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
+  // Preventas (PV) muestran precio de venta editable en vez de costo — columna separada.
+  const showPriceColumn = docType === 'PV'
   // SAJ y T también necesitan la columna de costo (de solo lectura) para que el número de <td> por
   // fila siga alineado con el <thead> — antes la columna quedaba totalmente ausente para ambos.
-  const hasCostColumn   = showCostColumn || docType === 'SAJ' || docType === 'T'
+  const hasCostColumn   = showCostColumn || showPriceColumn || docType === 'SAJ' || docType === 'T'
   // Nota de talla por línea — solo traslados (T), ver showObservaciones en ProductRow.tsx.
   const showObservacionesColumn = docType === 'T'
 
@@ -369,6 +421,9 @@ export default function DocumentFormPage() {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
+        <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center shrink-0', accent.iconBg)}>
+          <accent.icon className={cn('w-6 h-6', accent.iconText)} />
+        </div>
         <div>
           <h1 className="text-2xl text-content">
             {isEditing ? 'Editar operación' : 'Nueva operación'}
@@ -383,8 +438,11 @@ export default function DocumentFormPage() {
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
-        {/* ── General info card ─────────────────────────────────────────── */}
-        <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-5">
+        {/* ── General info card — borde de acento izquierdo por tipo, ancla visual del form ── */}
+        <div className={cn(
+          'bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-5 border-l-4',
+          accent.border
+        )}>
           <h2 className="text-base text-content border-b border-ui-divide pb-3">
             Información general
           </h2>
@@ -405,11 +463,14 @@ export default function DocumentFormPage() {
                     onChange={(e) => {
                       field.onChange(e)
                       setValue('thirdPartyId', undefined)
+                      setValue('sellerId', undefined)
                       setValue('warehouseId', undefined)
                       setValue('sourceBinId', undefined)
                       setValue('destWarehouseId', undefined)
                       setValue('destBinId', undefined)
                       setValue('freight', undefined)
+                      setTpSelectedName('')
+                      setSellerSelectedName('')
                       replace([])
                     }}
                     className={cn(
@@ -446,11 +507,11 @@ export default function DocumentFormPage() {
               {errors.date && <p className="text-xs text-red-500">{errors.date.message}</p>}
             </div>
 
-            {/* Third party (CM / DVC only) */}
+            {/* Third party — proveedor (CM/DVC) o cliente (PV) */}
             {needsThirdParty && (
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-content-secondary">
-                  Proveedor <span className="text-red-500">*</span>
+                  {needsCustomer ? 'Cliente' : 'Proveedor'} <span className="text-red-500">*</span>
                 </label>
                 <Controller
                   name="thirdPartyId"
@@ -464,7 +525,7 @@ export default function DocumentFormPage() {
                       }}
                       options={tpDisplayOptions}
                       isLoading={isLoadingTp}
-                      placeholder="Selecciona un proveedor..."
+                      placeholder={needsCustomer ? 'Selecciona un cliente...' : 'Selecciona un proveedor...'}
                       searchValue={tpSearch}
                       onSearchChange={setTpSearch}
                       error={errors.thirdPartyId?.message}
@@ -473,6 +534,37 @@ export default function DocumentFormPage() {
                 />
                 {errors.thirdPartyId && (
                   <p className="text-xs text-red-500">{errors.thirdPartyId.message}</p>
+                )}
+              </div>
+            )}
+
+            {/* Seller — solo preventas (PV) */}
+            {needsSeller && (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-content-secondary">
+                  Vendedora <span className="text-red-500">*</span>
+                </label>
+                <Controller
+                  name="sellerId"
+                  control={control}
+                  render={({ field }) => (
+                    <Combobox
+                      value={field.value ?? ''}
+                      onChange={(selectedId, option) => {
+                        field.onChange(selectedId)
+                        setSellerSelectedName(option.label)
+                      }}
+                      options={sellerDisplayOptions}
+                      isLoading={isLoadingSeller}
+                      placeholder="Selecciona una vendedora..."
+                      searchValue={sellerSearch}
+                      onSearchChange={setSellerSearch}
+                      error={errors.sellerId?.message}
+                    />
+                  )}
+                />
+                {errors.sellerId && (
+                  <p className="text-xs text-red-500">{errors.sellerId.message}</p>
                 )}
               </div>
             )}
@@ -720,6 +812,7 @@ export default function DocumentFormPage() {
                   productDesc:   '',
                   quantity:      1,
                   unitCost:      undefined,
+                  unitPrice:     undefined,
                   observaciones: undefined,
                 })
               }
@@ -735,8 +828,11 @@ export default function DocumentFormPage() {
             append={append}
             getValues={getValues}
             setValue={setValue}
-            onProductScanned={(productId, avgCost, unitOfMeasure) =>
-              setScannedProductInfo((prev) => ({ ...prev, [productId]: { avgCost, unitOfMeasure } }))
+            onProductScanned={(productId, avgCost, unitOfMeasure, availableStock) =>
+              setScannedProductInfo((prev) => ({
+                ...prev,
+                [productId]: { avgCost, unitOfMeasure, availableStock },
+              }))
             }
           />
 
@@ -768,7 +864,7 @@ export default function DocumentFormPage() {
                     )}
                     {hasCostColumn && (
                       <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-36">
-                        Costo unit.{' '}
+                        {showPriceColumn ? 'Precio unit.' : 'Costo unit.'}{' '}
                         {docType === 'EAI' && (
                           <span className="text-content-faint normal-case">(opc.)</span>
                         )}
@@ -797,10 +893,11 @@ export default function DocumentFormPage() {
                       errors={errors}
                       initialAvgCost={scannedProductInfo[field.productId]?.avgCost}
                       initialUnitOfMeasure={scannedProductInfo[field.productId]?.unitOfMeasure}
+                      initialAvailableStock={scannedProductInfo[field.productId]?.availableStock}
                     />
                   ))}
                 </tbody>
-                {showCostColumn && fields.length > 0 && (
+                {(showCostColumn || showPriceColumn) && fields.length > 0 && (
                   <tfoot>
                     <tr className="border-t border-ui-border bg-surface-raised">
                       <td colSpan={2} />
@@ -810,9 +907,11 @@ export default function DocumentFormPage() {
                       <td className="px-3 py-3 text-right text-sm font-medium text-content-secondary">
                         {formatCOP(
                           fields.reduce((sum, _, i) => {
-                            const qty  = Number(watch(`items.${i}.quantity`) ?? 0)
-                            const cost = Number(watch(`items.${i}.unitCost`) ?? 0)
-                            return sum + qty * cost
+                            const qty   = Number(watch(`items.${i}.quantity`) ?? 0)
+                            const price = showPriceColumn
+                              ? Number(watch(`items.${i}.unitPrice`) ?? 0)
+                              : Number(watch(`items.${i}.unitCost`) ?? 0)
+                            return sum + qty * price
                           }, 0),
                         )}
                       </td>

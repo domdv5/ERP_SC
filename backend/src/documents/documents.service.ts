@@ -13,6 +13,7 @@ import {
   CreateDocumentDto,
   CreateDocumentItemDto,
   FindAllDocumentsDto,
+  ReleaseItemsDto,
   UpdateDocumentDto,
 } from './dto/index';
 import {
@@ -38,6 +39,7 @@ const DETAIL_INCLUDE = {
     },
   },
   thirdParty: { select: { id: true, name: true } },
+  seller: { select: { id: true, name: true } },
   user: { select: { id: true, name: true } },
   confirmedBy: { select: { id: true, name: true } },
   voidedBy: { select: { id: true, name: true } },
@@ -139,6 +141,7 @@ export class DocumentsService {
       date,
       items,
       thirdPartyId,
+      sellerId,
       destWarehouseId,
       destBinId,
       sourceBinId,
@@ -175,7 +178,7 @@ export class DocumentsService {
 
     const document = await this.prisma.$transaction(async (tx) => {
       const number = await this.nextNumber(tx, type);
-      const total = this.computeTotal(items);
+      const total = this.computeTotal(items, type);
 
       return tx.document.create({
         data: {
@@ -183,6 +186,7 @@ export class DocumentsService {
           number,
           date: new Date(date),
           thirdPartyId,
+          sellerId,
           userId: user.sub,
           status: DocumentStatus.draft,
           total,
@@ -197,7 +201,8 @@ export class DocumentsService {
               productId: item.productId,
               quantity: item.quantity,
               unitCost: item.unitCost ?? 0,
-              subtotal: item.quantity * (item.unitCost ?? 0),
+              unitPrice: item.unitPrice ?? 0,
+              subtotal: this.computeItemSubtotal(item, type),
               observaciones: item.observaciones ?? null,
             })),
           },
@@ -243,7 +248,8 @@ export class DocumentsService {
             productId: item.productId,
             quantity: item.quantity,
             unitCost: item.unitCost ?? 0,
-            subtotal: item.quantity * (item.unitCost ?? 0),
+            unitPrice: item.unitPrice ?? 0,
+            subtotal: this.computeItemSubtotal(item, document.type),
             observaciones: item.observaciones ?? null,
           })),
         });
@@ -254,7 +260,7 @@ export class DocumentsService {
         data: {
           ...rest,
           ...(date && { date: new Date(date) }),
-          ...(items && { total: this.computeTotal(items) }),
+          ...(items && { total: this.computeTotal(items, document.type) }),
         },
         include: DETAIL_INCLUDE,
       });
@@ -555,19 +561,85 @@ export class DocumentsService {
     });
   }
 
+  /**
+   * Libera (parcial o totalmente) la reserva pendiente de una o más líneas
+   * de un documento confirmado. Solo tipos con estrategia de reserva
+   * (hoy solo PV) exponen esto — getReservation lanza si el tipo no aplica.
+   */
+  async releaseItems(id: string, releaseItemsDto: ReleaseItemsDto, user: JwtPayload) {
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+      include: {
+        documentItems: { include: { product: true } },
+        thirdParty: { include: { supplier: true } },
+      },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Documento no encontrado');
+    }
+
+    this.assertDocumentPermission(user, document.type, 'release');
+
+    if (document.status !== DocumentStatus.confirmed) {
+      throw new ConflictException(
+        'Solo se pueden liberar reservas de documentos confirmados',
+      );
+    }
+
+    const strategy = this.effectsRegistry.getReservation(document.type);
+
+    await this.prisma.$transaction(async (tx) => {
+      await strategy.releaseItems(
+        tx,
+        document,
+        releaseItemsDto.items,
+        user.sub,
+        releaseItemsDto.notes,
+      );
+    });
+
+    return this.findOne(id);
+  }
+
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
-  private assertDocumentPermission(user: JwtPayload, type: DocumentType) {
-    if (!user.permissions.includes(`document.create.${type}`)) {
+  // action distingue el permiso a chequear: document.create.{type} cubre
+  // create/update/confirm/void/remove (todo el ciclo de vida "estándar"),
+  // document.release.{type} es aparte porque liberar una reserva de PV es
+  // una operación que puede recaer en un rol distinto (ej. bodega/ventas)
+  // del que crea/confirma la preventa.
+  private assertDocumentPermission(
+    user: JwtPayload,
+    type: DocumentType,
+    action: 'create' | 'release' = 'create',
+  ) {
+    if (!user.permissions.includes(`document.${action}.${type}`)) {
+      const actionLabel = action === 'release' ? 'liberar reservas de' : 'crear';
       throw new ForbiddenException(
-        'No tiene permiso para crear documentos de tipo ' + type,
+        `No tiene permiso para ${actionLabel} documentos de tipo ${type}`,
       );
     }
   }
 
-  private computeTotal(items: CreateDocumentItemDto[]) {
+  /**
+   * PV se valora a precio de venta (unitPrice), no a costo — el resto de
+   * tipos (CM/DVC/EAI/SAJ/T) siguen calculando sobre unitCost exactamente
+   * igual que antes. Un Set de tipos "price-based" evita un switch/if
+   * disperso si en fase 2 aparece otro tipo valorado a precio (COT/POS).
+   */
+  private static readonly PRICE_BASED_TYPES = new Set<DocumentType>([
+    DocumentType.PV,
+  ]);
+
+  private computeItemSubtotal(item: CreateDocumentItemDto, type: DocumentType) {
+    const usePrice = DocumentsService.PRICE_BASED_TYPES.has(type);
+    return item.quantity * (usePrice ? (item.unitPrice ?? 0) : (item.unitCost ?? 0));
+  }
+
+  private computeTotal(items: CreateDocumentItemDto[], type: DocumentType) {
     return items.reduce(
-      (sum, item) => sum + item.quantity * (item.unitCost ?? 0),
+      (sum, item) => sum + this.computeItemSubtotal(item, type),
       0,
     );
   }

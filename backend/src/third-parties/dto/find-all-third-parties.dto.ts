@@ -45,5 +45,12 @@ export class FindAllThirdPartiesDto {
     value === 'true' ? true : value === 'false' ? false : value,
   )
   @IsBoolean()
+  isSeller?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === 'true' ? true : value === 'false' ? false : value,
+  )
+  @IsBoolean()
   isActive?: boolean;
 }

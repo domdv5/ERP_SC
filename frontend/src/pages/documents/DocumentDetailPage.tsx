@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -16,61 +16,55 @@ import {
   ArrowRight,
   Package,
   Loader2,
-} from 'lucide-react'
+  Unlock,
+  UserCog,
+  ShoppingCart,
+} from "lucide-react";
 
 import {
   getDocument,
   confirmDocument,
   voidDocument,
   deleteDocument,
-} from '@/services/documents.service'
-import { cn } from '@/lib/utils'
-import type { DocumentType, DocumentStatus } from '@/types/document.types'
+} from "@/services/documents.service";
+import { usePermission } from "@/hooks/usePermission";
+import { cn } from "@/lib/utils";
+import { DOC_TYPE_BADGE, DOC_TYPE_ACCENT, DOC_STATUS_BADGE } from "./document.constants";
+import { ReleaseItemsDialog } from "./components/ReleaseItemsDialog";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 const formatCOP = (v: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
     minimumFractionDigits: 0,
-  }).format(v)
+  }).format(v);
 
 const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  })
+  new Date(iso).toLocaleDateString("es-CO", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
 
 // ─── label maps ──────────────────────────────────────────────────────────────
 
-const TYPE_LABELS: Record<DocumentType, { label: string; className: string }> = {
-  CM:  { label: 'Compra',          className: 'bg-blue-100   text-blue-700   dark:bg-blue-500/20   dark:text-blue-400'   },
-  DVC: { label: 'Dev. Compra',     className: 'bg-amber-100  text-amber-700  dark:bg-amber-500/20  dark:text-amber-400'  },
-  EAI: { label: 'Entrada Ajuste',  className: 'bg-teal-100   text-teal-700   dark:bg-teal-500/20   dark:text-teal-400'   },
-  SAJ: { label: 'Salida Ajuste',   className: 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400' },
-  T:   { label: 'Traslado',        className: 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' },
-}
-
-const STATUS_LABELS: Record<DocumentStatus, { label: string; className: string }> = {
-  draft:     { label: 'Borrador',   className: 'bg-gray-100  text-gray-600  dark:bg-gray-500/20  dark:text-gray-400'  },
-  confirmed: { label: 'Confirmado', className: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' },
-  voided:    { label: 'Anulado',    className: 'bg-red-100   text-red-700   dark:bg-red-500/20   dark:text-red-400'   },
-}
+const TYPE_LABELS = DOC_TYPE_BADGE;
+const STATUS_LABELS = DOC_STATUS_BADGE;
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
 
 interface ConfirmDialogProps {
-  open: boolean
-  title: string
-  description: string
-  confirmLabel: string
-  confirmClass: string
-  isPending: boolean
-  onConfirm: () => void
-  onCancel: () => void
-  icon: React.ReactNode
+  open: boolean;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  confirmClass: string;
+  isPending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+  icon: React.ReactNode;
 }
 
 function ConfirmDialog({
@@ -84,13 +78,10 @@ function ConfirmDialog({
   onCancel,
   icon,
 }: ConfirmDialogProps) {
-  if (!open) return null
+  if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onCancel}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative z-10 bg-surface rounded-2xl border border-ui-border shadow-xl p-6 w-full max-w-md mx-4">
         <div className="flex items-start gap-4">
           <div className="shrink-0 mt-0.5">{icon}</div>
@@ -113,7 +104,7 @@ function ConfirmDialog({
             onClick={onConfirm}
             disabled={isPending}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-opacity disabled:opacity-60',
+              "flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-opacity disabled:opacity-60",
               confirmClass,
             )}
           >
@@ -123,19 +114,23 @@ function ConfirmDialog({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // ─── detail page ─────────────────────────────────────────────────────────────
 
 export default function DocumentDetailPage() {
-  const { id }    = useParams<{ id: string }>()
-  const navigate  = useNavigate()
-  const queryClient = useQueryClient()
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const [confirmOpen, setConfirmOpen]   = useState(false)
-  const [voidOpen, setVoidOpen]         = useState(false)
-  const [deleteOpen, setDeleteOpen]     = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [voidOpen, setVoidOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [releaseOpen, setReleaseOpen] = useState(false);
+
+  const canReleasePV = usePermission("document.release.PV");
+  const canConvertPV = usePermission("document.convert.PV");
 
   const {
     data: doc,
@@ -143,61 +138,61 @@ export default function DocumentDetailPage() {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ['document', id],
+    queryKey: ["document", id],
     queryFn: () => getDocument(id!),
     staleTime: 5 * 60 * 1000,
     enabled: Boolean(id),
-  })
+  });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['documents'] })
-    queryClient.invalidateQueries({ queryKey: ['document', id] })
-    queryClient.invalidateQueries({ queryKey: ['products'] })
+    queryClient.invalidateQueries({ queryKey: ["documents"] });
+    queryClient.invalidateQueries({ queryKey: ["document", id] });
+    queryClient.invalidateQueries({ queryKey: ["products"] });
     // Namespace separado del combobox de producto en ProductRow — 'products' no lo cubre por
     // prefijo, así que sin esto el avgCost mostrado en la siguiente operación queda desactualizado.
-    queryClient.invalidateQueries({ queryKey: ['products-search'] })
+    queryClient.invalidateQueries({ queryKey: ["products-search"] });
     // CM crea AccountsPayable y DVC crea/elimina SupplierCredit al confirmar/anular
-    queryClient.invalidateQueries({ queryKey: ['accounts-payable'] })
-  }
+    queryClient.invalidateQueries({ queryKey: ["accounts-payable"] });
+  };
 
   const { mutate: doConfirm, isPending: isConfirming } = useMutation({
     mutationFn: () => confirmDocument(id!),
     onSuccess: () => {
-      invalidate()
-      setConfirmOpen(false)
-      toast.success('Operación confirmada. El inventario fue actualizado.')
+      invalidate();
+      setConfirmOpen(false);
+      toast.success("Operación confirmada. El inventario fue actualizado.");
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al confirmar la operación')
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? "Error al confirmar la operación");
     },
-  })
+  });
 
   const { mutate: doVoid, isPending: isVoiding } = useMutation({
     mutationFn: () => voidDocument(id!),
     onSuccess: () => {
-      invalidate()
-      setVoidOpen(false)
-      toast.success('Operación anulada. Los movimientos de inventario fueron revertidos.')
+      invalidate();
+      setVoidOpen(false);
+      toast.success("Operación anulada. Los movimientos de inventario fueron revertidos.");
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al anular la operación')
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? "Error al anular la operación");
     },
-  })
+  });
 
   const { mutate: doDelete, isPending: isDeleting } = useMutation({
     mutationFn: () => deleteDocument(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
-      toast.success('Operación eliminada correctamente')
-      navigate('/documents')
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      toast.success("Operación eliminada correctamente");
+      navigate("/documents");
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al eliminar la operación')
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? "Error al eliminar la operación");
     },
-  })
+  });
 
   // ── loading / error states ────────────────────────────────────────────────
   if (isLoading) {
@@ -209,7 +204,11 @@ export default function DocumentDetailPage() {
         </div>
         <div className="bg-surface rounded-2xl border border-ui-border p-6 space-y-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-6 rounded-lg bg-surface-hover animate-pulse" style={{ width: `${60 + i * 10}%` }} />
+            <div
+              key={i}
+              className="h-6 rounded-lg bg-surface-hover animate-pulse"
+              style={{ width: `${60 + i * 10}%` }}
+            />
           ))}
         </div>
         <div className="bg-surface rounded-2xl border border-ui-border p-6 space-y-3">
@@ -218,14 +217,14 @@ export default function DocumentDetailPage() {
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   if (isError || !doc) {
     return (
       <div className="space-y-4">
         <button
-          onClick={() => navigate('/documents')}
+          onClick={() => navigate("/documents")}
           className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -242,46 +241,59 @@ export default function DocumentDetailPage() {
           </button>
         </div>
       </div>
-    )
+    );
   }
 
-  const docNumber    = `${doc.type}-${String(doc.number).padStart(6, '0')}`
-  const typeInfo     = TYPE_LABELS[doc.type]
-  const statusInfo   = STATUS_LABELS[doc.status]
-  const isDraft      = doc.status === 'draft'
-  const isConfirmed  = doc.status === 'confirmed'
-  const isVoided     = doc.status === 'voided'
+  const docNumber = `${doc.type}-${String(doc.number).padStart(6, "0")}`;
+  const typeInfo = TYPE_LABELS[doc.type];
+  const accentInfo = DOC_TYPE_ACCENT[doc.type];
+  const statusInfo = STATUS_LABELS[doc.status];
+  const isDraft = doc.status === "draft";
+  const isConfirmed = doc.status === "confirmed";
+  const isVoided = doc.status === "voided";
 
   // SAJ y T nunca persisten unitCost/subtotal en DocumentItem (SajEffectStrategy/
   // TransferEffectStrategy solo usan el avgCost del producto para el kardex, no lo
   // escriben de vuelta en el ítem) — por eso esos dos tipos derivan el costo/subtotal
   // en vivo desde item.product.avgCost en lugar de leer los campos siempre-cero.
-  const usesAvgCostFallback = doc.type === 'SAJ' || doc.type === 'T'
+  const usesAvgCostFallback = doc.type === "SAJ" || doc.type === "T";
+  // Preventas (PV) no persisten costo — el precio unitario relevante es item.unitPrice.
+  const isPV = doc.type === "PV";
   const itemUnitCost = (item: (typeof doc.documentItems)[number]) =>
-    usesAvgCostFallback ? Number(item.product.avgCost) : item.unitCost
+    isPV ? item.unitPrice : usesAvgCostFallback ? Number(item.product.avgCost) : item.unitCost;
   const itemSubtotal = (item: (typeof doc.documentItems)[number]) =>
-    usesAvgCostFallback ? item.quantity * Number(item.product.avgCost) : item.subtotal
+    isPV
+      ? item.subtotal
+      : usesAvgCostFallback
+        ? item.quantity * Number(item.product.avgCost)
+        : item.subtotal;
 
-  const itemsTotal = doc.documentItems.reduce((sum, item) => sum + itemSubtotal(item), 0)
+  const itemsTotal = doc.documentItems.reduce((sum, item) => sum + itemSubtotal(item), 0);
   // Nota de talla por línea — solo se muestra en traslados (T), donde el mismo código de producto
   // puede repartirse en varios bultos con tallas distintas. Ver ProductRow.tsx showObservaciones.
-  const showObservaciones = doc.type === 'T'
+  const showObservaciones = doc.type === "T";
   // SAJ y T muestran el costo promedio vigente del producto (avgCost) — ver nota arriba en
   // usesAvgCostFallback — nunca un costo transaccional tipeado por el usuario. CM/DVC/EAI sí
   // manejan un costo real ingresado, por eso conservan la etiqueta plana.
-  const costHeaderLabel = usesAvgCostFallback ? 'Costo unit. (prom.)' : 'Costo unit.'
+  const costHeaderLabel = isPV
+    ? "Precio unit."
+    : usesAvgCostFallback
+      ? "Costo unit. (prom.)"
+      : "Costo unit.";
   const itemHeaders = showObservaciones
-    ? ['Código', 'Descripción', 'Cantidad', 'Observaciones', costHeaderLabel, 'Subtotal']
-    : ['Código', 'Descripción', 'Cantidad', costHeaderLabel, 'Subtotal']
+    ? ["Código", "Descripción", "Cantidad", "Observaciones", costHeaderLabel, "Subtotal"]
+    : isPV
+      ? ["Código", "Descripción", "Cantidad", "Liberado", "Pendiente", costHeaderLabel, "Subtotal"]
+      : ["Código", "Descripción", "Cantidad", costHeaderLabel, "Subtotal"];
   // Celdas vacías a saltar en el pie de tabla antes de la etiqueta "Total" — debe alinearse
-  // bajo la columna "Costo unit." sin importar si Observaciones está presente o no.
-  const footerSkipCols = showObservaciones ? 4 : 3
+  // bajo la columna "Costo unit." sin importar si Observaciones/Liberado+Pendiente están presentes.
+  const footerSkipCols = showObservaciones ? 4 : isPV ? 5 : 3;
 
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
       <button
-        onClick={() => navigate('/documents')}
+        onClick={() => navigate("/documents")}
         className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -298,20 +310,37 @@ export default function DocumentDetailPage() {
         </div>
       )}
 
-      {/* Header card */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6">
+      {/* Header card — borde de acento izquierdo + ícono por tipo (misma paleta que DOC_TYPE_BADGE) */}
+      <div
+        className={cn(
+          "bg-surface rounded-2xl border border-ui-border shadow-sm p-6 border-l-4",
+          accentInfo.border,
+        )}
+      >
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 gradient-dark">
-              <FileText className="w-6 h-6 text-white/70" />
+            <div
+              className={cn(
+                "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
+                accentInfo.iconBg,
+              )}
+            >
+              <accentInfo.icon className={cn("w-6 h-6", accentInfo.iconText)} />
             </div>
             <div>
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl text-content font-mono">{docNumber}</h1>
-                <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', typeInfo.className)}>
+                <span
+                  className={cn("px-2.5 py-1 rounded-full text-xs font-medium", typeInfo.className)}
+                >
                   {typeInfo.label}
                 </span>
-                <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', statusInfo.className)}>
+                <span
+                  className={cn(
+                    "px-2.5 py-1 rounded-full text-xs font-medium",
+                    statusInfo.className,
+                  )}
+                >
                   {statusInfo.label}
                 </span>
               </div>
@@ -323,7 +352,7 @@ export default function DocumentDetailPage() {
                   Confirmado por {doc.confirmedBy.name}
                 </p>
               )}
-              {doc.status === 'voided' && doc.voidedBy && (
+              {doc.status === "voided" && doc.voidedBy && (
                 <p className="text-content-muted text-sm font-accent">
                   Anulado por {doc.voidedBy.name}
                 </p>
@@ -358,6 +387,29 @@ export default function DocumentDetailPage() {
                 </button>
               </>
             )}
+            {isConfirmed && doc.type === "PV" && canReleasePV && (
+              <button
+                onClick={() => setReleaseOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors"
+              >
+                <Unlock className="w-4 h-4" />
+                Liberar Stock
+              </button>
+            )}
+            {isConfirmed && doc.type === "PV" && canConvertPV && (
+              // Placeholder visual — POS (venta real) es fase 2, sin Strategy en el backend todavía.
+              // Botón deshabilitado a propósito: recordatorio de la función pendiente, no debe
+              // llamar a ningún endpoint que no existe.
+              <button
+                type="button"
+                disabled
+                title="Disponible cuando se implemente el módulo de ventas (POS)"
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl opacity-50 cursor-not-allowed"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                Convertir a venta
+              </button>
+            )}
             {isConfirmed && (
               <button
                 onClick={() => setVoidOpen(true)}
@@ -391,15 +443,32 @@ export default function DocumentDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-content-faint font-accent">
-                  {doc.type === 'CM' || doc.type === 'DVC' ? 'Proveedor' : 'Tercero'}
+                  {doc.type === "CM" || doc.type === "DVC"
+                    ? "Proveedor"
+                    : doc.type === "PV"
+                      ? "Cliente"
+                      : "Tercero"}
                 </p>
                 <p className="text-sm text-content">{doc.thirdParty.name}</p>
               </div>
             </div>
           )}
 
+          {/* Seller — solo preventas (PV) */}
+          {doc.type === "PV" && doc.seller && (
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <UserCog className="w-4 h-4 text-content-muted" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint font-accent">Vendedora</p>
+                <p className="text-sm text-content">{doc.seller.name}</p>
+              </div>
+            </div>
+          )}
+
           {/* Warehouse(s) */}
-          {doc.type === 'T' ? (
+          {doc.type === "T" ? (
             <div className="flex items-start gap-3 col-span-2">
               <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
                 <ArrowRight className="w-4 h-4 text-content-muted" />
@@ -407,9 +476,9 @@ export default function DocumentDetailPage() {
               <div>
                 <p className="text-xs text-content-faint font-accent">Traslado</p>
                 <div className="flex items-center gap-2 text-sm text-content">
-                  <span>{doc.warehouse?.name ?? '—'}</span>
+                  <span>{doc.warehouse?.name ?? "—"}</span>
                   <ArrowRight className="w-3.5 h-3.5 text-content-faint" />
-                  <span>{doc.destWarehouse?.name ?? '—'}</span>
+                  <span>{doc.destWarehouse?.name ?? "—"}</span>
                   {doc.destBin && (
                     <span className="text-content-muted">
                       / {doc.destBin.zone.name} / {doc.destBin.name}
@@ -427,7 +496,7 @@ export default function DocumentDetailPage() {
                 <div>
                   <p className="text-xs text-content-faint font-accent">Bodega</p>
                   <p className="text-sm text-content">
-                    {doc.destWarehouse?.name ?? doc.warehouse?.name ?? '—'}
+                    {doc.destWarehouse?.name ?? doc.warehouse?.name ?? "—"}
                   </p>
                 </div>
               </div>
@@ -497,18 +566,35 @@ export default function DocumentDetailPage() {
                       <span className="truncate block">{item.product.description}</span>
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs">
-                      {item.quantity.toLocaleString('es-CO')}
+                      {item.quantity.toLocaleString("es-CO")}
                     </td>
                     {showObservaciones && (
                       <td className="px-5 py-3.5 text-content-muted text-xs max-w-[200px]">
-                        <span className="truncate block">{item.observaciones || '—'}</span>
+                        <span className="truncate block">{item.observaciones || "—"}</span>
                       </td>
                     )}
+                    {isPV && (
+                      <>
+                        <td className="px-5 py-3.5 text-content-muted text-xs">
+                          {(item.releasedQuantity ?? 0).toLocaleString("es-CO")}
+                        </td>
+                        <td className="px-5 py-3.5 text-xs">
+                          {(() => {
+                            const pending = item.quantity - (item.releasedQuantity ?? 0);
+                            return (
+                              <span className={pending > 0 ? "text-content" : "text-content-faint"}>
+                                {pending.toLocaleString("es-CO")}
+                              </span>
+                            );
+                          })()}
+                        </td>
+                      </>
+                    )}
                     <td className="px-5 py-3.5 text-content-muted text-xs">
-                      {itemUnitCost(item) > 0 ? formatCOP(itemUnitCost(item)) : '—'}
+                      {itemUnitCost(item) > 0 ? formatCOP(itemUnitCost(item)) : "—"}
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs">
-                      {itemSubtotal(item) > 0 ? formatCOP(itemSubtotal(item)) : '—'}
+                      {itemSubtotal(item) > 0 ? formatCOP(itemSubtotal(item)) : "—"}
                     </td>
                   </tr>
                 ))}
@@ -581,6 +667,11 @@ export default function DocumentDetailPage() {
           </div>
         }
       />
+
+      {/* Release reserved items — solo preventas (PV) confirmadas */}
+      {isPV && (
+        <ReleaseItemsDialog open={releaseOpen} doc={doc} onClose={() => setReleaseOpen(false)} />
+      )}
     </div>
-  )
+  );
 }

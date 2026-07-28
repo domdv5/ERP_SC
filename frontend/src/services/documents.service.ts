@@ -7,6 +7,7 @@ import type {
   GetDocumentsParams,
   CreateDocumentPayload,
   UpdateDocumentPayload,
+  ReleaseItemsPayload,
 } from '@/types/document.types'
 
 export async function getDocuments(
@@ -49,4 +50,9 @@ export async function voidDocument(id: string): Promise<Document> {
 
 export async function deleteDocument(id: string): Promise<void> {
   await api.delete(`/documents/${id}`)
+}
+
+export async function releaseItems(id: string, payload: ReleaseItemsPayload): Promise<Document> {
+  const res = await api.post<ApiResponse<Document>>(`/documents/${id}/release-items`, payload)
+  return res.data.data
 }

@@ -16,6 +16,7 @@ export interface GetThirdPartiesParams {
   search?: string
   isCustomer?: boolean
   isSupplier?: boolean
+  isSeller?: boolean
 }
 
 export async function getThirdParties(params?: GetThirdPartiesParams): Promise<{ items: ThirdParty[]; meta: ThirdPartyMeta }> {

@@ -29,6 +29,13 @@ export class CreateDocumentItemDto {
   @Min(0)
   unitCost?: number;
 
+  // Solo se usa (y se persiste) para tipos valorados a precio de venta, hoy
+  // únicamente PV — ver computeTotal/computeItemSubtotal en documents.service.ts.
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  unitPrice?: number;
+
   @IsOptional()
   @IsString()
   @MaxLength(500)
@@ -45,6 +52,11 @@ export class CreateDocumentDto {
   @IsOptional()
   @IsUUID()
   thirdPartyId?: string;
+
+  // Solo se envía (y valida) para type === PV; ThirdParty con isSeller=true.
+  @IsOptional()
+  @IsUUID()
+  sellerId?: string;
 
   // Solo se envía para type === T (traslado); el resto de tipos siempre
   // opera sobre la tienda activa, resuelta por el service.

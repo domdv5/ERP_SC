@@ -190,6 +190,8 @@ export default function ProductsPage() {
                     { label: "Categoría", align: "text-left" },
                     { label: "Precio Venta", align: "text-right" },
                     { label: "Stock", align: "text-left" },
+                    { label: "Reservado", align: "text-right" },
+                    { label: "Disponible", align: "text-right" },
                     { label: "Últ. Costo", align: "text-right" },
                     { label: "Costo Prom.", align: "text-right" },
                     { label: "Acciones", align: "text-left" },
@@ -241,6 +243,14 @@ export default function ProductsPage() {
                             .join(" · ")}
                         </p>
                       )}
+                    </td>
+                    <td className="px-5 py-3.5 text-right text-content-muted text-xs">
+                      {p.reservedQuantity.toLocaleString("es-CO")}
+                    </td>
+                    <td className="px-5 py-3.5 text-right text-xs font-medium">
+                      <span className={p.availableStock < 0 ? "text-red-500" : "text-content-muted"}>
+                        {p.availableStock.toLocaleString("es-CO")}
+                      </span>
                     </td>
                     <td className="px-5 py-3.5 text-right text-content-muted text-xs">
                       {formatCOP(Number(p.lastCost))}

@@ -13,7 +13,12 @@ interface BarcodeScanInputProps {
   append: UseFieldArrayAppend<FormValues, 'items'>
   getValues: UseFormGetValues<FormValues>
   setValue: UseFormSetValue<FormValues>
-  onProductScanned: (productId: string, avgCost: number, unitOfMeasure: 'unidad' | 'docena') => void
+  onProductScanned: (
+    productId: string,
+    avgCost: number,
+    unitOfMeasure: 'unidad' | 'docena',
+    availableStock: number,
+  ) => void
 }
 
 /**
@@ -68,16 +73,19 @@ export function BarcodeScanInput({ docType, append, getValues, setValue, onProdu
         toast.success(`${product.code} — cantidad +1`)
       } else {
         const avgCost = Number(product.avgCost)
+        const salePrice = Number(product.salePrice)
         const shouldPrefillCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
+        const shouldPrefillPrice = docType === 'PV'
         append({
           productId:     product.id,
           productCode:   product.code,
           productDesc:   product.description,
           quantity:      1,
           unitCost:      shouldPrefillCost ? avgCost : undefined,
+          unitPrice:     shouldPrefillPrice ? salePrice : undefined,
           observaciones: undefined,
         })
-        onProductScanned(product.id, avgCost, product.unitOfMeasure)
+        onProductScanned(product.id, avgCost, product.unitOfMeasure, product.availableStock)
         toast.success(`${product.code} agregado`)
       }
     } catch {

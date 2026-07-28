@@ -27,6 +27,9 @@ export async function seedRolePermissions(prisma: PrismaClient) {
       'document.create.REM',
       'document.create.DVV',
       'document.create.T',
+      'document.create.PV',
+      'document.release.PV',
+      'document.convert.PV',
       'document.read',
       'label.print',
       'thirdparty.create',
@@ -72,6 +75,9 @@ export async function seedRolePermissions(prisma: PrismaClient) {
     basket_management: [
       'product.read',
       'document.create.POS', // Point of sale
+      'document.create.PV',
+      'document.release.PV',
+      'document.convert.PV',
       'document.read',
       'label.print',
       'warehouse.manage',

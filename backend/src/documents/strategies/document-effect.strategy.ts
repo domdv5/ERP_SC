@@ -36,3 +36,31 @@ export interface DocumentEffectStrategy {
     userId: string,
   ): Promise<void>;
 }
+
+/**
+ * Contrato adicional para tipos que manejan reservas lógicas de inventario
+ * (hoy solo PV). Segregado de DocumentEffectStrategy (ISP): un tipo que no
+ * reserva nada (CM, T, ...) no debe verse forzado a implementar
+ * releaseItems, así que vive en una interfaz aparte que solo PvEffectStrategy
+ * declara.
+ */
+export interface ReservationEffectStrategy extends DocumentEffectStrategy {
+  /**
+   * Libera (parcial o totalmente) la reserva pendiente de una o más líneas
+   * del documento. Corre dentro del $transaction que abre el service.
+   */
+  releaseItems(
+    tx: Prisma.TransactionClient,
+    document: DocumentWithItems,
+    releases: { documentItemId: string; quantity: number }[],
+    userId: string,
+    notes?: string,
+  ): Promise<void>;
+}
+
+/** Type guard: distingue en runtime si una estrategia soporta liberación de reservas. */
+export function isReservationStrategy(
+  strategy: DocumentEffectStrategy,
+): strategy is ReservationEffectStrategy {
+  return typeof (strategy as ReservationEffectStrategy).releaseItems === 'function';
+}

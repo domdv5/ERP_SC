@@ -23,6 +23,8 @@ export type {
   CreateDocumentPayload,
   UpdateDocumentPayload,
   CreateDocumentItemPayload,
+  ReleaseItemsPayload,
+  ReleaseDocumentItemPayload,
 } from './document.types'
 export type {
   AccountsPayableStatus,
