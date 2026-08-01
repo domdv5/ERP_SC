@@ -18,24 +18,24 @@ datasource db {
 // ─── Catalog / lookup ─────────────────────────────────────────────────────────
 
 model Gender {
-  id         String    @id @default(uuid()) @db.Uuid
-  code       String    @unique @db.Char(1)
-  name       String    @db.VarChar(50)
-  active     Boolean   @default(true)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.Char(1)
+  name      String   @db.VarChar(50)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  products   Product[]
+  products Product[]
 
   @@index([active])
   @@map("gender")
 }
 
 model Category {
-  id         String    @id @default(uuid()) @db.Uuid
-  code       String    @unique @db.Char(2)
-  name       String    @db.VarChar(100)
-  active     Boolean   @default(true)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.Char(2)
+  name      String   @db.VarChar(100)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   products          Product[]
   equivalenceTables EquivalenceTable[]
@@ -91,8 +91,8 @@ model Customer {
   creditLimit Decimal? @map("credit_limit") @db.Decimal(14, 2)
   discount    Decimal? @db.Decimal(5, 2)
 
-  thirdParty         ThirdParty          @relation(fields: [id], references: [id])
-  seller             ThirdParty?         @relation("SellerThirdParty", fields: [sellerId], references: [id])
+  thirdParty         ThirdParty           @relation(fields: [id], references: [id])
+  seller             ThirdParty?          @relation("SellerThirdParty", fields: [sellerId], references: [id])
   accountsReceivable AccountsReceivable[]
 
   @@map("customers")
@@ -101,10 +101,10 @@ model Customer {
 // ─── Supplier ─────────────────────────────────────────────────────────────────
 
 model Supplier {
-  id             String  @id @db.Uuid
+  id             String @id @db.Uuid
   internalNumber Int    @unique @map("internal_number")
 
-  thirdParty      ThirdParty       @relation(fields: [id], references: [id])
+  thirdParty      ThirdParty        @relation(fields: [id], references: [id])
   brands          Brand[]
   accountsPayable AccountsPayable[]
   supplierCredits SupplierCredit[]
@@ -122,7 +122,7 @@ model Brand {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  supplier Supplier @relation(fields: [supplierId], references: [id])
+  supplier Supplier  @relation(fields: [supplierId], references: [id])
   products Product[]
 
   @@index([active])
@@ -138,23 +138,23 @@ enum UnitOfMeasure {
 }
 
 model Product {
-  id            String   @id @default(uuid()) @db.Uuid
-  code          String   @unique @db.VarChar(15)
-  legacyCode    String?  @map("legacy_code") @db.VarChar(15)
-  description   String   @db.VarChar(300)
-  brandId       String   @map("brand_id") @db.Uuid
-  genderId      String   @map("gender_id") @db.Uuid
-  categoryId    String   @map("category_id") @db.Uuid
-  salePrice     Int  @map("sale_price")
-  minSalePrice  Int  @map("min_sale_price")
-  active        Boolean   @default(true)
-  avgCost       Decimal   @default(0) @map("avg_cost") @db.Decimal(14, 4)
-  lastCost      Decimal   @default(0) @map("last_cost") @db.Decimal(14, 4)
+  id            String        @id @default(uuid()) @db.Uuid
+  code          String        @unique @db.VarChar(15)
+  legacyCode    String?       @map("legacy_code") @db.VarChar(15)
+  description   String        @db.VarChar(300)
+  brandId       String        @map("brand_id") @db.Uuid
+  genderId      String        @map("gender_id") @db.Uuid
+  categoryId    String        @map("category_id") @db.Uuid
+  salePrice     Int           @map("sale_price")
+  minSalePrice  Int           @map("min_sale_price")
+  active        Boolean       @default(true)
+  avgCost       Decimal       @default(0) @map("avg_cost") @db.Decimal(14, 4)
+  lastCost      Decimal       @default(0) @map("last_cost") @db.Decimal(14, 4)
   unitOfMeasure UnitOfMeasure @default(unidad) @map("unit_of_measure")
-  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
-  deletedById   String?   @map("deleted_by_id") @db.Uuid
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt     DateTime?     @map("deleted_at") @db.Timestamptz
+  deletedById   String?       @map("deleted_by_id") @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
   brand     Brand    @relation(fields: [brandId], references: [id])
   gender    Gender   @relation(fields: [genderId], references: [id])
@@ -206,8 +206,8 @@ model Warehouse {
   id        String        @id @default(uuid()) @db.Uuid
   name      String        @db.VarChar(100)
   type      WarehouseType
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  active    Boolean       @default(true)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
   zones              Zone[]
   inventoryRecords   Inventory[]
@@ -294,21 +294,21 @@ enum MovementType {
 }
 
 model InventoryMovement {
-  id           String       @id @default(uuid()) @db.Uuid
-  productId    String       @map("product_id") @db.Uuid
-  warehouseId  String       @map("warehouse_id") @db.Uuid
-  binId        String?      @map("bin_id") @db.Uuid
-  movementType MovementType @map("movement_type")
+  id             String       @id @default(uuid()) @db.Uuid
+  productId      String       @map("product_id") @db.Uuid
+  warehouseId    String       @map("warehouse_id") @db.Uuid
+  binId          String?      @map("bin_id") @db.Uuid
+  movementType   MovementType @map("movement_type")
   /// positive or negative
-  quantity      Int
-  unitCost      Decimal  @default(0) @map("unit_cost") @db.Decimal(14, 4)
-  previousStock Int?     @map("previous_stock")
-  newStock      Int?     @map("new_stock")
-  documentId    String?  @map("document_id") @db.Uuid
-  documentItemId String? @map("document_item_id") @db.Uuid
-  userId        String?  @map("user_id") @db.Uuid
-  notes         String?
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  quantity       Int
+  unitCost       Decimal      @default(0) @map("unit_cost") @db.Decimal(14, 4)
+  previousStock  Int?         @map("previous_stock")
+  newStock       Int?         @map("new_stock")
+  documentId     String?      @map("document_id") @db.Uuid
+  documentItemId String?      @map("document_item_id") @db.Uuid
+  userId         String?      @map("user_id") @db.Uuid
+  notes          String?
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
 
   product      Product       @relation(fields: [productId], references: [id])
   warehouse    Warehouse     @relation(fields: [warehouseId], references: [id])
@@ -325,12 +325,12 @@ model InventoryMovement {
 }
 
 model InventorySnapshot {
-  snapshotDate DateTime  @map("snapshot_date") @db.Date
+  snapshotDate DateTime @map("snapshot_date") @db.Date
   /// daily | weekly | monthly
-  periodType   String    @default("daily") @map("period_type") @db.VarChar(10)
-  productId    String    @map("product_id") @db.Uuid
-  warehouseId  String    @map("warehouse_id") @db.Uuid
-  binId        String?   @map("bin_id") @db.Uuid
+  periodType   String   @default("daily") @map("period_type") @db.VarChar(10)
+  productId    String   @map("product_id") @db.Uuid
+  warehouseId  String   @map("warehouse_id") @db.Uuid
+  binId        String?  @map("bin_id") @db.Uuid
   quantity     Int
 
   product   Product   @relation(fields: [productId], references: [id])
@@ -344,10 +344,10 @@ model InventorySnapshot {
 // ─── Users / roles / permissions ─────────────────────────────────────────────
 
 model Permission {
-  id          String   @id @default(uuid()) @db.Uuid
-  code        String   @unique @db.VarChar(100)
-  module      String   @db.VarChar(50)
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(100)
+  module    String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   rolePermissions RolePermission[]
 
@@ -379,22 +379,24 @@ model RolePermission {
 }
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  name         String   @db.VarChar(150)
-  username         String  @unique @db.VarChar(150)
-  password String  @db.VarChar(255)
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(150)
+  username  String   @unique @db.VarChar(150)
+  password  String   @db.VarChar(255)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  userRoles             UserRole[]
-  documents             Document[]
-  confirmedDocuments    Document[]    @relation("DocumentConfirmedBy")
-  voidedDocuments       Document[]    @relation("DocumentVoidedBy")
-  inventoryMovements    InventoryMovement[]
-  deletedProducts       Product[]     @relation("ProductDeletedBy")
-  deletedThirdParties   ThirdParty[]  @relation("ThirdPartyDeletedBy")
-  reservationReleases   ReservationRelease[]
+  userRoles                UserRole[]
+  documents                Document[]
+  confirmedDocuments       Document[]           @relation("DocumentConfirmedBy")
+  voidedDocuments          Document[]           @relation("DocumentVoidedBy")
+  inventoryMovements       InventoryMovement[]
+  deletedProducts          Product[]            @relation("ProductDeletedBy")
+  deletedThirdParties      ThirdParty[]         @relation("ThirdPartyDeletedBy")
+  reservationReleases      ReservationRelease[]
+  systemConfigsActivated   SystemConfig[]       @relation("SystemConfigActivatedBy")
+  systemConfigsDeactivated SystemConfig[]       @relation("SystemConfigDeactivatedBy")
 
   @@map("user")
 }
@@ -478,7 +480,7 @@ model Document {
   inventoryMovements InventoryMovement[]
   accountsReceivable AccountsReceivable[]
   accountsPayable    AccountsPayable[]
-  supplierCredits    SupplierCredit[]    @relation("DvcSupplierCredit")
+  supplierCredits    SupplierCredit[]     @relation("DvcSupplierCredit")
 
   @@unique([type, number])
   @@index([type, status])
@@ -488,23 +490,23 @@ model Document {
 }
 
 model DocumentItem {
-  id            String   @id @default(uuid()) @db.Uuid
-  documentId    String   @map("document_id") @db.Uuid
-  productId     String   @map("product_id") @db.Uuid
+  id                String   @id @default(uuid()) @db.Uuid
+  documentId        String   @map("document_id") @db.Uuid
+  productId         String   @map("product_id") @db.Uuid
   /// C | F | null
-  referenceType String?  @map("reference_type") @db.Char(1)
-  references    String?
-  quantity      Int
-  unitPrice     Decimal  @default(0) @map("unit_price") @db.Decimal(14, 4)
-  unitCost      Decimal  @default(0) @map("unit_cost") @db.Decimal(14, 4)
-  subtotal      Decimal  @default(0) @db.Decimal(16, 2)
-  observaciones String?  @db.VarChar(500)
+  referenceType     String?  @map("reference_type") @db.Char(1)
+  references        String?
+  quantity          Int
+  unitPrice         Decimal  @default(0) @map("unit_price") @db.Decimal(14, 4)
+  unitCost          Decimal  @default(0) @map("unit_cost") @db.Decimal(14, 4)
+  subtotal          Decimal  @default(0) @db.Decimal(16, 2)
+  observaciones     String?  @db.VarChar(500)
   /// Solo PV: cantidad de la reserva liberada manualmente. La reserva vigente es
   /// derivada (quantity - releasedQuantity - convertedQuantity), nunca un total persistido.
   releasedQuantity  Int      @default(0) @map("released_quantity")
   /// Solo PV: cantidad ya convertida a un documento de venta real.
   convertedQuantity Int      @default(0) @map("converted_quantity")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   document Document @relation(fields: [documentId], references: [id])
   product  Product  @relation(fields: [productId], references: [id])
@@ -560,13 +562,13 @@ model AccountsReceivable {
 }
 
 model ReceivablePayment {
-  id                   String   @id @default(uuid()) @db.Uuid
-  accountReceivableId  String   @map("account_receivable_id") @db.Uuid
-  amount               Decimal  @db.Decimal(16, 2)
-  paymentDate          DateTime @map("payment_date") @db.Date
-  paymentMethod        String   @map("payment_method")
-  reference            String?
-  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id                  String   @id @default(uuid()) @db.Uuid
+  accountReceivableId String   @map("account_receivable_id") @db.Uuid
+  amount              Decimal  @db.Decimal(16, 2)
+  paymentDate         DateTime @map("payment_date") @db.Date
+  paymentMethod       String   @map("payment_method")
+  reference           String?
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   accountReceivable AccountsReceivable @relation(fields: [accountReceivableId], references: [id])
 
@@ -650,3 +652,21 @@ model SupplierCreditApplication {
   @@map("supplier_credit_application")
 }
 
+// ─── Configuración del sistema ────────────────────────────────────────────────
+// Fila única (singleton) — controla el modo de solo lectura durante el cierre
+// contable de fin de mes. El backend cachea su valor en memoria (SystemConfigService)
+// y solo relee/escribe esta tabla al activar/desactivar el modo.
+model SystemConfig {
+  id              String    @id @default(uuid()) @db.Uuid
+  readOnlyMode    Boolean   @default(false) @map("read_only_mode")
+  activatedById   String?   @map("activated_by_id") @db.Uuid
+  activatedAt     DateTime? @map("activated_at") @db.Timestamptz
+  deactivatedById String?   @map("deactivated_by_id") @db.Uuid
+  deactivatedAt   DateTime? @map("deactivated_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  activatedBy   User? @relation("SystemConfigActivatedBy", fields: [activatedById], references: [id])
+  deactivatedBy User? @relation("SystemConfigDeactivatedBy", fields: [deactivatedById], references: [id])
+
+  @@map("system_config")
+}

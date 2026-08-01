@@ -2,10 +2,13 @@ import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
+import { ReadOnlyBanner } from './ReadOnlyBanner'
 import { useThemeStore } from '@/stores/theme.store'
+import { useSystemStatus } from '@/hooks/useSystemStatus'
 
 export function AppLayout() {
   const theme = useThemeStore((s) => s.theme)
+  const { data: systemStatus } = useSystemStatus()
 
   useEffect(() => {
     // Debe aplicarse de forma síncrona respecto al cambio de `theme`: el toggle
@@ -20,6 +23,9 @@ export function AppLayout() {
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
+        {systemStatus?.readOnlyMode && (
+          <ReadOnlyBanner activatedBy={systemStatus.activatedBy} activatedAt={systemStatus.activatedAt} />
+        )}
         <main className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </main>

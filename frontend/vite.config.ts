@@ -10,4 +10,8 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    // Permite acceder vía túnel de Cloudflare (dominio cambia en cada sesión de túnel)
+    allowedHosts: ['.trycloudflare.com'],
+  },
 })

@@ -1,11 +1,16 @@
 import { useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { Bell, Search, LogOut, User, Sun, Moon } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Bell, Search, LogOut, User, Sun, Moon, Lock, Unlock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 import { useThemeStore } from '@/stores/theme.store'
+import { usePermission } from '@/hooks/usePermission'
+import { useSystemStatus } from '@/hooks/useSystemStatus'
+import { setReadOnlyMode } from '@/services/system.service'
+import { ReadOnlyConfirmDialog } from './ReadOnlyConfirmDialog'
 
 export function Header() {
   const navigate = useNavigate()
@@ -13,7 +18,41 @@ export function Header() {
   const logout = useAuthStore((s) => s.logout)
   const { theme, toggleTheme } = useThemeStore()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showReadOnlyConfirm, setShowReadOnlyConfirm] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const canManageSystem = usePermission('system.manage')
+  const { data: systemStatus } = useSystemStatus()
+  const readOnlyMode = systemStatus?.readOnlyMode ?? false
+  const queryClient = useQueryClient()
+
+  const toggleReadOnlyMutation = useMutation({
+    mutationFn: setReadOnlyMode,
+    // Actualizamos la caché localmente de una vez (setQueryData) porque si el SSE
+    // de quien hizo el click está desconectado/reconectando en ese momento, su propia
+    // UI (candado, banner) nunca reflejaría el cambio que él mismo acaba de aplicar.
+    // El SSE sigue siendo necesario: es lo que empuja el nuevo estado a los DEMÁS
+    // clientes conectados.
+    onSuccess: (status) => {
+      queryClient.setQueryData(['system-status'], status)
+      if (status.readOnlyMode) {
+        toast.success('Modo de solo lectura activado')
+      } else {
+        toast.info('Modo de solo lectura desactivado')
+      }
+    },
+    onError: () => {
+      toast.error('Error al cambiar el modo de solo lectura')
+    },
+  })
+
+  const handleReadOnlyToggle = () => {
+    if (!readOnlyMode) {
+      setShowReadOnlyConfirm(true)
+      return
+    }
+    toggleReadOnlyMutation.mutate(false)
+  }
 
   const handleLogout = () => {
     setMenuOpen(false)
@@ -82,6 +121,22 @@ export function Header() {
           {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
         </button>
 
+        {canManageSystem && (
+          <button
+            onClick={handleReadOnlyToggle}
+            disabled={toggleReadOnlyMutation.isPending}
+            title={readOnlyMode ? 'Desactivar modo de solo lectura' : 'Activar modo de solo lectura (cierre contable)'}
+            className={cn(
+              'p-2 rounded-lg transition-colors disabled:opacity-50',
+              readOnlyMode
+                ? 'text-red-500 hover:text-red-600 hover:bg-red-500/10'
+                : 'text-content-faint hover:text-content-muted hover:bg-surface-hover',
+            )}
+          >
+            {readOnlyMode ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+          </button>
+        )}
+
         <button className="relative p-2 text-content-faint hover:text-content-muted hover:bg-surface-hover rounded-lg transition-colors">
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-secondary" />
@@ -141,6 +196,16 @@ export function Header() {
           )}
         </div>
       </div>
+
+      <ReadOnlyConfirmDialog
+        open={showReadOnlyConfirm}
+        isPending={toggleReadOnlyMutation.isPending}
+        onCancel={() => setShowReadOnlyConfirm(false)}
+        onConfirm={() => {
+          toggleReadOnlyMutation.mutate(true)
+          setShowReadOnlyConfirm(false)
+        }}
+      />
     </header>
   )
 }

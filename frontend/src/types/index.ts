@@ -40,6 +40,10 @@ export type {
   RegisterPayablePaymentPayload,
   CreditApplicationPayload,
 } from './accounts-payable.types'
+export type {
+  SystemStatus,
+  SystemStatusActivatedBy,
+} from './system.types'
 
 export interface ApiResponse<T> {
   success: boolean

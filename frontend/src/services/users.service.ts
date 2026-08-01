@@ -53,8 +53,8 @@ export const ROLE_LABELS: Record<string, string> = {
   warehouse:                   'Bodega',
   basket_management:           'Gestión de Canasta',
   billing:                     'Facturación',
-  accounts_payable_admin:      'Admin. Cuentas por Pagar',
-  accounts_receivable_admin:   'Admin. Cuentas por Cobrar',
+  accounts_admin:              'Admin. de Cuentas',
+  accounts_assistant:          'Asistente de Cuentas',
 }
 
 export function getRoleLabel(name: string): string {

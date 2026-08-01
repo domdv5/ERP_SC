@@ -48,6 +48,9 @@ coverage/
 skills-lock.json
 .mcp.json
 
+# Scripts locales (no versionados)
+scripts/
+
 # Prisma generated
 generated/prisma
 

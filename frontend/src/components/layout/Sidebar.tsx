@@ -44,14 +44,15 @@ const bottomGroups = [
       { to: "/documents", icon: FileText, label: "Operaciones" },
     ],
   },
-  {
-    label: "Finanzas",
-    items: [
-      { to: "/accounts-receivable", icon: TrendingUp, label: "Cuentas × Cobrar" },
-      { to: "/accounts-payable", icon: TrendingDown, label: "Cuentas × Pagar" },
-    ],
-  },
 ];
+
+const financeGroup = {
+  label: "Finanzas",
+  items: [
+    { to: "/accounts-receivable", icon: TrendingUp, label: "Cuentas × Cobrar" },
+    { to: "/accounts-payable", icon: TrendingDown, label: "Cuentas × Pagar" },
+  ],
+};
 
 function WarehousesSidebarItem() {
   const location = useLocation();
@@ -124,6 +125,9 @@ export function Sidebar() {
   const logout = useAuthStore((s) => s.logout);
   const canManageUsers = usePermission("user.manage");
   const canReadThirdParties = usePermission("thirdparty.read");
+  const canReadAr = usePermission("ar.read");
+  const canReadAp = usePermission("ap.read");
+  const canViewFinance = canReadAr || canReadAp;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -208,9 +212,9 @@ export function Sidebar() {
           <WarehousesSidebarItem />
         </div>
 
-        {/* Operaciones + Finanzas */}
-        {bottomGroups.map((group, i) => (
-          <div key={i} className="space-y-0.5">
+        {/* Operaciones + Finanzas (Finanzas oculta si el rol no tiene ni ar.read ni ap.read) */}
+        {[...bottomGroups, ...(canViewFinance ? [financeGroup] : [])].map((group) => (
+          <div key={group.label} className="space-y-0.5">
             <p className="text-content-faint dark:text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
               {group.label}
             </p>
@@ -222,7 +226,7 @@ export function Sidebar() {
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 <span className="flex-1">{label}</span>
-                              </NavLink>
+              </NavLink>
             ))}
           </div>
         ))}

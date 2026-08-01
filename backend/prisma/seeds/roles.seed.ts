@@ -29,13 +29,13 @@ export async function seedRoles(prisma: PrismaClient) {
       },
 
       {
-        name: 'accounts_payable_admin',
-        description: 'Manages accounts payable and supplier payments',
+        name: 'accounts_admin',
+        description: 'Manages accounts payable, accounts receivable, and system users',
       },
 
       {
-        name: 'accounts_receivable_admin',
-        description: 'Manages accounts receivable and customer collections',
+        name: 'accounts_assistant',
+        description: 'Manages accounts payable and accounts receivable',
       },
     ],
 

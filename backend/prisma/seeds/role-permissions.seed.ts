@@ -44,6 +44,7 @@ export async function seedRolePermissions(prisma: PrismaClient) {
       'cash.create',
       'cash.read',
       'user.manage',
+      'system.manage',
     ],
     purchasing: [
       'product.create',
@@ -59,8 +60,6 @@ export async function seedRolePermissions(prisma: PrismaClient) {
       'thirdparty.create',
       'thirdparty.update',
       'thirdparty.delete',
-      'ap.read',
-      'ap.manage',
       'cash.read',
     ],
     warehouse: [
@@ -93,17 +92,7 @@ export async function seedRolePermissions(prisma: PrismaClient) {
       'cash.create',
       'cash.read',
     ],
-    accounts_payable_admin: [
-      'product.read',
-      'document.read',
-      'thirdparty.read',
-      'thirdparty.create',
-      'thirdparty.update',
-      'ap.read',
-      'ap.manage',
-      'cash.read',
-    ],
-    accounts_receivable_admin: [
+    accounts_admin: [
       'product.read',
       'document.read',
       'thirdparty.read',
@@ -111,6 +100,22 @@ export async function seedRolePermissions(prisma: PrismaClient) {
       'thirdparty.update',
       'ar.read',
       'ar.manage',
+      'ap.read',
+      'ap.manage',
+      'cash.read',
+      'user.manage',
+      'system.manage',
+    ],
+    accounts_assistant: [
+      'product.read',
+      'document.read',
+      'thirdparty.read',
+      'thirdparty.create',
+      'thirdparty.update',
+      'ar.read',
+      'ar.manage',
+      'ap.read',
+      'ap.manage',
       'cash.read',
     ],
   };

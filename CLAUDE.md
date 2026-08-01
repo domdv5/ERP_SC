@@ -141,6 +141,15 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 - **Schema differences from AccountsPayable — do not copy blindly**: `AccountsReceivable` has two party relations (`client` via `Customer.thirdParty`, and `seller` via `ThirdParty` directly, relation name `SellerAR`) instead of AP's single `supplier`; `ReceivablePayment` has no `bankDestination` field (AP's `PayablePayment` does)
 - Not yet wired to any document strategy (sales document types `COT`/`POS`/`DVV` are still Phase 2 — see DocumentsModule below), so records currently must be created manually until those strategies exist
 
+**SystemConfigModule** — modo de solo lectura (cierre contable mensual):
+
+- `GET /system/status` — snapshot actual (`readOnlyMode`, `activatedAt`, `activatedBy`); JWT required
+- `GET /system/status/stream` — SSE (`@Public()`, JWT viaja como `?token=` porque `EventSource` no puede mandar `Authorization`; se valida manualmente con `JwtService.verify()`). Un token ausente/inválido lanza `UnauthorizedException` (no emite un `MessageEvent` de error) — así Nest nunca llega a fijar los headers SSE y la respuesta es un 401 HTTP normal, que el `EventSource` del navegador interpreta como "fail the connection" (sin reintentos). Emitir el error como mensaje SSE en cambio rompía el contrato esperado por el frontend, porque el `ResponseFormatInterceptor` global envuelve también las emisiones `@Sse()`
+- `POST /system/read-only/toggle` — activa/desactiva; requiere `system.manage` **y** `@BypassReadOnly()` (sin este segundo decorador nadie podría desactivar el modo una vez encendido)
+- **`ReadOnlyModeGuard`** — 3er `APP_GUARD` global (junto a `JwtAuthGuard`/`PermissionsGuard`); bloquea `POST/PATCH/PUT/DELETE` con 403 si `readOnlyMode` está activo, salvo rutas marcadas `@Public()` o `@BypassReadOnly()`
+- **Caché en memoria, no multi-instancia**: `SystemConfigService.getStatus()` lee un `BehaviorSubject` en memoria (síncrono, sin golpear la DB — el guard lo llama en cada request de escritura). Asume un único proceso backend; si se despliega alguna vez en cluster/réplicas, cada instancia tendría su propio caché desincronizado y el toggle solo aplicaría en la instancia que lo recibió. No hay despliegue multi-instancia hoy — si eso cambia, esto necesita pub/sub o polling a la DB antes de confiar en el guard
+- Fila única en `SystemConfig` (sin constraint de unicidad a nivel de DB, solo por convención de `findFirst()`/seed)
+
 **CommonModule** (`src/common/`):
 
 - `decorators/permissions.decorator.ts` — `@Permissions(...perms)` sets required permissions via SetMetadata
@@ -156,7 +165,7 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 
 JWT includes the user's full permission set (loaded from Role → RolePermission → Permission at login time). Guards check against this in-token permissions array — no per-request DB lookup needed.
 
-RBAC roles defined in seed: `admin`, `purchasing`, `warehouse`, `basket_management`, `billing`, `accounts_payable_admin`, `accounts_receivable_admin`.
+RBAC roles defined in seed: `admin`, `purchasing`, `warehouse`, `basket_management`, `billing`, `accounts_admin`, `accounts_assistant`. The last two both get full `ar.*`/`ap.*` (CxC + CxP) — they are hierarchical, not module-scoped: `accounts_admin` additionally has `user.manage`, `accounts_assistant` does not.
 
 Permissions are namespaced by module: `products.*`, `documents.*`, `warehouses.*`, `third_parties.*`, `accounts.*`, `cash.*`, `users.*`, `labels.*`.
 
@@ -225,6 +234,8 @@ return res.data.data
 **Row click to edit** — Every list page `<tr>` must have `onClick={() => setEditing(item)}` and `cursor-pointer`. The delete button must call `e.stopPropagation()` to prevent bubbling. The pencil button also gets `e.stopPropagation()` (it becomes redundant but keeps explicitness). Apply this pattern to every new module.
 
 **Protected routes** — `AuthGuard` checks `useAuthStore` token; redirects to `/login` if not authenticated.
+
+**Shared SSE connection (`useSystemStatus`)** — Module-level singleton (`sharedEventSource`, `activeSubscribers` ref-count) instead of one `EventSource` per component: `Header` and `AppLayout` both call the hook, but only the first mounted consumer opens the connection and the last one to unmount closes it. `staleTime: Infinity` on the underlying query — it's never refetched by time, only ever updated by the SSE push (including the mutation that toggles the mode itself, via `queryClient.setQueryData` in `Header.tsx`, so the acting user's own UI doesn't depend on their SSE round-tripping back to them). Reuse this module-level-singleton pattern for any future SSE hook — don't spin up a new `EventSource` per component instance.
 
 **Combobox (shared)** — Use `<Combobox>` from `@/components/shared` for all searchable dropdowns. Two modes: (1) **Controlled** — pass `searchValue`/`onSearchChange` for server-side debounce; show "Escribe para buscar..." when empty, let caller manage `enabled` on the query; (2) **Uncontrolled** — omit both props, component filters `options` client-side. Always uses `createPortal` → safe inside overflow containers. Option interface: `{ id, label, sublabel? }`. `onChange` signature: `(id: string, option: ComboboxOption) => void`. For server-side search, add a synthetic option when an item is already selected and search is empty (prevents the trigger showing blank). It has no keyboard support (no Enter-to-select, no arrow-key nav) — every selection is mouse-only; that's why the barcode-scan flow (see `frontend/src/pages/documents/CLAUDE.md`) needed its own dedicated input instead of reusing it.
 
