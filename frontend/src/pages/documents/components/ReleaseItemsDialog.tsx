@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { X, Unlock, Loader2 } from "lucide-react";
 import { releaseItems } from "@/services/documents.service";
 import { cn } from "@/lib/utils";
+import { getFirstErrorMessage } from "@/lib/form-errors";
 import type { Document, ReleaseItemsPayload } from "@/types/document.types";
 
 // ─── schema ──────────────────────────────────────────────────────────────────
@@ -77,7 +78,6 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
     handleSubmit,
     reset,
     watch,
-    formState: { errors },
   } = useForm<ReleaseFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(releaseSchema) as any,
@@ -132,8 +132,6 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
     doRelease({ items, notes: data.notes || undefined });
   };
 
-  const itemsError = typeof errors.items?.message === "string" ? errors.items.message : undefined;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -164,21 +162,18 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
         {/* Body + Footer */}
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <form
-          onSubmit={handleSubmit(submitHandler as any)}
+          onSubmit={handleSubmit(
+            submitHandler as any,
+            (formErrors) => toast.error(getFirstErrorMessage(formErrors)),
+          )}
+          noValidate
           className="flex flex-col overflow-hidden"
         >
           <div className="px-6 py-5 space-y-3 overflow-y-auto">
-            {itemsError && (
-              <p className="text-xs text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-                {itemsError}
-              </p>
-            )}
-
             {fields.map((field, index) => {
               const item = doc.documentItems[index];
               const pending = field.pending;
               const isDisabled = pending <= 0;
-              const rowError = errors.items?.[index]?.quantity?.message;
 
               return (
                 <div
@@ -222,12 +217,11 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
                               "w-24 px-2.5 py-1.5 text-sm rounded-lg border bg-surface text-content",
                               "focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all",
                               "disabled:opacity-50 disabled:cursor-not-allowed",
-                              rowError ? "border-red-500" : "border-ui-border-medium",
+                              "border-ui-border-medium",
                             )}
                           />
                         </div>
                       )}
-                      {rowError && <p className="text-red-500 text-xs mt-1">{rowError}</p>}
                     </div>
                   </div>
                 </div>
@@ -244,7 +238,6 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
                 placeholder="Observaciones de la liberación..."
                 className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all resize-none"
               />
-              {errors.notes && <p className="text-red-500 text-xs mt-1">{errors.notes.message}</p>}
             </div>
           </div>
 

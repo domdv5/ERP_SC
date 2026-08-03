@@ -15,6 +15,7 @@ import {
   ChevronUp,
   ShieldCheck,
   Contact,
+  MapPinned,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth.store";
@@ -210,6 +211,14 @@ export function Sidebar() {
 
           {/* Bodegas — acordeón */}
           <WarehousesSidebarItem />
+
+          <NavLink
+            to="/stock-lookup"
+            className={({ isActive }) => getNavLinkClass(isActive)}
+          >
+            <MapPinned className="w-4 h-4 shrink-0" />
+            <span className="flex-1">Ubicación de stock</span>
+          </NavLink>
         </div>
 
         {/* Operaciones + Finanzas (Finanzas oculta si el rol no tiene ni ar.read ni ap.read) */}

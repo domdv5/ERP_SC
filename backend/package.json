@@ -16,6 +16,7 @@
     "seed": "pnpm exec prisma db seed --config prisma/prisma.config.ts",
     "migrate:dev": "pnpm prisma migrate dev --config prisma/prisma.config.ts && pnpm prisma generate --config prisma/prisma.config.ts",
     "studio": "pnpm prisma studio --config prisma/prisma.config.ts",
+    "audit:binstock": "node scripts/audit-binstock-invariant.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",

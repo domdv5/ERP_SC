@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DocumentType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
@@ -34,9 +38,7 @@ export class PvEffectStrategy
       : null;
 
     if (!thirdParty?.customer) {
-      throw new BadRequestException(
-        'La preventa requiere un cliente válido',
-      );
+      throw new BadRequestException('La preventa requiere un cliente válido');
     }
 
     if (!sellerId) {
@@ -48,9 +50,7 @@ export class PvEffectStrategy
     });
 
     if (!seller?.isSeller) {
-      throw new BadRequestException(
-        'El vendedor asignado no es válido',
-      );
+      throw new BadRequestException('El vendedor asignado no es válido');
     }
   }
 
@@ -115,7 +115,8 @@ export class PvEffectStrategy
         );
       }
 
-      const pending = item.quantity - item.releasedQuantity - item.convertedQuantity;
+      const pending =
+        item.quantity - item.releasedQuantity - item.convertedQuantity;
 
       if (release.quantity > pending) {
         throw new ConflictException(

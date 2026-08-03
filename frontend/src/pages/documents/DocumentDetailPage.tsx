@@ -153,6 +153,10 @@ export default function DocumentDetailPage() {
     queryClient.invalidateQueries({ queryKey: ["products-search"] });
     // CM crea AccountsPayable y DVC crea/elimina SupplierCredit al confirmar/anular
     queryClient.invalidateQueries({ queryKey: ["accounts-payable"] });
+    // Confirmar/anular un traslado cambia BinStock — el detalle de bodega (bins con occupied) debe
+    // refrescarse, si no el formulario de un traslado nuevo sigue mostrando bines ocupados/libres
+    // desactualizados hasta recargar.
+    queryClient.invalidateQueries({ queryKey: ["warehouse-detail"] });
   };
 
   const { mutate: doConfirm, isPending: isConfirming } = useMutation({

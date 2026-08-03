@@ -2,8 +2,10 @@ import { useEffect, type InputHTMLAttributes, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getFirstErrorMessage } from '@/lib/form-errors'
 import type { Zone } from '@/types'
 
 // ---------------------------------------------------------------------------
@@ -33,12 +35,11 @@ interface ZoneFormProps {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-medium text-content-secondary mb-1">{label}</label>
       {children}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   )
 }
@@ -66,7 +67,6 @@ export function ZoneForm({ open, onClose, onSubmit, isPending, defaultValues }: 
     register,
     handleSubmit,
     reset,
-    formState: { errors },
   } = useForm<ZoneFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -107,10 +107,14 @@ export function ZoneForm({ open, onClose, onSubmit, isPending, defaultValues }: 
         </div>
 
         {/* Body + Footer */}
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
+        <form
+          onSubmit={handleSubmit(onSubmit, (formErrors) => toast.error(getFirstErrorMessage(formErrors)))}
+          noValidate
+          className="flex flex-col"
+        >
           <div className="px-6 py-5 space-y-4">
 
-            <Field label="Nombre" error={errors.name?.message}>
+            <Field label="Nombre">
               <Input
                 {...register('name')}
                 placeholder="Ej: Zona A"
@@ -120,7 +124,7 @@ export function ZoneForm({ open, onClose, onSubmit, isPending, defaultValues }: 
             </Field>
 
             {isEdit && (
-              <Field label="Estado" error={errors.active?.message}>
+              <Field label="Estado">
                 <label className="flex items-center gap-3 cursor-pointer select-none">
                   <input
                     type="checkbox"

@@ -9,8 +9,10 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
+import { toast } from "sonner";
 import { X, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getFirstErrorMessage } from "@/lib/form-errors";
 import { getSupplierCredits } from "@/services/accounts-payable.service";
 import { formatCOP, formatDate } from "@/pages/accounts-payable/accounts-payable.utils";
 import type { RegisterPayablePaymentPayload } from "@/types";
@@ -66,12 +68,11 @@ interface RegisterPaymentFormProps {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-medium text-content-secondary mb-1">{label}</label>
       {children}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
 }
@@ -175,7 +176,6 @@ export function RegisterPaymentForm({
     handleSubmit,
     reset,
     watch,
-    formState: { errors },
   } = useForm<RegisterPaymentFormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: emptyDefaults(),
@@ -249,11 +249,6 @@ export function RegisterPaymentForm({
               className="w-28 shrink-0"
             />
           </div>
-          {errors.creditApplications?.[index]?.amount && (
-            <p className="text-red-500 text-xs mt-1">
-              {errors.creditApplications[index]?.amount?.message}
-            </p>
-          )}
         </div>
       ))}
     </div>
@@ -262,10 +257,6 @@ export function RegisterPaymentForm({
       Este proveedor no tiene notas crédito disponibles.
     </p>
   );
-
-  console.log("credits:", credits);
-  console.log("fields:", fields);
-  console.log("creditApplications:", watch("creditApplications"));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -291,11 +282,15 @@ export function RegisterPaymentForm({
 
         {/* Body + Footer */}
         <form
-          onSubmit={handleSubmit(submitHandler as never)}
+          onSubmit={handleSubmit(
+            submitHandler as never,
+            (formErrors) => toast.error(getFirstErrorMessage(formErrors)),
+          )}
+          noValidate
           className="flex flex-col overflow-hidden"
         >
           <div className="px-6 py-5 space-y-4 overflow-y-auto">
-            <Field label="Monto en efectivo" error={errors.amount?.message}>
+            <Field label="Monto en efectivo">
               <Input
                 {...register("amount")}
                 type="number"
@@ -306,11 +301,11 @@ export function RegisterPaymentForm({
               />
             </Field>
 
-            <Field label="Fecha de pago" error={errors.paymentDate?.message}>
+            <Field label="Fecha de pago">
               <Input {...register("paymentDate")} type="date" />
             </Field>
 
-            <Field label="Método de pago" error={errors.paymentMethod?.message}>
+            <Field label="Método de pago">
               <Select {...register("paymentMethod")} defaultValue="">
                 <option value="" disabled>
                   Selecciona un método
@@ -323,7 +318,7 @@ export function RegisterPaymentForm({
               </Select>
             </Field>
 
-            <Field label="Banco destino (opcional)" error={errors.bankDestination?.message}>
+            <Field label="Banco destino (opcional)">
               <Input
                 {...register("bankDestination")}
                 placeholder="Ej: Bancolombia"
@@ -331,7 +326,7 @@ export function RegisterPaymentForm({
               />
             </Field>
 
-            <Field label="Referencia (opcional)" error={errors.reference?.message}>
+            <Field label="Referencia (opcional)">
               <Input
                 {...register("reference")}
                 placeholder="Ej: N° de comprobante"

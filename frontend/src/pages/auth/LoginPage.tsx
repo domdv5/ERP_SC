@@ -93,31 +93,22 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <form
-              onSubmit={handleSubmit((d) => mutate(d))}
-              className="space-y-5"
-            >
+            <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-5">
               <div>
-                <label className="block text-white/70 text-sm font-medium mb-1.5">
-                  Usuario
-                </label>
+                <label className="block text-white/70 text-sm font-medium mb-1.5">Usuario</label>
                 <input
                   {...register("username")}
                   type="text"
-                  placeholder="tu.usuario"
+                  placeholder="usuario"
                   className="w-full px-4 py-3 rounded-xl text-white placeholder-white/20 border border-white/10 bg-white/[0.07] focus:outline-none focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 transition-colors text-sm"
                 />
                 {errors.username && (
-                  <p className="text-red-400 text-xs mt-1">
-                    {errors.username.message}
-                  </p>
+                  <p className="text-red-400 text-xs mt-1">{errors.username.message}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-white/70 text-sm font-medium mb-1.5">
-                  Contraseña
-                </label>
+                <label className="block text-white/70 text-sm font-medium mb-1.5">Contraseña</label>
                 <div className="relative">
                   <input
                     {...register("password")}
@@ -130,17 +121,11 @@ export default function LoginPage() {
                     onClick={() => setShowPassword((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors"
                   >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-red-400 text-xs mt-1">
-                    {errors.password.message}
-                  </p>
+                  <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>
                 )}
               </div>
 

@@ -2,8 +2,10 @@ import { useEffect, type InputHTMLAttributes, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getFirstErrorMessage } from '@/lib/form-errors'
 import type { Bin, Zone } from '@/types'
 
 // ---------------------------------------------------------------------------
@@ -35,12 +37,11 @@ interface BinFormProps {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-medium text-content-secondary mb-1">{label}</label>
       {children}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   )
 }
@@ -68,7 +69,6 @@ export function BinForm({ open, onClose, onSubmit, isPending, zone, defaultValue
     register,
     handleSubmit,
     reset,
-    formState: { errors },
   } = useForm<BinFormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
@@ -109,10 +109,14 @@ export function BinForm({ open, onClose, onSubmit, isPending, zone, defaultValue
         </div>
 
         {/* Body + Footer */}
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
+        <form
+          onSubmit={handleSubmit(onSubmit, (formErrors) => toast.error(getFirstErrorMessage(formErrors)))}
+          noValidate
+          className="flex flex-col"
+        >
           <div className="px-6 py-5 space-y-4">
 
-            <Field label="Número de bulto" error={errors.code?.message}>
+            <Field label="Número de bulto">
               <Input
                 {...register('code')}
                 type="number"
@@ -124,7 +128,7 @@ export function BinForm({ open, onClose, onSubmit, isPending, zone, defaultValue
             </Field>
 
             {isEdit && (
-              <Field label="Estado" error={errors.active?.message}>
+              <Field label="Estado">
                 <label className="flex items-center gap-3 cursor-pointer select-none">
                   <input
                     type="checkbox"

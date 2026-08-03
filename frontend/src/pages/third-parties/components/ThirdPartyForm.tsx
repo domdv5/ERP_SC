@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { X, Plus, Trash2, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { getFirstErrorMessage } from '@/lib/form-errors'
 import type { ThirdParty } from '@/types'
 
 const schema = z.object({
@@ -52,12 +53,11 @@ const DOCUMENT_LABELS: Record<string, string> = {
   PAS: 'Pasaporte', TI: 'Tarjeta de Identidad', RC: 'Registro Civil',
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-medium text-content-secondary mb-1">{label}</label>
       {children}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   )
 }
@@ -141,7 +141,7 @@ export function ThirdPartyForm({ open, onClose, onSubmit, onRenameBrand, isPendi
   const cancelRenameRef = useRef(false)
   const isEdit = !!defaultValues
 
-  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, watch, setValue, reset } = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
       personType: 'natural',
@@ -236,7 +236,14 @@ export function ThirdPartyForm({ open, onClose, onSubmit, onRenameBrand, isPendi
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit(submitForm as never)} className="flex flex-col flex-1 overflow-hidden">
+        <form
+          onSubmit={handleSubmit(
+            submitForm as never,
+            (formErrors) => toast.error(getFirstErrorMessage(formErrors)),
+          )}
+          noValidate
+          className="flex flex-col flex-1 overflow-hidden"
+        >
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
             {/* Tipo de persona */}
@@ -264,50 +271,50 @@ export function ThirdPartyForm({ open, onClose, onSubmit, onRenameBrand, isPendi
             {/* Campos condicionales por tipo */}
             {personType === 'natural' ? (
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Nombres" error={errors.firstName?.message}>
+                <Field label="Nombres">
                   <Input {...register('firstName')} placeholder="Ej. Juan Carlos" />
                 </Field>
-                <Field label="Apellidos" error={errors.lastName?.message}>
+                <Field label="Apellidos">
                   <Input {...register('lastName')} placeholder="Ej. Pérez Gómez" />
                 </Field>
               </div>
             ) : (
-              <Field label="Razón social" error={errors.name?.message}>
+              <Field label="Razón social">
                 <Input {...register('name')} placeholder="Nombre de la empresa" />
               </Field>
             )}
 
             {personType === 'natural' && (
-              <Field label="Nombre completo (display)" error={errors.name?.message}>
+              <Field label="Nombre completo (display)">
                 <Input {...register('name')} placeholder="Nombre que aparecerá en el sistema" />
               </Field>
             )}
 
             {/* Documento */}
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Tipo de documento" error={errors.documentType?.message}>
+              <Field label="Tipo de documento">
                 <Select {...register('documentType')}>
                   {DOCUMENT_TYPES.map((dt) => (
                     <option key={dt} value={dt}>{DOCUMENT_LABELS[dt]}</option>
                   ))}
                 </Select>
               </Field>
-              <Field label="Número de documento" error={errors.documentNumber?.message}>
+              <Field label="Número de documento">
                 <Input {...register('documentNumber')} placeholder="Ej. 1234567890" />
               </Field>
             </div>
 
             {/* Contacto */}
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Email" error={errors.email?.message}>
+              <Field label="Email">
                 <Input {...register('email')} type="email" placeholder="correo@ejemplo.com" />
               </Field>
-              <Field label="Teléfono" error={errors.phone?.message}>
+              <Field label="Teléfono">
                 <Input {...register('phone')} placeholder="Ej. 3001234567" />
               </Field>
             </div>
 
-            <Field label="Dirección" error={errors.address?.message}>
+            <Field label="Dirección">
               <Input {...register('address')} placeholder="Dirección completa" />
             </Field>
 
@@ -326,10 +333,10 @@ export function ThirdPartyForm({ open, onClose, onSubmit, onRenameBrand, isPendi
               <div className="p-4 rounded-xl border border-brand-secondary/20 bg-brand-secondary/5 space-y-4">
                 <p className="text-sm font-medium text-brand-secondary-dark">Datos de cliente</p>
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="Límite de crédito" error={errors.creditLimit?.message}>
+                  <Field label="Límite de crédito">
                     <Input {...register('creditLimit')} type="number" step="0.01" placeholder="0.00" />
                   </Field>
-                  <Field label="Descuento (%)" error={errors.discount?.message}>
+                  <Field label="Descuento (%)">
                     <Input {...register('discount')} type="number" step="0.01" min="0" max="100" placeholder="0.00" />
                   </Field>
                 </div>
@@ -340,7 +347,7 @@ export function ThirdPartyForm({ open, onClose, onSubmit, onRenameBrand, isPendi
             {isSupplier && (
               <div className="p-4 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-500/20 dark:bg-blue-500/10 space-y-4">
                 <p className="text-sm font-medium text-blue-700 dark:text-blue-400">Datos de proveedor</p>
-                <Field label="Número interno" error={errors.internalNumber?.message}>
+                <Field label="Número interno">
                   <Input {...register('internalNumber')} type="number" placeholder="Ej. 1001" />
                 </Field>
                 <div>
@@ -357,7 +364,6 @@ export function ThirdPartyForm({ open, onClose, onSubmit, onRenameBrand, isPendi
                       <Plus className="w-4 h-4" />
                     </button>
                   </div>
-                  {errors.brands && <p className="text-red-500 text-xs mb-2">{errors.brands.message}</p>}
                   <div className="flex flex-wrap gap-1.5">
                     {brands.map((brand) => {
                       const isOriginal = brandIds.has(brand)

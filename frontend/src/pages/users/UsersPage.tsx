@@ -221,7 +221,7 @@ export default function UsersPage() {
                           'px-2 py-0.5 rounded-full text-xs font-medium',
                           u.active
                             ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-                            : 'bg-gray-100 text-gray-500 dark:bg-gray-500/20 dark:text-gray-400',
+                            : 'bg-surface-hover text-content-muted',
                         )}
                       >
                         {u.active ? 'Activo' : 'Inactivo'}

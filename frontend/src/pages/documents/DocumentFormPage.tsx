@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { Combobox } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
+import { getFirstErrorMessage } from '@/lib/form-errors'
 import { formSchema, type FormValues } from './document-form.schema'
 import { DOC_TYPE_SELECT_OPTIONS, DOC_TYPE_ACCENT } from './document.constants'
 import { ProductRow } from './components/ProductRow'
@@ -78,7 +79,6 @@ export default function DocumentFormPage() {
     setValue,
     getValues,
     reset,
-    formState: { errors },
   } = useForm<FormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(formSchema) as any,
@@ -437,7 +437,11 @@ export default function DocumentFormPage() {
       </div>
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
+      <form
+        onSubmit={handleSubmit(onSubmit as any, (formErrors) => toast.error(getFirstErrorMessage(formErrors)))}
+        noValidate
+        className="space-y-6"
+      >
         {/* ── General info card — borde de acento izquierdo por tipo, ancla visual del form ── */}
         <div className={cn(
           'bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-5 border-l-4',
@@ -487,7 +491,6 @@ export default function DocumentFormPage() {
                   </select>
                 )}
               />
-              {errors.type && <p className="text-xs text-red-500">{errors.type.message}</p>}
             </div>
 
             {/* Date */}
@@ -498,13 +501,8 @@ export default function DocumentFormPage() {
               <input
                 type="date"
                 {...register('date')}
-                className={cn(
-                  'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all',
-                  'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary',
-                  errors.date ? 'border-red-500' : 'border-ui-border-medium',
-                )}
+                className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
               />
-              {errors.date && <p className="text-xs text-red-500">{errors.date.message}</p>}
             </div>
 
             {/* Third party — proveedor (CM/DVC) o cliente (PV) */}
@@ -528,13 +526,9 @@ export default function DocumentFormPage() {
                       placeholder={needsCustomer ? 'Selecciona un cliente...' : 'Selecciona un proveedor...'}
                       searchValue={tpSearch}
                       onSearchChange={setTpSearch}
-                      error={errors.thirdPartyId?.message}
                     />
                   )}
                 />
-                {errors.thirdPartyId && (
-                  <p className="text-xs text-red-500">{errors.thirdPartyId.message}</p>
-                )}
               </div>
             )}
 
@@ -559,13 +553,9 @@ export default function DocumentFormPage() {
                       placeholder="Selecciona una vendedora..."
                       searchValue={sellerSearch}
                       onSearchChange={setSellerSearch}
-                      error={errors.sellerId?.message}
                     />
                   )}
                 />
-                {errors.sellerId && (
-                  <p className="text-xs text-red-500">{errors.sellerId.message}</p>
-                )}
               </div>
             )}
 
@@ -583,11 +573,7 @@ export default function DocumentFormPage() {
                       <select
                         value={field.value ?? ''}
                         onChange={(e) => field.onChange(e.target.value)}
-                        className={cn(
-                          'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all',
-                          'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary',
-                          errors.warehouseId ? 'border-red-500' : 'border-ui-border-medium',
-                        )}
+                        className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
                       >
                         <option value="">Selecciona bodega origen</option>
                         {warehouses.map((w: Warehouse) => (
@@ -598,9 +584,6 @@ export default function DocumentFormPage() {
                       </select>
                     )}
                   />
-                  {errors.warehouseId && (
-                    <p className="text-xs text-red-500">{errors.warehouseId.message}</p>
-                  )}
                 </div>
 
                 {/* Zone + bin cascade when source is type 'warehouse' */}
@@ -674,11 +657,7 @@ export default function DocumentFormPage() {
                       <select
                         value={field.value ?? ''}
                         onChange={(e) => field.onChange(e.target.value)}
-                        className={cn(
-                          'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all',
-                          'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary',
-                          errors.destWarehouseId ? 'border-red-500' : 'border-ui-border-medium',
-                        )}
+                        className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
                       >
                         <option value="">Selecciona bodega destino</option>
                         {warehouses
@@ -691,9 +670,6 @@ export default function DocumentFormPage() {
                       </select>
                     )}
                   />
-                  {errors.destWarehouseId && (
-                    <p className="text-xs text-red-500">{errors.destWarehouseId.message}</p>
-                  )}
                 </div>
 
                 {/* Zone + bin cascade when dest is type 'warehouse' */}
@@ -773,9 +749,6 @@ export default function DocumentFormPage() {
                   {...register('freight')}
                   className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
                 />
-                {errors.freight && (
-                  <p className="text-xs text-red-500">{errors.freight.message}</p>
-                )}
               </div>
             )}
           </div>
@@ -836,12 +809,6 @@ export default function DocumentFormPage() {
             }
           />
 
-          {typeof errors.items?.message === 'string' && (
-            <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/20">
-              <p className="text-sm text-red-500">{errors.items.message}</p>
-            </div>
-          )}
-
           {fields.length === 0 ? (
             <div className="py-10 text-center">
               <p className="text-content-muted text-sm">No hay ítems. Agrega el primero.</p>
@@ -890,7 +857,6 @@ export default function DocumentFormPage() {
                       setValue={setValue}
                       watch={watch}
                       getValues={getValues}
-                      errors={errors}
                       initialAvgCost={scannedProductInfo[field.productId]?.avgCost}
                       initialUnitOfMeasure={scannedProductInfo[field.productId]?.unitOfMeasure}
                       initialAvailableStock={scannedProductInfo[field.productId]?.availableStock}

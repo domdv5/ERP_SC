@@ -131,6 +131,78 @@ export class ProductsService {
     return product;
   }
 
+  async findLocationsByCode(code: string) {
+    const product = await this.prisma.product.findFirst({
+      where: { code: { equals: code, mode: 'insensitive' } },
+      include: { brand: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Producto no encontrado');
+    }
+
+    const {
+      id,
+      code: productCode,
+      description,
+      brand: { id: brandId, name },
+      active,
+      unitOfMeasure,
+    } = product;
+
+    const [binStocks, inventoryRecords] = await this.prisma.$transaction([
+      this.prisma.binStock.findMany({
+        where: { productId: product.id, quantity: { gt: 0 } },
+        include: { bin: { include: { zone: true } }, warehouse: true },
+        orderBy: [{ warehouse: { name: 'asc' } }],
+      }),
+      this.prisma.inventory.findMany({
+        where: { productId: product.id },
+        include: { warehouse: { select: { id: true, name: true } } },
+      }),
+    ]);
+
+    const locations = binStocks.map((loacation) => ({
+      warehouseId: loacation.warehouseId,
+      warehouseName: loacation.warehouse.name,
+      zoneName: loacation.bin.zone.name,
+      binCode: loacation.bin.code,
+      quantity: loacation.quantity,
+    }));
+
+    const warehouseTotals = inventoryRecords.map((inventory) => ({
+      warehouseId: inventory.warehouseId,
+      warehouseName: inventory.warehouse.name,
+      quantity: inventory.quantity,
+    }));
+
+    const totalBinQuantity = binStocks.reduce((acc, item) => {
+      return acc + item.quantity;
+    }, 0);
+
+    const totalWarehousesQuantity = inventoryRecords.reduce((acc, item) => {
+      return acc + item.quantity;
+    }, 0);
+
+    // BinStock solo se llena por traslados (T); las compras (CM) entran solo a
+    // Inventory sin bin. Por eso totalBinQuantity puede quedar por debajo del
+    // total de Inventory — eso no es "sin stock", es "stock sin bulto asignado".
+    return {
+      product: {
+        id,
+        code: productCode,
+        description,
+        brand: { id: brandId, name },
+        active,
+        unitOfMeasure,
+      },
+      locations,
+      warehouseTotals,
+      totalBinQuantity,
+      hasUnassignedStock: totalWarehousesQuantity > totalBinQuantity,
+    };
+  }
+
   create(createProductDto: CreateProductDto) {
     return this.prisma.product.create({ data: { ...createProductDto } });
   }

@@ -17,6 +17,7 @@ const DocumentDetailPage = lazy(() => import('@/pages/documents/DocumentDetailPa
 const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
 const AccountsPayableListPage = lazy(() => import('@/pages/accounts-payable/AccountsPayableListPage'))
 const AccountsPayableDetailPage = lazy(() => import('@/pages/accounts-payable/AccountsPayableDetailPage'))
+const StockLookupPage = lazy(() => import('@/pages/stock-lookup/StockLookupPage'))
 
 // Fallback de Suspense con delay de 200ms antes de mostrar el loader de
 // pantalla completa. Los chunks lazy que ya están en caché del navegador o
@@ -60,6 +61,7 @@ export const router = createBrowserRouter([
       { path: 'products',              element: <Lazy><ProductsPage /></Lazy> },
       { path: 'warehouses',            element: <Lazy><WarehousesPage /></Lazy> },
       { path: 'documents',             element: <Lazy><DocumentsPage /></Lazy> },
+      { path: 'stock-lookup',          element: <Lazy><StockLookupPage /></Lazy> },
       { path: 'documents/new',         element: <Lazy><DocumentFormPage /></Lazy> },
       { path: 'documents/:id',         element: <Lazy><DocumentDetailPage /></Lazy> },
       { path: 'documents/:id/edit',    element: <Lazy><DocumentFormPage /></Lazy> },

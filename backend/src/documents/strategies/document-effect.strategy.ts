@@ -62,5 +62,7 @@ export interface ReservationEffectStrategy extends DocumentEffectStrategy {
 export function isReservationStrategy(
   strategy: DocumentEffectStrategy,
 ): strategy is ReservationEffectStrategy {
-  return typeof (strategy as ReservationEffectStrategy).releaseItems === 'function';
+  return (
+    typeof (strategy as ReservationEffectStrategy).releaseItems === 'function'
+  );
 }

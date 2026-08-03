@@ -436,7 +436,9 @@ export class DocumentsService {
                   productId: movement.productId,
                   documentId: { not: id },
                   quantity: { lt: 0 },
-                  movementType: { notIn: [MovementType.transfer, MovementType.void] },
+                  movementType: {
+                    notIn: [MovementType.transfer, MovementType.void],
+                  },
                 },
                 orderBy: { createdAt: 'desc' },
               });
@@ -566,7 +568,11 @@ export class DocumentsService {
    * de un documento confirmado. Solo tipos con estrategia de reserva
    * (hoy solo PV) exponen esto — getReservation lanza si el tipo no aplica.
    */
-  async releaseItems(id: string, releaseItemsDto: ReleaseItemsDto, user: JwtPayload) {
+  async releaseItems(
+    id: string,
+    releaseItemsDto: ReleaseItemsDto,
+    user: JwtPayload,
+  ) {
     const document = await this.prisma.document.findUnique({
       where: { id },
       include: {
@@ -615,7 +621,8 @@ export class DocumentsService {
     action: 'create' | 'release' = 'create',
   ) {
     if (!user.permissions.includes(`document.${action}.${type}`)) {
-      const actionLabel = action === 'release' ? 'liberar reservas de' : 'crear';
+      const actionLabel =
+        action === 'release' ? 'liberar reservas de' : 'crear';
       throw new ForbiddenException(
         `No tiene permiso para ${actionLabel} documentos de tipo ${type}`,
       );
@@ -634,7 +641,9 @@ export class DocumentsService {
 
   private computeItemSubtotal(item: CreateDocumentItemDto, type: DocumentType) {
     const usePrice = DocumentsService.PRICE_BASED_TYPES.has(type);
-    return item.quantity * (usePrice ? (item.unitPrice ?? 0) : (item.unitCost ?? 0));
+    return (
+      item.quantity * (usePrice ? (item.unitPrice ?? 0) : (item.unitCost ?? 0))
+    );
   }
 
   private computeTotal(items: CreateDocumentItemDto[], type: DocumentType) {

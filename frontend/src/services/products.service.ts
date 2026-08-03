@@ -1,6 +1,6 @@
 import { api } from './api'
 import type { ApiResponse, Product } from '@/types'
-import type { Brand, Gender, ProductCategory } from '@/types/product.types'
+import type { Brand, Gender, ProductCategory, ProductLocationsResult } from '@/types/product.types'
 
 export interface ProductMeta {
   total: number
@@ -40,6 +40,11 @@ export async function getProducts(params?: GetProductsParams): Promise<{ items: 
 
 export async function getProductByCode(code: string): Promise<Product> {
   const res = await api.get<ApiResponse<Product>>(`/products/by-code/${encodeURIComponent(code)}`)
+  return res.data.data
+}
+
+export async function getProductLocationsByCode(code: string): Promise<ProductLocationsResult> {
+  const res = await api.get<ApiResponse<ProductLocationsResult>>(`/products/by-code/${encodeURIComponent(code)}/locations`)
   return res.data.data
 }
 

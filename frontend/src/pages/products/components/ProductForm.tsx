@@ -12,7 +12,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { getFirstErrorMessage } from '@/lib/form-errors'
 import { Combobox } from '@/components/shared'
 import { getBrands, getGenders, getCategories } from '@/services/products.service'
 import type { Product } from '@/types'
@@ -56,12 +58,11 @@ interface ProductFormProps {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-medium text-content-secondary mb-1">{label}</label>
       {children}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   )
 }
@@ -111,7 +112,6 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
     reset,
     control,
     setValue,
-    formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
@@ -223,7 +223,11 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
         </div>
 
         {/* Body + Footer */}
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+        <form
+          onSubmit={handleSubmit(onSubmit, (formErrors) => toast.error(getFirstErrorMessage(formErrors)))}
+          noValidate
+          className="flex flex-col flex-1 overflow-hidden"
+        >
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 
             {/* ── Identificación ── */}
@@ -235,7 +239,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
 
                 {/* Código + Código legado (solo en edición) */}
                 <div className={cn('grid gap-4', isEdit ? 'grid-cols-2' : 'grid-cols-1')}>
-                  <Field label="Código" error={errors.code?.message}>
+                  <Field label="Código">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         {/* Prefijo auto-calculado */}
@@ -274,7 +278,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
 
                   {/* Código legado — solo en edición */}
                   {isEdit && (
-                    <Field label="Código legado" error={errors.legacyCode?.message}>
+                    <Field label="Código legado">
                       <Input
                         {...register('legacyCode')}
                         placeholder="—"
@@ -285,7 +289,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                   )}
                 </div>
 
-                <Field label="Descripción" error={errors.description?.message}>
+                <Field label="Descripción">
                   <Input
                     {...register('description')}
                     placeholder="Nombre completo del producto"
@@ -306,7 +310,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                 )}
               </p>
               <div className="grid grid-cols-4 gap-4">
-                <Field label="Marca" error={errors.brandId?.message}>
+                <Field label="Marca">
                   <Controller
                     control={control}
                     name="brandId"
@@ -316,13 +320,12 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                         onChange={(id) => field.onChange(id)}
                         options={brands.map((b) => ({ id: b.id, label: b.name }))}
                         placeholder="Buscar marca..."
-                        error={!!errors.brandId}
                         disabled={isEdit}
                       />
                     )}
                   />
                 </Field>
-                <Field label="Género" error={errors.genderId?.message}>
+                <Field label="Género">
                   <Select {...register('genderId')} disabled={isEdit}>
                     <option value="">Selecciona...</option>
                     {genders.map((g) => (
@@ -330,7 +333,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                     ))}
                   </Select>
                 </Field>
-                <Field label="Categoría" error={errors.categoryId?.message}>
+                <Field label="Categoría">
                   <Select {...register('categoryId')} disabled={isEdit}>
                     <option value="">Selecciona...</option>
                     {categories.map((c) => (
@@ -338,7 +341,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                     ))}
                   </Select>
                 </Field>
-                <Field label="Unidad de medida" error={errors.unitOfMeasure?.message}>
+                <Field label="Unidad de medida">
                   <Select {...register('unitOfMeasure')}>
                     <option value="unidad">Unidad</option>
                     <option value="docena">Docena</option>
@@ -353,10 +356,10 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                 Precios
               </p>
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Precio de venta" error={errors.salePrice?.message}>
+                <Field label="Precio de venta">
                   <Input {...register('salePrice')} type="number" min={0} step={1} placeholder="0" />
                 </Field>
-                <Field label="Precio mínimo de venta" error={errors.minSalePrice?.message}>
+                <Field label="Precio mínimo de venta">
                   <Input
                     {...register('minSalePrice', { onChange: () => setMinSalePriceTouched(true) })}
                     type="number"

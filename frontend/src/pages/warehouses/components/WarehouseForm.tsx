@@ -2,8 +2,10 @@ import { useEffect, type InputHTMLAttributes, type ReactNode, type SelectHTMLAtt
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getFirstErrorMessage } from '@/lib/form-errors'
 import type { Warehouse } from '@/types'
 
 // ---------------------------------------------------------------------------
@@ -34,12 +36,11 @@ interface WarehouseFormProps {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-medium text-content-secondary mb-1">{label}</label>
       {children}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   )
 }
@@ -81,7 +82,6 @@ export function WarehouseForm({ open, onClose, onSubmit, isPending, defaultValue
     register,
     handleSubmit,
     reset,
-    formState: { errors },
   } = useForm<WarehouseFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -124,10 +124,14 @@ export function WarehouseForm({ open, onClose, onSubmit, isPending, defaultValue
         </div>
 
         {/* Body + Footer */}
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
+        <form
+          onSubmit={handleSubmit(onSubmit, (formErrors) => toast.error(getFirstErrorMessage(formErrors)))}
+          noValidate
+          className="flex flex-col"
+        >
           <div className="px-6 py-5 space-y-4">
 
-            <Field label="Nombre" error={errors.name?.message}>
+            <Field label="Nombre">
               <Input
                 {...register('name')}
                 placeholder="Ej: Bodega principal"
@@ -136,7 +140,7 @@ export function WarehouseForm({ open, onClose, onSubmit, isPending, defaultValue
               />
             </Field>
 
-            <Field label="Tipo" error={errors.type?.message}>
+            <Field label="Tipo">
               <Select {...register('type')}>
                 <option value="warehouse">Bodega</option>
                 <option value="store">Almacén</option>
@@ -144,7 +148,7 @@ export function WarehouseForm({ open, onClose, onSubmit, isPending, defaultValue
             </Field>
 
             {isEdit && (
-              <Field label="Estado" error={errors.active?.message}>
+              <Field label="Estado">
                 <label className="flex items-center gap-3 cursor-pointer select-none">
                   <input
                     type="checkbox"

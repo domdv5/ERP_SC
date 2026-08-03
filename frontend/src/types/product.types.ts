@@ -52,3 +52,26 @@ export interface Product {
   // ya reservada — comportamiento esperado, no un bug; se muestra en rojo en la UI.
   availableStock: number
 }
+
+export interface ProductLocation {
+  warehouseId: string
+  warehouseName: string
+  zoneName: string
+  binCode: number
+  quantity: number
+}
+
+export interface ProductLocationsResult {
+  product: {
+    id: string
+    code: string
+    description: string
+    brand: { id: string; name: string }
+    active: boolean
+    unitOfMeasure: 'unidad' | 'docena'
+  }
+  locations: ProductLocation[]
+  warehouseTotals: { warehouseId: string; warehouseName: string; quantity: number }[]
+  totalBinQuantity: number
+  hasUnassignedStock: boolean
+}

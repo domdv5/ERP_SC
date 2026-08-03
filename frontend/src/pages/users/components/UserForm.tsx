@@ -5,7 +5,9 @@ import { z } from 'zod'
 import { useQuery } from '@tanstack/react-query'
 import { X, Eye, EyeOff } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { getFirstErrorMessage } from '@/lib/form-errors'
 import { getRoles, getRoleLabel } from '@/services/users.service'
 import type { AppUser } from '@/services/users.service'
 
@@ -59,12 +61,11 @@ interface UserFormProps {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-medium text-content-secondary mb-1">{label}</label>
       {children}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   )
 }
@@ -104,7 +105,6 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
     handleSubmit,
     reset,
     control,
-    formState: { errors },
   } = useForm<UserFormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
@@ -166,10 +166,17 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
         </div>
 
         {/* Body + Footer */}
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col">
+        <form
+          onSubmit={handleSubmit(
+            handleFormSubmit,
+            (formErrors) => toast.error(getFirstErrorMessage(formErrors)),
+          )}
+          noValidate
+          className="flex flex-col"
+        >
           <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
 
-            <Field label="Nombre completo" error={errors.name?.message}>
+            <Field label="Nombre completo">
               <Input
                 {...register('name')}
                 placeholder="Ej: Juan García"
@@ -178,7 +185,7 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
               />
             </Field>
 
-            <Field label="Nombre de usuario" error={errors.username?.message}>
+            <Field label="Nombre de usuario">
               <Input
                 {...register('username')}
                 placeholder="Ej: jgarcia"
@@ -186,10 +193,7 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
               />
             </Field>
 
-            <Field
-              label={isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña'}
-              error={errors.password?.message}
-            >
+            <Field label={isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña'}>
               <div className="relative">
                 <Input
                   {...register('password')}
@@ -209,10 +213,7 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
               </div>
             </Field>
 
-            <Field
-              label={isEdit ? 'Confirmar nueva contraseña' : 'Confirmar contraseña'}
-              error={(errors as { confirmPassword?: { message?: string } }).confirmPassword?.message}
-            >
+            <Field label={isEdit ? 'Confirmar nueva contraseña' : 'Confirmar contraseña'}>
               <div className="relative">
                 <Input
                   {...register('confirmPassword')}
@@ -233,7 +234,7 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
             </Field>
 
             {/* Roles — multi-select checkboxes */}
-            <Field label="Roles" error={(errors as { roleIds?: { message?: string } }).roleIds?.message}>
+            <Field label="Roles">
               <div className="space-y-2 mt-1">
                 {loadingRoles ? (
                   <div className="space-y-2">
@@ -279,7 +280,7 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
             </Field>
 
             {isEdit && (
-              <Field label="Estado" error={undefined}>
+              <Field label="Estado">
                 <label className="flex items-center gap-3 cursor-pointer select-none">
                   <input
                     type="checkbox"
