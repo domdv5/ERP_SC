@@ -51,23 +51,30 @@ export default function ThirdPartiesPage() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['third-parties'] })
 
+  // ProductForm cachea ['brands'] con staleTime: Infinity e incluye internalNumber/nombre
+  // del proveedor/marca — hay que invalidarla también cuando esos datos cambian, si no
+  // el código de producto se sigue armando con el valor viejo.
+  const invalidateBrands = () => queryClient.invalidateQueries({ queryKey: ['brands'] })
+
   const { mutate: create, isPending: isCreating } = useMutation({
     mutationFn: createThirdParty,
-    onSuccess: () => { invalidate(); setFormOpen(false); toast.success('Tercero creado correctamente') },
+    // create puede generar marcas nuevas (proveedor con brand.createMany en el backend),
+    // igual que update — hay que invalidar ['brands'] también aquí.
+    onSuccess: () => { invalidate(); invalidateBrands(); setFormOpen(false); toast.success('Tercero creado correctamente') },
     onError:   () => toast.error('Error al crear el tercero'),
   })
 
   const { mutate: update, isPending: isUpdating } = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateThirdParty>[1] }) =>
       updateThirdParty(id, payload),
-    onSuccess: () => { invalidate(); setEditing(null); toast.success('Tercero actualizado correctamente') },
+    onSuccess: () => { invalidate(); invalidateBrands(); setEditing(null); toast.success('Tercero actualizado correctamente') },
     onError:   () => toast.error('Error al actualizar el tercero'),
   })
 
   const { mutateAsync: rename } = useMutation({
     mutationFn: ({ brandId, name }: { brandId: string; name: string }) =>
       renameBrand(editing!.id, brandId, name),
-    onSuccess: () => invalidate(),
+    onSuccess: () => { invalidate(); invalidateBrands() },
     onError: () => toast.error('Error al renombrar la marca'),
   })
 
