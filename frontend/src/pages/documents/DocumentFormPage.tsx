@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
@@ -71,6 +71,13 @@ export default function DocumentFormPage() {
     Record<string, { avgCost: number; unitOfMeasure: 'unidad' | 'docena'; availableStock?: number }>
   >({})
 
+  // Ciclo de foco escaneo→cantidad→escaneo del lector de código de barras (ver
+  // BarcodeScanInput/ProductRow). Un Map de refs DOM que cambia con cada fila agregada/eliminada
+  // debe vivir en useRef, no en useState — mutarlo nunca debe disparar un re-render.
+  const quantityInputRefs = useRef<Map<number, HTMLInputElement>>(new Map())
+  const barcodeInputRef = useRef<{ focus: () => void }>(null)
+  const [pendingQuantityFocusIndex, setPendingQuantityFocusIndex] = useState<number | null>(null)
+
   const {
     control,
     register,
@@ -90,6 +97,17 @@ export default function DocumentFormPage() {
   })
 
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'items' })
+
+  // React garantiza que los refs del árbol ya están adjuntados antes de correr los efectos
+  // de ese mismo commit — a diferencia de requestAnimationFrame (heurística de timing), este
+  // efecto siempre encuentra el input de cantidad ya montado. `fields` en deps: si el índice
+  // pendiente se fija en el mismo tick en que se agrega la fila, el efecto se reevalúa cuando
+  // la fila realmente aparece en el DOM.
+  useEffect(() => {
+    if (pendingQuantityFocusIndex === null) return
+    quantityInputRefs.current.get(pendingQuantityFocusIndex)?.focus()
+    setPendingQuantityFocusIndex(null)
+  }, [pendingQuantityFocusIndex, fields])
 
   const docType         = watch('type')
   const warehouseId     = watch('warehouseId')
@@ -797,6 +815,7 @@ export default function DocumentFormPage() {
           </div>
 
           <BarcodeScanInput
+            ref={barcodeInputRef}
             docType={docType}
             append={append}
             getValues={getValues}
@@ -807,6 +826,7 @@ export default function DocumentFormPage() {
                 [productId]: { avgCost, unitOfMeasure, availableStock },
               }))
             }
+            focusQuantityInput={(index) => setPendingQuantityFocusIndex(index)}
           />
 
           {fields.length === 0 ? (
@@ -860,6 +880,11 @@ export default function DocumentFormPage() {
                       initialAvgCost={scannedProductInfo[field.productId]?.avgCost}
                       initialUnitOfMeasure={scannedProductInfo[field.productId]?.unitOfMeasure}
                       initialAvailableStock={scannedProductInfo[field.productId]?.availableStock}
+                      quantityInputRef={(el) => {
+                        if (el) quantityInputRefs.current.set(index, el)
+                        else quantityInputRefs.current.delete(index)
+                      }}
+                      onQuantityConfirmed={() => barcodeInputRef.current?.focus()}
                     />
                   ))}
                 </tbody>

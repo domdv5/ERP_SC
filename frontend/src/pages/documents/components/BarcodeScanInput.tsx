@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { ScanLine } from 'lucide-react'
 import { toast } from 'sonner'
 import type { UseFieldArrayAppend, UseFormGetValues, UseFormSetValue } from 'react-hook-form'
@@ -7,6 +7,10 @@ import { cn } from '@/lib/utils'
 import type { Product } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
+
+export interface BarcodeScanInputHandle {
+  focus: () => void
+}
 
 interface BarcodeScanInputProps {
   docType: DocumentType
@@ -19,6 +23,9 @@ interface BarcodeScanInputProps {
     unitOfMeasure: 'unidad' | 'docena',
     availableStock: number,
   ) => void
+  // Lleva el foco al input de cantidad de la fila afectada (nueva o incrementada) tras un
+  // escaneo exitoso — ver ciclo de foco escaneo→cantidad→escaneo en DocumentFormPage.
+  focusQuantityInput: (index: number) => void
 }
 
 /**
@@ -31,93 +38,113 @@ interface BarcodeScanInputProps {
  * No reusa el `Combobox` compartido a propósito: ese componente no tiene soporte de teclado
  * (sin Enter-to-select, sin navegación con flechas), toda selección ahí es solo con mouse —
  * incompatible con un lector de código de barras, que solo puede "teclear" texto + Enter.
+ *
+ * Expone un handle imperativo (`focus`) porque DocumentFormPage necesita poder devolver el
+ * foco aquí desde afuera (ej. tras confirmar la cantidad en ProductRow) — no alcanza con el
+ * useEffect de mount, que solo cubre el foco inicial.
  */
-export function BarcodeScanInput({ docType, append, getValues, setValue, onProductScanned }: BarcodeScanInputProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  // Evita procesar un segundo Enter mientras el lookup del primero sigue en vuelo (doble
-  // disparo de scanner, o Enter mantenido) — sin esto podría duplicarse el mismo ítem.
-  const isProcessingRef = useRef(false)
+export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanInputProps>(
+  function BarcodeScanInput({ docType, append, getValues, setValue, onProductScanned, focusQuantityInput }, ref) {
+    const inputRef = useRef<HTMLInputElement>(null)
+    // Evita procesar un segundo Enter mientras el lookup del primero sigue en vuelo (doble
+    // disparo de scanner, o Enter mantenido) — sin esto podría duplicarse el mismo ítem.
+    const isProcessingRef = useRef(false)
 
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
+    useImperativeHandle(ref, () => ({
+      focus: () => inputRef.current?.focus(),
+    }))
 
-  const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== 'Enter') return
-    e.preventDefault()
-    if (isProcessingRef.current) return
-
-    const input = inputRef.current
-    const code = input?.value.trim() ?? ''
-    if (!code) return
-
-    isProcessingRef.current = true
-    try {
-      let product: Product
-      try {
-        product = await getProductByCode(code)
-      } catch (error) {
-        if ((error as { response?: { status?: number } })?.response?.status === 404) {
-          toast.error('Código no encontrado')
-          return
-        }
-        throw error
-      }
-
-      const currentItems = getValues('items')
-      const existingIndex = currentItems.findIndex((item) => item.productId === product.id)
-
-      if (existingIndex >= 0) {
-        const currentQty = Number(currentItems[existingIndex].quantity) || 0
-        setValue(`items.${existingIndex}.quantity`, currentQty + 1)
-        toast.success(`${product.code} — cantidad +1`)
-      } else {
-        const avgCost = Number(product.avgCost)
-        const salePrice = Number(product.salePrice)
-        const shouldPrefillCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
-        const shouldPrefillPrice = docType === 'PV'
-        append({
-          productId:     product.id,
-          productCode:   product.code,
-          productDesc:   product.description,
-          quantity:      1,
-          unitCost:      shouldPrefillCost ? avgCost : undefined,
-          unitPrice:     shouldPrefillPrice ? salePrice : undefined,
-          observaciones: undefined,
-        })
-        onProductScanned(product.id, avgCost, product.unitOfMeasure, product.availableStock)
-        toast.success(`${product.code} agregado`)
-      }
-    } catch {
-      toast.error('Error al buscar el producto')
-    } finally {
-      if (input) input.value = ''
-      isProcessingRef.current = false
+    useEffect(() => {
       inputRef.current?.focus()
-    }
-  }
+    }, [])
 
-  return (
-    <div className="px-6 py-4 border-b border-ui-divide bg-brand-secondary/5">
-      <label className="block text-xs font-semibold text-content-faint uppercase tracking-wider mb-1.5">
-        Escaneo rápido
-      </label>
-      <div className="relative max-w-sm">
-        <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-faint pointer-events-none" />
-        <input
-          ref={inputRef}
-          type="text"
-          defaultValue=""
-          onKeyDown={(e) => { void handleKeyDown(e) }}
-          placeholder="Escanear código de barras..."
-          autoComplete="off"
-          className={cn(
-            'w-full pl-9 pr-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint',
-            'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
-            'border-ui-border-medium',
-          )}
-        />
+    const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key !== 'Enter') return
+      e.preventDefault()
+      if (isProcessingRef.current) return
+
+      const input = inputRef.current
+      const code = input?.value.trim() ?? ''
+      if (!code) {
+        // Sin código no hay fila a la que saltar — el foco se queda aquí (ya lo tenía).
+        inputRef.current?.focus()
+        return
+      }
+
+      isProcessingRef.current = true
+      try {
+        let product: Product
+        try {
+          product = await getProductByCode(code)
+        } catch (error) {
+          if ((error as { response?: { status?: number } })?.response?.status === 404) {
+            toast.error('Código no encontrado')
+            // Path de error: no hay fila de cantidad a la que saltar, el foco se queda aquí.
+            inputRef.current?.focus()
+            return
+          }
+          throw error
+        }
+
+        const currentItems = getValues('items')
+        const existingIndex = currentItems.findIndex((item) => item.productId === product.id)
+
+        if (existingIndex >= 0) {
+          const currentQty = Number(currentItems[existingIndex].quantity) || 0
+          setValue(`items.${existingIndex}.quantity`, currentQty + 1)
+          toast.success(`${product.code} — cantidad +1`)
+          focusQuantityInput(existingIndex)
+        } else {
+          const avgCost = Number(product.avgCost)
+          const salePrice = Number(product.salePrice)
+          const shouldPrefillCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
+          const shouldPrefillPrice = docType === 'PV'
+          const newIndex = currentItems.length
+          append({
+            productId:     product.id,
+            productCode:   product.code,
+            productDesc:   product.description,
+            quantity:      1,
+            unitCost:      shouldPrefillCost ? avgCost : undefined,
+            unitPrice:     shouldPrefillPrice ? salePrice : undefined,
+            observaciones: undefined,
+          })
+          onProductScanned(product.id, avgCost, product.unitOfMeasure, product.availableStock)
+          toast.success(`${product.code} agregado`)
+          focusQuantityInput(newIndex)
+        }
+      } catch {
+        toast.error('Error al buscar el producto')
+        // Path de error: mismo criterio que el 404 — no hay fila a la que saltar.
+        inputRef.current?.focus()
+      } finally {
+        if (input) input.value = ''
+        isProcessingRef.current = false
+      }
+    }
+
+    return (
+      <div className="px-6 py-4 border-b border-ui-divide bg-brand-secondary/5">
+        <label className="block text-xs font-semibold text-content-faint uppercase tracking-wider mb-1.5">
+          Escaneo rápido
+        </label>
+        <div className="relative max-w-sm">
+          <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-faint pointer-events-none" />
+          <input
+            ref={inputRef}
+            type="text"
+            defaultValue=""
+            onKeyDown={(e) => { void handleKeyDown(e) }}
+            placeholder="Escanear código de barras..."
+            autoComplete="off"
+            className={cn(
+              'w-full pl-9 pr-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint',
+              'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
+              'border-ui-border-medium',
+            )}
+          />
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  },
+)

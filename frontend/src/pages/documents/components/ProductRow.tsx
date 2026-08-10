@@ -38,9 +38,17 @@ interface ProductRowProps {
   // escaneo de código de barras) — mismo patrón que initialAvgCost, usado en PV para el hint de
   // disponible y el warning de cantidad-supera-disponible bajo el input de cantidad.
   initialAvailableStock?: number
+  // Registra/desregistra el <input> de cantidad de esta fila en el Map de refs que vive en
+  // DocumentFormPage — necesario para el ciclo de foco escaneo→cantidad→escaneo (ver
+  // BarcodeScanInput). Opcional porque ProductRow no depende de este flujo para funcionar.
+  quantityInputRef?: (el: HTMLInputElement | null) => void
+  // Devuelve el foco al input de escaneo cuando el operario confirma (Enter) la cantidad de
+  // esta fila. Incondicional: cualquier Enter en cantidad vuelve al escáner, sin importar si
+  // la fila se creó por escaneo o por el combobox manual.
+  onQuantityConfirmed?: () => void
 }
 
-export function ProductRow({ index, docType, onRemove, register, setValue, watch, getValues, initialAvgCost, initialUnitOfMeasure, initialAvailableStock }: ProductRowProps) {
+export function ProductRow({ index, docType, onRemove, register, setValue, watch, getValues, initialAvgCost, initialUnitOfMeasure, initialAvailableStock, quantityInputRef, onQuantityConfirmed }: ProductRowProps) {
   const [productSearch, setProductSearch] = useState('')
   const [debouncedProductSearch] = useDebounce(productSearch, 400)
   // Costo promedio del producto al momento de seleccionarlo — solo para comparar contra lo digitado
@@ -227,13 +235,27 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
 
         {/* Quantity */}
         <td className="px-3 py-2 w-28">
-          <input
-            type="number"
-            min={1}
-            step={1}
-            {...register(`items.${index}.quantity`)}
-            className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all border-ui-border-medium"
-          />
+          {(() => {
+            const { ref: quantityRegisterRef, ...quantityRegisterRest } = register(`items.${index}.quantity`)
+            return (
+              <input
+                type="number"
+                min={1}
+                step={1}
+                {...quantityRegisterRest}
+                ref={(el) => {
+                  quantityRegisterRef(el)
+                  quantityInputRef?.(el)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return
+                  e.preventDefault()
+                  onQuantityConfirmed?.()
+                }}
+                className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all border-ui-border-medium"
+              />
+            )
+          })()}
         </td>
 
         {/* Observaciones (talla) — solo traslados (T) */}
