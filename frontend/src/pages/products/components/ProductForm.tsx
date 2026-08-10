@@ -7,7 +7,7 @@ import {
   type InputHTMLAttributes,
   type SelectHTMLAttributes,
 } from 'react'
-import { useForm, Controller, useWatch } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { X } from 'lucide-react'
@@ -15,7 +15,7 @@ import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
-import { Combobox } from '@/components/shared'
+import { CatalogComboboxField } from '@/components/shared'
 import { getBrands, getGenders, getCategories } from '@/services/products.service'
 import type { Product } from '@/types'
 
@@ -310,21 +310,14 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                 )}
               </p>
               <div className="grid grid-cols-4 gap-4">
-                <Field label="Marca">
-                  <Controller
-                    control={control}
-                    name="brandId"
-                    render={({ field }) => (
-                      <Combobox
-                        value={field.value}
-                        onChange={(id) => field.onChange(id)}
-                        options={brands.map((b) => ({ id: b.id, label: b.name }))}
-                        placeholder="Buscar marca..."
-                        disabled={isEdit}
-                      />
-                    )}
-                  />
-                </Field>
+                <CatalogComboboxField
+                  control={control}
+                  name="brandId"
+                  label="Marca"
+                  options={brands.map((b) => ({ id: b.id, label: b.name }))}
+                  placeholder="Buscar marca..."
+                  disabled={isEdit}
+                />
                 <Field label="Género">
                   <Select {...register('genderId')} disabled={isEdit}>
                     <option value="">Selecciona...</option>
@@ -333,14 +326,14 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                     ))}
                   </Select>
                 </Field>
-                <Field label="Categoría">
-                  <Select {...register('categoryId')} disabled={isEdit}>
-                    <option value="">Selecciona...</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </Select>
-                </Field>
+                <CatalogComboboxField
+                  control={control}
+                  name="categoryId"
+                  label="Categoría"
+                  options={categories.map((c) => ({ id: c.id, label: c.name }))}
+                  placeholder="Buscar categoría..."
+                  disabled={isEdit}
+                />
                 <Field label="Unidad de medida">
                   <Select {...register('unitOfMeasure')}>
                     <option value="unidad">Unidad</option>

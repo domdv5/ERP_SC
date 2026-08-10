@@ -1,5 +1,6 @@
 export { Combobox } from './Combobox'
 export type { ComboboxOption } from './Combobox'
+export { CatalogComboboxField } from './CatalogComboboxField'
 export { EmptyState } from './EmptyState'
 export { ErrorState } from './ErrorState'
 export { HintText } from './HintText'
