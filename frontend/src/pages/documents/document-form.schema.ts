@@ -50,6 +50,16 @@ export const formSchema = z.object({
     if (data.warehouseId && data.destWarehouseId && data.warehouseId === data.destWarehouseId) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Las bodegas origen y destino deben ser distintas', path: ['destWarehouseId'] })
     }
+    if (data.destBinId) {
+      const distinctProductIds = new Set(data.items.map((item) => item.productId))
+      if (distinctProductIds.size > 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Un traslado a bulto solo puede contener un único producto',
+          path: ['destBinId'],
+        })
+      }
+    }
   }
 })
 

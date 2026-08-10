@@ -49,6 +49,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
             message: 'Formato de datos inválido',
           });
         default:
+          this.logger.error(exception);
           return response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
             statusCode: 500,
             message: 'Error de base de datos',

@@ -46,7 +46,8 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
     }
 
     if (destBinId) {
-      await this.assertDestBinValid(this.prisma, destBinId, destWarehouseId);
+      const incomingProductId = this.assertSingleProductPerDestBin(createDocumentDto.items);
+      await this.assertDestBinValid(this.prisma, destBinId, destWarehouseId, incomingProductId);
     }
 
     const sourceWarehouse = await this.prisma.warehouse.findUnique({
@@ -111,6 +112,8 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
     }
 
     if (destBinId) {
+      const incomingProductId = this.assertSingleProductPerDestBin(document.documentItems);
+
       // Lock explícito sobre la fila Bin (no BinStock: puede no existir
       // ninguna fila BinStock todavía para este bin) para serializar
       // confirmaciones concurrentes hacia el mismo bulto destino. Sin este
@@ -121,8 +124,8 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
       // físico — justo lo que esta validación existe para impedir. Mismo
       // patrón que accounts-payable.service.ts::registerPayment (SELECT ...
       // FOR UPDATE para serializar pagos concurrentes contra la misma cuenta).
-      await tx.$queryRaw`SELECT id FROM bins WHERE id = ${destBinId}::uuid FOR UPDATE`;
-      await this.assertDestBinValid(tx, destBinId, destWarehouseId);
+      await tx.$queryRaw`SELECT id FROM bin WHERE id = ${destBinId}::uuid FOR UPDATE`;
+      await this.assertDestBinValid(tx, destBinId, destWarehouseId, incomingProductId);
     }
 
     if (sourceBinId) {
@@ -169,17 +172,19 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
 
   /**
    * Valida que el bulto destino exista, pertenezca a la bodega destino y no
-   * esté ocupado (con stock de un traslado anterior). Compartido entre
-   * validateCreate (this.prisma, fuera de transacción) y confirm (tx, dentro
-   * de la transacción que aplica los movimientos) — el lock FOR UPDATE que
-   * hace real la protección contra la carrera de "ocupado" vive en el
-   * llamado desde confirm(), no acá, porque validateCreate no corre dentro
-   * de una transacción persistente y un lock ahí no protegería nada.
+   * esté ocupado por un producto distinto al que llega en este traslado.
+   * Compartido entre validateCreate (this.prisma, fuera de transacción) y
+   * confirm (tx, dentro de la transacción que aplica los movimientos) — el
+   * lock FOR UPDATE que hace real la protección contra la carrera de
+   * "ocupado" vive en el llamado desde confirm(), no acá, porque
+   * validateCreate no corre dentro de una transacción persistente y un lock
+   * ahí no protegería nada.
    */
   private async assertDestBinValid(
     client: PrismaOrTx,
     destBinId: string,
     destWarehouseId: string,
+    incomingProductId: string,
   ): Promise<void> {
     const bin = await client.bin.findUnique({
       where: { id: destBinId },
@@ -192,17 +197,23 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
       );
     }
 
-    // Un bulto es un contenedor físico reutilizable: no debe recibir un
-    // segundo traslado mientras aún tenga stock de uno anterior (mismo u
-    // otro producto) — antes esta regla solo vivía en el filtro de UI
+    // Un bulto es un contenedor físico reutilizable de UN solo producto a la
+    // vez: puede seguir recibiendo el mismo producto que ya contiene (se
+    // suma), pero no un producto distinto mientras conserve stock del
+    // anterior — antes esta regla solo vivía en el filtro de UI
     // (bin.occupied), sin ninguna defensa del lado del servidor.
-    const destBinOccupied = await client.binStock.findFirst({
-      where: { binId: destBinId, quantity: { gt: 0 } },
+    const conflictingBinStock = await client.binStock.findFirst({
+      where: {
+        binId: destBinId,
+        quantity: { gt: 0 },
+        productId: { not: incomingProductId },
+      },
+      include: { product: { select: { code: true } } },
     });
 
-    if (destBinOccupied) {
+    if (conflictingBinStock) {
       throw new BadRequestException(
-        'El bulto destino ya está ocupado — no puede recibir un nuevo traslado hasta vaciarse',
+        `El bulto destino ya contiene el producto ${conflictingBinStock.product.code} — no puede recibir un producto distinto hasta vaciarse`,
       );
     }
   }
@@ -227,5 +238,24 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
         'El bulto origen no pertenece a la bodega de origen seleccionada',
       );
     }
+  }
+
+  /**
+   * Un bulto es un contenedor físico de un único producto: si el traslado
+   * tiene como destino un bulto, todos sus ítems deben compartir el mismo
+   * productId (destBinId es un campo del documento, no del ítem). Devuelve
+   * ese productId único para que el llamador lo compare contra lo que ya
+   * ocupa el bulto.
+   */
+  private assertSingleProductPerDestBin(items: { productId: string }[]): string {
+    const productIds = new Set(items.map((item) => item.productId));
+
+    if (productIds.size > 1) {
+      throw new BadRequestException(
+        'Un traslado hacia un bulto solo puede contener un único producto',
+      );
+    }
+
+    return items[0].productId;
   }
 }

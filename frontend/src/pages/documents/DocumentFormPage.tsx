@@ -296,7 +296,13 @@ export default function DocumentFormPage() {
     // ocupado por un traslado anterior no debe recibir un segundo traslado hasta que su
     // stock se mueva por completo; se libera solo automáticamente. El panel admin de
     // bodegas (DetailPanel.tsx) sí lista todos los bultos sin este filtro.
-    const available = baseBins.filter((bin) => !bin.occupied)
+    // Excepción: un bulto ocupado sigue calificando si todo lo que ya contiene coincide con
+    // los productos que el documento actual ya tiene agregados — eso es "apilar" el mismo
+    // producto, no mezclar. Un bulto debe contener stock de un único producto a la vez; el
+    // backend valida esto de forma autoritativa, este filtro es solo el guardrail de UX.
+    const available = baseBins.filter((bin) =>
+      !bin.occupied || bin.binStocks.every((bs) => itemProductIds.has(bs.productId)),
+    )
 
     // Mismo motivo que en sourceBins: mantener visible el bulto ya seleccionado aunque ya
     // no califique (p. ej. quedó ocupado por otro cambio) para no dejar un <select> huérfano.
