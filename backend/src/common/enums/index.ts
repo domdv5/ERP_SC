@@ -1,1 +1,6 @@
-export { MovementType, DocumentType, DocumentStatus } from '@prisma/client';
+export {
+  MovementType,
+  DocumentType,
+  DocumentStatus,
+  EaiAdjustmentReason,
+} from '@prisma/client';

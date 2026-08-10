@@ -435,34 +435,51 @@ enum DocumentStatus {
   voided
 }
 
+/// Motivo del ajuste — obligatorio solo para EAI (ver EaiEffectStrategy.validateCreate).
+/// negativo: común del día a día, el sistema muestra menos stock del que hay físicamente.
+/// inventario_general: conteo físico completo, ~1 vez al año — mismo efecto que negativo
+/// pero se reporta aparte por su frecuencia/alcance distintos.
+/// traspaso_costo: unidades (y su costo real) movidas desde otro producto (ver SAJ del origen).
+/// otro: requiere adjustmentReasonOther con el detalle.
+enum EaiAdjustmentReason {
+  negativo
+  inventario_general
+  traspaso_costo
+  otro
+}
+
 model Document {
-  id               String         @id @default(uuid()) @db.Uuid
-  type             DocumentType
-  number           String         @db.VarChar(30)
-  date             DateTime       @db.Date
-  thirdPartyId     String?        @map("third_party_id") @db.Uuid
+  id                    String               @id @default(uuid()) @db.Uuid
+  type                  DocumentType
+  number                String               @db.VarChar(30)
+  date                  DateTime             @db.Date
+  thirdPartyId          String?              @map("third_party_id") @db.Uuid
   /// Vendedor asignado — solo preventas (PV); ThirdParty con isSeller=true
-  sellerId         String?        @map("seller_id") @db.Uuid
-  userId           String         @map("user_id") @db.Uuid
-  status           DocumentStatus @default(draft)
-  total            Decimal        @default(0) @db.Decimal(16, 2)
-  freight          Decimal?       @db.Decimal(14, 2)
-  notes            String?
+  sellerId              String?              @map("seller_id") @db.Uuid
+  userId                String               @map("user_id") @db.Uuid
+  status                DocumentStatus       @default(draft)
+  total                 Decimal              @default(0) @db.Decimal(16, 2)
+  freight               Decimal?             @db.Decimal(14, 2)
+  notes                 String?
+  /// Motivo del ajuste — solo EAI, obligatorio para ese tipo
+  adjustmentReason      EaiAdjustmentReason? @map("adjustment_reason")
+  /// Detalle libre — obligatorio solo cuando adjustmentReason = otro
+  adjustmentReasonOther String?              @map("adjustment_reason_other") @db.VarChar(300)
   /// Bodega principal: destino en CM/EAI, origen en DVC/SAJ/T
-  warehouseId      String?        @map("warehouse_id") @db.Uuid
+  warehouseId           String?              @map("warehouse_id") @db.Uuid
   /// Bodega destino — solo traslados (T)
-  destWarehouseId  String?        @map("dest_warehouse_id") @db.Uuid
+  destWarehouseId       String?              @map("dest_warehouse_id") @db.Uuid
   /// Bin origen — solo traslados desde bodega de almacenamiento
-  sourceBinId      String?        @map("source_bin_id") @db.Uuid
+  sourceBinId           String?              @map("source_bin_id") @db.Uuid
   /// Bin destino — solo traslados hacia bodega de almacenamiento
-  destBinId        String?        @map("dest_bin_id") @db.Uuid
-  sourceDocumentId String?        @map("source_document_id") @db.Uuid
+  destBinId             String?              @map("dest_bin_id") @db.Uuid
+  sourceDocumentId      String?              @map("source_document_id") @db.Uuid
   /// Quién confirmó — null mientras el documento sigue en borrador
-  confirmedById    String?        @map("confirmed_by_id") @db.Uuid
+  confirmedById         String?              @map("confirmed_by_id") @db.Uuid
   /// Quién anuló — null si nunca fue anulado
-  voidedById       String?        @map("voided_by_id") @db.Uuid
-  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  voidedById            String?              @map("voided_by_id") @db.Uuid
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz
 
   thirdParty       ThirdParty? @relation(fields: [thirdPartyId], references: [id])
   seller           ThirdParty? @relation("DocumentSeller", fields: [sellerId], references: [id])

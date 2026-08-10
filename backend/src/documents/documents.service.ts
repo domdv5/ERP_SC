@@ -147,6 +147,8 @@ export class DocumentsService {
       sourceBinId,
       freight,
       notes,
+      adjustmentReason,
+      adjustmentReasonOther,
       ...rest
     } = createDocumentDto;
 
@@ -196,6 +198,8 @@ export class DocumentsService {
           destWarehouseId,
           destBinId,
           sourceBinId,
+          adjustmentReason,
+          adjustmentReasonOther,
           documentItems: {
             create: items.map((item) => ({
               productId: item.productId,

@@ -8,7 +8,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-import type { DocumentType, DocumentStatus } from '@/types/document.types'
+import type { DocumentType, DocumentStatus, EaiAdjustmentReason } from '@/types/document.types'
 
 // Etiquetas completas — usadas en el <select> "Tipo de operación" del formulario y en el
 // filtro de tipo del listado. Difieren a propósito de DOC_TYPE_BADGE (etiquetas cortas para
@@ -20,6 +20,15 @@ export const DOC_TYPE_SELECT_OPTIONS: { value: DocumentType; label: string }[] =
   { value: 'SAJ', label: 'Salida ajuste' },
   { value: 'T',   label: 'Traslado' },
   { value: 'PV',  label: 'Preventa' },
+]
+
+// Motivo del ajuste — solo documentos EAI. Etiquetas orientadas al usuario final (operador de
+// tienda haciendo ajustes de inventario), no al nombre técnico del enum.
+export const EAI_ADJUSTMENT_REASON_OPTIONS: { value: EaiAdjustmentReason; label: string }[] = [
+  { value: 'negativo',           label: 'Negativo' },
+  { value: 'inventario_general', label: 'Inventario general' },
+  { value: 'traspaso_costo',     label: 'Traspaso de costo desde otro producto' },
+  { value: 'otro',               label: 'Otro' },
 ]
 
 // Pill de tipo — usada en DocumentsPage (listado) y DocumentDetailPage (encabezado).

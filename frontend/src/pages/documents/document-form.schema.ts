@@ -24,6 +24,10 @@ export const formSchema = z.object({
   destWarehouseId: z.string().optional(),
   destBinId:       z.string().optional(),
   freight:         z.coerce.number().nonnegative('El flete no puede ser negativo').optional(),
+  // Solo EAI — motivo del ajuste; adjustmentReasonOther se valida como obligatorio en el
+  // superRefine de abajo solo cuando adjustmentReason === 'otro'.
+  adjustmentReason:      z.enum(['negativo', 'inventario_general', 'traspaso_costo', 'otro'] as const).optional(),
+  adjustmentReasonOther: z.string().max(300, 'Máximo 300 caracteres').optional().or(z.literal('')),
   notes:           z.string().optional(),
   items:           z.array(itemSchema).min(1, 'Agrega al menos un ítem'),
 }).superRefine((data, ctx) => {
@@ -38,6 +42,23 @@ export const formSchema = z.object({
     }
     if (!data.sellerId) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'La vendedora es requerida', path: ['sellerId'] })
+    }
+  }
+  if (data.type === 'EAI') {
+    data.items.forEach((item, index) => {
+      if (item.unitCost === undefined || item.unitCost <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'El costo unitario es obligatorio y debe ser mayor a cero',
+          path: ['items', index, 'unitCost'],
+        })
+      }
+    })
+    if (!data.adjustmentReason) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'El motivo del ajuste es requerido', path: ['adjustmentReason'] })
+    }
+    if (data.adjustmentReason === 'otro' && !data.adjustmentReasonOther?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Describe el motivo del ajuste', path: ['adjustmentReasonOther'] })
     }
   }
   if (data.type === 'T') {

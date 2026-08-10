@@ -14,10 +14,6 @@ import type { FormValues } from '@/pages/documents/document-form.schema'
 const formatCOP = (v: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v)
 
-// EAI re-pondera avgCost con lo que se escriba aquí — una desviación grande frente al costo
-// promedio vigente suele ser un error de digitación (ej. falta un cero), no un costo real distinto.
-const COST_DEVIATION_THRESHOLD = 0.3
-
 interface ProductRowProps {
   index: number
   docType: DocumentType
@@ -89,7 +85,6 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   // Ni SAJ ni T llenan items.${index}.unitCost (no hay input ni autofill), así que el subtotal
   // basado en ese campo siempre daría 0 — se calcula aparte con el avgCost seleccionado.
   const readonlySubtotal = selectedAvgCost !== null ? Number(quantity) * selectedAvgCost : null
-  const costOptional = docType === 'EAI'
 
   // Preventas (PV) — sin costo (es venta, no compra): el campo editable es el precio de venta,
   // prellenado con el salePrice vigente del producto pero ajustable (ej. descuento puntual).
@@ -119,11 +114,6 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
     showTransferAvailability && availableInSourceWarehouse !== null && Number(quantity) > availableInSourceWarehouse
   const showAvailableStockWarning = showPvAvailableWarning || showTransferAvailableWarning
 
-  const costDeviation = selectedAvgCost && selectedAvgCost > 0 && Number(unitCost) > 0
-    ? Math.abs(Number(unitCost) - selectedAvgCost) / selectedAvgCost
-    : 0
-  const showCostWarning = costOptional && costDeviation > COST_DEVIATION_THRESHOLD
-
   // Hints/warnings secundarios de la fila — viven en una <tr> aparte (ver return) para que ningún
   // texto extra empuje verticalmente los inputs de la fila principal de controles, que deben quedar
   // siempre alineados entre columnas sin importar cuántos hints apliquen para esta fila en particular.
@@ -134,7 +124,7 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
     showTransferAvailability && availableInSourceWarehouse !== null && !showTransferAvailableWarning
   const showAvailableStockHint = showPvAvailableHint || showTransferAvailableHint
   const hasSecondaryRow =
-    showUnitOfMeasureHint || showAvailableStockHint || showAvailableStockWarning || showCostWarning
+    showUnitOfMeasureHint || showAvailableStockHint || showAvailableStockWarning
 
   // Solo para elegir QUÉ número mostrar en los hints de disponibilidad de esta fila — PV y T son
   // mutuamente excluyentes por docType (showPrice/showTransferAvailability nunca son true a la
@@ -278,7 +268,6 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
               type="number"
               min={0}
               step={0.01}
-              placeholder={costOptional ? 'Costo promedio' : undefined}
               {...register(`items.${index}.unitCost`)}
               className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all border-ui-border-medium"
             />
@@ -369,15 +358,7 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
             )}
           </td>
           {showObservaciones && <td className="px-3 pt-0 pb-2 w-40" />}
-          {(showCost || showCostReadonly || showPrice) && (
-            <td className="px-3 pt-0 pb-2 w-36">
-              {showCostWarning && (
-                <HintText variant="warning">
-                  Se aleja del costo prom. ({formatCOP(selectedAvgCost!)})
-                </HintText>
-              )}
-            </td>
-          )}
+          {(showCost || showCostReadonly || showPrice) && <td className="px-3 pt-0 pb-2 w-36" />}
           <td className="px-3 pt-0 pb-2 w-32" />
           <td className="px-3 pt-0 pb-2 w-12" />
         </tr>

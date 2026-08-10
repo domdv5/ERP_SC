@@ -1,14 +1,47 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { DocumentType, MovementType } from '@/common/enums';
+import {
+  DocumentType,
+  EaiAdjustmentReason,
+  MovementType,
+} from '@/common/enums';
+import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
 import { computeNewAvgCost } from '@/documents/helpers/stock.helpers';
 
-/** EAI — Entrada por ajuste de inventario: suma stock; re-pondera costo si trae unitCost. */
+/** EAI — Entrada por ajuste de inventario: suma stock; re-pondera costo con el unitCost del ítem. */
 @Injectable()
 export class EaiEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.EAI;
+
+  async validateCreate(createDocumentDto: CreateDocumentDto) {
+    if (
+      createDocumentDto.items.some(
+        (item) => item.unitCost == null || item.unitCost <= 0,
+      )
+    ) {
+      throw new BadRequestException(
+        'El costo unitario debe ser un valor mayor a cero',
+      );
+    }
+
+    // Motivo del ajuste obligatorio para todo EAI — sirve para reportería
+    // (negativo del día a día vs. inventario_general anual vs. traspaso_costo
+    // entre productos). El detalle libre solo es obligatorio si es "otro".
+    if (!createDocumentDto.adjustmentReason) {
+      throw new BadRequestException('El motivo del ajuste es obligatorio');
+    }
+
+    if (
+      createDocumentDto.adjustmentReason === EaiAdjustmentReason.otro &&
+      !createDocumentDto.adjustmentReasonOther?.trim()
+    ) {
+      throw new BadRequestException(
+        'El detalle del motivo del ajuste es obligatorio cuando el motivo es "otro"',
+      );
+    }
+  }
 
   async confirm(
     tx: Prisma.TransactionClient,
@@ -17,29 +50,47 @@ export class EaiEffectStrategy extends BaseEffectStrategy {
   ) {
     const warehouseId = this.requireWarehouse(document);
 
+    // Revalida lo mismo que validateCreate(): un PATCH sobre el borrador
+    // reemplaza los ítems sin volver a pasar por validateCreate(), así que
+    // confirm() es el único punto que sí ve siempre el estado final antes
+    // de aplicar efectos (mismo motivo por el que transfer-effect.strategy.ts
+    // revalida en ambos lados).
+    if (document.documentItems.some((item) => Number(item.unitCost) <= 0)) {
+      throw new BadRequestException(
+        'El costo unitario debe ser un valor mayor a cero',
+      );
+    }
+
+    if (!document.adjustmentReason) {
+      throw new BadRequestException('El motivo del ajuste es obligatorio');
+    }
+
+    if (
+      document.adjustmentReason === EaiAdjustmentReason.otro &&
+      !document.adjustmentReasonOther?.trim()
+    ) {
+      throw new BadRequestException(
+        'El detalle del motivo del ajuste es obligatorio cuando el motivo es "otro"',
+      );
+    }
+
     for (const item of document.documentItems) {
       const quantity = item.quantity;
-      const itemUnitCost = Number(item.unitCost);
-      const hasUnitCost = itemUnitCost > 0;
-      const unitCost = hasUnitCost
-        ? itemUnitCost
-        : Number(item.product.avgCost);
+      const unitCost = Number(item.unitCost);
 
-      if (hasUnitCost) {
-        // Re-ponderar avgCost igual que en compras (sin tocar lastCost).
-        const newAvgCost = await computeNewAvgCost(
-          tx,
-          item.productId,
-          Number(item.product.avgCost),
-          quantity,
-          itemUnitCost,
-        );
+      // Re-ponderar avgCost igual que en compras (sin tocar lastCost).
+      const newAvgCost = await computeNewAvgCost(
+        tx,
+        item.productId,
+        Number(item.product.avgCost),
+        quantity,
+        unitCost,
+      );
 
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { avgCost: newAvgCost },
-        });
-      }
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { avgCost: newAvgCost },
+      });
 
       await this.moveStock(tx, {
         productId: item.productId,

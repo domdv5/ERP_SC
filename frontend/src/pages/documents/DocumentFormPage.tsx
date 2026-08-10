@@ -16,7 +16,7 @@ import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { formSchema, type FormValues } from './document-form.schema'
-import { DOC_TYPE_SELECT_OPTIONS, DOC_TYPE_ACCENT } from './document.constants'
+import { DOC_TYPE_SELECT_OPTIONS, DOC_TYPE_ACCENT, EAI_ADJUSTMENT_REASON_OPTIONS } from './document.constants'
 import { ProductRow } from './components/ProductRow'
 import { BarcodeScanInput } from './components/BarcodeScanInput'
 
@@ -154,6 +154,8 @@ export default function DocumentFormPage() {
       destWarehouseId: existingDoc.destWarehouse?.id ?? undefined,
       destBinId:       existingDoc.destBin?.id ?? undefined,
       freight:         existingDoc.freight ?? undefined,
+      adjustmentReason:      existingDoc.adjustmentReason ?? undefined,
+      adjustmentReasonOther: existingDoc.adjustmentReasonOther ?? undefined,
       notes:           existingDoc.notes ?? undefined,
       items: existingDoc.documentItems.map((item) => ({
         productId:     item.productId,
@@ -386,6 +388,15 @@ export default function DocumentFormPage() {
       destWarehouseId: values.destWarehouseId || undefined,
       destBinId:       values.destBinId || undefined,
       freight:         values.freight !== undefined && !isNaN(values.freight) ? values.freight : undefined,
+      adjustmentReason:
+        values.type === 'EAI' ? (values.adjustmentReason || undefined) : undefined,
+      // null explícito (no undefined) cuando no aplica "otro": JSON.stringify elimina las
+      // claves undefined del body, así que un texto viejo de adjustmentReasonOther quedaría
+      // huérfano en la base de datos si el motivo cambia a otra categoría antes de guardar.
+      adjustmentReasonOther:
+        values.type === 'EAI' && values.adjustmentReason === 'otro'
+          ? (values.adjustmentReasonOther || undefined)
+          : null,
       notes:           values.notes || undefined,
       items: values.items.map((item) => ({
         productId:     item.productId,
@@ -425,6 +436,8 @@ export default function DocumentFormPage() {
   const needsThirdParty = needsSupplier || needsCustomer
   const needsTransfer   = docType === 'T'
   const needsFreight    = docType === 'CM'
+  const needsAdjustmentReason = docType === 'EAI'
+  const currentAdjustmentReason = watch('adjustmentReason')
   const showCostColumn  = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
   // Preventas (PV) muestran precio de venta editable en vez de costo — columna separada.
   const showPriceColumn = docType === 'PV'
@@ -497,6 +510,8 @@ export default function DocumentFormPage() {
                       setValue('destWarehouseId', undefined)
                       setValue('destBinId', undefined)
                       setValue('freight', undefined)
+                      setValue('adjustmentReason', undefined)
+                      setValue('adjustmentReasonOther', undefined)
                       setTpSelectedName('')
                       setSellerSelectedName('')
                       replace([])
@@ -775,7 +790,43 @@ export default function DocumentFormPage() {
                 />
               </div>
             )}
+
+            {/* Adjustment reason (EAI only) */}
+            {needsAdjustmentReason && (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-content-secondary">
+                  Motivo del ajuste <span className="text-red-500">*</span>
+                </label>
+                <select
+                  {...register('adjustmentReason')}
+                  className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+                >
+                  <option value="">Selecciona un motivo</option>
+                  {EAI_ADJUSTMENT_REASON_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
+
+          {/* Adjustment reason detail — solo EAI cuando el motivo es "Otro" */}
+          {needsAdjustmentReason && currentAdjustmentReason === 'otro' && (
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-content-secondary">
+                Explica el motivo <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                maxLength={300}
+                placeholder="Describe el motivo real del ajuste..."
+                {...register('adjustmentReasonOther')}
+                className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+              />
+            </div>
+          )}
 
           {/* Notes */}
           <div className="space-y-1.5">

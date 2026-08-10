@@ -1,5 +1,7 @@
 export type DocumentType = 'CM' | 'DVC' | 'EAI' | 'SAJ' | 'T' | 'PV'
 export type DocumentStatus = 'draft' | 'confirmed' | 'voided'
+// Motivo del ajuste — obligatorio solo para documentos EAI (Entrada por Ajuste de Inventario).
+export type EaiAdjustmentReason = 'negativo' | 'inventario_general' | 'traspaso_costo' | 'otro'
 
 export interface DocumentWarehouse {
   id: string
@@ -61,6 +63,9 @@ export interface DocumentListItem {
   status: DocumentStatus
   total: number
   freight: number | null
+  // Solo documentos EAI — motivo del ajuste y explicación libre cuando adjustmentReason === 'otro'.
+  adjustmentReason?: EaiAdjustmentReason | null
+  adjustmentReasonOther?: string | null
   notes: string | null
   thirdParty: DocumentThirdParty | null
   user: DocumentUser
@@ -122,6 +127,12 @@ export interface CreateDocumentPayload {
   destWarehouseId?: string
   destBinId?: string
   freight?: number
+  // Solo documentos EAI — motivo del ajuste; adjustmentReasonOther es obligatorio solo cuando
+  // adjustmentReason === 'otro'.
+  adjustmentReason?: EaiAdjustmentReason
+  // null explícito (no undefined) cuando el motivo deja de ser 'otro' — así la clave viaja
+  // en el JSON y el backend limpia la columna en vez de dejar el texto viejo huérfano.
+  adjustmentReasonOther?: string | null
   notes?: string
   items: CreateDocumentItemPayload[]
 }

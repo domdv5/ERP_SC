@@ -14,7 +14,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { DocumentType } from '@/common/enums';
+import { DocumentType, EaiAdjustmentReason } from '@/common/enums';
 
 export class CreateDocumentItemDto {
   @IsUUID()
@@ -84,6 +84,17 @@ export class CreateDocumentDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  // Solo se envía (y valida) para type === EAI — ver EaiEffectStrategy.validateCreate.
+  @IsOptional()
+  @IsEnum(EaiAdjustmentReason)
+  adjustmentReason?: EaiAdjustmentReason;
+
+  // Obligatorio solo cuando adjustmentReason === 'otro'.
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  adjustmentReasonOther?: string;
 
   @IsArray()
   @ArrayNotEmpty()
