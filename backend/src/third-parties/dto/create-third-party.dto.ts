@@ -3,6 +3,7 @@ import {
   IsArray,
   IsBoolean,
   IsEmail,
+  IsEnum,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -10,9 +11,12 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Max,
+  Min,
   ValidateIf,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { TaxRegime, WithholdingAgentType } from '@/common/enums';
 
 export class CreateThirdPartyDto {
   @IsString()
@@ -56,6 +60,20 @@ export class CreateThirdPartyDto {
   @IsString()
   address?: string;
 
+  // Perfil tributario — informativo, sin validación de negocio (fase de
+  // facturación electrónica, no iniciada, es la que consumirá estos datos).
+  @IsOptional()
+  @IsBoolean()
+  ivaResponsible?: boolean;
+
+  @IsOptional()
+  @IsEnum(WithholdingAgentType)
+  withholdingAgentType?: WithholdingAgentType;
+
+  @IsOptional()
+  @IsEnum(TaxRegime)
+  taxRegime?: TaxRegime;
+
   @IsOptional()
   @IsBoolean()
   isSeller?: boolean;
@@ -72,11 +90,14 @@ export class CreateThirdPartyDto {
   @ValidateIf((o) => o.isCustomer === true)
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
   creditLimit?: number;
 
   @ValidateIf((o) => o.isCustomer === true)
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
   discount?: number;
 
   @ValidateIf((o) => o.isCustomer === true)
@@ -88,6 +109,7 @@ export class CreateThirdPartyDto {
   @ValidateIf((o) => o.isSupplier === true)
   @IsNotEmpty()
   @IsInt()
+  @Min(1)
   internalNumber!: number;
 
   @ValidateIf((o) => o.isSupplier === true)

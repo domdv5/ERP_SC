@@ -46,25 +46,45 @@ model Category {
 
 // ─── Third parties (base for customers & suppliers) ──────────────────────────
 
+/// Tipo de retenedor especial declarado ante la DIAN. Puramente informativo — no
+/// dispara ningún cálculo de retención (eso corresponde a facturación electrónica, fase 2).
+enum WithholdingAgentType {
+  ninguno
+  gran_contribuyente
+  autorretenedor_renta
+  agente_retencion_iva
+}
+
+/// Régimen de tributación del tercero. Puramente informativo — no dispara ningún
+/// cálculo de IVA (eso corresponde a facturación electrónica, fase 2).
+enum TaxRegime {
+  ordinario
+  rst
+  no_aplica
+}
+
 model ThirdParty {
-  id             String    @id @default(uuid()) @db.Uuid
-  name           String
-  email          String?   @unique
-  phone          String?
-  address        String?
-  isActive       Boolean   @default(true) @map("is_active")
-  isSeller       Boolean   @default(false) @map("is_seller")
-  isCustomer     Boolean   @default(false) @map("is_customer")
-  isSupplier     Boolean   @default(false) @map("is_supplier")
-  personType     String    @map("person_type") @db.VarChar(10)
-  documentType   String    @map("document_type") @db.VarChar(20)
-  documentNumber String    @unique @map("document_number") @db.VarChar(50)
-  firstName      String?   @map("first_name") @db.VarChar(100)
-  lastName       String?   @map("last_name") @db.VarChar(100)
-  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
-  deletedById    String?   @map("deleted_by_id") @db.Uuid
-  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  id                   String                @id @default(uuid()) @db.Uuid
+  name                 String
+  email                String?               @unique
+  phone                String?
+  address              String?
+  isActive             Boolean               @default(true) @map("is_active")
+  isSeller             Boolean               @default(false) @map("is_seller")
+  isCustomer           Boolean               @default(false) @map("is_customer")
+  isSupplier           Boolean               @default(false) @map("is_supplier")
+  personType           String                @map("person_type") @db.VarChar(10)
+  documentType         String                @map("document_type") @db.VarChar(20)
+  documentNumber       String                @unique @map("document_number") @db.VarChar(50)
+  firstName            String?               @map("first_name") @db.VarChar(100)
+  lastName             String?               @map("last_name") @db.VarChar(100)
+  ivaResponsible       Boolean?              @map("iva_responsible")
+  withholdingAgentType WithholdingAgentType? @map("withholding_agent_type")
+  taxRegime            TaxRegime?            @map("tax_regime")
+  deletedAt            DateTime?             @map("deleted_at") @db.Timestamptz
+  deletedById          String?               @map("deleted_by_id") @db.Uuid
+  createdAt            DateTime?             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime?             @updatedAt @map("updated_at") @db.Timestamptz
 
   customer           Customer?
   supplier           Supplier?

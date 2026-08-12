@@ -1,5 +1,11 @@
 export type PersonType = 'natural' | 'juridica'
 export type DocumentType = 'CC' | 'NIT' | 'CE' | 'PAS' | 'TI' | 'RC'
+export type WithholdingAgentType =
+  | 'ninguno'
+  | 'gran_contribuyente'
+  | 'autorretenedor_renta'
+  | 'agente_retencion_iva'
+export type TaxRegime = 'ordinario' | 'rst' | 'no_aplica'
 
 export interface Customer {
   id: string
@@ -25,6 +31,9 @@ export interface ThirdParty {
   email?: string
   phone?: string
   address?: string
+  ivaResponsible?: boolean | null
+  withholdingAgentType?: WithholdingAgentType | null
+  taxRegime?: TaxRegime | null
   isSeller?: boolean
   isCustomer?: boolean
   isSupplier?: boolean
@@ -44,6 +53,9 @@ export interface CreateThirdPartyPayload {
   email?: string
   phone?: string
   address?: string
+  ivaResponsible?: boolean | null
+  withholdingAgentType?: WithholdingAgentType | null
+  taxRegime?: TaxRegime | null
   isSeller?: boolean
   isCustomer?: boolean
   isSupplier?: boolean
