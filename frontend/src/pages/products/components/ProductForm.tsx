@@ -3,11 +3,13 @@ import {
   useState,
   useRef,
   useMemo,
+  useLayoutEffect,
+  forwardRef,
   type ReactNode,
   type InputHTMLAttributes,
   type SelectHTMLAttributes,
 } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { useForm, useWatch, Controller, type Control } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { X } from 'lucide-react'
@@ -67,17 +69,20 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      className={cn(
-        'w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
-        className,
-      )}
-      {...props}
-    />
-  )
-}
+const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  function Input({ className, ...props }, ref) {
+    return (
+      <input
+        ref={ref}
+        className={cn(
+          'w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
+          className,
+        )}
+        {...props}
+      />
+    )
+  },
+)
 
 function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
@@ -90,6 +95,76 @@ function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSele
     >
       {children}
     </select>
+  )
+}
+
+// Muestra separador de miles ('.') mientras se escribe; el form state guarda el number plano
+function formatThousands(value: number): string {
+  return new Intl.NumberFormat('es-CO').format(value)
+}
+
+interface ThousandsInputProps {
+  control: Control<FormValues>
+  name: 'salePrice' | 'minSalePrice'
+  placeholder?: string
+  onValueChange?: () => void
+}
+
+function ThousandsInput({ control, name, placeholder, onValueChange }: ThousandsInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  // Posición de cursor a restaurar tras reformatear — evita que salte al final en cada tecleo
+  const caretRef = useRef<number | null>(null)
+
+  useLayoutEffect(() => {
+    if (caretRef.current !== null && inputRef.current) {
+      inputRef.current.setSelectionRange(caretRef.current, caretRef.current)
+      caretRef.current = null
+    }
+  })
+
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <Input
+          ref={(node) => {
+            inputRef.current = node
+            field.ref(node)
+          }}
+          inputMode="numeric"
+          placeholder={placeholder}
+          value={formatThousands(field.value ?? 0)}
+          name={field.name}
+          onBlur={field.onBlur}
+          onChange={(e) => {
+            const el = e.target
+            const caretPos = el.selectionStart ?? el.value.length
+            const digitsBeforeCaret = el.value.slice(0, caretPos).replace(/\D/g, '').length
+            const rawDigits = el.value.replace(/\D/g, '')
+            const numericValue = rawDigits ? Number(rawDigits) : 0
+            const newFormatted = formatThousands(numericValue)
+
+            // Recalcula dónde debe quedar el cursor contando dígitos (no caracteres, por los puntos insertados)
+            let newCaret = digitsBeforeCaret === 0 ? 0 : newFormatted.length
+            let seen = 0
+            for (let i = 0; i < newFormatted.length; i++) {
+              if (/\d/.test(newFormatted[i])) {
+                seen++
+                if (seen === digitsBeforeCaret) {
+                  newCaret = i + 1
+                  break
+                }
+              }
+            }
+            caretRef.current = newCaret
+
+            field.onChange(numericValue)
+            onValueChange?.()
+          }}
+        />
+      )}
+    />
   )
 }
 
@@ -166,6 +241,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
   const brandIdVal    = useWatch({ control, name: 'brandId' })
   const categoryIdVal = useWatch({ control, name: 'categoryId' })
   const salePriceVal  = useWatch({ control, name: 'salePrice' })
+  const legacyCodeVal = useWatch({ control, name: 'legacyCode' })
 
   const prefix = useMemo(() => {
     const g = genders.find((x) => x.id === genderIdVal)
@@ -276,15 +352,12 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                     </div>
                   </Field>
 
-                  {/* Código legado — solo en edición */}
+                  {/* Código legado — solo en edición, se calcula solo (ver useEffect de sync de `code`), no editable a mano */}
                   {isEdit && (
                     <Field label="Código legado">
-                      <Input
-                        {...register('legacyCode')}
-                        placeholder="—"
-                        autoComplete="off"
-                        className="font-mono"
-                      />
+                      <div className="px-3 py-2 text-sm bg-surface-hover border border-ui-border rounded-lg text-content-muted font-mono">
+                        {legacyCodeVal || <span className="text-content-faint text-xs">—</span>}
+                      </div>
                     </Field>
                   )}
                 </div>
@@ -350,15 +423,14 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Precio de venta">
-                  <Input {...register('salePrice')} type="number" min={0} step={1} placeholder="0" />
+                  <ThousandsInput control={control} name="salePrice" placeholder="0" />
                 </Field>
                 <Field label="Precio mínimo de venta">
-                  <Input
-                    {...register('minSalePrice', { onChange: () => setMinSalePriceTouched(true) })}
-                    type="number"
-                    min={0}
-                    step={1}
+                  <ThousandsInput
+                    control={control}
+                    name="minSalePrice"
                     placeholder="0"
+                    onValueChange={() => setMinSalePriceTouched(true)}
                   />
                 </Field>
               </div>
