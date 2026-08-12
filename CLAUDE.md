@@ -77,14 +77,17 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 - `POST /third-parties` — create a third party (customer and/or supplier); requires `thirdparty.create` permission
 - `PATCH /third-parties/:id` — update; requires `thirdparty.update`
 - `DELETE /third-parties/:id` — soft-delete; requires `thirdparty.delete`
+- `POST /third-parties/:id/reactivate` — undoes the soft-delete (`isActive: true`, clears `deletedAt`/`deletedById`); requires `thirdparty.delete`. Mirrors the equivalent `POST /products/:id/reactivate`. Frontend list pages show an Activos/Inactivos `SegmentedToggle` (see Shared Components) — the reactivate button only renders on the Inactivos tab, delete only on Activos.
 - `PATCH /third-parties/:id/brands/:brandId` — rename a brand in-place; requires `thirdparty.update`
 - Supports `personType`: `natural` | `juridica`
 - Supports `documentType`: `CC | NIT | CE | PAS | TI | RC`
 - Conditional validation: natural persons require `firstName`/`lastName`; juridical persons require `businessName`
 - Optional customer fields: `creditLimit`, `discount`, `sellerId`
 - Optional supplier field: `internalNumber`
+- Optional tax-profile fields (informational only, no business calculation yet — reserved for a future e-invoicing phase): `ivaResponsible` (`Boolean?`), `withholdingAgentType` (enum `WithholdingAgentType`), `taxRegime` (enum `TaxRegime`)
 - Transactional creation: ThirdParty + Customer/Supplier records in one transaction
 - **Brand rules**: brands can only be added or renamed — never deleted (products reference them). `update` does `createMany` + `skipDuplicates`; frontend sends only new brands (not already in `brandIds` map). `isCustomer`/`isSupplier` are real `Boolean` columns on `ThirdParty` (`@default(false)`, indexed) set directly from the DTO in `create`/`update` — they are not derived from the presence of `customer`/`supplier` relations.
+- **Role/document-type invariant enforced on both `create` and `update`**: every third party needs at least one role (`isCustomer`/`isSupplier`/`isSeller`) and a `juridica` person must use `NIT`. On `update` this only throws when the PATCH actually touches the relevant fields (`isCustomer`/`isSupplier`/`isSeller` for the role check, `personType`/`documentType` for the NIT check) — the check runs against the DB-merged post-update state (`PartialType` doesn't force omitted booleans to `false`), so without the touched-field guard a PATCH to an unrelated field (e.g. phone) on a pre-existing legacy record that already violated the invariant would get hard-blocked for no reason.
 
 **WarehousesModule**:
 
@@ -264,7 +267,7 @@ For sidebar sections that must be hidden for some roles, render the `<NavLink>` 
 | Route | Status | Notes |
 |-------|--------|-------|
 | `/login` | Done | JWT auth, redirects to `/` if already logged in |
-| `/` (dashboard) | Partial | Stats cards — Terceros shows real count, rest are static `—` |
+| `/` (dashboard) | Partial | Stats cards — Terceros/Productos/Bodegas/Documentos show real counts via `{ limit: 1 }` + `meta.total`. Terceros and Productos count **active-only** (both list endpoints default to `active: true` when the filter is omitted, to support the Activos/Inactivos toggle on their list pages) — this is intentional, not a bug, matching convention across both modules. |
 | `/third-parties` | Done | Full CRUD, server-side search, debounce, pagination, cache |
 | `/products` | Done | Full CRUD, server-side search, debounce, pagination, cache, stock column (total + per-warehouse breakdown), cost columns ("Costo Prom." / "Últ. Costo") |
 | `/warehouses` | Partial | Full CRUD warehouses + zones/bins (backend controllers implemented); sidebar accordion shows sub-items per warehouse; URL-based selection via `?id=` |
@@ -330,6 +333,7 @@ import { StatsGrid } from '@/components/shared/StatsGrid'
 | `StatsGrid` | `cards: StatCard[]`, `isLoading` | 3-card stat row at top of every list page |
 | `TableToolbar` | `search`, `onSearchChange`, `placeholder`, `isLoading`, `itemCount`, `total`, `onRefresh` | Search + count + refresh bar above table |
 | `TableSkeleton` | `rows?`, `widths: [w1, w2, w3, w4]` | Animated placeholder while data loads |
+| `SegmentedToggle` | `checked`, `onChange`, `uncheckedLabel`, `checkedLabel` | Two-option pill toggle (e.g. Activos/Inactivos on Products and ThirdParties list pages) |
 | `EmptyState` | `icon`, `title`, `description` | No-data / no-results state inside table |
 | `ErrorState` | `message`, `onRetry` | Fetch error state inside table |
 | `TablePagination` | `page`, `totalPages`, `total`, `onPageChange` | Footer pagination; auto-hides if `totalPages ≤ 1` |
