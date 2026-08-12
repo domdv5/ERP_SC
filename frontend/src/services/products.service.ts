@@ -19,6 +19,9 @@ export interface GetProductsParams {
   categoryId?: string
   brandId?: string
   genderId?: string
+  // Filtra por proveedor (vía las marcas activas de ese proveedor) — usado en CM/DVC para
+  // restringir el buscador de producto a solo las marcas del proveedor elegido en el documento.
+  supplierId?: string
 }
 
 export interface CreateProductPayload {

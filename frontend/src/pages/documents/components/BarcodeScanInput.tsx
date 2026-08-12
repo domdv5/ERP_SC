@@ -26,6 +26,16 @@ interface BarcodeScanInputProps {
   // Lleva el foco al input de cantidad de la fila afectada (nueva o incrementada) tras un
   // escaneo exitoso — ver ciclo de foco escaneo→cantidad→escaneo en DocumentFormPage.
   focusQuantityInput: (index: number) => void
+  // Marcas del proveedor elegido en el documento (solo CM/DVC) — cualquier producto escaneado
+  // cuya marca no esté en esta lista se bloquea (nunca solo advertencia, ver plan). undefined
+  // cuando el tipo de documento no aplica este filtro (PV/EAI/SAJ/T).
+  supplierBrandIds?: string[]
+  // true mientras needsSupplier === true y todavía no hay proveedor elegido — deshabilita el
+  // input por completo (no tiene sentido escanear sin saber contra qué proveedor validar).
+  disabled?: boolean
+  // Nombre del proveedor elegido, solo para el mensaje de bloqueo por marca (reusa tpSelectedName
+  // de DocumentFormPage).
+  supplierName?: string
 }
 
 /**
@@ -44,21 +54,28 @@ interface BarcodeScanInputProps {
  * useEffect de mount, que solo cubre el foco inicial.
  */
 export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanInputProps>(
-  function BarcodeScanInput({ docType, append, getValues, setValue, onProductScanned, focusQuantityInput }, ref) {
+  function BarcodeScanInput(
+    { docType, append, getValues, setValue, onProductScanned, focusQuantityInput, supplierBrandIds, disabled, supplierName },
+    ref,
+  ) {
     const inputRef = useRef<HTMLInputElement>(null)
     // Evita procesar un segundo Enter mientras el lookup del primero sigue en vuelo (doble
     // disparo de scanner, o Enter mantenido) — sin esto podría duplicarse el mismo ítem.
     const isProcessingRef = useRef(false)
 
     useImperativeHandle(ref, () => ({
-      focus: () => inputRef.current?.focus(),
+      // Defensivo: si el proveedor se limpió a mitad de carga (cambio de tipo/proveedor) no debe
+      // quedar foco en un input inutilizable.
+      focus: () => { if (!disabled) inputRef.current?.focus() },
     }))
 
     useEffect(() => {
+      if (disabled) return
       inputRef.current?.focus()
-    }, [])
+    }, [disabled])
 
     const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (disabled) return
       if (e.key !== 'Enter') return
       e.preventDefault()
       if (isProcessingRef.current) return
@@ -84,6 +101,15 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
             return
           }
           throw error
+        }
+
+        // Bloqueo duro: un producto de marca ajena al proveedor elegido siempre es un error real
+        // (proveedor equivocado en el documento, o producto equivocado escaneado) — nunca se
+        // agrega la fila, solo se avisa. Mismo patrón que el bloque de "código no encontrado".
+        if (supplierBrandIds !== undefined && !supplierBrandIds.includes(product.brandId)) {
+          toast.error(`${product.code} no pertenece a las marcas de ${supplierName ?? 'este proveedor'}`)
+          inputRef.current?.focus()
+          return
         }
 
         const currentItems = getValues('items')
@@ -135,11 +161,13 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
             type="text"
             defaultValue=""
             onKeyDown={(e) => { void handleKeyDown(e) }}
-            placeholder="Escanear código de barras..."
+            placeholder={disabled ? 'Selecciona un proveedor primero' : 'Escanear código de barras...'}
             autoComplete="off"
+            disabled={disabled}
             className={cn(
               'w-full pl-9 pr-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint',
               'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
               'border-ui-border-medium',
             )}
           />

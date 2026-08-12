@@ -38,7 +38,23 @@ const DETAIL_INCLUDE = {
       },
     },
   },
-  thirdParty: { select: { id: true, name: true } },
+  // supplier.brands se incluye para que editar un borrador CM/DVC ya
+  // existente cargue de una las marcas del proveedor elegido (sin esto el
+  // buscador/escaneo de producto del form quedarían deshabilitados).
+  thirdParty: {
+    select: {
+      id: true,
+      name: true,
+      supplier: {
+        select: {
+          brands: {
+            where: { active: true },
+            select: { id: true, name: true },
+          },
+        },
+      },
+    },
+  },
   seller: { select: { id: true, name: true } },
   user: { select: { id: true, name: true } },
   confirmedBy: { select: { id: true, name: true } },

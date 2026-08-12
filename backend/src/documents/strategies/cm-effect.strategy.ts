@@ -13,6 +13,18 @@ export class CmEffectStrategy extends BaseEffectStrategy {
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
     await this.assertValidSupplier(createDocumentDto.thirdPartyId);
+
+    const products = await this.prisma.product.findMany({
+      where: {
+        id: { in: createDocumentDto.items.map((item) => item.productId) },
+      },
+      select: { id: true, brandId: true },
+    });
+
+    await this.assertItemsMatchSupplierBrands(
+      createDocumentDto.thirdPartyId!,
+      products.map((p) => ({ productId: p.id, brandId: p.brandId })),
+    );
   }
 
   async confirm(
@@ -28,6 +40,17 @@ export class CmEffectStrategy extends BaseEffectStrategy {
         'El documento requiere un proveedor válido',
       );
     }
+
+    // Defensa en profundidad: documents.service.ts::update() no revalida al
+    // editar un borrador, así que un ítem de marca equivocada podría colarse
+    // hasta acá si solo se validara en validateCreate.
+    await this.assertItemsMatchSupplierBrands(
+      supplier.id,
+      document.documentItems.map((item) => ({
+        productId: item.productId,
+        brandId: item.product.brandId,
+      })),
+    );
 
     for (const item of document.documentItems) {
       const quantity = item.quantity;

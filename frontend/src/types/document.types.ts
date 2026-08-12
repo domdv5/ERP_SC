@@ -11,6 +11,9 @@ export interface DocumentWarehouse {
 export interface DocumentThirdParty {
   id: string
   name: string
+  // Solo presente cuando el tercero es proveedor — marcas activas que le pertenecen, usadas
+  // en CM/DVC para filtrar/bloquear el buscador y el escaneo de producto por marca.
+  supplier?: { brands: { id: string; name: string }[] } | null
 }
 
 export interface DocumentUser {

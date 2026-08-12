@@ -51,6 +51,33 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     }
   }
 
+  /**
+   * Bloqueo duro: cada producto ya tiene una marca/proveedor fijos sin
+   * ambigüedad, así que un ítem de una marca ajena al proveedor elegido
+   * siempre es un error real (proveedor o producto equivocado), nunca un
+   * caso legítimo a permitir con solo un aviso.
+   */
+  protected async assertItemsMatchSupplierBrands(
+    supplierId: string,
+    items: { productId: string; brandId: string }[],
+  ) {
+    const allowedBrandIds = new Set(
+      (
+        await this.prisma.brand.findMany({
+          where: { supplierId, active: true },
+          select: { id: true },
+        })
+      ).map((b) => b.id),
+    );
+
+    const invalid = items.filter((i) => !allowedBrandIds.has(i.brandId));
+    if (invalid.length) {
+      throw new BadRequestException(
+        'Uno o más productos no pertenecen a las marcas del proveedor seleccionado',
+      );
+    }
+  }
+
   /** Aplica el cambio de stock (Inventory) y registra el movimiento kardex. */
   protected async moveStock(
     tx: Prisma.TransactionClient,

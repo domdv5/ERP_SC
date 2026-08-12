@@ -21,13 +21,32 @@ export class ProductsService {
       categoryId,
       brandId,
       genderId,
+      supplierId,
     } = findAllProductsDto;
     const skip = (page - 1) * limit;
+
+    // supplierId tiene precedencia sobre brandId: se resuelven las marcas
+    // activas del proveedor y se filtra por ellas ({ in: [] } cuando el
+    // proveedor no tiene marcas activas ya devuelve 0 resultados sin caso especial).
+    const brandFilter = supplierId
+      ? {
+          brandId: {
+            in: (
+              await this.prisma.brand.findMany({
+                where: { supplierId, active: true },
+                select: { id: true },
+              })
+            ).map((b) => b.id),
+          },
+        }
+      : brandId
+        ? { brandId }
+        : {};
 
     const where: Prisma.ProductWhereInput = {
       active: active !== undefined ? active : true,
       ...(categoryId && { categoryId }),
-      ...(brandId && { brandId }),
+      ...brandFilter,
       ...(genderId && { genderId }),
       ...(search && {
         OR: [

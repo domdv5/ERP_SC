@@ -53,6 +53,9 @@ export default function DocumentFormPage() {
   const [tpSearch, setTpSearch] = useState('')
   const [debouncedTpSearch] = useDebounce(tpSearch, 400)
   const [tpSelectedName, setTpSelectedName] = useState('')
+  // Marcas activas del proveedor elegido (solo CM/DVC) — bloqueo duro del buscador/escaneo de
+  // producto a esas marcas (ver plan de negocio "Filtrar productos por marca del proveedor").
+  const [selectedSupplierBrandIds, setSelectedSupplierBrandIds] = useState<string[]>([])
 
   // Vendedora — solo preventas (PV)
   const [sellerSearch, setSellerSearch] = useState('')
@@ -133,6 +136,7 @@ export default function DocumentFormPage() {
     }
     setTpSelectedName(existingDoc.thirdParty?.name ?? '')
     setSellerSelectedName(existingDoc.seller?.name ?? '')
+    setSelectedSupplierBrandIds(existingDoc.thirdParty?.supplier?.brands.map((b) => b.id) ?? [])
     setScannedProductInfo(
       Object.fromEntries(
         existingDoc.documentItems.map((item) => [
@@ -514,6 +518,7 @@ export default function DocumentFormPage() {
                       setValue('adjustmentReasonOther', undefined)
                       setTpSelectedName('')
                       setSellerSelectedName('')
+                      setSelectedSupplierBrandIds([])
                       replace([])
                     }}
                     className={cn(
@@ -559,6 +564,17 @@ export default function DocumentFormPage() {
                       onChange={(selectedId, option) => {
                         field.onChange(selectedId)
                         setTpSelectedName(option.label)
+
+                        const tp = tpData?.items.find((t: ThirdParty) => t.id === selectedId)
+                        setSelectedSupplierBrandIds(tp?.supplier?.brands.map((b) => b.id) ?? [])
+
+                        // Cambiar de proveedor (CM/DVC) con ítems ya cargados invalida la marca de
+                        // todos ellos — mismo patrón que el selector de tipo de documento
+                        // (replace([])). Este combobox también se usa para elegir cliente en PV
+                        // (needsCustomer), que no filtra por marca — no debe vaciar el carrito ahí.
+                        if (needsSupplier && getValues('items').length > 0) {
+                          replace([])
+                        }
                       }}
                       options={tpDisplayOptions}
                       isLoading={isLoadingTp}
@@ -884,6 +900,9 @@ export default function DocumentFormPage() {
               }))
             }
             focusQuantityInput={(index) => setPendingQuantityFocusIndex(index)}
+            supplierBrandIds={needsSupplier ? selectedSupplierBrandIds : undefined}
+            disabled={needsSupplier && !watch('thirdPartyId')}
+            supplierName={tpSelectedName}
           />
 
           {fields.length === 0 ? (
@@ -937,6 +956,7 @@ export default function DocumentFormPage() {
                       initialAvgCost={scannedProductInfo[field.productId]?.avgCost}
                       initialUnitOfMeasure={scannedProductInfo[field.productId]?.unitOfMeasure}
                       initialAvailableStock={scannedProductInfo[field.productId]?.availableStock}
+                      supplierBrandIds={needsSupplier ? selectedSupplierBrandIds : undefined}
                       quantityInputRef={(el) => {
                         if (el) quantityInputRefs.current.set(index, el)
                         else quantityInputRefs.current.delete(index)

@@ -42,9 +42,13 @@ interface ProductRowProps {
   // esta fila. Incondicional: cualquier Enter en cantidad vuelve al escáner, sin importar si
   // la fila se creó por escaneo o por el combobox manual.
   onQuantityConfirmed?: () => void
+  // Marcas del proveedor elegido en el documento (solo CM/DVC) — filtra el buscador de producto
+  // para solo traer productos de esas marcas. undefined cuando el tipo de documento no aplica
+  // este filtro (PV/EAI/SAJ/T); ProductRow decide internamente si lo usa según needsSupplier.
+  supplierBrandIds?: string[]
 }
 
-export function ProductRow({ index, docType, onRemove, register, setValue, watch, getValues, initialAvgCost, initialUnitOfMeasure, initialAvailableStock, quantityInputRef, onQuantityConfirmed }: ProductRowProps) {
+export function ProductRow({ index, docType, onRemove, register, setValue, watch, getValues, initialAvgCost, initialUnitOfMeasure, initialAvailableStock, quantityInputRef, onQuantityConfirmed, supplierBrandIds }: ProductRowProps) {
   const [productSearch, setProductSearch] = useState('')
   const [debouncedProductSearch] = useDebounce(productSearch, 400)
   // Costo promedio del producto al momento de seleccionarlo — solo para comparar contra lo digitado
@@ -77,6 +81,11 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   // Nota de talla por línea — solo aplica a traslados (T): permite registrar el mismo código
   // de producto repartido en varios bultos, cada uno con una talla distinta.
   const showObservaciones = docType === 'T'
+  // CM/DVC restringen el buscador de producto a las marcas del proveedor elegido en el documento
+  // (bloqueo duro, ver plan de negocio) — mientras no haya proveedor elegido, el combobox queda
+  // deshabilitado en vez de mostrarse sin filtrar.
+  const needsSupplier = docType === 'CM' || docType === 'DVC'
+  const noSupplierYet = needsSupplier && !watch('thirdPartyId')
   const showCost    = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
   // SAJ y T nunca permiten digitar el costo: SAJ porque el backend siempre usa el avgCost vigente
   // del producto (SajEffectStrategy); T porque un traslado no tiene costo real, solo se muestra
@@ -133,12 +142,19 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   const displayAvailableStock = showPrice ? selectedAvailableStock : availableInSourceWarehouse
 
   const hasSearch = debouncedProductSearch.length >= 1
+  const thirdPartyId = watch('thirdPartyId')
 
   const { data: productData, isLoading: isLoadingProducts } = useQuery({
-    queryKey: ['products-search', debouncedProductSearch],
-    queryFn: () => getProducts({ search: debouncedProductSearch, page: 1, limit: 30 }),
+    queryKey: ['products-search', debouncedProductSearch, thirdPartyId],
+    queryFn: () =>
+      getProducts({
+        search: debouncedProductSearch,
+        page: 1,
+        limit: 30,
+        supplierId: needsSupplier ? thirdPartyId : undefined,
+      }),
     staleTime: 2 * 60 * 1000,
-    enabled: hasSearch,
+    enabled: hasSearch && !noSupplierYet,
   })
 
   const productOptions: ComboboxOption[] = (productData?.items ?? []).map((p: Product) => ({
@@ -181,6 +197,17 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
             onChange={(id) => {
               const product = productData?.items.find((p: Product) => p.id === id)
 
+              // Defensa en profundidad: el backend ya filtra por supplierId en la query, pero
+              // esto evita agregar un producto de marca equivocada si por alguna razón llegó a
+              // las opciones mostradas (ej. caché stale). Mismo bloqueo duro que BarcodeScanInput.
+              // Gateado por needsSupplier (no solo `!== undefined`) porque el padre puede pasar
+              // supplierBrandIds sin filtrar por tipo de documento — este componente es responsable
+              // de decidir si aplica, como indica el contrato de la prop.
+              if (needsSupplier && supplierBrandIds !== undefined && product && !supplierBrandIds.includes(product.brandId)) {
+                toast.error(`${product.code} no pertenece a las marcas del proveedor seleccionado`)
+                return
+              }
+
               // Excluye el índice propio: una fila que ya tiene este productId (ej. reabrir su
               // combobox sin cambiar nada) no debe detectarse a sí misma como duplicado.
               const currentItems = getValues('items')
@@ -214,7 +241,8 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
             }}
             options={displayOptions}
             isLoading={isLoadingProducts}
-            placeholder="Selecciona un producto..."
+            disabled={noSupplierYet}
+            placeholder={noSupplierYet ? 'Selecciona un proveedor primero' : 'Selecciona un producto...'}
             searchValue={productSearch}
             onSearchChange={setProductSearch}
           />
