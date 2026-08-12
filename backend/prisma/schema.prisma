@@ -187,14 +187,28 @@ model Product {
   inventorySnapshots InventorySnapshot[]
   binStocks          BinStock[]
 
-  @@index([active])
   @@index([brandId])
   @@index([genderId])
   @@index([categoryId])
   @@index([createdAt])
-  @@index([active, brandId])
-  @@index([active, categoryId])
-  @@index([active, genderId])
+  // Listado paginado de productos (GET /products): el where SIEMPRE trae `active`
+  // y el orderBy SIEMPRE es createdAt desc. Con createdAt como última columna el
+  // planner recorre el índice ya ordenado y corta en LIMIT, en vez de materializar
+  // y ordenar todas las filas del filtro antes de paginar.
+  @@index([active, createdAt])
+  @@index([active, brandId, createdAt])
+  @@index([active, categoryId, createdAt])
+  @@index([active, genderId, createdAt])
+  // DRIFT ACEPTADO — dos índices GIN trigram existen en la base pero NO acá:
+  //   product_code_trgm_idx         ON product USING GIN (code gin_trgm_ops)
+  //   product_legacy_code_trgm_idx  ON product USING GIN (legacy_code gin_trgm_ops)
+  // Creados en la migración 20260812140000_product_trigram_search (junto con
+  // CREATE EXTENSION pg_trgm) porque Prisma no sabe declarar ni extensiones ni
+  // operator classes. Sirven el `contains` + `mode: 'insensitive'` de
+  // ProductsService.findAll, que se traduce a ILIKE '%term%': el comodín inicial
+  // deja inservible cualquier btree, incluido el @unique de `code`.
+  // OJO: `prisma migrate diff` no los ve en este schema y genera DROP INDEX para
+  // ambos. Al armar una migración nueva a mano, borrá esos DROP del script.
   @@map("product")
 }
 
@@ -552,6 +566,9 @@ model DocumentItem {
   reservationReleases ReservationRelease[]
 
   @@index([productId])
+  // Prisma no crea índices de FK automáticamente en PostgreSQL: sin este, cargar
+  // los ítems de un documento (detalle, confirm, void) hacía seq scan de la tabla.
+  @@index([documentId])
   @@map("document_item")
 }
 
