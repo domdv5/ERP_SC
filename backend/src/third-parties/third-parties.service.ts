@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Customer, Prisma, Supplier } from '@prisma/client';
 import {
   CreateThirdPartyDto,
@@ -78,6 +78,18 @@ export class ThirdPartiesService {
       ...thirdPartyData
     } = createThirdPartyDto;
 
+    if (!isCustomer && !isSupplier && !thirdPartyData.isSeller) {
+      throw new BadRequestException(
+        'El tercero debe tener al menos un rol: cliente, proveedor o vendedor.',
+      );
+    }
+
+    if (thirdPartyData.personType === 'juridica' && thirdPartyData.documentType !== 'NIT') {
+      throw new BadRequestException(
+        'Una persona jurídica debe usar NIT como tipo de documento.',
+      );
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const thirdParty = await tx.thirdParty.create({
         data: {
@@ -134,6 +146,17 @@ export class ThirdPartiesService {
     });
   }
 
+  reactivate(id: string) {
+    return this.prisma.thirdParty.update({
+      where: { id },
+      data: {
+        isActive: true,
+        deletedAt: null,
+        deletedById: null,
+      },
+    });
+  }
+
   async update(id: string, updateThirdPartyDto: UpdateThirdPartyDto) {
     const {
       isCustomer,
@@ -149,7 +172,7 @@ export class ThirdPartiesService {
     return this.prisma.$transaction(async (tx) => {
       // The supplier relation must exist before brands can reference it via
       // supplierId, so the upsert below has to run before brand.createMany.
-      await tx.thirdParty.update({
+      const updated = await tx.thirdParty.update({
         where: { id },
         data: {
           ...thirdPartyData,
@@ -174,6 +197,36 @@ export class ThirdPartiesService {
               : undefined,
         },
       });
+
+      // isCustomer/isSupplier/isSeller pueden venir omitidos en el payload
+      // (PartialType no los fuerza a false), así que la validación corre sobre
+      // el estado ya mergeado por Prisma, no sobre el DTO recibido. Pero solo
+      // se exige el invariante si el PATCH tocó alguno de esos campos — así un
+      // registro legacy que ya lo incumplía no bloquea ediciones de campos no
+      // relacionados (ej. actualizar el teléfono), solo bloquea intentos de
+      // dejarlo sin roles.
+      const rolesTouched =
+        isCustomer !== undefined ||
+        isSupplier !== undefined ||
+        updateThirdPartyDto.isSeller !== undefined;
+      if (rolesTouched && !updated.isCustomer && !updated.isSupplier && !updated.isSeller) {
+        throw new BadRequestException(
+          'El tercero debe tener al menos un rol: cliente, proveedor o vendedor.',
+        );
+      }
+
+      const documentTypeTouched =
+        updateThirdPartyDto.personType !== undefined ||
+        updateThirdPartyDto.documentType !== undefined;
+      if (
+        documentTypeTouched &&
+        updated.personType === 'juridica' &&
+        updated.documentType !== 'NIT'
+      ) {
+        throw new BadRequestException(
+          'Una persona jurídica debe usar NIT como tipo de documento.',
+        );
+      }
 
       if (isSupplier && brands !== undefined) {
         // El frontend solo envía brands nuevos (no los ya existentes en

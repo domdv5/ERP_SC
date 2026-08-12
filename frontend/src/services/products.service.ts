@@ -76,3 +76,7 @@ export async function updateProduct(id: string, payload: Partial<CreateProductPa
 export async function deleteProduct(id: string): Promise<void> {
   await api.delete(`/products/${id}`)
 }
+
+export async function reactivateProduct(id: string): Promise<void> {
+  await api.post(`/products/${id}/reactivate`)
+}

@@ -25,14 +25,14 @@ export class ProductsService {
     const skip = (page - 1) * limit;
 
     const where: Prisma.ProductWhereInput = {
-      ...(active !== undefined && { active }),
+      active: active !== undefined ? active : true,
       ...(categoryId && { categoryId }),
       ...(brandId && { brandId }),
       ...(genderId && { genderId }),
       ...(search && {
         OR: [
           { code: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
+          { legacyCode: { contains: search, mode: 'insensitive' } },
         ],
       }),
     };
@@ -228,6 +228,17 @@ export class ProductsService {
         active: false,
         deletedAt: new Date(),
         deletedById: userId,
+      },
+    });
+  }
+
+  reactivate(id: string) {
+    return this.prisma.product.update({
+      where: { id },
+      data: {
+        active: true,
+        deletedAt: null,
+        deletedById: null,
       },
     });
   }

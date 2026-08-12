@@ -58,4 +58,10 @@ export class ThirdPartiesController {
   remove(@Param('id') id: string, @Req() req: RequestWithUser) {
     return this.thirdPartiesService.remove(id, req.user.sub);
   }
+
+  @Post(':id/reactivate')
+  @Permissions('thirdparty.delete')
+  reactivate(@Param('id') id: string) {
+    return this.thirdPartiesService.reactivate(id);
+  }
 }

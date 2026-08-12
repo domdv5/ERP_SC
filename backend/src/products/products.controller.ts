@@ -81,4 +81,10 @@ export class ProductsController {
   remove(@Param('id') id: string, @Req() req: RequestWithUser) {
     return this.productsService.remove(id, req.user.sub);
   }
+
+  @Post(':id/reactivate')
+  @Permissions('product.delete')
+  reactivate(@Param('id') id: string) {
+    return this.productsService.reactivate(id);
+  }
 }

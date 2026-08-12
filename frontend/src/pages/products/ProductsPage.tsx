@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { useDebounce } from "use-debounce";
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Package, BarChart2, CheckCircle2, Plus, Pencil, Trash2 } from "lucide-react";
+import { Package, BarChart2, CheckCircle2, Plus, Pencil, Trash2, RotateCcw } from "lucide-react";
 import {
   getProducts,
   createProduct,
   updateProduct,
   deleteProduct,
+  reactivateProduct,
 } from "@/services/products.service";
 import type { CreateProductPayload } from "@/services/products.service";
 import { usePermission } from "@/hooks/usePermission";
@@ -21,6 +22,7 @@ import {
   EmptyState,
   ErrorState,
   TablePagination,
+  SegmentedToggle,
 } from "@/components/shared";
 import type { Product } from "@/types";
 
@@ -44,6 +46,7 @@ export default function ProductsPage() {
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [showInactive, setShowInactive] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState<Product | null>(null);
@@ -52,11 +55,17 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, showInactive]);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["products", debouncedSearch, page],
-    queryFn: () => getProducts({ search: debouncedSearch || undefined, page, limit: 20 }),
+    queryKey: ["products", debouncedSearch, page, showInactive],
+    queryFn: () =>
+      getProducts({
+        search: debouncedSearch || undefined,
+        page,
+        limit: 20,
+        active: showInactive ? false : undefined,
+      }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   });
@@ -104,6 +113,15 @@ export default function ProductsPage() {
     onError: () => toast.error("Error al eliminar el producto"),
   });
 
+  const { mutate: reactivate, isPending: isReactivating } = useMutation({
+    mutationFn: (id: string) => reactivateProduct(id),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Producto reactivado correctamente");
+    },
+    onError: () => toast.error("Error al reactivar el producto"),
+  });
+
   const statCards = [
     {
       label: "Total",
@@ -147,6 +165,14 @@ export default function ProductsPage() {
         )}
       </div>
 
+      {/* Toggle Activos / Inactivos */}
+      <SegmentedToggle
+        checked={showInactive}
+        onChange={setShowInactive}
+        uncheckedLabel="Activos"
+        checkedLabel="Inactivos"
+      />
+
       <StatsGrid cards={statCards} isLoading={isLoading} />
 
       {/* Table */}
@@ -154,7 +180,7 @@ export default function ProductsPage() {
         <TableToolbar
           search={search}
           onSearchChange={setSearch}
-          placeholder="Buscar por código o descripción..."
+          placeholder="Buscar por código actual o código legado..."
           isLoading={isLoading}
           itemCount={items.length}
           total={total}
@@ -195,7 +221,7 @@ export default function ProductsPage() {
                     { label: "Precio Venta", align: "text-right" },
                     { label: "Almacén", align: "text-right" },
                     { label: "Bodega", align: "text-right" },
-                    { label: "Reservado", align: "text-right" },
+                    { label: "PREVENTA", align: "text-right" },
                     { label: "Disponible", align: "text-right" },
                     { label: "Últ. Costo", align: "text-right" },
                     { label: "Costo Prom.", align: "text-right" },
@@ -272,7 +298,7 @@ export default function ProductsPage() {
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                         )}
-                        {canDelete && (
+                        {canDelete && !showInactive && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -281,6 +307,18 @@ export default function ProductsPage() {
                             className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {canDelete && showInactive && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              reactivate(p.id);
+                            }}
+                            disabled={isReactivating}
+                            className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors disabled:opacity-50"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>

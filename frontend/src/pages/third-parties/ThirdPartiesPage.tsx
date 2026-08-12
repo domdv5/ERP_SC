@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import { useDebounce } from 'use-debounce'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Users, Building2, User } from 'lucide-react'
-import { getThirdParties, createThirdParty, updateThirdParty, deleteThirdParty, renameBrand } from '@/services/third-parties.service'
+import { Plus, Pencil, Trash2, RotateCcw, Users, Building2, User } from 'lucide-react'
+import { getThirdParties, createThirdParty, updateThirdParty, deleteThirdParty, reactivateThirdParty, renameBrand } from '@/services/third-parties.service'
 import { usePermission } from '@/hooks/usePermission'
 import { ThirdPartyForm } from './components/ThirdPartyForm'
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
-import { StatsGrid, TableToolbar, TableSkeleton, EmptyState, ErrorState, TablePagination } from '@/components/shared'
+import { StatsGrid, TableToolbar, TableSkeleton, EmptyState, ErrorState, TablePagination, SegmentedToggle } from '@/components/shared'
 import { cn } from '@/lib/utils'
 import type { ThirdParty } from '@/types'
 
@@ -26,6 +26,7 @@ export default function ThirdPartiesPage() {
 
   const [search, setSearch]   = useState('')
   const [page, setPage]       = useState(1)
+  const [showInactive, setShowInactive] = useState(false)
   const [formOpen, setFormOpen]   = useState(false)
   const [editing, setEditing]     = useState<ThirdParty | null>(null)
   const [deleting, setDeleting]   = useState<ThirdParty | null>(null)
@@ -34,11 +35,16 @@ export default function ThirdPartiesPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch])
+  }, [debouncedSearch, showInactive])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['third-parties', debouncedSearch, page],
-    queryFn: () => getThirdParties({ search: debouncedSearch || undefined, page, limit: 20 }),
+    queryKey: ['third-parties', debouncedSearch, page, showInactive],
+    queryFn: () => getThirdParties({
+      search: debouncedSearch || undefined,
+      page,
+      limit: 20,
+      isActive: showInactive ? false : undefined,
+    }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   })
@@ -84,6 +90,12 @@ export default function ThirdPartiesPage() {
     onError:   () => toast.error('Error al eliminar el tercero'),
   })
 
+  const { mutate: reactivate, isPending: isReactivating } = useMutation({
+    mutationFn: (id: string) => reactivateThirdParty(id),
+    onSuccess: () => { invalidate(); toast.success('Tercero reactivado correctamente') },
+    onError:   () => toast.error('Error al reactivar el tercero'),
+  })
+
   const statCards = [
     { label: 'Total',       value: total,          icon: Users,     bg: 'bg-brand-primary/10',   fg: 'text-brand-primary dark:text-content' },
     { label: 'Clientes',    value: customerCount,  icon: User,      bg: 'bg-brand-secondary/10', fg: 'text-brand-secondary' },
@@ -108,6 +120,14 @@ export default function ThirdPartiesPage() {
           </button>
         )}
       </div>
+
+      {/* Toggle Activos / Inactivos */}
+      <SegmentedToggle
+        checked={showInactive}
+        onChange={setShowInactive}
+        uncheckedLabel="Activos"
+        checkedLabel="Inactivos"
+      />
 
       <StatsGrid cards={statCards} isLoading={isLoading} />
 
@@ -202,12 +222,21 @@ export default function ThirdPartiesPage() {
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                         )}
-                        {canDelete && (
+                        {canDelete && !showInactive && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setDeleting(t) }}
                             className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {canDelete && showInactive && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); reactivate(t.id) }}
+                            disabled={isReactivating}
+                            className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors disabled:opacity-50"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
@@ -239,7 +268,9 @@ export default function ThirdPartiesPage() {
       <ThirdPartyForm
         open={!!editing}
         onClose={() => setEditing(null)}
-        onSubmit={(data) => update({ id: editing!.id, payload: data })}
+        onSubmit={(data) =>
+          update({ id: editing!.id, payload: data as Parameters<typeof updateThirdParty>[1] })
+        }
         onRenameBrand={(brandId, name) => rename({ brandId, name })}
         isPending={isUpdating}
         defaultValues={editing ?? undefined}

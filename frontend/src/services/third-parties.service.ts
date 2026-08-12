@@ -17,6 +17,7 @@ export interface GetThirdPartiesParams {
   isCustomer?: boolean
   isSupplier?: boolean
   isSeller?: boolean
+  isActive?: boolean
 }
 
 export async function getThirdParties(params?: GetThirdPartiesParams): Promise<{ items: ThirdParty[]; meta: ThirdPartyMeta }> {
@@ -40,4 +41,8 @@ export async function renameBrand(thirdPartyId: string, brandId: string, name: s
 
 export async function deleteThirdParty(id: string): Promise<void> {
   await api.delete(`/third-parties/${id}`)
+}
+
+export async function reactivateThirdParty(id: string): Promise<void> {
+  await api.post(`/third-parties/${id}/reactivate`)
 }
