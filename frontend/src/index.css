@@ -170,4 +170,13 @@
     font-weight: 500;
     font-style: italic;
   }
+
+  /* Sonner (Toaster) usa var(--offset-top) sin valor de respaldo (styles.css de la
+     librería) — React solo la define inline al montar el <Toaster offset={{ top }}>,
+     así que hay un frame donde el toast se pinta sin posición y luego "salta" a los
+     80px reales. Este default coincide con el offset de App.tsx y está disponible
+     desde el primer pintado porque el CSS aplica antes que el montaje+medición de React. */
+  [data-sonner-toaster] {
+    --offset-top: 80px;
+  }
 }

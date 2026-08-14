@@ -2,6 +2,7 @@ import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DocumentStatus, MovementType } from '@/common/enums';
 import type { DocumentWithItems } from '@/documents/strategies/document-effect.strategy';
+import { assertAvailableForReservation } from './reservation.helpers';
 
 /**
  * Suma `delta` (positivo = entra stock, negativo = sale stock) a Inventory
@@ -94,13 +95,42 @@ export async function applyBinStockChange(
   }
 }
 
-/** Valida que haya stock suficiente del producto en la bodega para la salida. */
+/**
+ * Valida que haya stock suficiente del producto en la bodega para la salida.
+ * En bodegas tipo `store` delega en assertAvailableForReservation, que
+ * descuenta lo reservado por preventas confirmadas (y bloquea la fila para
+ * que dos confirmaciones concurrentes no se pasen las dos el chequeo) — si
+ * no, SAJ/DVC/T podrían sacar stock que ya está comprometido con una
+ * preventa, dejándola sin respaldo físico sin ningún aviso. En bodegas tipo
+ * `warehouse` (almacenamiento) no aplica: las preventas nunca reservan
+ * contra esa bodega, así que basta comparar contra el stock crudo.
+ */
 export async function assertSufficientStock(
   tx: Prisma.TransactionClient,
   item: DocumentWithItems['documentItems'][number],
   warehouseId: string,
   quantity: number,
 ) {
+  const warehouse = await tx.warehouse.findUniqueOrThrow({
+    where: { id: warehouseId },
+    select: { type: true },
+  });
+
+  if (warehouse.type === 'store') {
+    await assertAvailableForReservation(
+      tx,
+      item.productId,
+      warehouseId,
+      quantity,
+      ({ available, reserved, requestedQty }) => {
+        const reservedNote =
+          reserved > 0 ? ` (${reserved} ya reservadas por preventas)` : '';
+        return `No hay stock suficiente de ${item.product.code} para esta operación: quedan ${available} unidades disponibles${reservedNote}, pero se necesitan ${requestedQty}.`;
+      },
+    );
+    return;
+  }
+
   const inventory = await tx.inventory.findUnique({
     where: {
       productId_warehouseId: { productId: item.productId, warehouseId },
@@ -109,7 +139,7 @@ export async function assertSufficientStock(
 
   if ((inventory?.quantity ?? 0) < quantity) {
     throw new ConflictException(
-      `Stock insuficiente para el producto ${item.product.code} en la bodega`,
+      `Stock insuficiente para el producto ${item.product.code} en la bodega: disponible ${inventory?.quantity ?? 0}, solicitado ${quantity}`,
     );
   }
 }

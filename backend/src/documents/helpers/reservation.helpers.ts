@@ -58,33 +58,56 @@ export async function getReservedByProduct(
   return result;
 }
 
+/** Números crudos que un llamador de assertAvailableForReservation recibe para redactar su propio mensaje de error. */
+export interface AvailabilityShortfall {
+  available: number;
+  reserved: number;
+  requestedQty: number;
+}
+
 /**
  * Valida disponibilidad de un solo producto (stock de bodega menos reserva
- * vigente) antes de comprometerlo en una reserva. No la usa PvEffectStrategy
- * .confirm() (esa hace la misma cuenta en batch para evitar N+1 al validar
- * todos los ítems del documento) — queda disponible para futuros llamadores
- * de un solo producto (ej. un endpoint de "verificar disponibilidad" en UI).
+ * vigente) antes de comprometerlo en una reserva, o antes de restarle stock
+ * a la bodega por cualquier otro motivo (ej. anular una compra/EAI — ver
+ * documents.service.ts::void(), o sacar stock por SAJ/DVC/T — ver
+ * assertSufficientStock en stock.helpers.ts). `buildMessage` deja que cada
+ * llamador redacte su propio mensaje con los números reales — un solo texto
+ * genérico no se leía natural tanto para "confirmar" como para "anular".
+ *
+ * Bloquea la fila de `Inventory` con `FOR UPDATE` (mismo patrón que
+ * accounts-payable.service.ts::registerPayment) antes de leer la cantidad:
+ * sin esto, dos transacciones concurrentes sobre el mismo producto/bodega
+ * (dos SAJ, o un SAJ contra una PV confirmándose al mismo tiempo) podrían
+ * leer el mismo "disponible" antes de que ninguna escriba, pasar el chequeo
+ * las dos, y terminar sobre-reservando o sobre-restando sin que
+ * `Inventory.quantity` llegue a ir en negativo (por eso `applyStockChange`
+ * no detecta este caso por su cuenta). Requiere correr dentro de una
+ * transacción real — por eso el tipo es `Prisma.TransactionClient`, no
+ * `PrismaOrTx`: fuera de una transacción el `FOR UPDATE` se libera apenas
+ * termina la sentencia y no protege nada.
  */
 export async function assertAvailableForReservation(
-  prisma: PrismaOrTx,
+  tx: Prisma.TransactionClient,
   productId: string,
   warehouseId: string,
   requestedQty: number,
+  buildMessage?: (shortfall: AvailabilityShortfall) => string,
 ): Promise<void> {
-  const [inventory, reservedMap] = await Promise.all([
-    prisma.inventory.findUnique({
-      where: { productId_warehouseId: { productId, warehouseId } },
-    }),
-    getReservedByProduct(prisma, [productId]),
-  ]);
+  const rows = await tx.$queryRaw<{ quantity: number }[]>`
+    SELECT quantity FROM inventory
+    WHERE product_id = ${productId}::uuid AND warehouse_id = ${warehouseId}::uuid
+    FOR UPDATE
+  `;
 
-  const totalStock = inventory?.quantity ?? 0;
-  const reserved = reservedMap.get(productId) ?? 0;
+  const totalStock = rows[0]?.quantity ?? 0;
+  const reserved =
+    (await getReservedByProduct(tx, [productId])).get(productId) ?? 0;
   const available = totalStock - reserved;
 
   if (available < requestedQty) {
-    throw new ConflictException(
-      `Stock insuficiente para reservar: disponible ${available}, solicitado ${requestedQty}`,
-    );
+    const message = buildMessage
+      ? buildMessage({ available, reserved, requestedQty })
+      : `No hay stock suficiente para reservar: quedan ${available} unidades disponibles, se necesitan ${requestedQty}.`;
+    throw new ConflictException(message);
   }
 }

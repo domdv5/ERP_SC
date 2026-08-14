@@ -219,7 +219,7 @@ export default function DocumentsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Número', 'Fecha', 'Tipo', 'Tercero', 'Bodega', 'Ítems', 'Total', 'Estado'].map(
+                  {['Número', 'Fecha', 'Tipo', 'Tercero', 'Bodega', 'Total', 'Estado'].map(
                     (h) => (
                       <th
                         key={h}
@@ -286,14 +286,9 @@ export default function DocumentsPage() {
                         </span>
                       </td>
 
-                      {/* Item count */}
-                      <td className="px-5 py-3.5 text-content-faint text-xs text-center">
-                        {doc._count.documentItems}
-                      </td>
-
                       {/* Total */}
                       <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
-                        {formatCOP(doc.total)}
+                        {doc.type === 'SAJ' || doc.type === 'T' ? '—' : formatCOP(doc.total)}
                       </td>
 
                       {/* Status */}

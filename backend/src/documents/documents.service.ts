@@ -16,13 +16,17 @@ import {
   ReleaseItemsDto,
   UpdateDocumentDto,
 } from './dto/index';
+import { assertAvailableForReservation } from './helpers/reservation.helpers';
 import {
   applyBinStockChange,
   applyStockChange,
   computeReversedAvgCost,
   resolveLastCostAfterVoidingCm,
 } from './helpers/stock.helpers';
-import { DocumentEffectsRegistry } from './strategies/index';
+import {
+  DocumentEffectsRegistry,
+  isReservationStrategy,
+} from './strategies/index';
 
 const DETAIL_INCLUDE = {
   documentItems: {
@@ -410,6 +414,51 @@ export class DocumentsService {
           );
         }
 
+        // Tipos con reserva lógica (hoy solo PV): anular libera toda la
+        // reserva pendiente de golpe (getReservedByProduct deja de contar
+        // el documento apenas cambia de status), pero eso pasaba sin dejar
+        // rastro — a diferencia de /release-items, que sí registra en
+        // ReservationRelease quién liberó y cuánto. Este bloque deja el
+        // mismo registro para que anular quede igual de trazable.
+        const strategy = this.effectsRegistry.get(document.type);
+        if (isReservationStrategy(strategy)) {
+          // Releída con tx en vez de confiar en un documentItems cargado
+          // antes de abrir la transacción: si alguien llamó a
+          // /release-items sobre este mismo documento justo en la ventana
+          // entre esa lectura inicial y este punto, el dato de afuera
+          // quedaría desactualizado y este bloque contaría de más
+          // (releasedQuantity viejo → pendiente inflado → ReservationRelease
+          // duplicado sobre unidades que ya se habían liberado).
+          const freshItems = await tx.documentItem.findMany({
+            where: { documentId: id },
+            select: {
+              id: true,
+              quantity: true,
+              releasedQuantity: true,
+              convertedQuantity: true,
+            },
+          });
+
+          const releases = freshItems
+            .map((item) => ({
+              documentItemId: item.id,
+              quantity:
+                item.quantity - item.releasedQuantity - item.convertedQuantity,
+            }))
+            .filter((release) => release.quantity > 0);
+
+          if (releases.length > 0) {
+            await tx.reservationRelease.createMany({
+              data: releases.map((release) => ({
+                documentItemId: release.documentItemId,
+                quantity: release.quantity,
+                userId: user.sub,
+                notes: 'Liberación automática por anulación del documento',
+              })),
+            });
+          }
+        }
+
         // avgCost solo se reversa para CM/EAI (únicos tipos que lo re-ponderan
         // al confirmar) y solo cuando el movimiento a anular es el más
         // reciente de ese producto — ver computeReversedAvgCost para el
@@ -423,6 +472,12 @@ export class DocumentsService {
           string,
           Awaited<ReturnType<typeof tx.inventoryMovement.findFirst>>
         >();
+
+        // Cacheada por warehouseId: un CM/EAI con varias líneas o un T
+        // reversan movimientos que casi siempre comparten la misma bodega
+        // (document.warehouseId), así que sin esto se repetiría la misma
+        // consulta de tipo de bodega una vez por línea.
+        const warehouseTypeCache = new Map<string, string>();
 
         for (const movement of document.inventoryMovements) {
           const quantity = movement.quantity;
@@ -508,6 +563,48 @@ export class DocumentsService {
               where: { id: movement.productId },
               data: updateData,
             });
+          }
+
+          // Si esta reversión le quita stock a la bodega (quantity > 0: se
+          // está deshaciendo una entrada — CM, EAI, o la pierna destino de un
+          // T) y esa bodega es tipo store, hay que frenarla si deja el stock
+          // por debajo de lo que una preventa ya tiene reservado — mismo
+          // chequeo que assertSufficientStock aplica al confirmar SAJ/DVC/T,
+          // pero aquí del lado de anular. Reversiones que devuelven stock
+          // (quantity < 0: deshacer una salida) nunca pisan una reserva, así
+          // que no necesitan el chequeo.
+          if (quantity > 0) {
+            let warehouseType = warehouseTypeCache.get(movement.warehouseId);
+
+            if (warehouseType === undefined) {
+              const warehouse = await tx.warehouse.findUniqueOrThrow({
+                where: { id: movement.warehouseId },
+                select: { type: true },
+              });
+              warehouseType = warehouse.type;
+              warehouseTypeCache.set(movement.warehouseId, warehouseType);
+            }
+
+            if (warehouseType === 'store') {
+              const product = await tx.product.findUniqueOrThrow({
+                where: { id: movement.productId },
+                select: { code: true },
+              });
+
+              await assertAvailableForReservation(
+                tx,
+                movement.productId,
+                movement.warehouseId,
+                quantity,
+                ({ available, reserved, requestedQty }) => {
+                  const reservedNote =
+                    reserved > 0
+                      ? ` (${reserved} ya reservadas por preventas)`
+                      : '';
+                  return `No se puede anular: dejaría solo ${available} unidades disponibles de ${product.code}${reservedNote}, pero esta anulación movía ${requestedQty}.`;
+                },
+              );
+            }
           }
 
           const { previousStock, newStock } = await applyStockChange(tx, {

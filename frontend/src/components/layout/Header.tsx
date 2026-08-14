@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Bell, Search, LogOut, User, Sun, Moon, Lock, Unlock } from 'lucide-react'
+import { Bell, LogOut, User, Sun, Moon, Lock, Unlock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -99,18 +99,7 @@ export function Header() {
   }
 
   return (
-    <header className="h-16 bg-surface border-b border-ui-border flex items-center justify-between px-6 shadow-sm shrink-0">
-      <div className="flex items-center gap-3 w-80">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-faint" />
-          <input
-            type="text"
-            placeholder="Buscar..."
-            className="w-full pl-9 pr-4 py-2 text-sm bg-surface-raised border border-ui-border-medium rounded-lg text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
-          />
-        </div>
-      </div>
-
+    <header className="h-16 bg-surface border-b border-ui-border flex items-center justify-end px-6 shadow-sm shrink-0">
       <div className="flex items-center gap-2">
         {/* Theme toggle */}
         <button

@@ -62,17 +62,28 @@ export class PvEffectStrategy
     const warehouseId = this.requireWarehouse(document);
     const productIds = document.documentItems.map((item) => item.productId);
 
-    // Batch — un solo groupBy y un solo findMany para todos los ítems del
-    // documento, en vez de N llamadas por ítem (db-avoid-n-plus-one).
-    const [reservedMap, inventories] = await Promise.all([
+    // Batch — un solo groupBy y una sola consulta de Inventory para todos los
+    // ítems del documento, en vez de N llamadas por ítem (db-avoid-n-plus-one).
+    // La consulta de Inventory bloquea las filas (FOR UPDATE, ordenadas por
+    // product_id igual que accounts-payable.service.ts al bloquear varios
+    // supplier_credit a la vez — evita deadlocks entre dos confirmaciones que
+    // tocan los mismos productos en orden distinto): sin este lock, otra
+    // preventa o un SAJ/DVC/T (vía assertSufficientStock) podría leer el mismo
+    // "disponible" antes de que cualquiera de las dos escriba, pasar el
+    // chequeo las dos, y terminar sobre-reservando sin que Inventory.quantity
+    // llegue a ir en negativo.
+    const [reservedMap, inventoryRows] = await Promise.all([
       getReservedByProduct(tx, productIds, { excludeDocumentId: document.id }),
-      tx.inventory.findMany({
-        where: { productId: { in: productIds }, warehouseId },
-      }),
+      tx.$queryRaw<{ product_id: string; quantity: number }[]>`
+        SELECT product_id, quantity FROM inventory
+        WHERE product_id = ANY(${productIds}::uuid[]) AND warehouse_id = ${warehouseId}::uuid
+        ORDER BY product_id
+        FOR UPDATE
+      `,
     ]);
 
     const stockByProduct = new Map(
-      inventories.map((inv) => [inv.productId, inv.quantity]),
+      inventoryRows.map((row) => [row.product_id, row.quantity]),
     );
 
     for (const item of document.documentItems) {
