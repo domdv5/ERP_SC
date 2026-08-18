@@ -12,6 +12,7 @@ import {
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
   ValidateIf,
 } from 'class-validator';
@@ -117,4 +118,10 @@ export class CreateThirdPartyDto {
   @ArrayNotEmpty()
   @IsString({ each: true })
   brands!: string[];
+
+  @ValidateIf((o) => o.isSupplier === true)
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  discountNotes?: string;
 }

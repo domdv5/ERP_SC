@@ -77,11 +77,6 @@ export class CreateDocumentDto {
   sourceBinId?: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  freight?: number;
-
-  @IsOptional()
   @IsString()
   notes?: string;
 

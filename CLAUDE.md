@@ -40,7 +40,7 @@ ERP Supply Chain — full-stack application for managing products, inventory, wa
 All commands run from the `backend/` directory using `pnpm`. See `backend/package.json` scripts for the full list.
 
 > **Migration workaround** — `migrate:dev` needs an interactive terminal and fails in Claude Code. Use instead:
-> 1. `pnpm exec prisma migrate diff --config prisma/prisma.config.ts --from-config-datasource --to-schema prisma/schema.prisma --script` → get SQL
+> 1. `pnpm exec prisma migrate diff --config prisma/prisma.config.ts --from-config-datasource --to-schema prisma/schema.prisma --script` → get SQL. **Watch out**: this diff always includes `DROP INDEX "product_code_trgm_idx"` / `DROP INDEX "product_legacy_code_trgm_idx"` — the two GIN trigram indexes documented as "DRIFT ACEPTADO" in `schema.prisma` (they exist in the real DB on purpose but aren't declared in the schema). Never copy those two lines into the migration — only take the SQL that's actually about your change.
 > 2. Create `prisma/migrations/<timestamp>_<name>/migration.sql` manually with that SQL
 > 3. `pnpm exec prisma migrate deploy --config prisma/prisma.config.ts` → apply
 > 4. `pnpm exec prisma generate --config prisma/prisma.config.ts` → regenerate client
@@ -83,7 +83,7 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 - Supports `documentType`: `CC | NIT | CE | PAS | TI | RC`
 - Conditional validation: natural persons require `firstName`/`lastName`; juridical persons require `businessName`
 - Optional customer fields: `creditLimit`, `discount`, `sellerId`
-- Optional supplier field: `internalNumber`
+- Optional supplier fields: `internalNumber`, `discountNotes` (free text, max 500 chars, purely informational — some suppliers give discounts that are too varied to model as rules: flat %, purchase-amount thresholds, specific-reference-only, etc. No calculation reads this field; it only surfaces as a banner in the CM purchase form when that supplier is selected, replacing a spreadsheet the team used to check manually)
 - Optional tax-profile fields (informational only, no business calculation yet — reserved for a future e-invoicing phase): `ivaResponsible` (`Boolean?`), `withholdingAgentType` (enum `WithholdingAgentType`), `taxRegime` (enum `TaxRegime`)
 - Transactional creation: ThirdParty + Customer/Supplier records in one transaction
 - **Brand rules**: brands can only be added or renamed — never deleted (products reference them). `update` does `createMany` + `skipDuplicates`; frontend sends only new brands (not already in `brandIds` map). `isCustomer`/`isSupplier` are real `Boolean` columns on `ThirdParty` (`@default(false)`, indexed) set directly from the DTO in `create`/`update` — they are not derived from the presence of `customer`/`supplier` relations.
@@ -114,6 +114,7 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 - `PATCH /documents/:id` — update draft (replaces items); same dynamic permission
 - `POST /documents/:id/confirm` — apply effects (stock, kardex, accounts); same dynamic permission
 - `POST /documents/:id/void` — reverse movements, delete CxP; same dynamic permission
+- `POST /documents/:id/duplicate` — CM only (hard-blocked, 400 for any other type); creates a new draft with a fresh consecutive number, today's date, and the current user as creator. `thirdPartyId`/`notes`/items (`productId`/`quantity`/`unitCost`/`unitPrice`) are copied as-is; `subtotal`/`total` are always recalculated (never copied — a stored value could be stale relative to today's `computeItemSubtotal` logic). Re-runs `CmEffectStrategy.validateCreate()` (via `effectsRegistry`, same mechanism `create()` uses) before creating the draft, so a supplier/brand mismatch that developed since the original purchase (e.g. the supplier lost that brand) is caught immediately instead of surfacing later at `confirm()`. **Known accepted gap**: `warehouseId` is copied from the source document, not re-resolved to the currently active store the way `create()` does — if the active store changed since the original purchase, the duplicate silently points at the old warehouse. Deliberate scope decision for this first version, not an oversight.
 - `DELETE /documents/:id` — delete draft only; same dynamic permission
 - **Strategy pattern**: `DocumentEffectsRegistry` maps type → strategy; add new types without touching service
 - **Warehouse rule**: for all types except `T`, service always resolves the active `store`-type warehouse; client never sends `warehouseId` for non-transfer docs

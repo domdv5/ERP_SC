@@ -48,6 +48,11 @@ export async function voidDocument(id: string): Promise<Document> {
   return res.data.data
 }
 
+export async function duplicateDocument(id: string): Promise<Document> {
+  const res = await api.post<ApiResponse<Document>>(`/documents/${id}/duplicate`)
+  return res.data.data
+}
+
 export async function deleteDocument(id: string): Promise<void> {
   await api.delete(`/documents/${id}`)
 }

@@ -5,7 +5,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { useDebounce } from 'use-debounce'
-import { ArrowLeft, Plus, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2, Info } from 'lucide-react'
 
 import { getDocument, createDocument, updateDocument } from '@/services/documents.service'
 import { getWarehouses, getWarehouse } from '@/services/warehouses.service'
@@ -56,6 +56,9 @@ export default function DocumentFormPage() {
   // Marcas activas del proveedor elegido (solo CM/DVC) — bloqueo duro del buscador/escaneo de
   // producto a esas marcas (ver plan de negocio "Filtrar productos por marca del proveedor").
   const [selectedSupplierBrandIds, setSelectedSupplierBrandIds] = useState<string[]>([])
+  // Condiciones de descuento del proveedor elegido (solo informativo, sin cálculo) — banner
+  // visible únicamente para CM (compra), ver JSX debajo del combobox de proveedor.
+  const [selectedSupplierDiscountNotes, setSelectedSupplierDiscountNotes] = useState<string | undefined>()
 
   // Vendedora — solo preventas (PV)
   const [sellerSearch, setSellerSearch] = useState('')
@@ -137,6 +140,7 @@ export default function DocumentFormPage() {
     setTpSelectedName(existingDoc.thirdParty?.name ?? '')
     setSellerSelectedName(existingDoc.seller?.name ?? '')
     setSelectedSupplierBrandIds(existingDoc.thirdParty?.supplier?.brands.map((b) => b.id) ?? [])
+    setSelectedSupplierDiscountNotes(existingDoc.thirdParty?.supplier?.discountNotes ?? undefined)
     setScannedProductInfo(
       Object.fromEntries(
         existingDoc.documentItems.map((item) => [
@@ -157,7 +161,6 @@ export default function DocumentFormPage() {
       sourceBinId:     existingDoc.sourceBin?.id ?? undefined,
       destWarehouseId: existingDoc.destWarehouse?.id ?? undefined,
       destBinId:       existingDoc.destBin?.id ?? undefined,
-      freight:         existingDoc.freight ?? undefined,
       adjustmentReason:      existingDoc.adjustmentReason ?? undefined,
       adjustmentReasonOther: existingDoc.adjustmentReasonOther ?? undefined,
       notes:           existingDoc.notes ?? undefined,
@@ -391,7 +394,6 @@ export default function DocumentFormPage() {
       sourceBinId:     values.sourceBinId || undefined,
       destWarehouseId: values.destWarehouseId || undefined,
       destBinId:       values.destBinId || undefined,
-      freight:         values.freight !== undefined && !isNaN(values.freight) ? values.freight : undefined,
       adjustmentReason:
         values.type === 'EAI' ? (values.adjustmentReason || undefined) : undefined,
       // null explícito (no undefined) cuando no aplica "otro": JSON.stringify elimina las
@@ -439,7 +441,6 @@ export default function DocumentFormPage() {
   // ── helpers ───────────────────────────────────────────────────────────────
   const needsThirdParty = needsSupplier || needsCustomer
   const needsTransfer   = docType === 'T'
-  const needsFreight    = docType === 'CM'
   const needsAdjustmentReason = docType === 'EAI'
   const currentAdjustmentReason = watch('adjustmentReason')
   const showCostColumn  = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
@@ -513,12 +514,12 @@ export default function DocumentFormPage() {
                       setValue('sourceBinId', undefined)
                       setValue('destWarehouseId', undefined)
                       setValue('destBinId', undefined)
-                      setValue('freight', undefined)
                       setValue('adjustmentReason', undefined)
                       setValue('adjustmentReasonOther', undefined)
                       setTpSelectedName('')
                       setSellerSelectedName('')
                       setSelectedSupplierBrandIds([])
+                      setSelectedSupplierDiscountNotes(undefined)
                       replace([])
                     }}
                     className={cn(
@@ -567,6 +568,7 @@ export default function DocumentFormPage() {
 
                         const tp = tpData?.items.find((t: ThirdParty) => t.id === selectedId)
                         setSelectedSupplierBrandIds(tp?.supplier?.brands.map((b) => b.id) ?? [])
+                        setSelectedSupplierDiscountNotes(tp?.supplier?.discountNotes ?? undefined)
 
                         // Cambiar de proveedor (CM/DVC) con ítems ya cargados invalida la marca de
                         // todos ellos — mismo patrón que el selector de tipo de documento
@@ -584,6 +586,15 @@ export default function DocumentFormPage() {
                     />
                   )}
                 />
+                {docType === 'CM' && selectedSupplierDiscountNotes && (
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
+                    <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <p className="font-medium">Condiciones de descuento</p>
+                      <p className="font-accent mt-0.5 whitespace-pre-wrap">{selectedSupplierDiscountNotes}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -788,23 +799,6 @@ export default function DocumentFormPage() {
                   </>
                 )}
               </>
-            )}
-
-            {/* Freight (CM only) */}
-            {needsFreight && (
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-content-secondary">
-                  Flete
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  placeholder="0"
-                  {...register('freight')}
-                  className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
-                />
-              </div>
             )}
 
             {/* Adjustment reason (EAI only) */}

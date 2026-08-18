@@ -17,6 +17,7 @@ export interface Customer {
 export interface Supplier {
   id: string
   internalNumber: number
+  discountNotes?: string | null
   brands: { id: string; name: string }[]
 }
 
@@ -63,6 +64,7 @@ export interface CreateThirdPartyPayload {
   discount?: number
   sellerId?: string
   internalNumber?: number
+  discountNotes?: string
   brands?: string[]
 }
 

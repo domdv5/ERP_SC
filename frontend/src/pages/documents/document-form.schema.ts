@@ -23,7 +23,6 @@ export const formSchema = z.object({
   sourceBinId:     z.string().optional(),
   destWarehouseId: z.string().optional(),
   destBinId:       z.string().optional(),
-  freight:         z.coerce.number().nonnegative('El flete no puede ser negativo').optional(),
   // Solo EAI — motivo del ajuste; adjustmentReasonOther se valida como obligatorio en el
   // superRefine de abajo solo cuando adjustmentReason === 'otro'.
   adjustmentReason:      z.enum(['negativo', 'inventario_general', 'traspaso_costo', 'otro'] as const).optional(),

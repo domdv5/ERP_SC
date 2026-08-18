@@ -13,7 +13,9 @@ export interface DocumentThirdParty {
   name: string
   // Solo presente cuando el tercero es proveedor — marcas activas que le pertenecen, usadas
   // en CM/DVC para filtrar/bloquear el buscador y el escaneo de producto por marca.
-  supplier?: { brands: { id: string; name: string }[] } | null
+  // discountNotes: condiciones de descuento en texto libre, mostradas como banner informativo
+  // solo en CM (ver DocumentFormPage.tsx) — nunca calculado, solo lectura.
+  supplier?: { brands: { id: string; name: string }[]; discountNotes?: string | null } | null
 }
 
 export interface DocumentUser {
@@ -65,7 +67,6 @@ export interface DocumentListItem {
   date: string
   status: DocumentStatus
   total: number
-  freight: number | null
   // Solo documentos EAI — motivo del ajuste y explicación libre cuando adjustmentReason === 'otro'.
   adjustmentReason?: EaiAdjustmentReason | null
   adjustmentReasonOther?: string | null
@@ -129,7 +130,6 @@ export interface CreateDocumentPayload {
   sourceBinId?: string
   destWarehouseId?: string
   destBinId?: string
-  freight?: number
   // Solo documentos EAI — motivo del ajuste; adjustmentReasonOther es obligatorio solo cuando
   // adjustmentReason === 'otro'.
   adjustmentReason?: EaiAdjustmentReason

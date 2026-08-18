@@ -75,6 +75,7 @@ export class ThirdPartiesService {
       sellerId,
       internalNumber,
       brands,
+      discountNotes,
       ...thirdPartyData
     } = createThirdPartyDto;
 
@@ -115,6 +116,7 @@ export class ThirdPartiesService {
           data: {
             id: thirdParty.id,
             internalNumber,
+            discountNotes,
             brands: {
               createMany: {
                 data: brands.map((name: string) => ({ name })),
@@ -166,6 +168,7 @@ export class ThirdPartiesService {
       sellerId,
       internalNumber,
       brands,
+      discountNotes,
       ...thirdPartyData
     } = updateThirdPartyDto;
 
@@ -186,15 +189,24 @@ export class ThirdPartiesService {
                 },
               }
             : undefined,
-          supplier:
-            isSupplier && internalNumber !== undefined
+          // internalNumber es obligatorio para crear un Supplier nuevo, así que
+          // solo se puede hacer upsert (create-o-update) cuando viene en el
+          // payload. Si el PATCH manda únicamente discountNotes (sin tocar
+          // internalNumber), se usa un update plano en vez de upsert — asume
+          // que el Supplier ya existe; si no existe, Prisma lanza P2025 y lo
+          // traduce el PrismaExceptionFilter global.
+          supplier: isSupplier
+            ? internalNumber !== undefined
               ? {
                   upsert: {
-                    create: { internalNumber },
-                    update: { internalNumber },
+                    create: { internalNumber, discountNotes },
+                    update: { internalNumber, discountNotes },
                   },
                 }
-              : undefined,
+              : discountNotes !== undefined
+                ? { update: { discountNotes } }
+                : undefined
+            : undefined,
         },
       });
 

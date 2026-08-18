@@ -121,8 +121,13 @@ model Customer {
 // ─── Supplier ─────────────────────────────────────────────────────────────────
 
 model Supplier {
-  id             String @id @db.Uuid
-  internalNumber Int    @unique @map("internal_number")
+  id             String  @id @db.Uuid
+  internalNumber Int     @unique @map("internal_number")
+  /// Resumen informativo de las condiciones de descuento del proveedor (texto
+  /// libre — los descuentos reales varían demasiado entre proveedores como para
+  /// modelarlos con reglas: % fijo, por monto de compra, por referencia, etc.
+  /// No se usa para ningún cálculo, solo se muestra como aviso al comprar).
+  discountNotes  String? @map("discount_notes") @db.VarChar(500)
 
   thirdParty      ThirdParty        @relation(fields: [id], references: [id])
   brands          Brand[]
@@ -493,7 +498,6 @@ model Document {
   userId                String               @map("user_id") @db.Uuid
   status                DocumentStatus       @default(draft)
   total                 Decimal              @default(0) @db.Decimal(16, 2)
-  freight               Decimal?             @db.Decimal(14, 2)
   notes                 String?
   /// Motivo del ajuste — solo EAI, obligatorio para ese tipo
   adjustmentReason      EaiAdjustmentReason? @map("adjustment_reason")

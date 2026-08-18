@@ -51,6 +51,7 @@ const DETAIL_INCLUDE = {
       name: true,
       supplier: {
         select: {
+          discountNotes: true,
           brands: {
             where: { active: true },
             select: { id: true, name: true },
@@ -165,7 +166,6 @@ export class DocumentsService {
       destWarehouseId,
       destBinId,
       sourceBinId,
-      freight,
       notes,
       adjustmentReason,
       adjustmentReasonOther,
@@ -212,7 +212,6 @@ export class DocumentsService {
           userId: user.sub,
           status: DocumentStatus.draft,
           total,
-          freight,
           notes,
           warehouseId,
           destWarehouseId,
@@ -657,6 +656,84 @@ export class DocumentsService {
     );
 
     return this.findOne(id);
+  }
+
+  async duplicate(id: string, user: JwtPayload) {
+    const source = await this.prisma.document.findUnique({
+      where: { id },
+      include: { documentItems: true },
+    });
+
+    if (!source) {
+      throw new NotFoundException('Documento no encontrado');
+    }
+
+    this.assertDocumentPermission(user, source.type);
+
+    if (source.type !== DocumentType.CM) {
+      throw new BadRequestException('Solo se pueden duplicar compras (CM)');
+    }
+
+    // Mismo mecanismo que create(): revalida que los productos originales
+    // sigan perteneciendo a una marca del proveedor (la marca de un producto
+    // o su proveedor pudieron cambiar desde que se creó el documento fuente).
+    const strategy = this.effectsRegistry.get(DocumentType.CM);
+    const validateCreateDto: CreateDocumentDto = {
+      type: DocumentType.CM,
+      date: new Date().toISOString(),
+      thirdPartyId: source.thirdPartyId ?? undefined,
+      items: source.documentItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+    };
+    await strategy.validateCreate?.(validateCreateDto);
+
+    const document = await this.prisma.$transaction(async (tx) => {
+      const consecutive = await this.nextNumber(tx, DocumentType.CM);
+
+      const items = source.documentItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitCost: Number(item.unitCost),
+        unitPrice: Number(item.unitPrice),
+        observaciones: item.observaciones ?? undefined,
+      }));
+
+      const document = await tx.document.create({
+        data: {
+          type: DocumentType.CM,
+          number: consecutive,
+          status: DocumentStatus.draft,
+          date: new Date(),
+          userId: user.sub,
+          // A diferencia de create() (líneas 187-199), NO se re-resuelve la
+          // tienda activa acá — se copia tal cual la del documento original.
+          // Decisión de alcance explícita: si la tienda activa cambió desde
+          // la compra original, el duplicado queda apuntando a la bodega
+          // vieja. Aceptado a propósito para esta primera versión.
+          warehouseId: source.warehouseId,
+          thirdPartyId: source.thirdPartyId,
+          notes: source.notes,
+          documentItems: {
+            create: items.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              unitCost: item.unitCost,
+              unitPrice: item.unitPrice,
+              observaciones: item.observaciones ?? null,
+              subtotal: this.computeItemSubtotal(item, DocumentType.CM),
+            })),
+          },
+          total: this.computeTotal(items, DocumentType.CM),
+        },
+        include: DETAIL_INCLUDE,
+      });
+
+      return document;
+    });
+
+    return document;
   }
 
   async remove(id: string, user: JwtPayload) {

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   CheckCircle2,
+  Copy,
   Pencil,
   Trash2,
   XCircle,
@@ -14,7 +15,6 @@ import {
   Calendar,
   Warehouse,
   ArrowRight,
-  Package,
   Loader2,
   Unlock,
   UserCog,
@@ -26,6 +26,7 @@ import {
   confirmDocument,
   voidDocument,
   deleteDocument,
+  duplicateDocument,
 } from "@/services/documents.service";
 import { usePermission } from "@/hooks/usePermission";
 import { cn } from "@/lib/utils";
@@ -131,6 +132,7 @@ export default function DocumentDetailPage() {
 
   const canReleasePV = usePermission("document.release.PV");
   const canConvertPV = usePermission("document.convert.PV");
+  const canDuplicateCM = usePermission("document.create.CM");
 
   const {
     data: doc,
@@ -195,6 +197,20 @@ export default function DocumentDetailPage() {
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg ?? "Error al eliminar la operación");
+    },
+  });
+
+  const { mutate: doDuplicate, isPending: isDuplicating } = useMutation({
+    mutationFn: () => duplicateDocument(id!),
+    onSuccess: (newDoc) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      const newDocNumber = `${newDoc.type}-${String(newDoc.number).padStart(6, "0")}`;
+      toast.success(`Compra duplicada como ${newDocNumber}, editable como borrador.`);
+      navigate(`/documents/${newDoc.id}/edit`);
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? "Error al duplicar la operación");
     },
   });
 
@@ -391,6 +407,20 @@ export default function DocumentDetailPage() {
                 </button>
               </>
             )}
+            {doc.type === "CM" && canDuplicateCM && (
+              <button
+                onClick={() => doDuplicate()}
+                disabled={isDuplicating}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDuplicating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+                Duplicar
+              </button>
+            )}
             {isConfirmed && doc.type === "PV" && canReleasePV && (
               <button
                 onClick={() => setReleaseOpen(true)}
@@ -505,19 +535,6 @@ export default function DocumentDetailPage() {
                 </div>
               </div>
             )
-          )}
-
-          {/* Freight */}
-          {doc.freight !== null && doc.freight !== undefined && doc.freight > 0 && (
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
-                <Package className="w-4 h-4 text-content-muted" />
-              </div>
-              <div>
-                <p className="text-xs text-content-faint font-accent">Flete</p>
-                <p className="text-sm text-content">{formatCOP(doc.freight)}</p>
-              </div>
-            </div>
           )}
         </div>
 

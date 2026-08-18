@@ -33,6 +33,7 @@ const schema = z
     creditLimit: z.coerce.number().min(0, "No puede ser negativo").optional(),
     discount: z.coerce.number().min(0).max(100).optional(),
     internalNumber: z.coerce.number().int().min(1, "Debe ser mayor a 0").optional(),
+    discountNotes: z.string().max(500, "Máximo 500 caracteres").optional(),
     brands: z.array(z.string()).optional(),
   })
   .superRefine((data, ctx) => {
@@ -193,6 +194,7 @@ function flattenDefaults(tp: ThirdParty): Partial<FormValues> {
     creditLimit: tp.customer?.creditLimit,
     discount: tp.customer?.discount,
     internalNumber: tp.supplier?.internalNumber,
+    discountNotes: tp.supplier?.discountNotes ?? undefined,
     brands: tp.supplier?.brands?.map((b) => b.name) ?? [],
   };
 }
@@ -496,6 +498,14 @@ export function ThirdPartyForm({
                 </p>
                 <Field label="Número interno">
                   <Input {...register("internalNumber")} type="number" placeholder="Ej. 1001" />
+                </Field>
+                <Field label="Condiciones de descuento">
+                  <textarea
+                    {...register("discountNotes")}
+                    rows={3}
+                    placeholder="Ej: 10% en compras mayores a $500.000, descuento especial en referencias X e Y..."
+                    className="w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all resize-none"
+                  />
                 </Field>
                 <div>
                   <label className="block text-sm font-medium text-content-secondary mb-1">

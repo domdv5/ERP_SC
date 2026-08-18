@@ -35,7 +35,7 @@ export class DocumentsController {
     return this.documentsService.findOne(id);
   }
 
-  // create/update/confirm/void/remove no llevan @Permissions: el permiso
+  // create/update/confirm/void/duplicate/remove no llevan @Permissions: el permiso
   // requerido depende del tipo de documento (document.create.{type}), así
   // que se resuelve dinámicamente en el service, no con un guard estático.
   @Post()
@@ -63,6 +63,11 @@ export class DocumentsController {
   @Post(':id/void')
   void(@Param('id') id: string, @Req() req: RequestWithUser) {
     return this.documentsService.void(id, req.user);
+  }
+
+  @Post(':id/duplicate')
+  duplicate(@Param('id') id: string, @Req() req: RequestWithUser) {
+    return this.documentsService.duplicate(id, req.user);
   }
 
   // Igual que create/update/confirm/void: el permiso (document.release.{type})
