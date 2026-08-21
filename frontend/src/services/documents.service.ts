@@ -61,3 +61,10 @@ export async function releaseItems(id: string, payload: ReleaseItemsPayload): Pr
   const res = await api.post<ApiResponse<Document>>(`/documents/${id}/release-items`, payload)
   return res.data.data
 }
+
+// Esta ruta bypasea el interceptor global {success,data} — responde el binario del PDF
+// directamente, por eso es la única función del servicio que no desenvuelve res.data.data.
+export async function printDocument(id: string): Promise<Blob> {
+  const res = await api.get(`/documents/${id}/print`, { responseType: 'blob' })
+  return res.data
+}

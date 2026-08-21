@@ -8,8 +8,13 @@ import {
   Post,
   Query,
   Req,
+  Res,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
+import { DocumentPrintService } from './print/index';
 import {
   CreateDocumentDto,
   FindAllDocumentsDto,
@@ -21,7 +26,10 @@ import type { RequestWithUser } from '@/common/types';
 
 @Controller('documents')
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) {}
+  constructor(
+    private readonly documentsService: DocumentsService,
+    private readonly documentPrintService: DocumentPrintService,
+  ) {}
 
   @Get()
   @Permissions('document.read')
@@ -68,6 +76,23 @@ export class DocumentsController {
   @Post(':id/duplicate')
   duplicate(@Param('id') id: string, @Req() req: RequestWithUser) {
     return this.documentsService.duplicate(id, req.user);
+  }
+
+  // @Res({ passthrough: false }) toma control manual de la respuesta: lo que
+  // el método retorna nunca se usa para construir el HTTP response, así que
+  // ResponseFormatInterceptor nunca llega a envolver el PDF binario en
+  // {success, data}. ThrottlerGuard queda scoped solo a esta ruta (ver
+  // documents.module.ts) — el resto del controller no tiene rate limiting.
+  @Get(':id/print')
+  @Permissions('document.read')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  async print(@Param('id') id: string, @Res({ passthrough: false }) res: Response) {
+    const { buffer, filename } = await this.documentPrintService.print(id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.setHeader('Content-Length', buffer.length.toString());
+    res.send(buffer);
   }
 
   // Igual que create/update/confirm/void: el permiso (document.release.{type})

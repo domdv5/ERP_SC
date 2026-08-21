@@ -70,6 +70,37 @@ const DETAIL_INCLUDE = {
   sourceDocument: { select: { id: true, type: true, number: true } },
 } satisfies Prisma.DocumentInclude;
 
+// Include recortado para impresión: solo lo que el PDF de CM/DVC muestra.
+// A diferencia de DETAIL_INCLUDE, deliberadamente NO trae voidedBy/confirmedBy/
+// seller/warehouse/destWarehouse/destBin/sourceDocument/supplier.brands (nada de
+// eso aparece en el PDF) ni product.avgCost (el PDF usa documentItem.unitCost,
+// el costo transaccional de la línea — mezclarlo con el costo promedio live del
+// producto sería un bug de negocio, son conceptos distintos).
+const PRINT_INCLUDE = {
+  documentItems: {
+    include: {
+      product: {
+        select: { id: true, code: true, description: true, unitOfMeasure: true },
+      },
+    },
+  },
+  thirdParty: {
+    select: {
+      id: true,
+      name: true,
+      documentType: true,
+      documentNumber: true,
+      address: true,
+      phone: true,
+    },
+  },
+  user: { select: { id: true, name: true } },
+} satisfies Prisma.DocumentInclude;
+
+export type DocumentForPrint = Prisma.DocumentGetPayload<{
+  include: typeof PRINT_INCLUDE;
+}>;
+
 @Injectable()
 export class DocumentsService {
   constructor(
@@ -151,6 +182,31 @@ export class DocumentsService {
 
     if (!document) {
       throw new NotFoundException('Documento no encontrado');
+    }
+
+    return document;
+  }
+
+  /**
+   * Datos mínimos para generar el PDF de impresión — usada exclusivamente por
+   * DocumentPrintService. Solo documentos confirmados pueden imprimirse: un
+   * borrador puede seguir cambiando, y entregarle a un proveedor un PDF de
+   * algo aún no definitivo induce a error.
+   */
+  async getDocumentForPrint(id: string): Promise<DocumentForPrint> {
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+      include: PRINT_INCLUDE,
+    });
+
+    if (!document) {
+      throw new NotFoundException('Documento no encontrado');
+    }
+
+    if (document.status !== DocumentStatus.confirmed) {
+      throw new BadRequestException(
+        'Solo se pueden imprimir documentos confirmados',
+      );
     }
 
     return document;

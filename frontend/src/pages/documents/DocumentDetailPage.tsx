@@ -19,6 +19,7 @@ import {
   Unlock,
   UserCog,
   ShoppingCart,
+  Printer,
 } from "lucide-react";
 
 import {
@@ -27,6 +28,7 @@ import {
   voidDocument,
   deleteDocument,
   duplicateDocument,
+  printDocument,
 } from "@/services/documents.service";
 import { usePermission } from "@/hooks/usePermission";
 import { cn } from "@/lib/utils";
@@ -53,6 +55,23 @@ const formatDate = (iso: string) =>
 
 const TYPE_LABELS = DOC_TYPE_BADGE;
 const STATUS_LABELS = DOC_STATUS_BADGE;
+
+// axios entrega error.response.data como Blob (no JSON parseado) cuando la request se hizo con
+// responseType: 'blob' — pasa aunque el backend haya respondido un error JSON normal, porque el
+// parseo del cuerpo depende del responseType fijado en la request, no del status code. Hay que
+// leerlo como texto y parsearlo a mano para sacar el message.
+async function extractPrintErrorMessage(err: unknown): Promise<string | undefined> {
+  const data = (err as { response?: { data?: unknown } })?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text()) as { message?: string };
+      return parsed.message;
+    } catch {
+      return undefined;
+    }
+  }
+  return (data as { message?: string } | undefined)?.message;
+}
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
 
@@ -211,6 +230,21 @@ export default function DocumentDetailPage() {
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg ?? "Error al duplicar la operación");
+    },
+  });
+
+  const { mutate: doPrint, isPending: isPrinting } = useMutation({
+    mutationFn: () => printDocument(id!),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      // La pestaña nueva necesita el blob URL vivo mientras carga el PDF — se revoca
+      // después de un margen razonable en vez de al instante.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    },
+    onError: async (err: unknown) => {
+      const msg = await extractPrintErrorMessage(err);
+      toast.error(msg ?? "Error al generar el PDF");
     },
   });
 
@@ -442,6 +476,20 @@ export default function DocumentDetailPage() {
               >
                 <ShoppingCart className="w-4 h-4" />
                 Convertir a venta
+              </button>
+            )}
+            {isConfirmed && (doc.type === "CM" || doc.type === "DVC") && (
+              <button
+                onClick={() => doPrint()}
+                disabled={isPrinting}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isPrinting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Printer className="w-4 h-4" />
+                )}
+                Imprimir
               </button>
             )}
             {isConfirmed && (

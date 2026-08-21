@@ -1,0 +1,10 @@
+import { Prisma } from '@prisma/client';
+
+/** Mismo patrón que formatCOP en frontend/src/pages/documents/DocumentDetailPage.tsx. */
+export function formatCOP(value: Prisma.Decimal | number): string {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+  }).format(Number(value));
+}
