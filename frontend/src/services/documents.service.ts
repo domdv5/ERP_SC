@@ -8,6 +8,7 @@ import type {
   CreateDocumentPayload,
   UpdateDocumentPayload,
   ReleaseItemsPayload,
+  ConvertDocumentPayload,
 } from '@/types/document.types'
 
 export async function getDocuments(
@@ -50,6 +51,16 @@ export async function voidDocument(id: string): Promise<Document> {
 
 export async function duplicateDocument(id: string): Promise<Document> {
   const res = await api.post<ApiResponse<Document>>(`/documents/${id}/duplicate`)
+  return res.data.data
+}
+
+// Convierte una PV confirmada (con pendiente > 0) en un borrador POS — la reserva de origen
+// solo se consume cuando ese borrador POS se confirma (ver PosEffectStrategy.confirm).
+export async function convertDocument(
+  id: string,
+  payload: ConvertDocumentPayload,
+): Promise<Document> {
+  const res = await api.post<ApiResponse<Document>>(`/documents/${id}/convert`, payload)
   return res.data.data
 }
 

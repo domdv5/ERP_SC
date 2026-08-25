@@ -10,6 +10,7 @@ import { DocumentStatus, DocumentType, MovementType } from '@/common/enums';
 import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
+  ConvertDocumentDto,
   CreateDocumentDto,
   CreateDocumentItemDto,
   FindAllDocumentsDto,
@@ -23,6 +24,7 @@ import {
   computeReversedAvgCost,
   resolveLastCostAfterVoidingCm,
 } from './helpers/stock.helpers';
+import { matchItemsByProduct } from './helpers/conversion.helpers';
 import {
   DocumentEffectsRegistry,
   isReservationStrategy,
@@ -118,6 +120,7 @@ export class DocumentsService {
       dateFrom,
       dateTo,
       search,
+      thirdPartyId,
     } = findAllDocumentsDto;
     const skip = (page - 1) * limit;
 
@@ -135,6 +138,7 @@ export class DocumentsService {
         },
       }),
       ...(search && { number: { contains: search } }),
+      ...(thirdPartyId && { thirdPartyId }),
     };
 
     const [items, total, draftCount, confirmedCount] =
@@ -225,6 +229,7 @@ export class DocumentsService {
       notes,
       adjustmentReason,
       adjustmentReasonOther,
+      paymentMethod,
       ...rest
     } = createDocumentDto;
 
@@ -275,6 +280,7 @@ export class DocumentsService {
           sourceBinId,
           adjustmentReason,
           adjustmentReasonOther,
+          paymentMethod: paymentMethod ?? null,
           documentItems: {
             create: items.map((item) => ({
               productId: item.productId,
@@ -390,6 +396,36 @@ export class DocumentsService {
         await this.effectsRegistry
           .get(document.type)
           .confirm(tx, document, user.sub);
+
+        // Si este documento nació de convertir una preventa (Document.
+        // sourceDocumentId), descuenta lo consumido de la reserva original
+        // (convertedQuantity) en la misma transacción — así la conversión
+        // queda atómica junto con los efectos del documento derivado.
+        if (document.sourceDocumentId) {
+          const source = await tx.document.findUnique({
+            where: { id: document.sourceDocumentId },
+            include: {
+              documentItems: { include: { product: true } },
+              thirdParty: { include: { supplier: true } },
+            },
+          });
+
+          if (source) {
+            const sourceStrategy = this.effectsRegistry.get(source.type);
+            if (isReservationStrategy(sourceStrategy)) {
+              const conversions = matchItemsByProduct(
+                source.documentItems,
+                document.documentItems,
+              );
+              await sourceStrategy.consumeForConversion(
+                tx,
+                source,
+                conversions,
+                user.sub,
+              );
+            }
+          }
+        }
       },
       { timeout: 30000 },
     );
@@ -407,6 +443,7 @@ export class DocumentsService {
     const document = await this.prisma.document.findUnique({
       where: { id },
       include: {
+        documentItems: { select: { id: true, productId: true, quantity: true } },
         inventoryMovements: {
           include: { documentItem: { select: { unitCost: true } } },
         },
@@ -511,6 +548,40 @@ export class DocumentsService {
                 notes: 'Liberación automática por anulación del documento',
               })),
             });
+          }
+        }
+
+        // Si el documento que se anula nació de convertir una preventa
+        // (sourceDocumentId), hay que devolverle a esa preventa las
+        // unidades que había marcado como convertidas — sin esto quedarían
+        // "convertidas" para siempre y la reserva nunca volvería a estar
+        // disponible.
+        if (document.sourceDocumentId) {
+          const source = await tx.document.findUnique({
+            where: { id: document.sourceDocumentId },
+            select: { type: true },
+          });
+
+          if (source) {
+            const sourceStrategy = this.effectsRegistry.get(source.type);
+            if (isReservationStrategy(sourceStrategy)) {
+              for (const item of document.documentItems) {
+                const sourceItem = await tx.documentItem.findFirst({
+                  where: {
+                    documentId: document.sourceDocumentId,
+                    productId: item.productId,
+                  },
+                });
+
+                if (sourceItem) {
+                  await tx.$queryRaw`
+                    UPDATE document_item
+                    SET converted_quantity = GREATEST(converted_quantity - ${item.quantity}, 0)
+                    WHERE id = ${sourceItem.id}::uuid
+                  `;
+                }
+              }
+            }
           }
         }
 
@@ -792,6 +863,116 @@ export class DocumentsService {
     return document;
   }
 
+  /**
+   * Convierte una preventa (PV) confirmada en un documento de venta real
+   * (hoy solo POS — COT queda como próxima extensión, ver ConvertDocumentDto).
+   * Solo toma las líneas con reserva pendiente (quantity - releasedQuantity -
+   * convertedQuantity > 0); el consumo real de esa reserva se aplica en
+   * confirm() del documento derivado (PvEffectStrategy.consumeForConversion),
+   * no acá — convert() solo crea el borrador, igual que duplicate().
+   */
+  async convert(sourceId: string, dto: ConvertDocumentDto, user: JwtPayload) {
+    const source = await this.prisma.document.findUnique({
+      where: { id: sourceId },
+      include: { documentItems: { include: { product: true } } },
+    });
+
+    if (!source) {
+      throw new NotFoundException('Documento no encontrado');
+    }
+
+    if (
+      source.type !== DocumentType.PV ||
+      source.status !== DocumentStatus.confirmed
+    ) {
+      throw new BadRequestException(
+        'Solo se pueden convertir preventas confirmadas',
+      );
+    }
+
+    this.assertDocumentPermission(user, DocumentType.PV, 'convert');
+
+    if (dto.targetType !== DocumentType.POS) {
+      throw new BadRequestException(
+        `Conversión a ${dto.targetType} no soportada todavía`,
+      );
+    }
+
+    const pendingItems = source.documentItems
+      .map((item) => ({
+        item,
+        pending: item.quantity - item.releasedQuantity - item.convertedQuantity,
+      }))
+      .filter(({ pending }) => pending > 0);
+
+    if (pendingItems.length === 0) {
+      throw new BadRequestException(
+        'La preventa ya fue completamente convertida o liberada',
+      );
+    }
+
+    const validateCreateDto: CreateDocumentDto = {
+      type: DocumentType.POS,
+      date: new Date().toISOString(),
+      thirdPartyId: source.thirdPartyId ?? undefined,
+      sellerId: source.sellerId ?? undefined,
+      paymentMethod: dto.paymentMethod,
+      items: pendingItems.map(({ item, pending }) => ({
+        productId: item.productId,
+        quantity: pending,
+        unitPrice: Number(item.unitPrice),
+      })),
+    };
+
+    // Mismo mecanismo que duplicate() usa para CmEffectStrategy: revalida
+    // antes de crear el borrador. Nota de borde: si minSalePrice subió desde
+    // que se creó la preventa, esto puede rechazar la conversión —
+    // comportamiento correcto y deseado (no hay auto-ajuste de precio en v1);
+    // el mensaje de assertPricesAboveFloor ya es explícito sobre qué
+    // producto y por qué.
+    const posStrategy = this.effectsRegistry.get(DocumentType.POS);
+    await posStrategy.validateCreate?.(validateCreateDto);
+
+    const store = await this.prisma.warehouse.findFirst({
+      where: { type: 'store', active: true },
+    });
+    if (!store) {
+      throw new BadRequestException(
+        'No existe una tienda activa para asignar al documento',
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const number = await this.nextNumber(tx, DocumentType.POS);
+      const total = this.computeTotal(validateCreateDto.items, DocumentType.POS);
+
+      return tx.document.create({
+        data: {
+          type: DocumentType.POS,
+          number,
+          date: new Date(),
+          thirdPartyId: source.thirdPartyId,
+          sellerId: source.sellerId,
+          userId: user.sub,
+          status: DocumentStatus.draft,
+          total,
+          warehouseId: store.id,
+          paymentMethod: dto.paymentMethod,
+          sourceDocumentId: source.id,
+          documentItems: {
+            create: validateCreateDto.items.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice ?? 0,
+              subtotal: this.computeItemSubtotal(item, DocumentType.POS),
+            })),
+          },
+        },
+        include: DETAIL_INCLUDE,
+      });
+    });
+  }
+
   async remove(id: string, user: JwtPayload) {
     const document = await this.prisma.document.findUnique({ where: { id } });
 
@@ -868,11 +1049,15 @@ export class DocumentsService {
   private assertDocumentPermission(
     user: JwtPayload,
     type: DocumentType,
-    action: 'create' | 'release' = 'create',
+    action: 'create' | 'release' | 'convert' = 'create',
   ) {
     if (!user.permissions.includes(`document.${action}.${type}`)) {
       const actionLabel =
-        action === 'release' ? 'liberar reservas de' : 'crear';
+        action === 'release'
+          ? 'liberar reservas de'
+          : action === 'convert'
+            ? 'convertir preventas de'
+            : 'crear';
       throw new ForbiddenException(
         `No tiene permiso para ${actionLabel} documentos de tipo ${type}`,
       );
@@ -887,6 +1072,7 @@ export class DocumentsService {
    */
   private static readonly PRICE_BASED_TYPES = new Set<DocumentType>([
     DocumentType.PV,
+    DocumentType.POS,
   ]);
 
   private computeItemSubtotal(item: CreateDocumentItemDto, type: DocumentType) {

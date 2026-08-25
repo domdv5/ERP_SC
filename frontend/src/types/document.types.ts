@@ -1,5 +1,8 @@
-export type DocumentType = 'CM' | 'DVC' | 'EAI' | 'SAJ' | 'T' | 'PV'
+// POS ya tiene Strategy en el backend (venta de contado). COT (venta a crédito) comparte la
+// misma pantalla de checkout en el futuro pero aún no tiene Strategy — no agregar todavía.
+export type DocumentType = 'CM' | 'DVC' | 'EAI' | 'SAJ' | 'T' | 'PV' | 'POS'
 export type DocumentStatus = 'draft' | 'confirmed' | 'voided'
+export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia'
 // Motivo del ajuste — obligatorio solo para documentos EAI (Entrada por Ajuste de Inventario).
 export type EaiAdjustmentReason = 'negativo' | 'inventario_general' | 'traspaso_costo' | 'otro'
 
@@ -75,6 +78,8 @@ export interface DocumentListItem {
   user: DocumentUser
   warehouse: DocumentWarehouse | null
   destWarehouse: DocumentWarehouse | null
+  // Solo POS — null en el resto de tipos. Puramente informativo (no hay CashModule todavía).
+  paymentMethod: PaymentMethod | null
   _count: { documentItems: number }
   createdAt: string
 }
@@ -108,6 +113,9 @@ export interface GetDocumentsParams {
   dateFrom?: string
   dateTo?: string
   search?: string
+  // Detectar preventas activas de un cliente (usado por el checkout POS) — filtra
+  // GET /documents?type=PV&status=confirmed&thirdPartyId=X.
+  thirdPartyId?: string
 }
 
 export interface CreateDocumentItemPayload {
@@ -137,10 +145,19 @@ export interface CreateDocumentPayload {
   // en el JSON y el backend limpia la columna en vez de dejar el texto viejo huérfano.
   adjustmentReasonOther?: string | null
   notes?: string
+  // Solo POS — obligatorio en ese tipo (el backend lo valida en validateCreate, el DTO lo
+  // deja opcional a nivel de tipo).
+  paymentMethod?: PaymentMethod
   items: CreateDocumentItemPayload[]
 }
 
 export type UpdateDocumentPayload = Omit<CreateDocumentPayload, 'type'>
+
+export interface ConvertDocumentPayload {
+  // Hoy solo 'POS' tiene Strategy — el backend rechaza cualquier otro valor con 400.
+  targetType: 'POS'
+  paymentMethod?: PaymentMethod
+}
 
 export interface ReleaseDocumentItemPayload {
   documentItemId: string

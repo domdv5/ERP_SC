@@ -474,6 +474,12 @@ enum DocumentStatus {
   voided
 }
 
+enum PaymentMethod {
+  efectivo
+  tarjeta
+  transferencia
+}
+
 /// Motivo del ajuste — obligatorio solo para EAI (ver EaiEffectStrategy.validateCreate).
 /// negativo: común del día a día, el sistema muestra menos stock del que hay físicamente.
 /// inventario_general: conteo físico completo, ~1 vez al año — mismo efecto que negativo
@@ -503,6 +509,8 @@ model Document {
   adjustmentReason      EaiAdjustmentReason? @map("adjustment_reason")
   /// Detalle libre — obligatorio solo cuando adjustmentReason = otro
   adjustmentReasonOther String?              @map("adjustment_reason_other") @db.VarChar(300)
+  /// Forma de pago — solo POS por ahora; informativo, sin lógica de caja.
+  paymentMethod         PaymentMethod?       @map("payment_method")
   /// Bodega principal: destino en CM/EAI, origen en DVC/SAJ/T
   warehouseId           String?              @map("warehouse_id") @db.Uuid
   /// Bodega destino — solo traslados (T)

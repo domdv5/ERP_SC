@@ -124,7 +124,7 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
           const avgCost = Number(product.avgCost)
           const salePrice = Number(product.salePrice)
           const shouldPrefillCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
-          const shouldPrefillPrice = docType === 'PV'
+          const shouldPrefillPrice = docType === 'PV' || docType === 'POS'
           const newIndex = currentItems.length
           append({
             productId:     product.id,

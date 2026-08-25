@@ -16,6 +16,7 @@ import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
 import { DocumentPrintService } from './print/index';
 import {
+  ConvertDocumentDto,
   CreateDocumentDto,
   FindAllDocumentsDto,
   ReleaseItemsDto,
@@ -76,6 +77,15 @@ export class DocumentsController {
   @Post(':id/duplicate')
   duplicate(@Param('id') id: string, @Req() req: RequestWithUser) {
     return this.documentsService.duplicate(id, req.user);
+  }
+
+  @Post(':id/convert')
+  convert(
+    @Param('id') id: string,
+    @Body() convertDocumentDto: ConvertDocumentDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.documentsService.convert(id, convertDocumentDto, req.user);
   }
 
   // @Res({ passthrough: false }) toma control manual de la respuesta: lo que

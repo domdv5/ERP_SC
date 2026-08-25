@@ -8,6 +8,7 @@ import {
   DvcEffectStrategy,
   EaiEffectStrategy,
   PvEffectStrategy,
+  PosEffectStrategy,
   SajEffectStrategy,
   TransferEffectStrategy,
 } from './strategies/index';
@@ -35,6 +36,7 @@ import {
     SajEffectStrategy,
     TransferEffectStrategy,
     PvEffectStrategy,
+    PosEffectStrategy,
     DocumentEffectsRegistry,
     DocumentPrintService,
     PdfGeneratorService,

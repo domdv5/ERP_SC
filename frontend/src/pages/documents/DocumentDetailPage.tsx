@@ -34,6 +34,7 @@ import { usePermission } from "@/hooks/usePermission";
 import { cn } from "@/lib/utils";
 import { DOC_TYPE_BADGE, DOC_TYPE_ACCENT, DOC_STATUS_BADGE } from "./document.constants";
 import { ReleaseItemsDialog } from "./components/ReleaseItemsDialog";
+import { getPendingQuantity, hasPendingItems } from "./pos-checkout.utils";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -313,23 +314,34 @@ export default function DocumentDetailPage() {
   const usesAvgCostFallback = doc.type === "SAJ" || doc.type === "T";
   // Preventas (PV) no persisten costo — el precio unitario relevante es item.unitPrice.
   const isPV = doc.type === "PV";
+  // Tipos valorados a precio de venta, no a costo — coincide con PRICE_BASED_TYPES del backend
+  // (documents.service.ts). PosEffectStrategy persiste unitPrice, no unitCost (queda en 0/null).
+  // Sumar acá "|| doc.type === 'COT'" cuando se implemente esa estrategia.
+  const isPriceBasedType = doc.type === "PV" || doc.type === "POS";
   const itemUnitCost = (item: (typeof doc.documentItems)[number]) =>
-    isPV ? item.unitPrice : usesAvgCostFallback ? Number(item.product.avgCost) : item.unitCost;
+    isPriceBasedType ? item.unitPrice : usesAvgCostFallback ? Number(item.product.avgCost) : item.unitCost;
   const itemSubtotal = (item: (typeof doc.documentItems)[number]) =>
-    isPV
+    isPriceBasedType
       ? item.subtotal
       : usesAvgCostFallback
         ? item.quantity * Number(item.product.avgCost)
         : item.subtotal;
 
-  const itemsTotal = doc.documentItems.reduce((sum, item) => sum + itemSubtotal(item), 0);
+  // Number(...) es necesario acá: item.subtotal viaja como string (Decimal de Prisma
+  // serializado a JSON, pese a que DocumentItem lo tipa como `number`) — sin la conversión,
+  // `sum + itemSubtotal(item)` hace concatenación de strings en vez de suma a partir del segundo
+  // ítem (el primer `+` con sum=0 numérico ya fuerza todo el acumulador a string). Bug real
+  // encontrado probando el checkout POS con una venta de 2 ítems (con 1 solo ítem el resultado
+  // coincidía por casualidad y pasaba desapercibido) — afecta a cualquier tipo de documento con
+  // más de un ítem, no solo POS.
+  const itemsTotal = doc.documentItems.reduce((sum, item) => sum + Number(itemSubtotal(item)), 0);
   // Nota de talla por línea — solo se muestra en traslados (T), donde el mismo código de producto
   // puede repartirse en varios bultos con tallas distintas. Ver ProductRow.tsx showObservaciones.
   const showObservaciones = doc.type === "T";
   // SAJ y T muestran el costo promedio vigente del producto (avgCost) — ver nota arriba en
   // usesAvgCostFallback — nunca un costo transaccional tipeado por el usuario. CM/DVC/EAI sí
   // manejan un costo real ingresado, por eso conservan la etiqueta plana.
-  const costHeaderLabel = isPV
+  const costHeaderLabel = isPriceBasedType
     ? "Precio unit."
     : usesAvgCostFallback
       ? "Costo unit. (prom.)"
@@ -465,14 +477,19 @@ export default function DocumentDetailPage() {
               </button>
             )}
             {isConfirmed && doc.type === "PV" && canConvertPV && (
-              // Placeholder visual — POS (venta real) es fase 2, sin Strategy en el backend todavía.
-              // Botón deshabilitado a propósito: recordatorio de la función pendiente, no debe
-              // llamar a ningún endpoint que no existe.
+              // POS ya tiene Strategy — la conversión real ocurre en el checkout POS
+              // (POSCheckoutPage), precargado con esta PV vía ?fromPV=. Deshabilitado solo si
+              // ya no queda cantidad pendiente (todo liberado y/o ya convertido).
               <button
                 type="button"
-                disabled
-                title="Disponible cuando se implemente el módulo de ventas (POS)"
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl opacity-50 cursor-not-allowed"
+                onClick={() => navigate(`/documents/pos/new?fromPV=${doc.id}`)}
+                disabled={!hasPendingItems(doc)}
+                title={
+                  hasPendingItems(doc)
+                    ? undefined
+                    : "Esta preventa ya no tiene cantidad pendiente por convertir"
+                }
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
               >
                 <ShoppingCart className="w-4 h-4" />
                 Convertir a venta
@@ -649,7 +666,7 @@ export default function DocumentDetailPage() {
                         </td>
                         <td className="px-5 py-3.5 text-xs">
                           {(() => {
-                            const pending = item.quantity - (item.releasedQuantity ?? 0);
+                            const pending = getPendingQuantity(item);
                             return (
                               <span className={pending > 0 ? "text-content" : "text-content-faint"}>
                                 {pending.toLocaleString("es-CO")}

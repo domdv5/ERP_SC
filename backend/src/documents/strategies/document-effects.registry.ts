@@ -9,6 +9,7 @@ import { CmEffectStrategy } from './cm-effect.strategy';
 import { DvcEffectStrategy } from './dvc-effect.strategy';
 import { EaiEffectStrategy } from './eai-effect.strategy';
 import { PvEffectStrategy } from './pv-effect.strategy';
+import { PosEffectStrategy } from './pos-effect.strategy';
 import { SajEffectStrategy } from './saj-effect.strategy';
 import { TransferEffectStrategy } from './transfer-effect.strategy';
 
@@ -29,6 +30,7 @@ export class DocumentEffectsRegistry {
     sajEffectStrategy: SajEffectStrategy,
     transferEffectStrategy: TransferEffectStrategy,
     pvEffectStrategy: PvEffectStrategy,
+    posEffectStrategy: PosEffectStrategy,
   ) {
     for (const strategy of [
       cmEffectStrategy,
@@ -37,6 +39,7 @@ export class DocumentEffectsRegistry {
       sajEffectStrategy,
       transferEffectStrategy,
       pvEffectStrategy,
+      posEffectStrategy,
     ]) {
       this.strategies.set(strategy.type, strategy);
     }

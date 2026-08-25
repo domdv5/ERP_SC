@@ -14,7 +14,11 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { DocumentType, EaiAdjustmentReason } from '@/common/enums';
+import {
+  DocumentType,
+  EaiAdjustmentReason,
+  PaymentMethod,
+} from '@/common/enums';
 
 export class CreateDocumentItemDto {
   @IsUUID()
@@ -90,6 +94,11 @@ export class CreateDocumentDto {
   @IsString()
   @MaxLength(300)
   adjustmentReasonOther?: string;
+
+  // Solo se envía y valida para type === POS.
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
 
   @IsArray()
   @ArrayNotEmpty()

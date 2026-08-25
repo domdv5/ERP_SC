@@ -5,14 +5,18 @@ import {
   PackageMinus,
   ArrowLeftRight,
   CalendarClock,
+  Banknote,
   type LucideIcon,
 } from 'lucide-react'
 
 import type { DocumentType, DocumentStatus, EaiAdjustmentReason } from '@/types/document.types'
 
-// Etiquetas completas — usadas en el <select> "Tipo de operación" del formulario y en el
-// filtro de tipo del listado. Difieren a propósito de DOC_TYPE_BADGE (etiquetas cortas para
-// pills de tabla/detalle) — ej. "Devolución compra" vs "Dev. Compra".
+// Etiquetas completas — usadas en el filtro de tipo del listado (DocumentsPage) y en el
+// <select> "Tipo de operación" de DocumentFormPage. POS se agrega aquí solo para que aparezca
+// como filtro en el listado — DocumentFormPage lo excluye explícitamente de sus opciones
+// seleccionables (tiene su propia pantalla de checkout, ver POSCheckoutPage). Difieren a
+// propósito de DOC_TYPE_BADGE (etiquetas cortas para pills de tabla/detalle) — ej. "Devolución
+// compra" vs "Dev. Compra".
 export const DOC_TYPE_SELECT_OPTIONS: { value: DocumentType; label: string }[] = [
   { value: 'CM',  label: 'Compra' },
   { value: 'DVC', label: 'Devolución compra' },
@@ -20,6 +24,7 @@ export const DOC_TYPE_SELECT_OPTIONS: { value: DocumentType; label: string }[] =
   { value: 'SAJ', label: 'Salida ajuste' },
   { value: 'T',   label: 'Traslado' },
   { value: 'PV',  label: 'Preventa' },
+  { value: 'POS', label: 'Venta (POS)' },
 ]
 
 // Motivo del ajuste — solo documentos EAI. Etiquetas orientadas al usuario final (operador de
@@ -39,6 +44,7 @@ export const DOC_TYPE_BADGE: Record<DocumentType, { label: string; className: st
   SAJ: { label: 'Salida Ajuste',   className: 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400' },
   T:   { label: 'Traslado',        className: 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' },
   PV:  { label: 'Preventa',        className: 'bg-pink-100   text-pink-700   dark:bg-pink-500/20   dark:text-pink-400'   },
+  POS: { label: 'Venta',           className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' },
 }
 
 // Refuerzo visual "a simple vista" del tipo (ícono + borde de acento izquierdo) — usado en el
@@ -57,6 +63,7 @@ export const DOC_TYPE_ACCENT: Record<DocumentType, {
   SAJ: { icon: PackageMinus,   iconBg: 'bg-orange-100 dark:bg-orange-500/20', iconText: 'text-orange-700 dark:text-orange-400', border: 'border-l-orange-500' },
   T:   { icon: ArrowLeftRight, iconBg: 'bg-purple-100 dark:bg-purple-500/20', iconText: 'text-purple-700 dark:text-purple-400', border: 'border-l-purple-500' },
   PV:  { icon: CalendarClock,  iconBg: 'bg-pink-100   dark:bg-pink-500/20',   iconText: 'text-pink-700   dark:text-pink-400',   border: 'border-l-pink-500'   },
+  POS: { icon: Banknote,       iconBg: 'bg-emerald-100 dark:bg-emerald-500/20', iconText: 'text-emerald-700 dark:text-emerald-400', border: 'border-l-emerald-500' },
 }
 
 // Pill de estado — usada en DocumentsPage y DocumentDetailPage.

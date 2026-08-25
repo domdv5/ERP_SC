@@ -14,6 +14,7 @@ const ComingSoonPage = lazy(() => import('@/pages/coming-soon/ComingSoonPage'))
 const DocumentsPage = lazy(() => import('@/pages/documents/DocumentsPage'))
 const DocumentFormPage = lazy(() => import('@/pages/documents/DocumentFormPage'))
 const DocumentDetailPage = lazy(() => import('@/pages/documents/DocumentDetailPage'))
+const POSCheckoutPage = lazy(() => import('@/pages/documents/POSCheckoutPage'))
 const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
 const AccountsPayableListPage = lazy(() => import('@/pages/accounts-payable/AccountsPayableListPage'))
 const AccountsPayableDetailPage = lazy(() => import('@/pages/accounts-payable/AccountsPayableDetailPage'))
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
       { path: 'documents',             element: <Lazy><DocumentsPage /></Lazy> },
       { path: 'stock-lookup',          element: <Lazy><StockLookupPage /></Lazy> },
       { path: 'documents/new',         element: <Lazy><DocumentFormPage /></Lazy> },
+      { path: 'documents/pos/new',     element: <Lazy><PermissionGuard permission="document.create.POS"><POSCheckoutPage /></PermissionGuard></Lazy> },
       { path: 'documents/:id',         element: <Lazy><DocumentDetailPage /></Lazy> },
       { path: 'documents/:id/edit',    element: <Lazy><DocumentFormPage /></Lazy> },
       { path: 'accounts-receivable',   element: <Lazy><ComingSoonPage /></Lazy> },

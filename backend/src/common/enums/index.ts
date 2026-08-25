@@ -5,4 +5,5 @@ export {
   EaiAdjustmentReason,
   WithholdingAgentType,
   TaxRegime,
+  PaymentMethod,
 } from '@prisma/client';

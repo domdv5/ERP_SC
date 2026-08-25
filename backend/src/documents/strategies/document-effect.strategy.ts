@@ -56,6 +56,19 @@ export interface ReservationEffectStrategy extends DocumentEffectStrategy {
     userId: string,
     notes?: string,
   ): Promise<void>;
+
+  /**
+   * Descuenta de la reserva (convertedQuantity) las cantidades que un
+   * documento de venta real acaba de consumir al confirmarse desde una
+   * conversión (Document.sourceDocumentId). Corre dentro del mismo
+   * $transaction que confirma el documento derivado.
+   */
+  consumeForConversion(
+    tx: Prisma.TransactionClient,
+    sourceDocument: DocumentWithItems,
+    conversions: { documentItemId: string; quantity: number }[],
+    userId: string,
+  ): Promise<void>;
 }
 
 /** Type guard: distingue en runtime si una estrategia soporta liberación de reservas. */

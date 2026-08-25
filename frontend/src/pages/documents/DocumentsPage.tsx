@@ -137,15 +137,17 @@ export default function DocumentsPage() {
             Compras, ajustes y traslados de inventario
           </p>
         </div>
-        {canCreateAnyDoc && (
-          <button
-            onClick={() => navigate('/documents/new')}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
-          >
-            <Plus className="w-4 h-4" />
-            Nueva operación
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {canCreateAnyDoc && (
+            <button
+              onClick={() => navigate('/documents/new')}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
+            >
+              <Plus className="w-4 h-4" />
+              Nueva operación
+            </button>
+          )}
+        </div>
       </div>
 
       <StatsGrid cards={statCards} isLoading={isLoading} />

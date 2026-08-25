@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Contact,
   MapPinned,
+  Banknote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth.store";
@@ -32,18 +33,17 @@ function getNavLinkClass(isActive: boolean) {
   );
 }
 
+// "/documents/pos/new" empieza con "/documents", así que el isActive por-defecto de
+// NavLink (startsWith, sin prop `end`) marcaría "Operaciones" activo también estando en
+// POS. `end` tampoco sirve: exigiría match exacto y rompería el highlight en
+// /documents/new y /documents/:id. Se excluye el subpath /documents/pos explícitamente.
+function isDocumentsActive(pathname: string) {
+  return pathname.startsWith("/documents") && !pathname.startsWith("/documents/pos");
+}
+
 const topGroups = [
   {
     items: [{ to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" }],
-  },
-];
-
-const bottomGroups = [
-  {
-    label: "Operaciones",
-    items: [
-      { to: "/documents", icon: FileText, label: "Operaciones" },
-    ],
   },
 ];
 
@@ -122,6 +122,7 @@ function WarehousesSidebarItem() {
 
 export function Sidebar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const canManageUsers = usePermission("user.manage");
@@ -129,6 +130,23 @@ export function Sidebar() {
   const canReadAr = usePermission("ar.read");
   const canReadAp = usePermission("ap.read");
   const canViewFinance = canReadAr || canReadAp;
+  const canCreatePOS = usePermission("document.create.POS");
+
+  const operacionesGroup = {
+    label: "Operaciones",
+    items: [{ to: "/documents", icon: FileText, label: "Operaciones" }],
+  };
+
+  // "Ventas" se arma acá (no como constante de módulo) porque el ítem POS solo debe
+  // aparecer para roles con permiso document.create.POS — mismo criterio que financeGroup
+  // (canViewFinance) más abajo. Sección separada de Operaciones: acá van a caer a futuro
+  // otros tipos de venta (COT/DVV/REM) sin mezclarse con compras/ajustes/traslados.
+  const ventasGroup = {
+    label: "Ventas",
+    items: [
+      ...(canCreatePOS ? [{ to: "/documents/pos/new", icon: Banknote, label: "POS" }] : []),
+    ],
+  };
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -221,8 +239,12 @@ export function Sidebar() {
           </NavLink>
         </div>
 
-        {/* Operaciones + Finanzas (Finanzas oculta si el rol no tiene ni ar.read ni ap.read) */}
-        {[...bottomGroups, ...(canViewFinance ? [financeGroup] : [])].map((group) => (
+        {/* Operaciones + Ventas (oculta sin document.create.POS) + Finanzas (oculta sin ar.read/ap.read) */}
+        {[
+          operacionesGroup,
+          ...(canCreatePOS ? [ventasGroup] : []),
+          ...(canViewFinance ? [financeGroup] : []),
+        ].map((group) => (
           <div key={group.label} className="space-y-0.5">
             <p className="text-content-faint dark:text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
               {group.label}
@@ -231,7 +253,13 @@ export function Sidebar() {
               <NavLink
                 key={to}
                 to={to}
-                className={({ isActive }) => getNavLinkClass(isActive)}
+                className={
+                  // El ítem "/documents" ("Operaciones") no puede depender del isActive
+                  // por-defecto de NavLink: ver isDocumentsActive arriba.
+                  to === "/documents"
+                    ? () => getNavLinkClass(isDocumentsActive(location.pathname))
+                    : ({ isActive }) => getNavLinkClass(isActive)
+                }
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 <span className="flex-1">{label}</span>

@@ -45,8 +45,10 @@ export default function DocumentFormPage() {
   const queryClient = useQueryClient()
 
   const userPermissions = useAuthStore((s) => s.user?.permissions ?? [])
-  const availableTypes = DOC_TYPE_OPTIONS.filter((opt) =>
-    userPermissions.includes(`document.create.${opt.value}`)
+  // POS tiene su propia pantalla de checkout (POSCheckoutPage) — nunca se crea desde este
+  // formulario genérico aunque el usuario tenga el permiso document.create.POS.
+  const availableTypes = DOC_TYPE_OPTIONS.filter(
+    (opt) => opt.value !== 'POS' && userPermissions.includes(`document.create.${opt.value}`)
   )
 
   // Third-party search — proveedor (CM/DVC) o cliente (PV), según docType (ver needsSupplier/needsCustomer)
@@ -134,6 +136,15 @@ export default function DocumentFormPage() {
     if (!existingDoc) return
     if (existingDoc.status !== 'draft') {
       toast.error('Solo se pueden editar operaciones en estado borrador')
+      navigate(`/documents/${existingDoc.id}`)
+      return
+    }
+    // Un borrador POS (creado desde el checkout, aún no confirmado) no se edita desde este form
+    // genérico — no tiene selector de cliente/vendedor/forma de pago ni columna de precio para
+    // ese tipo. Se retoma desde POSCheckoutPage (a través de "Nueva venta" / el detalle del
+    // documento), no aquí.
+    if (existingDoc.type === 'POS') {
+      toast.error('Las ventas POS se editan desde el checkout, no desde este formulario')
       navigate(`/documents/${existingDoc.id}`)
       return
     }

@@ -6,7 +6,6 @@ import {
 import { Prisma } from '@prisma/client';
 import { DocumentType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
-import { getReservedByProduct } from '@/documents/helpers/reservation.helpers';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type {
   DocumentWithItems,
@@ -60,42 +59,23 @@ export class PvEffectStrategy
     _userId: string,
   ) {
     const warehouseId = this.requireWarehouse(document);
-    const productIds = document.documentItems.map((item) => item.productId);
 
-    // Batch — un solo groupBy y una sola consulta de Inventory para todos los
-    // ítems del documento, en vez de N llamadas por ítem (db-avoid-n-plus-one).
-    // La consulta de Inventory bloquea las filas (FOR UPDATE, ordenadas por
-    // product_id igual que accounts-payable.service.ts al bloquear varios
-    // supplier_credit a la vez — evita deadlocks entre dos confirmaciones que
-    // tocan los mismos productos en orden distinto): sin este lock, otra
-    // preventa o un SAJ/DVC/T (vía assertSufficientStock) podría leer el mismo
-    // "disponible" antes de que cualquiera de las dos escriba, pasar el
-    // chequeo las dos, y terminar sobre-reservando sin que Inventory.quantity
-    // llegue a ir en negativo.
-    const [reservedMap, inventoryRows] = await Promise.all([
-      getReservedByProduct(tx, productIds, { excludeDocumentId: document.id }),
-      tx.$queryRaw<{ product_id: string; quantity: number }[]>`
-        SELECT product_id, quantity FROM inventory
-        WHERE product_id = ANY(${productIds}::uuid[]) AND warehouse_id = ${warehouseId}::uuid
-        ORDER BY product_id
-        FOR UPDATE
-      `,
-    ]);
-
-    const stockByProduct = new Map(
-      inventoryRows.map((row) => [row.product_id, row.quantity]),
+    // assertBatchAvailability (BaseEffectStrategy) concentra el batch +
+    // FOR UPDATE que antes vivía acá inline — ver su doc comment para el
+    // razonamiento del lock. PV corta en el primer faltante para mantener
+    // su mensaje histórico de error (comportamiento sin cambios).
+    const shortfalls = await this.assertBatchAvailability(
+      tx,
+      warehouseId,
+      document.documentItems,
+      { excludeDocumentId: document.id },
     );
 
-    for (const item of document.documentItems) {
-      const totalStock = stockByProduct.get(item.productId) ?? 0;
-      const reserved = reservedMap.get(item.productId) ?? 0;
-      const available = totalStock - reserved;
-
-      if (available < item.quantity) {
-        throw new ConflictException(
-          `Stock insuficiente para reservar el producto ${item.product.code}: disponible ${available}, solicitado ${item.quantity}`,
-        );
-      }
+    if (shortfalls.length > 0) {
+      const s = shortfalls[0];
+      throw new ConflictException(
+        `Stock insuficiente para reservar el producto ${s.code}: disponible ${s.available}, solicitado ${s.requested}`,
+      );
     }
 
     // Sin moveStock: la preventa no toca Inventory/BinStock/InventoryMovement.
@@ -160,6 +140,41 @@ export class PvEffectStrategy
           notes: notes ?? null,
         },
       });
+    }
+  }
+
+  async consumeForConversion(
+    tx: Prisma.TransactionClient,
+    sourceDocument: DocumentWithItems,
+    conversions: { documentItemId: string; quantity: number }[],
+    _userId: string,
+  ) {
+    for (const conversion of conversions) {
+      const item = sourceDocument.documentItems.find(
+        (i) => i.id === conversion.documentItemId,
+      );
+
+      if (!item || conversion.quantity <= 0) {
+        continue;
+      }
+
+      // Mismo patrón atómico UPDATE...WHERE...RETURNING que releaseItems —
+      // el audit trail de esta operación es el propio documento derivado
+      // (sourceDocumentId), no ReservationRelease (esa tabla es solo para
+      // liberaciones manuales).
+      const rows = await tx.$queryRaw<{ converted_quantity: number }[]>`
+        UPDATE document_item
+        SET converted_quantity = converted_quantity + ${conversion.quantity}
+        WHERE id = ${conversion.documentItemId}::uuid
+          AND released_quantity + converted_quantity + ${conversion.quantity} <= quantity
+        RETURNING converted_quantity
+      `;
+
+      if (rows.length === 0) {
+        throw new ConflictException(
+          `No se pudo consumir la reserva del producto ${item.product.code} (posible actualización concurrente)`,
+        );
+      }
     }
   }
 }
