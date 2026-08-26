@@ -9,13 +9,7 @@ import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
 
-/**
- * POS — Venta de contado: salida física de inventario, valorada a unitPrice
- * (ver PRICE_BASED_TYPES en documents.service.ts). No genera AccountsPayable
- * ni AccountsReceivable (venta de contado). paymentMethod es puramente
- * informativo — no hay CashModule todavía, así que no dispara ninguna
- * lógica de caja/conciliación.
- */
+/** POS — venta de contado: salida física de stock, valorada a unitPrice (PRICE_BASED_TYPES). No crea AccountsPayable/Receivable. paymentMethod es informativo (no hay CashModule aún). */
 @Injectable()
 export class PosEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.POS;
@@ -76,17 +70,10 @@ export class PosEffectStrategy extends BaseEffectStrategy {
   ) {
     const warehouseId = this.requireWarehouse(document);
 
-    // Re-chequeo: un PATCH sobre un borrador no vuelve a correr
-    // validateCreate() (mismo motivo ya documentado para EAI/T en
-    // base-effect.strategy.ts). Si este POS viene de convertir una PV
-    // (sourceDocumentId), esa PV todavía figura como reserva activa en este
-    // punto — consumeForConversion recién la descuenta después de que
-    // confirm() termina (ver documents.service.ts::confirm()) — así que hay
-    // que excluirla del cómputo de disponibilidad, igual que
-    // PvEffectStrategy.confirm() se excluye a sí misma. Sin esto, convertir
-    // una PV que reservó el 100% del stock disponible (el caso típico de una
-    // conversión total) siempre fallaba con un shortfall falso, porque la
-    // propia reserva de origen competía contra la venta que la reemplaza.
+    // Re-chequeo (PATCH no vuelve a correr validateCreate, ver base-effect.strategy.ts).
+    // Si viene de convertir una PV, su reserva sigue activa aquí (consumeForConversion
+    // descuenta recién después de confirm()) — hay que excluirla o una PV 100%
+    // reservada siempre daría shortfall falso contra sí misma.
     const shortfalls = await this.assertBatchAvailability(
       tx,
       warehouseId,

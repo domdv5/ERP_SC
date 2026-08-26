@@ -2,10 +2,8 @@ import type { Content, DynamicContent } from 'pdfmake/interfaces';
 import type { DocumentForPrint } from '@/documents/documents.service';
 import { COMPANY_INFO } from '../company-info.constant';
 
-// document.date se guarda como medianoche UTC representando el día calendario
-// elegido (documents.service.ts hace `new Date(dateString)` sobre un string
-// sin hora) — formatear en UTC preserva ese día exacto sin importar el huso
-// horario del servidor; usar America/Bogota acá lo correría un día atrás.
+// document.date se guarda como medianoche UTC del día calendario elegido —
+// formatear en UTC preserva ese día exacto; usar America/Bogota lo correría un día atrás.
 function formatDate(date: Date | string): string {
   return new Intl.DateTimeFormat('es-CO', {
     day: '2-digit',
@@ -16,13 +14,10 @@ function formatDate(date: Date | string): string {
 }
 
 /**
- * pdfmake reevalúa header/footer en cada página, por eso ambos se devuelven
- * como función en vez de un Content estático — necesario si el documento
- * termina paginando por tener muchas líneas.
- *
- * Del formato legado se omiten deliberadamente "Ciudad" y "Vence" del bloque
- * del tercero: ThirdParty no tiene campo de ciudad y el dominio no modela
- * plazo de crédito (decisión ya confirmada con el usuario).
+ * pdfmake reevalúa header/footer en cada página, por eso se devuelven como
+ * función en vez de Content estático (necesario si el documento pagina).
+ * Omite "Ciudad"/"Vence" del tercero a propósito: ThirdParty no tiene ciudad
+ * y el dominio no modela plazo de crédito (confirmado con el usuario).
  */
 export function buildHeader(
   document: DocumentForPrint,

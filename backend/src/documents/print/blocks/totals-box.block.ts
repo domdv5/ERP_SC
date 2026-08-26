@@ -11,12 +11,7 @@ function row(label: string, value: string, bold = false): Content[] {
   ];
 }
 
-/**
- * RET FUENTE / IMP-BOLSA / DESCUENTO se muestran fijas en $0 — el dominio no
- * modela retención en la fuente, impuesto al plástico ni descuento a nivel de
- * documento (decisión confirmada con el usuario: se quieren visibles en el
- * formato aunque no haya cálculo real detrás).
- */
+/** RET FUENTE / IMP-BOLSA / DESCUENTO se muestran fijas en $0 — el dominio no modela esos cálculos, pero se quieren visibles en el formato (confirmado con el usuario). */
 export function buildTotalsBox(totals: PrintTotals): Content {
   return {
     margin: [0, 10, 0, 0],

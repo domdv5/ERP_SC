@@ -53,6 +53,8 @@ const canManage = usePermission('user.manage')
 ```
 For sidebar sections that must be hidden for some roles, render the `<NavLink>` conditionally inside the component (not in the static `navGroups` array). See `Sidebar.tsx` "Administración" section as reference.
 
+**Sidebar groups** — `Sidebar.tsx` tiene un grupo **"Ventas"** (paralelo a "Operaciones"/"Finanzas") para pantallas de venta — hoy contiene el ítem POS (label corto "POS"). "Operaciones" es solo compras/ajustes/traslados de inventario, no mezclar. COT/DVV/REM deben nacer en "Ventas" cuando se implementen, no en "Operaciones".
+
 **Sidebar accordion nav items** — When a nav section needs collapsible sub-items (e.g. Bodegas), create a dedicated component (`WarehousesSidebarItem`) instead of a static NavLink. Use `useLocation` + `useState` for open/close; `max-height` CSS transition for animation; `useQuery` to load sub-items from API. Sub-item links use `Link` (not `NavLink`) with manual `isActive` computed from `location.search` — React Router's NavLink `isActive` ignores query params and would mark all sub-items active simultaneously.
 
 **Lazy route loading** — `router/index.tsx`'s `Lazy` wrapper uses a `DelayedPageLoader` (200ms `setTimeout` before rendering `PageLoader`) as the `Suspense` fallback, not `PageLoader` directly. Route chunks that resolve faster than 200ms (already-loaded chunks, fast dev-server reloads) never show the full-screen loader — only genuinely slow loads do. Don't revert this to a bare `<PageLoader />` fallback; it reintroduces a flash on every navigation.
@@ -60,6 +62,9 @@ For sidebar sections that must be hidden for some roles, render the `<NavLink>` 
 **Theme toggle animation** — `Header.tsx`'s theme button uses the View Transition API (`document.startViewTransition`) for an expanding-circle wipe, with a plain `toggleTheme()` fallback when unsupported. Three gotchas if touching this: (1) wrap the state update in `flushSync` inside the transition callback — the `.dark` class toggle in `AppLayout.tsx`'s `useEffect` must apply synchronously before the browser snapshots the new state; (2) `index.css` resets `mix-blend-mode: normal` on `::view-transition-old(root)`/`::view-transition-new(root)` — Chrome's default `plus-lighter` blend additively mixes the two layers during a clip-path reveal, producing a color-flash; (3) the reveal keyframe animation needs `fill-mode: forwards`, otherwise `clip-path` snaps back to `circle(0%)` the instant the animation ends, flashing the old theme for a frame.
 
 **Role display names** — Spanish labels for roles live in `users.service.ts` as `ROLE_LABELS: Record<string, string>` with a `getRoleLabel(name)` helper that falls back to `replace(/_/g, ' ')`. Import from there when displaying role names anywhere in the UI.
+
+**POS checkout (`POSCheckoutPage.tsx`, `/documents/pos/new`) — pantalla de creación dedicada (2026-08-24)**: a diferencia del resto de tipos de documento (que usan el `DocumentFormPage.tsx` genérico), el flujo de caja de POS (escáner de código de barras, cobro rápido) justificó una pantalla propia — ver decisión de arquitectura en `[[project_sales_cycle_pos_cot_dvv_rem]]`. Al elegir cliente (`handleCustomerSelected`), detecta si ya tiene una preventa `PV` confirmada activa (`findActivePendingPreventa` en `pos-checkout.utils.ts`, consulta `GET /documents?type=PV&status=confirmed&thirdPartyId=X` y resuelve cada candidata vía `getDocument` porque el endpoint de listado no trae `documentItems`) y ofrece convertirla en vez de facturar desde cero; la pantalla también se hidrata desde `?fromPVId=` si se llega directo desde el botón "Convertir a venta" del detalle de una PV. **COT reusará esta misma pantalla con un toggle Contado/Crédito** — no duplicarla cuando se implemente.
+**Listado/detalle unificados incluyen ventas** — `DocumentsPage.tsx`/`DocumentDetailPage.tsx` siguen siendo la única pantalla de listado/detalle/filtro/anulación para TODOS los tipos, POS incluido — nunca fragmentar esto. `DocumentDetailPage.tsx` tiene un `isPriceBasedType = doc.type === 'PV' || doc.type === 'POS'` (espejo de `PRICE_BASED_TYPES` del backend) que controla `itemUnitCost`/`itemSubtotal`/`costHeaderLabel` ("Precio unit." en vez de "Costo unit.") — **agregar `|| doc.type === 'COT'` ahí mismo cuando se implemente COT**. El `isPV` puro (sin POS) se mantiene solo para columnas exclusivas de PV (`itemHeaders`/"Liberado"/"Pendiente").
 
 ## Implemented Modules
 
@@ -70,7 +75,7 @@ For sidebar sections that must be hidden for some roles, render the `<NavLink>` 
 | `/third-parties` | Done | Full CRUD, server-side search, debounce, pagination, cache |
 | `/products` | Done | Full CRUD, server-side search, debounce, pagination, cache, stock column (total + per-warehouse breakdown), cost columns ("Costo Prom." / "Últ. Costo") |
 | `/warehouses` | Partial | Full CRUD warehouses + zones/bins (backend controllers implemented); sidebar accordion shows sub-items per warehouse; URL-based selection via `?id=` |
-| `/documents` | Done | List + form (create/edit/confirm/void), portal Combobox, search-on-type |
+| `/documents` | Done | List + form (create/edit/confirm/void), portal Combobox, search-on-type. Incluye `/documents/pos/new` (checkout POS dedicado) y conversión PV→POS desde el detalle. |
 | `/users` | Done | Full CRUD, role checkboxes, password confirmation, permission-gated sidebar |
 | `/accounts-receivable` | Placeholder | ComingSoonPage |
 | `/accounts-payable` | Placeholder | ComingSoonPage |

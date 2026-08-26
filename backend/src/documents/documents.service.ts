@@ -44,9 +44,8 @@ const DETAIL_INCLUDE = {
       },
     },
   },
-  // supplier.brands se incluye para que editar un borrador CM/DVC ya
-  // existente cargue de una las marcas del proveedor elegido (sin esto el
-  // buscador/escaneo de producto del form quedarían deshabilitados).
+  // supplier.brands se incluye para que editar un CM/DVC ya cargue las marcas
+  // del proveedor (sin esto el buscador/escaneo de producto queda deshabilitado).
   thirdParty: {
     select: {
       id: true,
@@ -72,12 +71,10 @@ const DETAIL_INCLUDE = {
   sourceDocument: { select: { id: true, type: true, number: true } },
 } satisfies Prisma.DocumentInclude;
 
-// Include recortado para impresión: solo lo que el PDF de CM/DVC muestra.
-// A diferencia de DETAIL_INCLUDE, deliberadamente NO trae voidedBy/confirmedBy/
-// seller/warehouse/destWarehouse/destBin/sourceDocument/supplier.brands (nada de
-// eso aparece en el PDF) ni product.avgCost (el PDF usa documentItem.unitCost,
-// el costo transaccional de la línea — mezclarlo con el costo promedio live del
-// producto sería un bug de negocio, son conceptos distintos).
+// Include recortado para impresión: solo lo que el PDF de CM/DVC muestra (a
+// diferencia de DETAIL_INCLUDE). Excluye product.avgCost a propósito — el PDF
+// usa documentItem.unitCost (costo transaccional), mezclarlo con el costo
+// promedio live sería un bug de negocio.
 const PRINT_INCLUDE = {
   documentItems: {
     include: {
@@ -191,12 +188,7 @@ export class DocumentsService {
     return document;
   }
 
-  /**
-   * Datos mínimos para generar el PDF de impresión — usada exclusivamente por
-   * DocumentPrintService. Solo documentos confirmados pueden imprimirse: un
-   * borrador puede seguir cambiando, y entregarle a un proveedor un PDF de
-   * algo aún no definitivo induce a error.
-   */
+  /** Datos mínimos para el PDF de impresión (usada por DocumentPrintService). Solo documentos confirmados: un borrador puede seguir cambiando y un PDF de algo no definitivo induce a error. */
   async getDocumentForPrint(id: string): Promise<DocumentForPrint> {
     const document = await this.prisma.document.findUnique({
       where: { id },
@@ -242,9 +234,8 @@ export class DocumentsService {
 
     let warehouseId: string | undefined;
 
-    // Solo el traslado (T) mueve stock entre dos bodegas elegidas por el
-    // usuario; el resto de tipos siempre opera sobre la única tienda activa,
-    // así que el cliente nunca envía warehouseId salvo para T.
+    // Solo T mueve stock entre bodegas elegidas por el usuario; el resto opera
+    // siempre sobre la tienda activa, así que el cliente nunca envía warehouseId salvo para T.
     if (type !== DocumentType.T) {
       const store = await this.prisma.warehouse.findFirst({
         where: { type: 'store', active: true },
@@ -320,9 +311,8 @@ export class DocumentsService {
 
     const { items, date, ...rest } = updateDocumentDto;
 
-    // A diferencia de create(), acá NO se corre strategy.validateCreate: un
-    // borrador se puede editar (ej. cambiar bulto/bodega de un traslado) sin
-    // volver a pasar por esa validación. Por eso TransferEffectStrategy.confirm
+    // A diferencia de create(), NO corre strategy.validateCreate: un borrador
+    // se edita sin volver a validar. Por eso TransferEffectStrategy.confirm
     // revalida bin/bodega desde cero antes de aplicar efectos.
     return this.prisma.$transaction(async (tx) => {
       if (items) {
@@ -397,10 +387,8 @@ export class DocumentsService {
           .get(document.type)
           .confirm(tx, document, user.sub);
 
-        // Si este documento nació de convertir una preventa (Document.
-        // sourceDocumentId), descuenta lo consumido de la reserva original
-        // (convertedQuantity) en la misma transacción — así la conversión
-        // queda atómica junto con los efectos del documento derivado.
+        // Si nació de convertir una PV (sourceDocumentId), descuenta lo consumido
+        // de la reserva original en la misma transacción — la conversión queda atómica.
         if (document.sourceDocumentId) {
           const source = await tx.document.findUnique({
             where: { id: document.sourceDocumentId },
@@ -506,21 +494,14 @@ export class DocumentsService {
           );
         }
 
-        // Tipos con reserva lógica (hoy solo PV): anular libera toda la
-        // reserva pendiente de golpe (getReservedByProduct deja de contar
-        // el documento apenas cambia de status), pero eso pasaba sin dejar
-        // rastro — a diferencia de /release-items, que sí registra en
-        // ReservationRelease quién liberó y cuánto. Este bloque deja el
-        // mismo registro para que anular quede igual de trazable.
+        // Tipos con reserva lógica (hoy solo PV): anular libera toda la reserva
+        // de golpe, pero eso pasaba sin registrar — a diferencia de /release-items,
+        // que sí anota en ReservationRelease. Este bloque deja el mismo registro.
         const strategy = this.effectsRegistry.get(document.type);
         if (isReservationStrategy(strategy)) {
-          // Releída con tx en vez de confiar en un documentItems cargado
-          // antes de abrir la transacción: si alguien llamó a
-          // /release-items sobre este mismo documento justo en la ventana
-          // entre esa lectura inicial y este punto, el dato de afuera
-          // quedaría desactualizado y este bloque contaría de más
-          // (releasedQuantity viejo → pendiente inflado → ReservationRelease
-          // duplicado sobre unidades que ya se habían liberado).
+          // Releída con tx (no el documentItems cargado antes de abrir la
+          // transacción): si /release-items corrió en esa ventana, el dato de
+          // afuera quedaría desactualizado y este bloque liberaría de más.
           const freshItems = await tx.documentItem.findMany({
             where: { documentId: id },
             select: {
@@ -551,11 +532,9 @@ export class DocumentsService {
           }
         }
 
-        // Si el documento que se anula nació de convertir una preventa
-        // (sourceDocumentId), hay que devolverle a esa preventa las
-        // unidades que había marcado como convertidas — sin esto quedarían
-        // "convertidas" para siempre y la reserva nunca volvería a estar
-        // disponible.
+        // Si nació de convertir una PV (sourceDocumentId), hay que devolverle las
+        // unidades marcadas como convertidas — si no, quedarían "convertidas" para
+        // siempre y esa reserva nunca volvería a estar disponible.
         if (document.sourceDocumentId) {
           const source = await tx.document.findUnique({
             where: { id: document.sourceDocumentId },
@@ -585,24 +564,18 @@ export class DocumentsService {
           }
         }
 
-        // avgCost solo se reversa para CM/EAI (únicos tipos que lo re-ponderan
-        // al confirmar) y solo cuando el movimiento a anular es el más
-        // reciente de ese producto — ver computeReversedAvgCost para el
-        // porqué de esa condición.
-        // Memoizada por productId: un CM/EAI con varias líneas del mismo
-        // producto repetiría exactamente la misma query — es segura de
-        // cachear porque filtra documentId: { not: id }, y nada que este
-        // loop mute (movimientos nuevos de tipo void, avgCost) afecta ese
-        // resultado.
+        // avgCost solo se reversa para CM/EAI (únicos tipos que lo re-ponderan al
+        // confirmar) y solo si el movimiento a anular es el más reciente del
+        // producto — ver computeReversedAvgCost para el porqué.
+        // Memoizada por productId: un CM/EAI con varias líneas del mismo producto
+        // repetiría la misma query — segura de cachear porque filtra documentId: { not: id }.
         const recentConsumptionCache = new Map<
           string,
           Awaited<ReturnType<typeof tx.inventoryMovement.findFirst>>
         >();
 
-        // Cacheada por warehouseId: un CM/EAI con varias líneas o un T
-        // reversan movimientos que casi siempre comparten la misma bodega
-        // (document.warehouseId), así que sin esto se repetiría la misma
-        // consulta de tipo de bodega una vez por línea.
+        // Cacheada por warehouseId: varias líneas del mismo documento casi
+        // siempre comparten bodega, evita repetir la consulta de tipo por línea.
         const warehouseTypeCache = new Map<string, string>();
 
         for (const movement of document.inventoryMovements) {
@@ -613,20 +586,13 @@ export class DocumentsService {
               Number(movement.documentItem?.unitCost ?? 0) > 0);
 
           if (isCostAffecting) {
-            // Un CM/EAI puede tener varias líneas del mismo producto (Plan 004
-            // no las prohíbe). Todas comparten documentId con este documento
-            // — se excluyen del chequeo de recencia (son parte del mismo lote
-            // que se está anulando, no consumo externo) comparando createdAt
-            // en vez de solo el id, para no depender del orden de iteración.
-            // Solo bloquea consumo real de stock (quantity < 0, ej. DVC/SAJ):
-            // otra compra/EAI posterior no rompe la reversión (la ponderación
-            // de adiciones puras es asociativa) y un traslado (T) tampoco,
-            // porque su neto sobre el stock global del producto es cero.
-            // Tampoco un void: un void que reversa una compra/EAI anterior
-            // tiene quantity negativa pero no es consumo real (mismo
-            // argumento de asociatividad de arriba, extendido a voids de
-            // compras anteriores) — sin excluirlo, anular CM1 y luego CM2
-            // del mismo producto fallaba aunque debería poder anularse.
+            // Varias líneas del mismo CM/EAI comparten documentId — se excluyen
+            // del chequeo de recencia comparando createdAt (no el id, para no
+            // depender del orden de iteración). Solo bloquea consumo real
+            // (quantity < 0, ej. DVC/SAJ): un traslado (T) no cuenta porque su
+            // neto es cero, y un void tampoco porque revertir una compra/EAI
+            // anterior no es consumo real (misma asociatividad) — sin excluirlo,
+            // anular CM1 y luego CM2 del mismo producto fallaba sin motivo.
             let mostRecentOther = recentConsumptionCache.get(
               movement.productId,
             );
@@ -691,14 +657,10 @@ export class DocumentsService {
             });
           }
 
-          // Si esta reversión le quita stock a la bodega (quantity > 0: se
-          // está deshaciendo una entrada — CM, EAI, o la pierna destino de un
-          // T) y esa bodega es tipo store, hay que frenarla si deja el stock
-          // por debajo de lo que una preventa ya tiene reservado — mismo
-          // chequeo que assertSufficientStock aplica al confirmar SAJ/DVC/T,
-          // pero aquí del lado de anular. Reversiones que devuelven stock
-          // (quantity < 0: deshacer una salida) nunca pisan una reserva, así
-          // que no necesitan el chequeo.
+          // Si la reversión quita stock (quantity > 0: deshace una entrada —
+          // CM, EAI, o el destino de un T) en bodega store, hay que frenarla si
+          // pisa una reserva de PV — mismo chequeo que assertSufficientStock al
+          // confirmar SAJ/DVC/T. Reversiones que devuelven stock nunca pisan una reserva.
           if (quantity > 0) {
             let warehouseType = warehouseTypeCache.get(movement.warehouseId);
 
@@ -739,9 +701,8 @@ export class DocumentsService {
             delta: -quantity,
           });
 
-          // Solo los movimientos de traslado tienen binId (ver BinStock
-          // population en el módulo); revertirlos también a nivel de bulto
-          // es obligatorio para no romper SUM(BinStock)===Inventory.
+          // Solo los movimientos de traslado tienen binId; revertirlos también
+          // a nivel de bulto es obligatorio para no romper SUM(BinStock)===Inventory.
           if (movement.binId) {
             await applyBinStockChange(tx, {
               productId: movement.productId,
@@ -770,9 +731,8 @@ export class DocumentsService {
 
         await tx.accountsPayable.deleteMany({ where: { documentId: id } });
 
-        // Hard delete, mismo patrón que accountsPayable.deleteMany arriba —
-        // ya se validó antes de entrar a la transacción que ningún crédito
-        // tiene aplicaciones (hasCreditApplications).
+        // Hard delete (mismo patrón que accountsPayable.deleteMany) — ya se
+        // validó antes de la transacción que ningún crédito tiene aplicaciones.
         if (document.supplierCredits.length > 0) {
           await tx.supplierCredit.deleteMany({
             where: { sourceDocumentId: id },
@@ -801,9 +761,8 @@ export class DocumentsService {
       throw new BadRequestException('Solo se pueden duplicar compras (CM)');
     }
 
-    // Mismo mecanismo que create(): revalida que los productos originales
-    // sigan perteneciendo a una marca del proveedor (la marca de un producto
-    // o su proveedor pudieron cambiar desde que se creó el documento fuente).
+    // Mismo mecanismo que create(): revalida que los productos originales sigan
+    // en una marca del proveedor (pudo cambiar desde que se creó el documento fuente).
     const strategy = this.effectsRegistry.get(DocumentType.CM);
     const validateCreateDto: CreateDocumentDto = {
       type: DocumentType.CM,
@@ -834,11 +793,9 @@ export class DocumentsService {
           status: DocumentStatus.draft,
           date: new Date(),
           userId: user.sub,
-          // A diferencia de create() (líneas 187-199), NO se re-resuelve la
-          // tienda activa acá — se copia tal cual la del documento original.
-          // Decisión de alcance explícita: si la tienda activa cambió desde
-          // la compra original, el duplicado queda apuntando a la bodega
-          // vieja. Aceptado a propósito para esta primera versión.
+          // A diferencia de create(), NO se re-resuelve la tienda activa acá —
+          // se copia la del original. Decisión de alcance: si la tienda activa
+          // cambió, el duplicado queda apuntando a la bodega vieja (aceptado en v1).
           warehouseId: source.warehouseId,
           thirdPartyId: source.thirdPartyId,
           notes: source.notes,
@@ -864,12 +821,10 @@ export class DocumentsService {
   }
 
   /**
-   * Convierte una preventa (PV) confirmada en un documento de venta real
-   * (hoy solo POS — COT queda como próxima extensión, ver ConvertDocumentDto).
-   * Solo toma las líneas con reserva pendiente (quantity - releasedQuantity -
-   * convertedQuantity > 0); el consumo real de esa reserva se aplica en
-   * confirm() del documento derivado (PvEffectStrategy.consumeForConversion),
-   * no acá — convert() solo crea el borrador, igual que duplicate().
+   * Convierte una PV confirmada en un documento de venta real (hoy solo POS).
+   * Solo toma líneas con reserva pendiente (quantity - releasedQuantity -
+   * convertedQuantity > 0) — el consumo real se aplica al confirmar el
+   * documento derivado (PvEffectStrategy.consumeForConversion), no acá.
    */
   async convert(sourceId: string, dto: ConvertDocumentDto, user: JwtPayload) {
     const source = await this.prisma.document.findUnique({
@@ -924,12 +879,9 @@ export class DocumentsService {
       })),
     };
 
-    // Mismo mecanismo que duplicate() usa para CmEffectStrategy: revalida
-    // antes de crear el borrador. Nota de borde: si minSalePrice subió desde
-    // que se creó la preventa, esto puede rechazar la conversión —
-    // comportamiento correcto y deseado (no hay auto-ajuste de precio en v1);
-    // el mensaje de assertPricesAboveFloor ya es explícito sobre qué
-    // producto y por qué.
+    // Mismo mecanismo que duplicate(): revalida antes de crear el borrador.
+    // Si minSalePrice subió desde que se creó la PV, esto puede rechazar la
+    // conversión — comportamiento correcto (sin auto-ajuste de precio en v1).
     const posStrategy = this.effectsRegistry.get(DocumentType.POS);
     await posStrategy.validateCreate?.(validateCreateDto);
 
@@ -1041,11 +993,9 @@ export class DocumentsService {
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
-  // action distingue el permiso a chequear: document.create.{type} cubre
-  // create/update/confirm/void/remove (todo el ciclo de vida "estándar"),
-  // document.release.{type} es aparte porque liberar una reserva de PV es
-  // una operación que puede recaer en un rol distinto (ej. bodega/ventas)
-  // del que crea/confirma la preventa.
+  // action distingue el permiso: document.create.{type} cubre todo el ciclo
+  // "estándar" (create/update/confirm/void/remove); document.release.{type} es
+  // aparte porque liberar una reserva de PV puede recaer en un rol distinto.
   private assertDocumentPermission(
     user: JwtPayload,
     type: DocumentType,
@@ -1065,10 +1015,9 @@ export class DocumentsService {
   }
 
   /**
-   * PV se valora a precio de venta (unitPrice), no a costo — el resto de
-   * tipos (CM/DVC/EAI/SAJ/T) siguen calculando sobre unitCost exactamente
-   * igual que antes. Un Set de tipos "price-based" evita un switch/if
-   * disperso si en fase 2 aparece otro tipo valorado a precio (COT/POS).
+   * PV/POS se valoran a precio de venta (unitPrice), el resto (CM/DVC/EAI/SAJ/T)
+   * sobre unitCost. Un Set de tipos "price-based" evita un switch/if disperso
+   * cuando un tipo nuevo (ej. COT) también se valore a precio.
    */
   private static readonly PRICE_BASED_TYPES = new Set<DocumentType>([
     DocumentType.PV,

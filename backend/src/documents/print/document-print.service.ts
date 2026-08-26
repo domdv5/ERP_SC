@@ -4,11 +4,9 @@ import { DocumentPrintRegistry } from './strategies/document-print.registry';
 import { PdfGeneratorService } from './pdf-generator.service';
 
 /**
- * Orquestador de impresión: obtención de datos (DocumentsService) → armado
- * del layout (DocumentPrintRegistry/DocumentPrintStrategy) → render a Buffer
- * (PdfGeneratorService). Generación separada de obtención de datos: este
- * service es solo el pegamento entre las tres piezas, no conoce ni el schema
- * de Prisma ni la API de pdfmake.
+ * Orquestador de impresión: datos (DocumentsService) → layout (DocumentPrintRegistry)
+ * → Buffer (PdfGeneratorService). Solo pegamento entre las tres piezas — no conoce
+ * el schema de Prisma ni la API de pdfmake.
  */
 @Injectable()
 export class DocumentPrintService {

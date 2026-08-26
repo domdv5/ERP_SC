@@ -10,12 +10,7 @@ export type DocumentWithItems = Prisma.DocumentGetPayload<{
   };
 }>;
 
-/**
- * Contrato de efectos por tipo de documento (patrón Strategy).
- * Cada tipo soportado registra su estrategia en DocumentEffectsRegistry;
- * los tipos de fase 2 (COT, POS, DVV, REM, RMDVC, PE) solo necesitan
- * agregar una clase nueva sin tocar el service.
- */
+/** Contrato de efectos por tipo de documento (patrón Strategy) — un tipo nuevo solo agrega una clase registrada en DocumentEffectsRegistry, sin tocar el service. */
 export interface DocumentEffectStrategy {
   /** Tipo de documento que maneja esta estrategia. */
   readonly type: DocumentType;
@@ -37,13 +32,7 @@ export interface DocumentEffectStrategy {
   ): Promise<void>;
 }
 
-/**
- * Contrato adicional para tipos que manejan reservas lógicas de inventario
- * (hoy solo PV). Segregado de DocumentEffectStrategy (ISP): un tipo que no
- * reserva nada (CM, T, ...) no debe verse forzado a implementar
- * releaseItems, así que vive en una interfaz aparte que solo PvEffectStrategy
- * declara.
- */
+/** Contrato aparte (ISP) para tipos con reserva lógica de stock (hoy solo PV) — evita forzar releaseItems en tipos que no reservan (CM, T...). */
 export interface ReservationEffectStrategy extends DocumentEffectStrategy {
   /**
    * Libera (parcial o totalmente) la reserva pendiente de una o más líneas
@@ -58,10 +47,8 @@ export interface ReservationEffectStrategy extends DocumentEffectStrategy {
   ): Promise<void>;
 
   /**
-   * Descuenta de la reserva (convertedQuantity) las cantidades que un
-   * documento de venta real acaba de consumir al confirmarse desde una
-   * conversión (Document.sourceDocumentId). Corre dentro del mismo
-   * $transaction que confirma el documento derivado.
+   * Descuenta de la reserva (convertedQuantity) lo que el documento de venta
+   * consumió al confirmarse desde una conversión (Document.sourceDocumentId).
    */
   consumeForConversion(
     tx: Prisma.TransactionClient,

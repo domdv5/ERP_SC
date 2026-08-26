@@ -52,12 +52,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     }
   }
 
-  /**
-   * Bloqueo duro: cada producto ya tiene una marca/proveedor fijos sin
-   * ambigüedad, así que un ítem de una marca ajena al proveedor elegido
-   * siempre es un error real (proveedor o producto equivocado), nunca un
-   * caso legítimo a permitir con solo un aviso.
-   */
+  /** Bloqueo duro: marca/proveedor de un producto son fijos, así que un ítem de otra marca siempre es un error real, nunca un caso a permitir con solo aviso. */
   protected async assertItemsMatchSupplierBrands(
     supplierId: string,
     items: { productId: string; brandId: string }[],
@@ -79,13 +74,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     }
   }
 
-  /**
-   * Bloqueo duro: cada producto tiene un piso de precio de venta fijo
-   * (`Product.minSalePrice`) sin excepciones por tipo de documento — vender
-   * por debajo de ese piso siempre es un error real, nunca un caso a
-   * permitir con solo un aviso. Acumula todas las violaciones (no corta en
-   * la primera) para que el usuario corrija todo el documento de una vez.
-   */
+  /** Bloqueo duro: vender bajo `Product.minSalePrice` siempre es error real. Acumula todas las violaciones (no corta en la primera) para corregir todo el documento de una vez. */
   protected assertPricesAboveFloor(
     items: { code: string; unitPrice: number; minSalePrice: number }[],
   ) {
@@ -106,17 +95,10 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
   }
 
   /**
-   * Valida disponibilidad batch (stock de bodega menos reserva vigente de
-   * PV) para todos los ítems de un documento de una sola vez — un solo
-   * groupBy + una sola consulta de Inventory con FOR UPDATE, en vez de N
-   * llamadas por ítem (db-avoid-n-plus-one). El lock por fila con FOR UPDATE
-   * evita que dos confirmaciones concurrentes sobre los mismos productos
-   * lean el mismo "disponible" antes de que ninguna escriba (mismo
-   * razonamiento que PvEffectStrategy documentaba inline antes de esta
-   * extracción). A diferencia de assertAvailableForReservation, esta versión
-   * ACUMULA todos los faltantes y los devuelve en vez de lanzar ella misma —
-   * cada caller decide el mensaje/excepción (PV corta en el primero para
-   * mantener su mensaje histórico, POS reporta todos los faltantes juntos).
+   * Valida disponibilidad batch (stock menos reserva PV) de todos los ítems en una sola
+   * consulta con FOR UPDATE (evita N+1 y que dos confirmaciones concurrentes lean el mismo
+   * "disponible" antes de escribir). Acumula los faltantes y los devuelve en vez de lanzar —
+   * cada caller decide el mensaje (PV corta en el primero, POS reporta todos juntos).
    */
   protected async assertBatchAvailability(
     tx: Prisma.TransactionClient,

@@ -25,8 +25,19 @@ Document the **why**, never the **what** — well-named identifiers already say 
 - **Document**: non-obvious business rules/invariants, design decisions with real trade-offs, workarounds for a specific bug/limitation, concurrency/locking rationale, non-obvious algorithms or formats (e.g. zero-padding for lexicographic order), anything that would genuinely surprise a future reader.
 - **Don't document**: trivial CRUD, simple getters/destructuring, self-explanatory conditionals, anything a competent reader infers instantly from names/types.
 - **Style**: short inline `//` comments in **Spanish** (matches existing comments across the codebase) for business-logic explanations; JSDoc only on exported functions/classes whose behavior isn't obvious from the signature — never on trivial ones. No multi-paragraph comment blocks.
+- **Length**: aim for 1-3 lines even for a real invariant — compress, never omit the why. Cut tutorial-style exposition, redundant examples, and meta-references ("antes de este cambio", "previamente esto era..."); keep only the rule/invariant itself. E.g. instead of a 6-line block walking through *why* a single `UPDATE ... ON CONFLICT` avoids a race condition, state the guarantee directly: `/** Suma delta en un solo UPDATE/ON CONFLICT (no read-then-write): el statement bloquea la fila, evitando que confirmaciones concurrentes se pisen. */`.
 - **Before adding a comment**, check the surrounding code for one that already explains the same thing — don't duplicate.
 - This is a comment-only concern — never justifies changing logic, renaming, or refactoring as a side effect of "documenting."
+
+## Documentation Maintenance
+
+Cuando una tarea introduce una **decisión de arquitectura, regla de negocio, endpoint nuevo, o comportamiento no obvio** (no un simple CRUD o maquetación), el CLAUDE.md correspondiente debe quedar actualizado como parte de la misma tarea, no después:
+
+- Backend (módulos, estrategias, reglas de negocio, endpoints) → `backend/CLAUDE.md`.
+- Frontend (patrones, módulos implementados, componentes compartidos) → `frontend/CLAUDE.md`.
+- Reglas transversales (Safety Rules, convenciones de todo el repo, Routing Rules) → este archivo raíz.
+
+Al delegar a `nestjs-code-crafter`/`react-code-crafter`, el prompt de delegación debe pedir explícitamente que el agente actualice el CLAUDE.md que corresponda si su cambio califica. Antes de cerrar una tarea o comitear, verificar que el CLAUDE.md relevante refleje el estado real del código — no dejar secciones que digan "no implementado"/"phase 2" sobre algo que ya se implementó.
 
 ## Project Overview
 

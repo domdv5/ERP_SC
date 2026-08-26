@@ -107,9 +107,8 @@ export class AccountsPayableService {
 
     return this.prisma.$transaction(
       async (tx) => {
-        // Bloquea la fila hasta que la transacción termine, serializando pagos
-        // concurrentes sobre la misma cuenta y evitando que dos pagos simultáneos
-        // se validen ambos contra el mismo saldo pendiente (overpayment por race condition).
+        // Bloquea la fila hasta terminar la transacción: serializa pagos
+        // concurrentes para que no se validen ambos contra el mismo saldo (overpayment).
         await tx.$queryRaw`SELECT id FROM "accounts_payable" WHERE id = ${id} FOR UPDATE`;
 
         const accountPayable = await tx.accountsPayable.findUnique({
@@ -123,10 +122,9 @@ export class AccountsPayableService {
 
         const amountCents = toCents(amount);
 
-        // Agrupa por crédito para validar el saldo contra el total solicitado en
-        // esta transacción — si el mismo crédito aparece dos veces en el payload,
-        // validar cada línea por separado dejaría pasar una sobre-aplicación que
-        // solo se nota al sumar ambas.
+        // Agrupa por crédito para validar el saldo total solicitado — si el
+        // mismo crédito aparece dos veces, validar cada línea por separado
+        // dejaría pasar una sobre-aplicación que solo se nota al sumarlas.
         const requestedCentsByCreditId = new Map<string, number>();
         for (const application of creditApplications) {
           const previous =
@@ -157,9 +155,8 @@ export class AccountsPayableService {
         if (requestedCentsByCreditId.size > 0) {
           const creditIds = [...requestedCentsByCreditId.keys()];
 
-          // Bloquea la AP (arriba) primero y luego los créditos ordenados por id,
-          // siempre en el mismo orden relativo, para no deadlockear con otra
-          // transacción que aplique los mismos créditos en paralelo.
+          // Bloquea la AP primero y luego los créditos ordenados por id, siempre
+          // en el mismo orden, para no deadlockear con otra transacción paralela.
           await tx.$queryRaw`SELECT id FROM "supplier_credit" WHERE id = ANY(${creditIds}::uuid[]) ORDER BY id FOR UPDATE`;
 
           credits = await tx.supplierCredit.findMany({

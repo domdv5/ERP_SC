@@ -6,23 +6,19 @@ import type { PrismaService } from '@/prisma/prisma.service';
 type PrismaOrTx = PrismaService | Prisma.TransactionClient;
 
 /**
- * Reserva vigente por producto: suma de líneas de PV confirmados
- * (quantity - releasedQuantity - convertedQuantity). Nunca cuenta bodega —
- * la preventa reserva sobre el stock global del producto, igual que
- * computeNewAvgCost pondera sobre stock global.
- *
- * Devuelve un Map con una entrada en 0 para cada productId solicitado que no
- * tenga reservas — nunca `undefined`, para que los llamadores puedan hacer
- * `.get(id)!` sin un `?? 0` defensivo en cada sitio.
+ * Reserva vigente por producto: suma de líneas PV confirmadas
+ * (quantity - releasedQuantity - convertedQuantity). No cuenta bodega — la
+ * preventa reserva sobre el stock global, igual que computeNewAvgCost.
+ * Devuelve 0 (nunca `undefined`) para productIds sin reservas, así los
+ * llamadores pueden usar `.get(id)!` sin `?? 0` defensivo.
  */
 export async function getReservedByProduct(
   prisma: PrismaOrTx,
   productIds: string[],
   options?: {
-    /** Excluye un documento puntual del cómputo — ver confirm() de PvEffectStrategy:
-     * el propio documento ya quedó en status confirmed (misma tx, updateMany previo
-     * en documents.service.ts) antes de que la estrategia valide disponibilidad, así
-     * que sin excluirlo se restaría su propia reserva contra sí mismo. */
+    /** Excluye un documento del cómputo — en confirm() de PvEffectStrategy el propio
+     * documento ya quedó confirmed antes de validar disponibilidad, así que sin
+     * excluirlo restaría su propia reserva contra sí mismo. */
     excludeDocumentId?: string;
   },
 ): Promise<Map<string, number>> {
@@ -66,25 +62,12 @@ export interface AvailabilityShortfall {
 }
 
 /**
- * Valida disponibilidad de un solo producto (stock de bodega menos reserva
- * vigente) antes de comprometerlo en una reserva, o antes de restarle stock
- * a la bodega por cualquier otro motivo (ej. anular una compra/EAI — ver
- * documents.service.ts::void(), o sacar stock por SAJ/DVC/T — ver
- * assertSufficientStock en stock.helpers.ts). `buildMessage` deja que cada
- * llamador redacte su propio mensaje con los números reales — un solo texto
- * genérico no se leía natural tanto para "confirmar" como para "anular".
- *
- * Bloquea la fila de `Inventory` con `FOR UPDATE` (mismo patrón que
- * accounts-payable.service.ts::registerPayment) antes de leer la cantidad:
- * sin esto, dos transacciones concurrentes sobre el mismo producto/bodega
- * (dos SAJ, o un SAJ contra una PV confirmándose al mismo tiempo) podrían
- * leer el mismo "disponible" antes de que ninguna escriba, pasar el chequeo
- * las dos, y terminar sobre-reservando o sobre-restando sin que
- * `Inventory.quantity` llegue a ir en negativo (por eso `applyStockChange`
- * no detecta este caso por su cuenta). Requiere correr dentro de una
- * transacción real — por eso el tipo es `Prisma.TransactionClient`, no
- * `PrismaOrTx`: fuera de una transacción el `FOR UPDATE` se libera apenas
- * termina la sentencia y no protege nada.
+ * Valida disponibilidad de un producto (stock menos reserva) antes de reservarlo
+ * o restarle stock (void de compra/EAI, salida SAJ/DVC/T). `buildMessage` deja
+ * que cada llamador redacte su mensaje con los números reales. Bloquea
+ * `Inventory` con `FOR UPDATE` antes de leer — sin esto, transacciones
+ * concurrentes leerían el mismo "disponible" y podrían sobre-reservar. Por eso
+ * exige `Prisma.TransactionClient` real: fuera de una transacción el lock no protege.
  */
 export async function assertAvailableForReservation(
   tx: Prisma.TransactionClient,

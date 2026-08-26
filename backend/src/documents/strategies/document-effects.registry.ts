@@ -13,12 +13,7 @@ import { PosEffectStrategy } from './pos-effect.strategy';
 import { SajEffectStrategy } from './saj-effect.strategy';
 import { TransferEffectStrategy } from './transfer-effect.strategy';
 
-/**
- * Registro de estrategias por tipo de documento.
- * Un tipo sin estrategia registrada es, por definición, un tipo
- * aún no soportado (fase 2): el get() lanza el BadRequestException
- * y el service no necesita ninguna lista de tipos.
- */
+/** Registro de estrategias por tipo de documento — un tipo sin estrategia registrada es, por definición, aún no soportado (get() lanza el error, sin necesitar una lista aparte). */
 @Injectable()
 export class DocumentEffectsRegistry {
   private readonly strategies = new Map<DocumentType, DocumentEffectStrategy>();

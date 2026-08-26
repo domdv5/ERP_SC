@@ -26,9 +26,8 @@ export class EaiEffectStrategy extends BaseEffectStrategy {
       );
     }
 
-    // Motivo del ajuste obligatorio para todo EAI — sirve para reportería
-    // (negativo del día a día vs. inventario_general anual vs. traspaso_costo
-    // entre productos). El detalle libre solo es obligatorio si es "otro".
+    // Motivo obligatorio para reportería (negativo día a día vs. inventario_general
+    // anual vs. traspaso_costo). El detalle libre solo es obligatorio si es "otro".
     if (!createDocumentDto.adjustmentReason) {
       throw new BadRequestException('El motivo del ajuste es obligatorio');
     }
@@ -50,11 +49,9 @@ export class EaiEffectStrategy extends BaseEffectStrategy {
   ) {
     const warehouseId = this.requireWarehouse(document);
 
-    // Revalida lo mismo que validateCreate(): un PATCH sobre el borrador
-    // reemplaza los ítems sin volver a pasar por validateCreate(), así que
-    // confirm() es el único punto que sí ve siempre el estado final antes
-    // de aplicar efectos (mismo motivo por el que transfer-effect.strategy.ts
-    // revalida en ambos lados).
+    // Revalida lo mismo que validateCreate(): un PATCH reemplaza los ítems sin
+    // volver a pasar por ahí, así que confirm() es el único punto que ve el
+    // estado final antes de aplicar efectos (mismo motivo que en T).
     if (document.documentItems.some((item) => Number(item.unitCost) <= 0)) {
       throw new BadRequestException(
         'El costo unitario debe ser un valor mayor a cero',

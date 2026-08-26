@@ -1,11 +1,6 @@
 import { Prisma } from '@prisma/client';
 
-/**
- * IVA fijo del 19% — excepción de presentación exclusiva del PDF impreso.
- * El dominio (Document/DocumentItem) no modela impuestos (ver comentario en
- * schema.prisma sobre fase 2 de facturación electrónica). No importar este
- * archivo fuera de documents/print/.
- */
+/** IVA fijo del 19% — excepción de presentación solo del PDF; el dominio no modela impuestos (ver schema.prisma, fase 2 de facturación electrónica). No importar fuera de documents/print/. */
 export const PRINT_IVA_RATE = 0.19;
 
 export interface PrintTotals {

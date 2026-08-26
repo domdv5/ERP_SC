@@ -12,13 +12,7 @@ import type {
   ReservationEffectStrategy,
 } from './document-effect.strategy';
 
-/**
- * PV — Preventa: reserva lógica de inventario, sin movimiento físico.
- * confirm() NUNCA llama a moveStock/applyStockChange/applyBinStockChange —
- * la reserva se materializa por el solo hecho de que el Document queda en
- * status confirmed; getReservedByProduct la deriva sumando líneas de PV
- * confirmados, no hay ninguna tabla de "stock reservado" separada.
- */
+/** PV — preventa: reserva lógica de stock, sin movimiento físico. confirm() nunca llama a moveStock — la reserva es solo el Document en status confirmed; getReservedByProduct la deriva sumando PV confirmadas (no hay tabla de reservas). */
 @Injectable()
 export class PvEffectStrategy
   extends BaseEffectStrategy
@@ -60,10 +54,8 @@ export class PvEffectStrategy
   ) {
     const warehouseId = this.requireWarehouse(document);
 
-    // assertBatchAvailability (BaseEffectStrategy) concentra el batch +
-    // FOR UPDATE que antes vivía acá inline — ver su doc comment para el
-    // razonamiento del lock. PV corta en el primer faltante para mantener
-    // su mensaje histórico de error (comportamiento sin cambios).
+    // assertBatchAvailability centraliza el batch + FOR UPDATE (antes inline acá).
+    // PV corta en el primer faltante para mantener su mensaje de error histórico.
     const shortfalls = await this.assertBatchAvailability(
       tx,
       warehouseId,
@@ -115,9 +107,8 @@ export class PvEffectStrategy
         );
       }
 
-      // Update atómico (mismo patrón que applyStockChange en stock.helpers.ts):
-      // el WHERE re-valida la disponibilidad en la misma sentencia que escribe,
-      // así dos liberaciones concurrentes del mismo ítem no pueden pisarse.
+      // Update atómico (mismo patrón que applyStockChange): el WHERE re-valida
+      // disponibilidad en la misma sentencia, así dos liberaciones concurrentes no se pisan.
       const rows = await tx.$queryRaw<{ released_quantity: number }[]>`
         UPDATE document_item
         SET released_quantity = released_quantity + ${release.quantity}
@@ -158,10 +149,8 @@ export class PvEffectStrategy
         continue;
       }
 
-      // Mismo patrón atómico UPDATE...WHERE...RETURNING que releaseItems —
-      // el audit trail de esta operación es el propio documento derivado
-      // (sourceDocumentId), no ReservationRelease (esa tabla es solo para
-      // liberaciones manuales).
+      // Mismo patrón atómico que releaseItems. Audit trail acá es el documento
+      // derivado (sourceDocumentId), no ReservationRelease (solo para liberaciones manuales).
       const rows = await tx.$queryRaw<{ converted_quantity: number }[]>`
         UPDATE document_item
         SET converted_quantity = converted_quantity + ${conversion.quantity}

@@ -41,9 +41,8 @@ export class CmEffectStrategy extends BaseEffectStrategy {
       );
     }
 
-    // Defensa en profundidad: documents.service.ts::update() no revalida al
-    // editar un borrador, así que un ítem de marca equivocada podría colarse
-    // hasta acá si solo se validara en validateCreate.
+    // Defensa en profundidad: update() no revalida un borrador editado, así que
+    // un ítem de marca equivocada podría colarse si solo se validara en validateCreate.
     await this.assertItemsMatchSupplierBrands(
       supplier.id,
       document.documentItems.map((item) => ({

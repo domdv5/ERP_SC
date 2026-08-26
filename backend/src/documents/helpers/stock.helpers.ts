@@ -4,15 +4,7 @@ import { DocumentStatus, MovementType } from '@/common/enums';
 import type { DocumentWithItems } from '@/documents/strategies/document-effect.strategy';
 import { assertAvailableForReservation } from './reservation.helpers';
 
-/**
- * Suma `delta` (positivo = entra stock, negativo = sale stock) a Inventory
- * en una sola sentencia SQL en vez de leer y luego escribir: el propio
- * UPDATE/ON CONFLICT bloquea la fila mientras corre, así que si dos
- * confirmaciones llegan a la vez para el mismo (productId, warehouseId),
- * Postgres hace que la segunda espere a que la primera termine y recién
- * ahí aplica su cambio — en vez de que ambas lean el mismo valor inicial
- * y una pise el resultado de la otra sin darse cuenta.
- */
+/** Suma `delta` a Inventory en un solo UPDATE/ON CONFLICT (no read-then-write): el propio statement bloquea la fila, evitando que dos confirmaciones concurrentes se pisen. */
 export async function applyStockChange(
   tx: Prisma.TransactionClient,
   params: {
@@ -55,12 +47,7 @@ export async function applyStockChange(
   return { previousStock: newStock - delta, newStock };
 }
 
-/**
- * Aplica el delta a BinStock de forma atómica (mismo patrón que
- * applyStockChange). No devuelve previousStock/newStock — su firma pública
- * ya no los exponía antes de este cambio, y sus llamadores descartan el
- * valor de retorno.
- */
+/** Aplica el delta a BinStock de forma atómica (mismo patrón que applyStockChange). No devuelve previousStock/newStock — sus llamadores descartan el retorno. */
 export async function applyBinStockChange(
   tx: Prisma.TransactionClient,
   params: {
@@ -96,14 +83,10 @@ export async function applyBinStockChange(
 }
 
 /**
- * Valida que haya stock suficiente del producto en la bodega para la salida.
- * En bodegas tipo `store` delega en assertAvailableForReservation, que
- * descuenta lo reservado por preventas confirmadas (y bloquea la fila para
- * que dos confirmaciones concurrentes no se pasen las dos el chequeo) — si
- * no, SAJ/DVC/T podrían sacar stock que ya está comprometido con una
- * preventa, dejándola sin respaldo físico sin ningún aviso. En bodegas tipo
- * `warehouse` (almacenamiento) no aplica: las preventas nunca reservan
- * contra esa bodega, así que basta comparar contra el stock crudo.
+ * Valida stock suficiente para la salida. En bodegas `store` delega en
+ * assertAvailableForReservation (descuenta reservas de PV, bloquea la fila) —
+ * si no, SAJ/DVC/T podrían sacar stock ya comprometido con una preventa. En
+ * bodegas `warehouse` no aplica: las preventas no reservan ahí, compara stock crudo.
  */
 export async function assertSufficientStock(
   tx: Prisma.TransactionClient,
@@ -191,15 +174,10 @@ export async function computeNewAvgCost(
 }
 
 /**
- * Reversa una re-ponderación previa de avgCost (fórmula inversa de
- * computeNewAvgCost). Solo es exacta si no hubo consumo de stock del
- * producto entre la confirmación original y esta reversión — un consumo
- * intermedio ya "gastó" stock valorado a un avgCost que incluía la
- * contribución que ahora se quiere restar, y no hay forma de recuperar
- * retroactivamente cuánto de ese consumo era pre-compra vs. post-compra
- * sin rehacer el kardex completo. Por eso el llamador (documents.service.ts
- * ::void()) debe garantizar esa ausencia de consumo posterior (chequeo de
- * recencia) antes de invocar esta función.
+ * Reversa una re-ponderación de avgCost (inversa de computeNewAvgCost). Solo es
+ * exacta si no hubo consumo de stock entre la compra original y esta reversión —
+ * por eso el llamador (documents.service.ts::void()) debe garantizar esa ausencia
+ * (chequeo de recencia) antes de invocarla.
  */
 export async function computeReversedAvgCost(
   tx: Prisma.TransactionClient,
@@ -217,13 +195,10 @@ export async function computeReversedAvgCost(
 }
 
 /**
- * Determina qué valor debe tomar Product.lastCost tras anular un CM, o
- * `undefined` si no debe tocarse. Solo CM escribe lastCost en confirm() (ver
- * cm-effect.strategy.ts) — EAI nunca lo hace, así que el fallback jamás debe
- * mirar movimientos de tipo adjustment. Si ya existe una compra CM viva más
- * reciente que la que se anula, lastCost ya refleja correctamente esa compra
- * y no se toca; solo si la que se anula era la compra vigente más reciente
- * se busca la compra CM viva inmediatamente anterior (o 0 si no hay ninguna).
+ * Determina el nuevo Product.lastCost tras anular un CM (`undefined` si no debe
+ * tocarse). Solo CM escribe lastCost, así que el fallback nunca mira movimientos
+ * `adjustment`. Si ya existe una compra CM viva más reciente, no se toca; si no,
+ * busca la compra CM viva inmediatamente anterior (o 0 si no hay ninguna).
  */
 export async function resolveLastCostAfterVoidingCm(
   tx: Prisma.TransactionClient,
