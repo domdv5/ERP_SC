@@ -1,5 +1,5 @@
 import { getDocument, getDocuments } from '@/services/documents.service'
-import type { Document, DocumentItem } from '@/types/document.types'
+import type { CreditLimitExceededDetail, Document, DocumentItem } from '@/types/document.types'
 
 // ─── preventa pendiente (conversión PV → POS) ─────────────────────────────────
 
@@ -80,4 +80,25 @@ export function parseStockShortfallError(err: unknown): StockShortfall[] | null 
   if (typeof data !== 'object' || data === null) return null
   const shortfalls = (data as { shortfalls?: unknown }).shortfalls
   return Array.isArray(shortfalls) ? (shortfalls as StockShortfall[]) : null
+}
+
+// ─── 400 de cupo de crédito excedido (crear/confirmar/convertir COT) ──────────
+
+// Mismo gotcha que parseStockShortfallError: el backend lanza
+// `new BadRequestException({ message, credit })`, así que `credit` viaja como hermano de
+// `message` dentro de `response.data`. Devuelve null si el error no matchea esta forma.
+export function parseCreditLimitError(err: unknown): CreditLimitExceededDetail | null {
+  const data = (err as { response?: { data?: unknown } })?.response?.data
+  if (typeof data !== 'object' || data === null) return null
+  const credit = (data as { credit?: unknown }).credit
+  if (typeof credit !== 'object' || credit === null) return null
+  const c = credit as Record<string, unknown>
+  if (
+    typeof c.creditLimit !== 'number' ||
+    typeof c.usedCredit !== 'number' ||
+    typeof c.availableCredit !== 'number'
+  ) {
+    return null
+  }
+  return credit as CreditLimitExceededDetail
 }

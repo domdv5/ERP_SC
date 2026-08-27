@@ -14,11 +14,11 @@ export const itemSchema = z.object({
 })
 
 export const formSchema = z.object({
-  // 'POS' se incluye solo para que existingDoc.type (DocumentType, que ya admite 'POS') tipe
-  // correctamente al hacer reset() en modo edición — DocumentFormPage nunca ofrece 'POS' como
-  // opción seleccionable (ver availableTypes) y redirige fuera del form si detecta un borrador
-  // POS existente (ese tipo se edita solo desde POSCheckoutPage).
-  type:            z.enum(['CM', 'DVC', 'EAI', 'SAJ', 'T', 'PV', 'POS'] as const),
+  // 'POS'/'COT' se incluyen solo para que existingDoc.type (DocumentType) tipe correctamente
+  // al hacer reset() en modo edición — DocumentFormPage nunca los ofrece como opción
+  // seleccionable (ver availableTypes) y redirige fuera del form si detecta un borrador de
+  // venta existente (esos tipos se editan solo desde POSCheckoutPage).
+  type:            z.enum(['CM', 'DVC', 'EAI', 'SAJ', 'T', 'PV', 'POS', 'COT'] as const),
   date:            z.string().min(1, 'La fecha es requerida'),
   thirdPartyId:    z.string().optional(),
   // Solo preventas (PV) — vendedora responsable de la operación.

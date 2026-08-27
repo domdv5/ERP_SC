@@ -131,20 +131,25 @@ export function Sidebar() {
   const canReadAp = usePermission("ap.read");
   const canViewFinance = canReadAr || canReadAp;
   const canCreatePOS = usePermission("document.create.POS");
+  const canCreateCOT = usePermission("document.create.COT");
+  const canSell = canCreatePOS || canCreateCOT;
 
   const operacionesGroup = {
     label: "Operaciones",
     items: [{ to: "/documents", icon: FileText, label: "Operaciones" }],
   };
 
-  // "Ventas" se arma acá (no como constante de módulo) porque el ítem POS solo debe
-  // aparecer para roles con permiso document.create.POS — mismo criterio que financeGroup
-  // (canViewFinance) más abajo. Sección separada de Operaciones: acá van a caer a futuro
-  // otros tipos de venta (COT/DVV/REM) sin mezclarse con compras/ajustes/traslados.
+  // "Ventas" se arma acá (no como constante de módulo) porque el ítem solo debe aparecer
+  // para roles que pueden vender (contado y/o crédito) — mismo criterio que financeGroup
+  // (canViewFinance) más abajo. El checkout (`/documents/pos/new`) atiende ambos modos con
+  // un toggle Contado/Crédito. Sección separada de Operaciones: acá van a caer a futuro
+  // otros tipos de venta (DVV/REM) sin mezclarse con compras/ajustes/traslados.
   const ventasGroup = {
     label: "Ventas",
     items: [
-      ...(canCreatePOS ? [{ to: "/documents/pos/new", icon: Banknote, label: "POS" }] : []),
+      ...(canSell
+        ? [{ to: "/documents/pos/new", icon: Banknote, label: "Nueva venta" }]
+        : []),
     ],
   };
   const [menuOpen, setMenuOpen] = useState(false);
@@ -239,10 +244,10 @@ export function Sidebar() {
           </NavLink>
         </div>
 
-        {/* Operaciones + Ventas (oculta sin document.create.POS) + Finanzas (oculta sin ar.read/ap.read) */}
+        {/* Operaciones + Ventas (oculta sin permiso de venta contado/crédito) + Finanzas (oculta sin ar.read/ap.read) */}
         {[
           operacionesGroup,
-          ...(canCreatePOS ? [ventasGroup] : []),
+          ...(canSell ? [ventasGroup] : []),
           ...(canViewFinance ? [financeGroup] : []),
         ].map((group) => (
           <div key={group.label} className="space-y-0.5">

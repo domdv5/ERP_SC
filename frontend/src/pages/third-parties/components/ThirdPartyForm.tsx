@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { X, Plus, Trash2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getFirstErrorMessage } from "@/lib/form-errors";
+import { ThousandsInput } from "@/components/shared";
 import type { ThirdParty } from "@/types";
 import {
   WITHHOLDING_AGENT_TYPE_OPTIONS,
@@ -191,7 +192,8 @@ function flattenDefaults(tp: ThirdParty): Partial<FormValues> {
     isSeller: tp.isSeller ?? false,
     isCustomer: tp.customer != null,
     isSupplier: tp.supplier != null,
-    creditLimit: tp.customer?.creditLimit,
+    // Prisma serializa Decimal como string en JSON — normalizar a number para el input formateado.
+    creditLimit: tp.customer?.creditLimit != null ? Number(tp.customer.creditLimit) : undefined,
     discount: tp.customer?.discount,
     internalNumber: tp.supplier?.internalNumber,
     discountNotes: tp.supplier?.discountNotes ?? undefined,
@@ -218,7 +220,7 @@ export function ThirdPartyForm({
   // Once the user edits the display name by hand, stop overwriting it from firstName/lastName
   const [nameTouched, setNameTouched] = useState(false);
 
-  const { register, handleSubmit, watch, setValue, reset } = useForm<FormValues>({
+  const { register, handleSubmit, watch, setValue, reset, control } = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
       personType: "natural",
@@ -469,11 +471,21 @@ export function ThirdPartyForm({
                 <p className="text-sm font-medium text-brand-secondary-dark">Datos de cliente</p>
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Límite de crédito">
-                    <Input
-                      {...register("creditLimit")}
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
+                    {/* Se ve con separador de miles (es-CO: 1.000.000); al payload/schema va
+                        el number plano. undefined = sin línea de crédito. */}
+                    <Controller
+                      control={control}
+                      name="creditLimit"
+                      render={({ field }) => (
+                        <ThousandsInput
+                          name={field.name}
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          ref={field.ref}
+                          placeholder="0"
+                        />
+                      )}
                     />
                   </Field>
                   <Field label="Descuento (%)">

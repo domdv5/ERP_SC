@@ -3,13 +3,12 @@ import {
   useState,
   useRef,
   useMemo,
-  useLayoutEffect,
   forwardRef,
   type ReactNode,
   type InputHTMLAttributes,
   type SelectHTMLAttributes,
 } from 'react'
-import { useForm, useWatch, Controller, type Control } from 'react-hook-form'
+import { useForm, useWatch, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { X } from 'lucide-react'
@@ -17,7 +16,7 @@ import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
-import { CatalogComboboxField } from '@/components/shared'
+import { CatalogComboboxField, ThousandsInput } from '@/components/shared'
 import { getBrands, getGenders, getCategories } from '@/services/products.service'
 import type { Product } from '@/types'
 
@@ -33,11 +32,19 @@ const schema = z
     brandId: z.string().min(1, 'Selecciona una marca'),
     genderId: z.string().min(1, 'Selecciona un género'),
     categoryId: z.string().min(1, 'Selecciona una categoría'),
-    salePrice: z.coerce.number().int('Debe ser un número entero').positive('Debe ser positivo'),
-    minSalePrice: z.coerce.number().int('Debe ser un número entero').min(0, 'No puede ser negativo'),
+    // ThousandsInput emite number | undefined (undefined = campo vacío) — sin z.coerce:
+    // undefined dispara el mensaje "Requerido" en vez de convertirse en NaN.
+    salePrice: z
+      .number({ error: 'Requerido' })
+      .int('Debe ser un número entero')
+      .positive('Debe ser positivo'),
+    minSalePrice: z
+      .number({ error: 'Requerido' })
+      .int('Debe ser un número entero')
+      .min(0, 'No puede ser negativo'),
     unitOfMeasure: z.enum(['unidad', 'docena']),
   })
-  .refine((d) => d.minSalePrice <= d.salePrice, {
+  .refine((d) => d.minSalePrice == null || d.salePrice == null || d.minSalePrice <= d.salePrice, {
     message: 'El precio mínimo no puede superar el precio de venta',
     path: ['minSalePrice'],
   })
@@ -98,76 +105,6 @@ function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSele
   )
 }
 
-// Muestra separador de miles ('.') mientras se escribe; el form state guarda el number plano
-function formatThousands(value: number): string {
-  return new Intl.NumberFormat('es-CO').format(value)
-}
-
-interface ThousandsInputProps {
-  control: Control<FormValues>
-  name: 'salePrice' | 'minSalePrice'
-  placeholder?: string
-  onValueChange?: () => void
-}
-
-function ThousandsInput({ control, name, placeholder, onValueChange }: ThousandsInputProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  // Posición de cursor a restaurar tras reformatear — evita que salte al final en cada tecleo
-  const caretRef = useRef<number | null>(null)
-
-  useLayoutEffect(() => {
-    if (caretRef.current !== null && inputRef.current) {
-      inputRef.current.setSelectionRange(caretRef.current, caretRef.current)
-      caretRef.current = null
-    }
-  })
-
-  return (
-    <Controller
-      control={control}
-      name={name}
-      render={({ field }) => (
-        <Input
-          ref={(node) => {
-            inputRef.current = node
-            field.ref(node)
-          }}
-          inputMode="numeric"
-          placeholder={placeholder}
-          value={formatThousands(field.value ?? 0)}
-          name={field.name}
-          onBlur={field.onBlur}
-          onChange={(e) => {
-            const el = e.target
-            const caretPos = el.selectionStart ?? el.value.length
-            const digitsBeforeCaret = el.value.slice(0, caretPos).replace(/\D/g, '').length
-            const rawDigits = el.value.replace(/\D/g, '')
-            const numericValue = rawDigits ? Number(rawDigits) : 0
-            const newFormatted = formatThousands(numericValue)
-
-            // Recalcula dónde debe quedar el cursor contando dígitos (no caracteres, por los puntos insertados)
-            let newCaret = digitsBeforeCaret === 0 ? 0 : newFormatted.length
-            let seen = 0
-            for (let i = 0; i < newFormatted.length; i++) {
-              if (/\d/.test(newFormatted[i])) {
-                seen++
-                if (seen === digitsBeforeCaret) {
-                  newCaret = i + 1
-                  break
-                }
-              }
-            }
-            caretRef.current = newCaret
-
-            field.onChange(numericValue)
-            onValueChange?.()
-          }}
-        />
-      )}
-    />
-  )
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -196,8 +133,9 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
       brandId: '',
       genderId: '',
       categoryId: '',
-      salePrice: 0,
-      minSalePrice: 0,
+      // undefined = campo vacío (placeholder "0"); ThousandsInput lo maneja.
+      salePrice: undefined,
+      minSalePrice: undefined,
       unitOfMeasure: 'unidad',
     },
   })
@@ -212,8 +150,9 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
         brandId:      defaultValues?.brandId      ?? '',
         genderId:     defaultValues?.genderId      ?? '',
         categoryId:   defaultValues?.categoryId   ?? '',
-        salePrice:    defaultValues?.salePrice    ?? 0,
-        minSalePrice: defaultValues?.minSalePrice ?? 0,
+        // undefined transitorio en create (campo vacío) — el schema exige el valor al enviar.
+        salePrice:    (defaultValues?.salePrice    ?? undefined) as number,
+        minSalePrice: (defaultValues?.minSalePrice ?? undefined) as number,
         unitOfMeasure: defaultValues?.unitOfMeasure ?? 'unidad',
       })
       setSuffix('')
@@ -266,11 +205,14 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
     }
   }, [prefix, suffix, isEdit, setValue, defaultValues?.legacyCode])
 
-  // Auto-fill minSalePrice as salePrice - 2% while creating, until the user edits it by hand
+  // Auto-fill minSalePrice as salePrice - 2% while creating, until the user edits it by hand.
+  // salePrice vacío (undefined) → minSalePrice también vacío, nunca NaN. El cast cubre el
+  // undefined transitorio: el schema sigue exigiendo el campo ("Requerido") al enviar.
   useEffect(() => {
     if (isEdit || minSalePriceTouched) return
-    const salePrice = Number(salePriceVal) || 0
-    setValue('minSalePrice', salePrice > 0 ? Math.round(salePrice * 0.98) : 0)
+    const salePrice = Number(salePriceVal)
+    const next = Number.isFinite(salePrice) && salePrice > 0 ? Math.round(salePrice * 0.98) : undefined
+    setValue('minSalePrice', next as number)
   }, [salePriceVal, isEdit, minSalePriceTouched, setValue])
 
   if (!open) return null
@@ -423,14 +365,36 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Precio de venta">
-                  <ThousandsInput control={control} name="salePrice" placeholder="0" />
+                  <Controller
+                    control={control}
+                    name="salePrice"
+                    render={({ field }) => (
+                      <ThousandsInput
+                        name={field.name}
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        ref={field.ref}
+                        placeholder="0"
+                      />
+                    )}
+                  />
                 </Field>
                 <Field label="Precio mínimo de venta">
-                  <ThousandsInput
+                  <Controller
                     control={control}
                     name="minSalePrice"
-                    placeholder="0"
-                    onValueChange={() => setMinSalePriceTouched(true)}
+                    render={({ field }) => (
+                      <ThousandsInput
+                        name={field.name}
+                        value={field.value}
+                        // Editar el mínimo a mano corta el auto-fill del 2%.
+                        onChange={(v) => { field.onChange(v); setMinSalePriceTouched(true) }}
+                        onBlur={field.onBlur}
+                        ref={field.ref}
+                        placeholder="0"
+                      />
+                    )}
                   />
                 </Field>
               </div>

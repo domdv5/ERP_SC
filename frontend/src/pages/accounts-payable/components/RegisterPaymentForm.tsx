@@ -5,7 +5,7 @@ import {
   type ReactNode,
   type SelectHTMLAttributes,
 } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { X, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getFirstErrorMessage } from "@/lib/form-errors";
+import { ThousandsInput } from "@/components/shared";
 import { getSupplierCredits } from "@/services/accounts-payable.service";
 import { formatCOP, formatDate } from "@/pages/accounts-payable/accounts-payable.utils";
 import type { RegisterPayablePaymentPayload } from "@/types";
@@ -23,15 +24,23 @@ import type { RegisterPayablePaymentPayload } from "@/types";
 
 // `balance` viaja en cada fila del form solo para validar en el cliente que no se
 // aplique más de lo disponible — se descarta antes de enviar el payload al backend.
+// ThousandsInput emite `undefined` cuando el campo queda vacío → preprocess lo trata como 0
+// (una fila/monto vacío = "no aplica"), así el superRefine siempre suma números.
+const moneyAmount = z.preprocess(
+  (v) => (v == null ? 0 : v),
+  z.number().min(0, "El monto no puede ser negativo"),
+);
+
 const creditApplicationSchema = z.object({
   supplierCreditId: z.string(),
-  balance: z.number(),
-  amount: z.coerce.number().min(0, "El monto no puede ser negativo"),
+  // La API serializa el Decimal de balance como string — coercionar para el superRefine.
+  balance: z.coerce.number(),
+  amount: moneyAmount,
 });
 
 const baseSchema = z.object({
   // El efectivo ahora puede ser 0: un pago puede saldarse solo con notas crédito (ver plan 020).
-  amount: z.coerce.number().min(0, "El monto no puede ser negativo"),
+  amount: moneyAmount,
   paymentDate: z.string().min(1, "La fecha es requerida"),
   paymentMethod: z.string().min(1, "Selecciona un método de pago"),
   bankDestination: z.string().optional(),
@@ -176,6 +185,7 @@ export function RegisterPaymentForm({
     handleSubmit,
     reset,
     watch,
+    setValue,
   } = useForm<RegisterPaymentFormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: emptyDefaults(),
@@ -193,15 +203,29 @@ export function RegisterPaymentForm({
   // apertura porque la consulta de créditos llega después de que `open` pasa a true.
   useEffect(() => {
     if (open && credits) {
-      replace(credits.map((c) => ({ supplierCreditId: c.id, balance: c.balance, amount: 0 })));
+      replace(credits.map((c) => ({ supplierCreditId: c.id, balance: Number(c.balance), amount: 0 })));
     }
   }, [open, credits, replace]);
 
   const watchedAmount = watch("amount");
   const watchedCredits = watch("creditApplications");
-  const totalApplied =
-    (Number(watchedAmount) || 0) +
-    watchedCredits.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  const cashApplied = Number(watchedAmount) || 0;
+  const creditsApplied = watchedCredits.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  const totalApplied = cashApplied + creditsApplied;
+
+  // Efectivo que falta para saldar la cuenta una vez descontadas las notas crédito ya aplicadas.
+  const cashRemainder = Math.max(0, pendingBalance - creditsApplied);
+
+  // Para una fila de nota crédito: lo máximo aplicable = min(disponible de la nota, lo que
+  // falta para cubrir el saldo con el resto del pago fijo).
+  const creditRowMax = (index: number) => {
+    const otherCredits = watchedCredits.reduce(
+      (sum, c, i) => (i === index ? sum : sum + (Number(c.amount) || 0)),
+      0,
+    );
+    const remaining = Math.max(0, pendingBalance - cashApplied - otherCredits);
+    return Math.min(watchedCredits[index]?.balance ?? 0, remaining);
+  };
 
   if (!open) return null;
 
@@ -230,7 +254,7 @@ export function RegisterPaymentForm({
     <div className="space-y-2">
       {fields.map((field, index) => (
         <div key={field.id}>
-          <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-ui-border-medium bg-surface-raised">
+          <div className="flex items-center justify-between gap-2 p-3 rounded-lg border border-ui-border-medium bg-surface-raised">
             <div className="min-w-0">
               <p className="text-content text-sm font-medium">
                 Nota crédito &middot; {formatDate(credits[index]?.createdAt ?? null)}
@@ -239,15 +263,31 @@ export function RegisterPaymentForm({
                 Disponible: {formatCOP(field.balance)}
               </p>
             </div>
-            <Input
-              {...register(`creditApplications.${index}.amount`)}
-              type="number"
-              min={0}
-              max={field.balance}
-              step="0.01"
-              placeholder="0"
-              className="w-28 shrink-0"
-            />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setValue(`creditApplications.${index}.amount`, creditRowMax(index), { shouldValidate: true })}
+                className="text-[11px] font-medium text-brand-secondary hover:underline disabled:opacity-40 disabled:no-underline"
+                disabled={creditRowMax(index) === 0}
+              >
+                Máx
+              </button>
+              <Controller
+                control={control}
+                name={`creditApplications.${index}.amount`}
+                render={({ field: f }) => (
+                  <ThousandsInput
+                    name={f.name}
+                    value={f.value}
+                    onChange={f.onChange}
+                    onBlur={f.onBlur}
+                    ref={f.ref}
+                    placeholder="0"
+                    className="w-24"
+                  />
+                )}
+              />
+            </div>
           </div>
         </div>
       ))}
@@ -290,16 +330,36 @@ export function RegisterPaymentForm({
           className="flex flex-col overflow-hidden"
         >
           <div className="px-6 py-5 space-y-4 overflow-y-auto">
-            <Field label="Monto en efectivo">
-              <Input
-                {...register("amount")}
-                type="number"
-                min={0}
-                step="0.01"
-                placeholder="0"
-                autoFocus
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-content-secondary">
+                  Monto en efectivo
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setValue("amount", cashRemainder, { shouldValidate: true })}
+                  className="text-xs font-medium text-brand-secondary hover:underline disabled:opacity-40 disabled:no-underline"
+                  disabled={cashRemainder === 0 || cashApplied === cashRemainder}
+                >
+                  Pagar saldo restante
+                </button>
+              </div>
+              <Controller
+                control={control}
+                name="amount"
+                render={({ field }) => (
+                  <ThousandsInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                    placeholder="0"
+                    autoFocus
+                  />
+                )}
               />
-            </Field>
+            </div>
 
             <Field label="Fecha de pago">
               <Input {...register("paymentDate")} type="date" />

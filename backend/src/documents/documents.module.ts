@@ -4,6 +4,7 @@ import { DocumentsService } from './documents.service';
 import { DocumentsController } from './documents.controller';
 import {
   CmEffectStrategy,
+  CotEffectStrategy,
   DocumentEffectsRegistry,
   DvcEffectStrategy,
   EaiEffectStrategy,
@@ -37,6 +38,7 @@ import {
     TransferEffectStrategy,
     PvEffectStrategy,
     PosEffectStrategy,
+    CotEffectStrategy,
     DocumentEffectsRegistry,
     DocumentPrintService,
     PdfGeneratorService,

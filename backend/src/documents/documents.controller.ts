@@ -38,6 +38,15 @@ export class DocumentsController {
     return this.documentsService.findAll(findAllDocumentsDto);
   }
 
+  // Antes de @Get(':id') para que "customers" no se interprete como un id.
+  // Permiso document.create.COT: quien crea una venta a crédito necesita ver el
+  // cupo del cliente, sin ampliar ar.read a roles de venta.
+  @Get('customers/:customerId/credit')
+  @Permissions('document.create.COT')
+  getCustomerCredit(@Param('customerId') customerId: string) {
+    return this.documentsService.getCustomerCreditSummary(customerId);
+  }
+
   @Get(':id')
   @Permissions('document.read')
   findOne(@Param('id') id: string) {

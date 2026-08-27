@@ -1,6 +1,7 @@
-// POS ya tiene Strategy en el backend (venta de contado). COT (venta a crédito) comparte la
-// misma pantalla de checkout en el futuro pero aún no tiene Strategy — no agregar todavía.
-export type DocumentType = 'CM' | 'DVC' | 'EAI' | 'SAJ' | 'T' | 'PV' | 'POS'
+// POS = venta de contado, COT = venta a crédito. Ambas comparten la pantalla de checkout
+// (POSCheckoutPage con toggle Contado/Crédito); COT además valida el cupo del cliente y
+// genera una cuenta por cobrar al confirmar.
+export type DocumentType = 'CM' | 'DVC' | 'EAI' | 'SAJ' | 'T' | 'PV' | 'POS' | 'COT'
 export type DocumentStatus = 'draft' | 'confirmed' | 'voided'
 export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia'
 // Motivo del ajuste — obligatorio solo para documentos EAI (Entrada por Ajuste de Inventario).
@@ -154,9 +155,24 @@ export interface CreateDocumentPayload {
 export type UpdateDocumentPayload = Omit<CreateDocumentPayload, 'type'>
 
 export interface ConvertDocumentPayload {
-  // Hoy solo 'POS' tiene Strategy — el backend rechaza cualquier otro valor con 400.
-  targetType: 'POS'
+  // El backend solo habilita convertir una PV a venta: contado (POS) o crédito (COT).
+  targetType: 'POS' | 'COT'
+  // Solo aplica al convertir a POS — COT no lleva forma de pago.
   paymentMethod?: PaymentMethod
+}
+
+// GET /documents/customers/:customerId/credit — resumen de cupo de crédito del cliente,
+// en pesos. availableCredit = creditLimit − usedCredit (puede ser negativo).
+export interface CustomerCreditSummary {
+  creditLimit: number
+  usedCredit: number
+  availableCredit: number
+}
+
+// Cuerpo del 400 "cupo excedido" (crear COT / confirmar / convertir). `credit` viaja como
+// hermano de `message` en response.data — mismo patrón que `shortfalls` del 409 de stock.
+export interface CreditLimitExceededDetail extends CustomerCreditSummary {
+  requested: number
 }
 
 export interface ReleaseDocumentItemPayload {

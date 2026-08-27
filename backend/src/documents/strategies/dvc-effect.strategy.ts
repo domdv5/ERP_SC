@@ -70,7 +70,10 @@ export class DvcEffectStrategy extends BaseEffectStrategy {
 
     // Nota crédito de proveedor: saldo a favor aplicable manualmente contra
     // cualquier cuenta por pagar pendiente de este proveedor (ver Plan 020).
-    const amount = Number(document.total);
+    // Redondeado a pesos enteros: el sistema trata COP sin centavos (formatCOP,
+    // input de pago entero) — no debe nacer con saldo fraccionario aplicable.
+    // document.total se deja exacto; se acepta un delta de hasta ~1 peso.
+    const amount = Math.round(Number(document.total));
     await tx.supplierCredit.create({
       data: {
         supplierId: supplier.id,

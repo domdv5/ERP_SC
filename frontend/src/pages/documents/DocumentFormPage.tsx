@@ -45,10 +45,10 @@ export default function DocumentFormPage() {
   const queryClient = useQueryClient()
 
   const userPermissions = useAuthStore((s) => s.user?.permissions ?? [])
-  // POS tiene su propia pantalla de checkout (POSCheckoutPage) — nunca se crea desde este
-  // formulario genérico aunque el usuario tenga el permiso document.create.POS.
+  // POS y COT tienen su propia pantalla de checkout (POSCheckoutPage con toggle Contado/
+  // Crédito) — nunca se crean desde este formulario genérico aunque el usuario tenga el permiso.
   const availableTypes = DOC_TYPE_OPTIONS.filter(
-    (opt) => opt.value !== 'POS' && userPermissions.includes(`document.create.${opt.value}`)
+    (opt) => opt.value !== 'POS' && opt.value !== 'COT' && userPermissions.includes(`document.create.${opt.value}`)
   )
 
   // Third-party search — proveedor (CM/DVC) o cliente (PV), según docType (ver needsSupplier/needsCustomer)
@@ -139,12 +139,12 @@ export default function DocumentFormPage() {
       navigate(`/documents/${existingDoc.id}`)
       return
     }
-    // Un borrador POS (creado desde el checkout, aún no confirmado) no se edita desde este form
-    // genérico — no tiene selector de cliente/vendedor/forma de pago ni columna de precio para
-    // ese tipo. Se retoma desde POSCheckoutPage (a través de "Nueva venta" / el detalle del
-    // documento), no aquí.
-    if (existingDoc.type === 'POS') {
-      toast.error('Las ventas POS se editan desde el checkout, no desde este formulario')
+    // Un borrador POS/COT (creado desde el checkout, aún no confirmado) no se edita desde este
+    // form genérico — no tiene selector de cliente/vendedor/forma de pago/cupo ni columna de
+    // precio para esos tipos. Se retoma desde POSCheckoutPage (a través de "Nueva venta" / el
+    // detalle del documento), no aquí.
+    if (existingDoc.type === 'POS' || existingDoc.type === 'COT') {
+      toast.error('Las ventas se editan desde el checkout, no desde este formulario')
       navigate(`/documents/${existingDoc.id}`)
       return
     }

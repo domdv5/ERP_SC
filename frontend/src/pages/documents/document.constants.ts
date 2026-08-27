@@ -6,6 +6,7 @@ import {
   ArrowLeftRight,
   CalendarClock,
   Banknote,
+  CreditCard,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -25,6 +26,7 @@ export const DOC_TYPE_SELECT_OPTIONS: { value: DocumentType; label: string }[] =
   { value: 'T',   label: 'Traslado' },
   { value: 'PV',  label: 'Preventa' },
   { value: 'POS', label: 'Venta (POS)' },
+  { value: 'COT', label: 'Venta crédito' },
 ]
 
 // Motivo del ajuste — solo documentos EAI. Etiquetas orientadas al usuario final (operador de
@@ -45,6 +47,7 @@ export const DOC_TYPE_BADGE: Record<DocumentType, { label: string; className: st
   T:   { label: 'Traslado',        className: 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' },
   PV:  { label: 'Preventa',        className: 'bg-pink-100   text-pink-700   dark:bg-pink-500/20   dark:text-pink-400'   },
   POS: { label: 'Venta',           className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' },
+  COT: { label: 'Venta crédito',   className: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400' },
 }
 
 // Refuerzo visual "a simple vista" del tipo (ícono + borde de acento izquierdo) — usado en el
@@ -64,6 +67,7 @@ export const DOC_TYPE_ACCENT: Record<DocumentType, {
   T:   { icon: ArrowLeftRight, iconBg: 'bg-purple-100 dark:bg-purple-500/20', iconText: 'text-purple-700 dark:text-purple-400', border: 'border-l-purple-500' },
   PV:  { icon: CalendarClock,  iconBg: 'bg-pink-100   dark:bg-pink-500/20',   iconText: 'text-pink-700   dark:text-pink-400',   border: 'border-l-pink-500'   },
   POS: { icon: Banknote,       iconBg: 'bg-emerald-100 dark:bg-emerald-500/20', iconText: 'text-emerald-700 dark:text-emerald-400', border: 'border-l-emerald-500' },
+  COT: { icon: CreditCard,     iconBg: 'bg-indigo-100 dark:bg-indigo-500/20', iconText: 'text-indigo-700 dark:text-indigo-400', border: 'border-l-indigo-500' },
 }
 
 // Pill de estado — usada en DocumentsPage y DocumentDetailPage.

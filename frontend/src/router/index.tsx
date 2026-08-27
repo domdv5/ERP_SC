@@ -64,7 +64,7 @@ export const router = createBrowserRouter([
       { path: 'documents',             element: <Lazy><DocumentsPage /></Lazy> },
       { path: 'stock-lookup',          element: <Lazy><StockLookupPage /></Lazy> },
       { path: 'documents/new',         element: <Lazy><DocumentFormPage /></Lazy> },
-      { path: 'documents/pos/new',     element: <Lazy><PermissionGuard permission="document.create.POS"><POSCheckoutPage /></PermissionGuard></Lazy> },
+      { path: 'documents/pos/new',     element: <Lazy><PermissionGuard permission={['document.create.POS', 'document.create.COT']}><POSCheckoutPage /></PermissionGuard></Lazy> },
       { path: 'documents/:id',         element: <Lazy><DocumentDetailPage /></Lazy> },
       { path: 'documents/:id/edit',    element: <Lazy><DocumentFormPage /></Lazy> },
       { path: 'accounts-receivable',   element: <Lazy><ComingSoonPage /></Lazy> },

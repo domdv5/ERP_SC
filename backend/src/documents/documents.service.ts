@@ -25,6 +25,7 @@ import {
   resolveLastCostAfterVoidingCm,
 } from './helpers/stock.helpers';
 import { matchItemsByProduct } from './helpers/conversion.helpers';
+import { getCustomerCreditSummary } from './helpers/credit.helpers';
 import {
   DocumentEffectsRegistry,
   isReservationStrategy,
@@ -206,6 +207,11 @@ export class DocumentsService {
     }
 
     return document;
+  }
+
+  /** Cupo de crédito del cliente (límite / usado / disponible, en pesos) — lo consume el checkout de COT. */
+  getCustomerCreditSummary(customerId: string) {
+    return getCustomerCreditSummary(this.prisma, customerId);
   }
 
   async create(createDocumentDto: CreateDocumentDto, user: JwtPayload) {
@@ -438,6 +444,7 @@ export class DocumentsService {
         accountsPayable: {
           include: { payablePayments: true, creditApplications: true },
         },
+        accountsReceivable: { include: { receivablePayments: true } },
         supplierCredits: { include: { applications: true } },
       },
     });
@@ -478,6 +485,18 @@ export class DocumentsService {
     if (hasCreditApplications) {
       throw new ConflictException(
         'No se puede anular: la nota crédito generada por este documento ya fue aplicada a un pago',
+      );
+    }
+
+    // COT genera una cuenta por cobrar; si ya recibió pagos no se puede anular
+    // (dejaría los pagos huérfanos). Mismo criterio que accountsPayable arriba.
+    const hasReceivablePayments = document.accountsReceivable.some(
+      (receivable) => receivable.receivablePayments.length > 0,
+    );
+
+    if (hasReceivablePayments) {
+      throw new ConflictException(
+        'No se puede anular: la cuenta por cobrar ya tiene pagos registrados',
       );
     }
 
@@ -730,6 +749,7 @@ export class DocumentsService {
         }
 
         await tx.accountsPayable.deleteMany({ where: { documentId: id } });
+        await tx.accountsReceivable.deleteMany({ where: { documentId: id } });
 
         // Hard delete (mismo patrón que accountsPayable.deleteMany) — ya se
         // validó antes de la transacción que ningún crédito tiene aplicaciones.
@@ -821,10 +841,10 @@ export class DocumentsService {
   }
 
   /**
-   * Convierte una PV confirmada en un documento de venta real (hoy solo POS).
-   * Solo toma líneas con reserva pendiente (quantity - releasedQuantity -
-   * convertedQuantity > 0) — el consumo real se aplica al confirmar el
-   * documento derivado (PvEffectStrategy.consumeForConversion), no acá.
+   * Convierte una PV confirmada en un documento de venta real (POS contado o
+   * COT crédito). Solo toma líneas con reserva pendiente (quantity -
+   * releasedQuantity - convertedQuantity > 0) — el consumo real se aplica al
+   * confirmar el documento derivado (PvEffectStrategy.consumeForConversion), no acá.
    */
   async convert(sourceId: string, dto: ConvertDocumentDto, user: JwtPayload) {
     const source = await this.prisma.document.findUnique({
@@ -847,9 +867,14 @@ export class DocumentsService {
 
     this.assertDocumentPermission(user, DocumentType.PV, 'convert');
 
-    if (dto.targetType !== DocumentType.POS) {
+    // El confirm() del derivado ya exige document.create.{targetType}; acá solo
+    // se limita a los tipos de venta que soportan conversión desde PV.
+    if (
+      dto.targetType !== DocumentType.POS &&
+      dto.targetType !== DocumentType.COT
+    ) {
       throw new BadRequestException(
-        `Conversión a ${dto.targetType} no soportada todavía`,
+        `Conversión a ${dto.targetType} no soportada`,
       );
     }
 
@@ -866,12 +891,16 @@ export class DocumentsService {
       );
     }
 
+    // COT no exige forma de pago; para POS se conserva la del DTO.
+    const paymentMethod =
+      dto.targetType === DocumentType.COT ? undefined : dto.paymentMethod;
+
     const validateCreateDto: CreateDocumentDto = {
-      type: DocumentType.POS,
+      type: dto.targetType,
       date: new Date().toISOString(),
       thirdPartyId: source.thirdPartyId ?? undefined,
       sellerId: source.sellerId ?? undefined,
-      paymentMethod: dto.paymentMethod,
+      paymentMethod,
       items: pendingItems.map(({ item, pending }) => ({
         productId: item.productId,
         quantity: pending,
@@ -880,10 +909,11 @@ export class DocumentsService {
     };
 
     // Mismo mecanismo que duplicate(): revalida antes de crear el borrador.
-    // Si minSalePrice subió desde que se creó la PV, esto puede rechazar la
-    // conversión — comportamiento correcto (sin auto-ajuste de precio en v1).
-    const posStrategy = this.effectsRegistry.get(DocumentType.POS);
-    await posStrategy.validateCreate?.(validateCreateDto);
+    // Corre la estrategia del targetType, así COT valida el cupo de crédito
+    // en el momento de la conversión. Si minSalePrice subió desde que se creó
+    // la PV, esto puede rechazar la conversión — correcto (sin auto-ajuste v1).
+    const targetStrategy = this.effectsRegistry.get(dto.targetType);
+    await targetStrategy.validateCreate?.(validateCreateDto);
 
     const store = await this.prisma.warehouse.findFirst({
       where: { type: 'store', active: true },
@@ -895,12 +925,12 @@ export class DocumentsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const number = await this.nextNumber(tx, DocumentType.POS);
-      const total = this.computeTotal(validateCreateDto.items, DocumentType.POS);
+      const number = await this.nextNumber(tx, dto.targetType);
+      const total = this.computeTotal(validateCreateDto.items, dto.targetType);
 
       return tx.document.create({
         data: {
-          type: DocumentType.POS,
+          type: dto.targetType,
           number,
           date: new Date(),
           thirdPartyId: source.thirdPartyId,
@@ -909,14 +939,14 @@ export class DocumentsService {
           status: DocumentStatus.draft,
           total,
           warehouseId: store.id,
-          paymentMethod: dto.paymentMethod,
+          paymentMethod: paymentMethod ?? null,
           sourceDocumentId: source.id,
           documentItems: {
             create: validateCreateDto.items.map((item) => ({
               productId: item.productId,
               quantity: item.quantity,
               unitPrice: item.unitPrice ?? 0,
-              subtotal: this.computeItemSubtotal(item, DocumentType.POS),
+              subtotal: this.computeItemSubtotal(item, dto.targetType),
             })),
           },
         },
@@ -1022,6 +1052,7 @@ export class DocumentsService {
   private static readonly PRICE_BASED_TYPES = new Set<DocumentType>([
     DocumentType.PV,
     DocumentType.POS,
+    DocumentType.COT,
   ]);
 
   private computeItemSubtotal(item: CreateDocumentItemDto, type: DocumentType) {

@@ -5,6 +5,7 @@ export * from './dvc-effect.strategy';
 export * from './eai-effect.strategy';
 export * from './pv-effect.strategy';
 export * from './pos-effect.strategy';
+export * from './cot-effect.strategy';
 export * from './saj-effect.strategy';
 export * from './transfer-effect.strategy';
 export * from './document-effects.registry';

@@ -173,6 +173,10 @@ export default function DocumentDetailPage() {
     // Namespace separado del combobox de producto en ProductRow — 'products' no lo cubre por
     // prefijo, así que sin esto el avgCost mostrado en la siguiente operación queda desactualizado.
     queryClient.invalidateQueries({ queryKey: ["products-search"] });
+    // Keys propias del checkout de ventas (POSCheckoutPage) — confirmar/anular una venta cambia
+    // el stock disponible; sin esto el checkout las muestra stale hasta recargar.
+    queryClient.invalidateQueries({ queryKey: ["product-by-code"] });
+    queryClient.invalidateQueries({ queryKey: ["products-search-pos"] });
     // CM crea AccountsPayable y DVC crea/elimina SupplierCredit al confirmar/anular
     queryClient.invalidateQueries({ queryKey: ["accounts-payable"] });
     // Confirmar/anular un traslado cambia BinStock — el detalle de bodega (bins con occupied) debe
@@ -315,9 +319,8 @@ export default function DocumentDetailPage() {
   // Preventas (PV) no persisten costo — el precio unitario relevante es item.unitPrice.
   const isPV = doc.type === "PV";
   // Tipos valorados a precio de venta, no a costo — coincide con PRICE_BASED_TYPES del backend
-  // (documents.service.ts). PosEffectStrategy persiste unitPrice, no unitCost (queda en 0/null).
-  // Sumar acá "|| doc.type === 'COT'" cuando se implemente esa estrategia.
-  const isPriceBasedType = doc.type === "PV" || doc.type === "POS";
+  // (documents.service.ts). Pos/CotEffectStrategy persisten unitPrice, no unitCost (queda en 0/null).
+  const isPriceBasedType = doc.type === "PV" || doc.type === "POS" || doc.type === "COT";
   const itemUnitCost = (item: (typeof doc.documentItems)[number]) =>
     isPriceBasedType ? item.unitPrice : usesAvgCostFallback ? Number(item.product.avgCost) : item.unitCost;
   const itemSubtotal = (item: (typeof doc.documentItems)[number]) =>

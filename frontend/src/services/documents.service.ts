@@ -9,6 +9,7 @@ import type {
   UpdateDocumentPayload,
   ReleaseItemsPayload,
   ConvertDocumentPayload,
+  CustomerCreditSummary,
 } from '@/types/document.types'
 
 export async function getDocuments(
@@ -66,6 +67,15 @@ export async function convertDocument(
 
 export async function deleteDocument(id: string): Promise<void> {
   await api.delete(`/documents/${id}`)
+}
+
+// Cupo de crédito del cliente (para el modo Crédito del checkout). El backend devuelve
+// {0,0,0} para un customerId inexistente — llamar solo con un cliente ya seleccionado.
+export async function getCustomerCredit(customerId: string): Promise<CustomerCreditSummary> {
+  const res = await api.get<ApiResponse<CustomerCreditSummary>>(
+    `/documents/customers/${customerId}/credit`,
+  )
+  return res.data.data
 }
 
 export async function releaseItems(id: string, payload: ReleaseItemsPayload): Promise<Document> {

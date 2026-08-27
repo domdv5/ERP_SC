@@ -83,11 +83,15 @@ export class CmEffectStrategy extends BaseEffectStrategy {
       });
     }
 
+    // Redondeado a pesos enteros: el sistema trata COP sin centavos (formatCOP,
+    // input de pago entero) — la CxP no debe nacer con saldo fraccionario que
+    // el "Registrar pago" no pueda saldar. document.total se deja exacto; se
+    // acepta un delta de hasta ~1 peso entre el total del doc y su CxP.
     await tx.accountsPayable.create({
       data: {
         supplierId: supplier.id,
         documentId: document.id,
-        totalAmount: document.total,
+        totalAmount: Math.round(Number(document.total)),
         status: 'pending',
       },
     });

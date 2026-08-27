@@ -4,7 +4,7 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 import { useForm, useFieldArray } from 'react-hook-form'
 import { useDebounce } from 'use-debounce'
 import { toast } from 'sonner'
-import { ArrowLeft, Loader2, ShoppingBag, User, UserCog, Wallet, ArrowRightLeft } from 'lucide-react'
+import { ArrowLeft, Loader2, ShoppingBag, User, UserCog, Wallet, ArrowRightLeft, CreditCard } from 'lucide-react'
 
 import {
   getDocument,
@@ -12,11 +12,13 @@ import {
   updateDocument,
   confirmDocument,
   convertDocument,
+  getCustomerCredit,
 } from '@/services/documents.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import { getProducts, getProductByCode } from '@/services/products.service'
-import { Combobox } from '@/components/shared'
+import { Combobox, SegmentedToggle } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
+import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 import { DOC_TYPE_ACCENT } from './document.constants'
 import type { FormValues } from './document-form.schema'
@@ -28,11 +30,23 @@ import {
   findActivePendingPreventa,
   findPriceFloorViolations,
   parseStockShortfallError,
+  parseCreditLimitError,
   type StockShortfall,
 } from './pos-checkout.utils'
 
-import type { Document, DocumentSourceRef, PaymentMethod, UpdateDocumentPayload } from '@/types/document.types'
+import type {
+  CreditLimitExceededDetail,
+  Document,
+  DocumentSourceRef,
+  DocumentType,
+  PaymentMethod,
+  UpdateDocumentPayload,
+} from '@/types/document.types'
 import type { ThirdParty } from '@/types/third-party.types'
+
+// Modo del checkout: venta de contado (POS) o venta a crédito (COT). COT no lleva forma de
+// pago, valida el cupo de crédito del cliente y genera una cuenta por cobrar al confirmar.
+type SaleMode = Extract<DocumentType, 'POS' | 'COT'>
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
@@ -48,8 +62,6 @@ const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
   { value: 'tarjeta', label: 'Tarjeta' },
   { value: 'transferencia', label: 'Transferencia' },
 ]
-
-const accent = DOC_TYPE_ACCENT.POS
 
 function extractErrorMessage(err: unknown): string | undefined {
   const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -113,8 +125,22 @@ export default function POSCheckoutPage() {
     ? [{ id: sellerId, label: sellerSelectedName }, ...sellerOptions.filter((o) => o.id !== sellerId)]
     : sellerOptions
 
-  // ── forma de pago ─────────────────────────────────────────────────────────
+  // ── modo de venta: contado (POS) / crédito (COT) ─────────────────────────
+  // El toggle solo aparece si el usuario puede crear COT; sin ese permiso el checkout
+  // es siempre de contado (comportamiento previo). Se bloquea una vez que hay un borrador
+  // en curso — el tipo de un documento ya creado no se puede cambiar.
+  const canCreateCOT = usePermission('document.create.COT')
+  const [mode, setMode] = useState<SaleMode>('POS')
+  const isCredit = mode === 'COT'
+  const accent = DOC_TYPE_ACCENT[mode]
+
+  // ── forma de pago (solo contado) ─────────────────────────────────────────
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('')
+
+  // Error 400 de cupo excedido devuelto por el backend (crear COT / confirmar / convertir).
+  // Complementa el bloqueo local `total > availableCredit`: cubre la carrera del re-chequeo
+  // con lock que el backend hace en confirm (PATCH-bypass) y el chequeo al convertir.
+  const [creditError, setCreditError] = useState<{ message: string; detail: CreditLimitExceededDetail } | null>(null)
 
   // ── borrador en curso (create→confirm, o conversión ya aplicada) ─────────
   const [draftId, setDraftId] = useState<string | null>(null)
@@ -146,6 +172,20 @@ export default function POSCheckoutPage() {
     }
   }
 
+  // ── cupo de crédito del cliente (solo modo crédito) ──────────────────────
+  const { data: creditData, isLoading: isLoadingCredit } = useQuery({
+    queryKey: ['customer-credit', thirdPartyId],
+    queryFn: () => getCustomerCredit(thirdPartyId),
+    enabled: isCredit && Boolean(thirdPartyId),
+    staleTime: 30 * 1000,
+  })
+
+  // Cualquier cambio de contexto invalida el 400 de cupo ya mostrado (el usuario cambió de
+  // cliente, de modo, o ajustó el carrito y va a reintentar).
+  useEffect(() => {
+    setCreditError(null)
+  }, [mode, thirdPartyId])
+
   // Entrada desde "Convertir a venta" (DocumentDetailPage) — precarga la preventa por id y
   // dispara el mismo aviso/flujo de conversión, sin que el operario tenga que rebuscar al cliente.
   const { data: fromPVDoc } = useQuery({
@@ -164,17 +204,21 @@ export default function POSCheckoutPage() {
     setPendingPreventa(fromPVDoc)
   }, [fromPVDoc])
 
-  // NOTA DE CONTRATO: ConvertDocumentPayload.paymentMethod está tipado opcional, pero
-  // documents.service.ts::convert() re-corre PosEffectStrategy.validateCreate() sobre el borrador
-  // derivado antes de crearlo, y esa validación exige paymentMethod truthy (mismo chequeo que
-  // create() para un POS nuevo) — un convert() sin forma de pago siempre responde 400. El botón de
-  // abajo por eso queda deshabilitado hasta que paymentMethod tenga valor (ver disabled más abajo).
+  // NOTA DE CONTRATO: al convertir a contado (POS), documents.service.ts::convert() re-corre
+  // PosEffectStrategy.validateCreate() sobre el borrador derivado, que exige paymentMethod
+  // truthy — por eso el botón queda deshabilitado hasta elegir forma de pago (ver disabled
+  // más abajo). Al convertir a crédito (COT) no se envía paymentMethod y el chequeo de cupo
+  // puede devolver el 400 de cupo excedido aquí mismo.
   const { mutate: doConvert, isPending: isConverting } = useMutation({
     mutationFn: (pvId: string) =>
-      convertDocument(pvId, { targetType: 'POS', paymentMethod: paymentMethod || undefined }),
+      convertDocument(pvId, {
+        targetType: mode,
+        paymentMethod: isCredit ? undefined : paymentMethod || undefined,
+      }),
     onSuccess: (converted) => {
       setDraftId(converted.id)
       setDraftNumber(converted.number)
+      setMode(converted.type as SaleMode)
       setThirdPartyId(converted.thirdParty?.id ?? '')
       setTpSelectedName(converted.thirdParty?.name ?? '')
       setSellerId(converted.seller?.id ?? '')
@@ -198,6 +242,11 @@ export default function POSCheckoutPage() {
       toast.success(`Venta creada a partir de ${sourceLabel}. Revisa los precios antes de confirmar.`)
     },
     onError: (err: unknown) => {
+      const credit = parseCreditLimitError(err)
+      if (credit) {
+        setCreditError({ message: extractErrorMessage(err) ?? 'Cupo de crédito insuficiente', detail: credit })
+        return
+      }
       toast.error(extractErrorMessage(err) ?? 'Error al convertir la preventa')
     },
   })
@@ -293,12 +342,18 @@ export default function POSCheckoutPage() {
   const total = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0)
   const hasValidItems = fields.length > 0 && cartItems.every((item) => item.productId && Number(item.quantity) > 0)
 
+  // Bloqueo duro de cupo: la venta a crédito no puede superar el disponible del cliente.
+  // No hay override — se resuelve subiendo el cupo desde la ficha del cliente.
+  const creditExceeded = isCredit && Boolean(creditData) && total > creditData!.availableCredit
+
   const missingItems: string[] = []
   if (!thirdPartyId) missingItems.push('Selecciona un cliente')
   if (!sellerId) missingItems.push('Selecciona una vendedora')
-  if (!paymentMethod) missingItems.push('Selecciona una forma de pago')
+  if (!isCredit && !paymentMethod) missingItems.push('Selecciona una forma de pago')
   if (!hasValidItems) missingItems.push('Agrega al menos un producto con cantidad válida')
   if (priceFloorViolations.length > 0) missingItems.push('Corrige los precios por debajo del mínimo permitido')
+  if (isCredit && thirdPartyId && isLoadingCredit) missingItems.push('Cargando cupo de crédito del cliente...')
+  if (creditExceeded) missingItems.push('La venta supera el cupo de crédito disponible del cliente')
 
   const canConfirm = missingItems.length === 0
 
@@ -317,13 +372,30 @@ export default function POSCheckoutPage() {
     queryClient.invalidateQueries({ queryKey: ['documents'] })
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['products-search'] })
+    // La venta descontó stock: refrescar las queries de producto propias de este checkout
+    // ('products' no las cubre por prefijo). Sin esto el disponible mostrado en la búsqueda
+    // manual y en las líneas del carrito queda con el stock viejo hasta recargar (F5), y la
+    // validación cliente de cantidad máxima usa ese valor stale.
+    queryClient.invalidateQueries({ queryKey: ['product-by-code'] })
+    queryClient.invalidateQueries({ queryKey: ['products-search-pos'] })
+    // COT genera una cuenta por cobrar → el cupo disponible del cliente cambió.
+    queryClient.invalidateQueries({ queryKey: ['customer-credit'] })
     if (confirmed.sourceDocument) {
       queryClient.invalidateQueries({ queryKey: ['document', confirmed.sourceDocument.id] })
     }
   }
 
+  // Traduce un 400 de cupo excedido al panel dedicado; devuelve true si lo consumió.
+  function handleCreditError(err: unknown): boolean {
+    const credit = parseCreditLimitError(err)
+    if (!credit) return false
+    setCreditError({ message: extractErrorMessage(err) ?? 'Cupo de crédito insuficiente', detail: credit })
+    return true
+  }
+
   async function handleConfirm() {
     if (!canConfirm) return
+    setCreditError(null)
 
     const items = cartItems.map((i) => ({
       productId: i.productId,
@@ -334,7 +406,8 @@ export default function POSCheckoutPage() {
       date: TODAY,
       thirdPartyId,
       sellerId,
-      paymentMethod: paymentMethod as PaymentMethod,
+      // COT no lleva forma de pago; contado la exige (validado arriba en missingItems).
+      paymentMethod: isCredit ? undefined : (paymentMethod as PaymentMethod),
       items,
     }
 
@@ -343,11 +416,12 @@ export default function POSCheckoutPage() {
       if (draftId) {
         doc = await updateMutateAsync({ docId: draftId, payload })
       } else {
-        doc = await createMutateAsync({ type: 'POS', ...payload })
+        doc = await createMutateAsync({ type: mode, ...payload })
         setDraftId(doc.id)
         setDraftNumber(doc.number)
       }
     } catch (err) {
+      if (handleCreditError(err)) return
       toast.error(extractErrorMessage(err) ?? 'Error al guardar la venta')
       return
     }
@@ -363,6 +437,7 @@ export default function POSCheckoutPage() {
         setShortfalls(parsedShortfalls)
         return
       }
+      if (handleCreditError(err)) return
       toast.error(extractErrorMessage(err) ?? 'Error al confirmar la venta')
     }
   }
@@ -385,8 +460,10 @@ export default function POSCheckoutPage() {
           <h1 className="text-2xl text-content">Nueva venta</h1>
           <p className="text-content-muted text-sm mt-0.5 font-accent">
             {draftId && draftNumber !== null
-              ? `Borrador ${docNumber('POS', draftNumber)} en curso`
-              : 'Venta de contado'}
+              ? `Borrador ${docNumber(mode, draftNumber)} en curso`
+              : isCredit
+                ? 'Venta a crédito'
+                : 'Venta de contado'}
           </p>
         </div>
         {sourceDocument && (
@@ -402,7 +479,17 @@ export default function POSCheckoutPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Datos de la venta */}
           <div className={cn('bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-5 border-l-4', accent.border)}>
-            <h2 className="text-base text-content border-b border-ui-divide pb-3">Datos de la venta</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ui-divide pb-3">
+              <h2 className="text-base text-content">Datos de la venta</h2>
+              {canCreateCOT && (
+                <SegmentedToggle
+                  checked={isCredit}
+                  onChange={(checked) => { if (!draftId) setMode(checked ? 'COT' : 'POS') }}
+                  uncheckedLabel="Contado"
+                  checkedLabel="Crédito"
+                />
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-1.5">
@@ -440,23 +527,93 @@ export default function POSCheckoutPage() {
                 />
               </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <label className="flex items-center gap-1.5 text-sm font-medium text-content-secondary">
-                  <Wallet className="w-3.5 h-3.5" />
-                  Forma de pago <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                  className="w-full sm:w-64 px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
-                >
-                  <option value="">Selecciona una forma de pago</option>
-                  {PAYMENT_METHOD_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Forma de pago — solo venta de contado; el crédito no la usa. */}
+              {!isCredit && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-content-secondary">
+                    <Wallet className="w-3.5 h-3.5" />
+                    Forma de pago <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                    className="w-full sm:w-64 px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+                  >
+                    <option value="">Selecciona una forma de pago</option>
+                    {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
+
+            {/* Panel de cupo de crédito — informativo, solo lectura. El backend es la
+                autoridad; esto solo anticipa el bloqueo antes de confirmar. */}
+            {isCredit && thirdPartyId && (
+              <div className="rounded-xl border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/60 dark:bg-indigo-500/10 p-4">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
+                  <CreditCard className="w-3.5 h-3.5" />
+                  Cupo de crédito del cliente
+                </p>
+                {isLoadingCredit ? (
+                  <p className="text-sm text-content-muted mt-2 font-accent">Consultando cupo...</p>
+                ) : creditData ? (
+                  <div className="grid grid-cols-3 gap-3 mt-3">
+                    <div>
+                      <p className="text-[11px] text-content-faint font-accent uppercase tracking-wide">Límite</p>
+                      <p className="text-sm text-content mt-0.5 font-mono">{formatCOP(creditData.creditLimit)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-content-faint font-accent uppercase tracking-wide">Usado</p>
+                      <p className="text-sm text-content mt-0.5 font-mono">{formatCOP(creditData.usedCredit)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-content-faint font-accent uppercase tracking-wide">Disponible</p>
+                      <p className={cn(
+                        'text-sm mt-0.5 font-mono',
+                        creditData.availableCredit <= 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400',
+                      )}>
+                        {formatCOP(creditData.availableCredit)}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-content-muted mt-2 font-accent">No se pudo consultar el cupo.</p>
+                )}
+                {creditExceeded && creditData && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-3">
+                    La venta ({formatCOP(total)}) supera el cupo disponible ({formatCOP(creditData.availableCredit)}).
+                    Para realizarla, aumenta el cupo del cliente desde su ficha (requiere autorización).
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* 400 de cupo devuelto por el backend (carrera del re-chequeo con lock / convert). */}
+            {creditError && (
+              <div className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 p-4">
+                <p className="text-sm text-red-700 dark:text-red-400 font-medium">{creditError.message}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 text-xs">
+                  <div>
+                    <p className="text-red-600/70 dark:text-red-400/70 font-accent">Límite</p>
+                    <p className="text-red-700 dark:text-red-400 mt-0.5 font-mono">{formatCOP(creditError.detail.creditLimit)}</p>
+                  </div>
+                  <div>
+                    <p className="text-red-600/70 dark:text-red-400/70 font-accent">Usado</p>
+                    <p className="text-red-700 dark:text-red-400 mt-0.5 font-mono">{formatCOP(creditError.detail.usedCredit)}</p>
+                  </div>
+                  <div>
+                    <p className="text-red-600/70 dark:text-red-400/70 font-accent">Disponible</p>
+                    <p className="text-red-700 dark:text-red-400 mt-0.5 font-mono">{formatCOP(creditError.detail.availableCredit)}</p>
+                  </div>
+                  <div>
+                    <p className="text-red-600/70 dark:text-red-400/70 font-accent">Solicitado</p>
+                    <p className="text-red-700 dark:text-red-400 mt-0.5 font-mono">{formatCOP(creditError.detail.requested)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Aviso de preventa activa */}
@@ -469,10 +626,10 @@ export default function POSCheckoutPage() {
                   {docNumber(pendingPreventa.type, pendingPreventa.number)}) con productos pendientes por convertir.
                 </p>
                 <p className="text-xs text-blue-600/80 dark:text-blue-400/70 mt-1 font-accent">
-                  Se creará una venta nueva con los mismos ítems y precios cotizados de esa preventa.
+                  Se creará una venta {isCredit ? 'a crédito' : 'nueva'} con los mismos ítems y precios cotizados de esa preventa.
                   {fields.length > 0 && ` Esto reemplazará los ${fields.length} producto(s) ya agregados al carrito.`}
                 </p>
-                {!paymentMethod && (
+                {!isCredit && !paymentMethod && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">
                     Selecciona una forma de pago arriba antes de convertir — la venta la requiere.
                   </p>
@@ -481,8 +638,8 @@ export default function POSCheckoutPage() {
                   <button
                     type="button"
                     onClick={() => doConvert(pendingPreventa.id)}
-                    disabled={isConverting || !paymentMethod}
-                    title={!paymentMethod ? 'Selecciona una forma de pago primero' : undefined}
+                    disabled={isConverting || (!isCredit && !paymentMethod)}
+                    title={!isCredit && !paymentMethod ? 'Selecciona una forma de pago primero' : undefined}
                     className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white rounded-lg gradient-action hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isConverting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
@@ -508,7 +665,7 @@ export default function POSCheckoutPage() {
             </div>
 
             <BarcodeScanInput
-              docType="POS"
+              docType={mode}
               append={append}
               getValues={getValues}
               setValue={setValue}
