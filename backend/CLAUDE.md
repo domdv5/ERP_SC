@@ -153,6 +153,8 @@ Permissions are namespaced by module: `products.*`, `documents.*`, `warehouses.*
 
 Schema: `backend/prisma/schema.prisma`. Uses `@prisma/adapter-pg` for connection pooling.
 
+**PKs son `UUID` generados app-side por Prisma con `@default(uuid(7))`** (UUIDv7 — time-ordered, ordenados por instante de creación). Se pasó de `uuid()` (v4) a `uuid(7)` para densidad de índice y localidad de inserción; las columnas `id` NO tienen `DEFAULT` a nivel de PostgreSQL, así que el cambio no generó SQL ni migración. Filas v4 previas y v7 nuevas conviven en la misma columna sin problema. `Customer`/`Supplier` no tienen `@default` — heredan el `id` de `ThirdParty` (relación 1:1). PKs compuestas sin columna `id`: `Inventory`, `BinStock`, `InventorySnapshot`, `RolePermission`, `UserRole`.
+
 Key domain models and their relationships:
 
 - **ThirdParty** → base for `Customer` and `Supplier` (one-to-one)
