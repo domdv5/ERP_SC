@@ -41,6 +41,30 @@ export interface DocumentSourceRef {
   number: number
 }
 
+export type PvConversionStatus = 'none' | 'pending' | 'converted'
+
+// Referencia liviana a una venta (POS/COT) derivada de una preventa. El backend la adjunta en el
+// bloque `pv` de toda respuesta de un documento PV.
+export interface PvDerivedDocRef {
+  id: string
+  type: DocumentType
+  // Zero-padded por el backend (ej. "000012") — renderizar tal cual junto al tipo.
+  number: string
+  status: DocumentStatus
+}
+
+// Bloque computado por el backend, presente solo en documentos type === 'PV' (null en el resto):
+// - converted: ≥1 derivada confirmada (la venta real existe).
+// - pending: ≥1 derivada no anulada, ninguna confirmada (borrador de conversión sin confirmar).
+// - none: sin derivadas o todas anuladas.
+// `documents` trae TODAS las derivadas, incluidas las anuladas — el front filtra por status.
+export interface PvStatus {
+  conversion: {
+    status: PvConversionStatus
+    documents: PvDerivedDocRef[]
+  }
+}
+
 export interface DocumentItem {
   id: string
   productId: string
@@ -83,6 +107,8 @@ export interface DocumentListItem {
   paymentMethod: PaymentMethod | null
   _count: { documentItems: number }
   createdAt: string
+  // Solo documentos PV — estado de conversión a venta real + derivadas. null en el resto de tipos.
+  pv: PvStatus | null
 }
 
 export interface Document extends DocumentListItem {

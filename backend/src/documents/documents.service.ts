@@ -26,6 +26,7 @@ import {
 } from './helpers/stock.helpers';
 import { matchItemsByProduct } from './helpers/conversion.helpers';
 import { getCustomerCreditSummary } from './helpers/credit.helpers';
+import { buildPvStatus, PvStatusInput } from './helpers/pv-status.helper';
 import {
   DocumentEffectsRegistry,
   isReservationStrategy,
@@ -70,6 +71,9 @@ const DETAIL_INCLUDE = {
   destWarehouse: { select: { id: true, name: true } },
   destBin: { include: { zone: { select: { name: true } } } },
   sourceDocument: { select: { id: true, type: true, number: true } },
+  derivedDocuments: {
+    select: { id: true, type: true, number: true, status: true },
+  },
 } satisfies Prisma.DocumentInclude;
 
 // Include recortado para impresión: solo lo que el PDF de CM/DVC muestra (a
@@ -148,6 +152,9 @@ export class DocumentsService {
             user: { select: { id: true, name: true } },
             warehouse: { select: { id: true, name: true } },
             destWarehouse: { select: { id: true, name: true } },
+            derivedDocuments: {
+              select: { id: true, type: true, number: true, status: true },
+            },
             _count: { select: { documentItems: true } },
           },
           skip,
@@ -164,7 +171,7 @@ export class DocumentsService {
       ]);
 
     return {
-      items,
+      items: items.map((doc) => this.withPvStatus(doc)),
       meta: {
         total,
         page,
@@ -186,7 +193,7 @@ export class DocumentsService {
       throw new NotFoundException('Documento no encontrado');
     }
 
-    return document;
+    return this.withPvStatus(document);
   }
 
   /** Datos mínimos para el PDF de impresión (usada por DocumentPrintService). Solo documentos confirmados: un borrador puede seguir cambiando y un PDF de algo no definitivo induce a error. */
@@ -293,7 +300,7 @@ export class DocumentsService {
       });
     });
 
-    return document;
+    return this.withPvStatus(document);
   }
 
   async update(
@@ -320,7 +327,7 @@ export class DocumentsService {
     // A diferencia de create(), NO corre strategy.validateCreate: un borrador
     // se edita sin volver a validar. Por eso TransferEffectStrategy.confirm
     // revalida bin/bodega desde cero antes de aplicar efectos.
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       if (items) {
         await tx.documentItem.deleteMany({ where: { documentId: id } });
         await tx.documentItem.createMany({
@@ -346,6 +353,8 @@ export class DocumentsService {
         include: DETAIL_INCLUDE,
       });
     });
+
+    return this.withPvStatus(updated);
   }
 
   async confirm(id: string, user: JwtPayload) {
@@ -438,6 +447,7 @@ export class DocumentsService {
       where: { id },
       include: {
         documentItems: { select: { id: true, productId: true, quantity: true } },
+        derivedDocuments: { select: { id: true, status: true } },
         inventoryMovements: {
           include: { documentItem: { select: { unitCost: true } } },
         },
@@ -458,6 +468,20 @@ export class DocumentsService {
     if (document.status !== DocumentStatus.confirmed) {
       throw new ConflictException(
         'Solo se pueden anular documentos confirmados',
+      );
+    }
+
+    // Una PV con venta derivada no puede anularse: dejaría el POS/COT derivado
+    // consumiendo (o listo para consumir vía consumeForConversion) una reserva
+    // ya liberada por el void. Se debe anular primero la venta derivada.
+    if (
+      document.type === DocumentType.PV &&
+      document.derivedDocuments.some(
+        (d) => d.status !== DocumentStatus.voided,
+      )
+    ) {
+      throw new ConflictException(
+        'No se puede anular: esta preventa fue convertida a una venta. Anule primero el documento de venta derivado.',
       );
     }
 
@@ -837,7 +861,7 @@ export class DocumentsService {
       return document;
     });
 
-    return document;
+    return this.withPvStatus(document);
   }
 
   /**
@@ -849,7 +873,10 @@ export class DocumentsService {
   async convert(sourceId: string, dto: ConvertDocumentDto, user: JwtPayload) {
     const source = await this.prisma.document.findUnique({
       where: { id: sourceId },
-      include: { documentItems: { include: { product: true } } },
+      include: {
+        documentItems: { include: { product: true } },
+        derivedDocuments: { select: { id: true, status: true } },
+      },
     });
 
     if (!source) {
@@ -875,6 +902,15 @@ export class DocumentsService {
     ) {
       throw new BadRequestException(
         `Conversión a ${dto.targetType} no soportada`,
+      );
+    }
+
+    // v1 solo permite conversión total: una PV tiene como mucho una venta
+    // derivada activa. Sin esto, un segundo convert() crea un borrador que
+    // consumeForConversion nunca podrá confirmar (RETURNING vacío -> 409 confuso).
+    if (source.derivedDocuments.some((d) => d.status !== DocumentStatus.voided)) {
+      throw new ConflictException(
+        'Esta preventa ya tiene una venta derivada activa. Anúlela antes de convertir de nuevo.',
       );
     }
 
@@ -924,7 +960,7 @@ export class DocumentsService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const derived = await this.prisma.$transaction(async (tx) => {
       const number = await this.nextNumber(tx, dto.targetType);
       const total = this.computeTotal(validateCreateDto.items, dto.targetType);
 
@@ -953,6 +989,10 @@ export class DocumentsService {
         include: DETAIL_INCLUDE,
       });
     });
+
+    // El payload es el documento derivado (POS/COT), así que pv sale null —
+    // se mantiene la forma uniforme con el resto de los paths de lectura.
+    return this.withPvStatus(derived);
   }
 
   async remove(id: string, user: JwtPayload) {
@@ -1022,6 +1062,15 @@ export class DocumentsService {
   }
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  // Adjunta el bloque `pv` computado (estado de conversión). Null para type != PV.
+  // Se calcula en cada lectura, no se persiste — mismo criterio que `occupied` en warehouses.
+  // derivedDocuments se saca del payload: es la fuente cruda de `pv` (mismo select),
+  // exponerlo además sería data duplicada en cada fila.
+  private withPvStatus<T extends PvStatusInput>(doc: T) {
+    const { derivedDocuments: _derivedDocuments, ...rest } = doc;
+    return { ...rest, pv: buildPvStatus(doc) };
+  }
 
   // action distingue el permiso: document.create.{type} cubre todo el ciclo
   // "estándar" (create/update/confirm/void/remove); document.release.{type} es

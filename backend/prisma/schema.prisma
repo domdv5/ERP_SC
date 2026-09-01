@@ -549,6 +549,9 @@ model Document {
   @@index([type, status])
   @@index([date])
   @@index([thirdPartyId])
+  // Reverse lookup de derivedDocuments (Prisma no indexa FKs en PostgreSQL);
+  // corre en cada fila de la lista de documentos y en cada detalle de PV.
+  @@index([sourceDocumentId])
   @@map("document")
 }
 

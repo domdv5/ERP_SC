@@ -70,6 +70,15 @@ export const DOC_TYPE_ACCENT: Record<DocumentType, {
   COT: { icon: CreditCard,     iconBg: 'bg-indigo-100 dark:bg-indigo-500/20', iconText: 'text-indigo-700 dark:text-indigo-400', border: 'border-l-indigo-500' },
 }
 
+// Chip de conversión de preventa (PV) — apilado bajo el pill de estado en el listado y junto a los
+// pills de tipo/estado en el detalle. Solo 'pending'/'converted' renderizan chip ('none' no muestra
+// nada). Violeta/ámbar elegidos a propósito para no chocar con el verde de 'confirmed'
+// (DOC_STATUS_BADGE) ni con el rosa de PV (DOC_TYPE_BADGE).
+export const PV_CONVERSION_BADGE: Record<'pending' | 'converted', { label: string; className: string }> = {
+  pending:   { label: 'En conversión', className: 'bg-amber-100  text-amber-700  dark:bg-amber-500/20  dark:text-amber-400'  },
+  converted: { label: 'Convertida',    className: 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400' },
+}
+
 // Pill de estado — usada en DocumentsPage y DocumentDetailPage.
 export const DOC_STATUS_BADGE: Record<DocumentStatus, { label: string; className: string }> = {
   draft:     { label: 'Borrador',   className: 'bg-gray-100  text-gray-600  dark:bg-gray-500/20  dark:text-gray-400'  },

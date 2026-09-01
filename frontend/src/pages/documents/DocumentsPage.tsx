@@ -13,8 +13,13 @@ import {
   ErrorState,
   TablePagination,
 } from '@/components/shared'
-import { cn } from '@/lib/utils'
-import { DOC_TYPE_SELECT_OPTIONS, DOC_TYPE_BADGE, DOC_STATUS_BADGE } from './document.constants'
+import { cn, daysSince, formatDaysSince } from '@/lib/utils'
+import {
+  DOC_TYPE_SELECT_OPTIONS,
+  DOC_TYPE_BADGE,
+  DOC_STATUS_BADGE,
+  PV_CONVERSION_BADGE,
+} from './document.constants'
 import type { DocumentListItem, DocumentType, DocumentStatus } from '@/types/document.types'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -237,6 +242,17 @@ export default function DocumentsPage() {
                 {items.map((doc) => {
                   const typeInfo   = TYPE_LABELS[doc.type]
                   const statusInfo = STATUS_LABELS[doc.status]
+                  // Bloque `pv` solo viaja en documentos PV — optional chaining siempre (puede ser null).
+                  const pvConversion = doc.type === 'PV' ? doc.pv?.conversion : undefined
+                  const convChip =
+                    pvConversion && pvConversion.status !== 'none'
+                      ? PV_CONVERSION_BADGE[pvConversion.status]
+                      : null
+                  // Antigüedad solo mientras la PV sigue abierta (confirmada y sin derivada activa).
+                  const ageLabel =
+                    doc.status === 'confirmed' && doc.pv?.conversion.status === 'none'
+                      ? formatDaysSince(daysSince(doc.createdAt))
+                      : null
                   return (
                     <tr
                       key={doc.id}
@@ -295,14 +311,29 @@ export default function DocumentsPage() {
 
                       {/* Status */}
                       <td className="px-5 py-3.5">
-                        <span
-                          className={cn(
-                            'px-2 py-0.5 rounded-full text-xs font-medium',
-                            statusInfo.className,
+                        <div className="flex flex-col items-start gap-1">
+                          <span
+                            className={cn(
+                              'px-2 py-0.5 rounded-full text-xs font-medium',
+                              statusInfo.className,
+                            )}
+                          >
+                            {statusInfo.label}
+                          </span>
+                          {convChip && (
+                            <span
+                              className={cn(
+                                'inline-flex px-2 py-0.5 rounded-full text-xs font-medium',
+                                convChip.className,
+                              )}
+                            >
+                              {convChip.label}
+                            </span>
                           )}
-                        >
-                          {statusInfo.label}
-                        </span>
+                          {ageLabel && (
+                            <span className="text-xs text-content-faint">{ageLabel}</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )

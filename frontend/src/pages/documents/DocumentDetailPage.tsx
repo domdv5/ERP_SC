@@ -20,6 +20,7 @@ import {
   UserCog,
   ShoppingCart,
   Printer,
+  Clock,
 } from "lucide-react";
 
 import {
@@ -31,8 +32,13 @@ import {
   printDocument,
 } from "@/services/documents.service";
 import { usePermission } from "@/hooks/usePermission";
-import { cn } from "@/lib/utils";
-import { DOC_TYPE_BADGE, DOC_TYPE_ACCENT, DOC_STATUS_BADGE } from "./document.constants";
+import { cn, daysSince, formatDaysSince } from "@/lib/utils";
+import {
+  DOC_TYPE_BADGE,
+  DOC_TYPE_ACCENT,
+  DOC_STATUS_BADGE,
+  PV_CONVERSION_BADGE,
+} from "./document.constants";
 import { ReleaseItemsDialog } from "./components/ReleaseItemsDialog";
 import { getPendingQuantity, hasPendingItems } from "./pos-checkout.utils";
 
@@ -51,6 +57,10 @@ const formatDate = (iso: string) =>
     month: "long",
     year: "numeric",
   });
+
+// El backend ya envía el número de las derivadas PV zero-padded; padStart es defensivo/idempotente.
+const fmtDocRef = (type: string, number: string | number) =>
+  `${type}-${String(number).padStart(6, "0")}`;
 
 // ─── label maps ──────────────────────────────────────────────────────────────
 
@@ -318,6 +328,20 @@ export default function DocumentDetailPage() {
   const usesAvgCostFallback = doc.type === "SAJ" || doc.type === "T";
   // Preventas (PV) no persisten costo — el precio unitario relevante es item.unitPrice.
   const isPV = doc.type === "PV";
+  // Bloque `pv` computado por el backend — solo presente en type === 'PV', y aun así puede ser null.
+  const pvConversion = isPV ? doc.pv?.conversion : undefined;
+  const pvConvBadge =
+    pvConversion && pvConversion.status !== "none"
+      ? PV_CONVERSION_BADGE[pvConversion.status]
+      : null;
+  // Derivada de venta (POS/COT) todavía vigente. Mientras exista, la PV no puede anularse ni
+  // volver a convertirse: se ocultan esos botones y se ofrece un acceso directo a la venta.
+  const pvActiveDerived = pvConversion?.documents.find((d) => d.status !== "voided");
+  // Antigüedad solo mientras la PV sigue abierta: confirmada y sin conversión en curso ni hecha.
+  const pvAgeLabel =
+    isPV && isConfirmed && pvConversion?.status === "none"
+      ? formatDaysSince(daysSince(doc.createdAt))
+      : null;
   // Tipos valorados a precio de venta, no a costo — coincide con PRICE_BASED_TYPES del backend
   // (documents.service.ts). Pos/CotEffectStrategy persisten unitPrice, no unitCost (queda en 0/null).
   const isPriceBasedType = doc.type === "PV" || doc.type === "POS" || doc.type === "COT";
@@ -412,6 +436,16 @@ export default function DocumentDetailPage() {
                 >
                   {statusInfo.label}
                 </span>
+                {pvConvBadge && (
+                  <span
+                    className={cn(
+                      "inline-flex px-2.5 py-1 rounded-full text-xs font-medium",
+                      pvConvBadge.className,
+                    )}
+                  >
+                    {pvConvBadge.label}
+                  </span>
+                )}
               </div>
               <p className="text-content-muted text-sm mt-1 font-accent">
                 Creado por {doc.user.name}
@@ -479,7 +513,7 @@ export default function DocumentDetailPage() {
                 Liberar Stock
               </button>
             )}
-            {isConfirmed && doc.type === "PV" && canConvertPV && (
+            {isConfirmed && doc.type === "PV" && canConvertPV && !pvActiveDerived && (
               // POS ya tiene Strategy — la conversión real ocurre en el checkout POS
               // (POSCheckoutPage), precargado con esta PV vía ?fromPV=. Deshabilitado solo si
               // ya no queda cantidad pendiente (todo liberado y/o ya convertido).
@@ -498,6 +532,18 @@ export default function DocumentDetailPage() {
                 Convertir a venta
               </button>
             )}
+            {isPV && pvActiveDerived && (
+              // Ya hay una venta derivada vigente (borrador o confirmada): en vez de Anular/Convertir
+              // se ofrece navegar directo a esa venta. El backend además responde 409 si se intenta.
+              <button
+                type="button"
+                onClick={() => navigate(`/documents/${pvActiveDerived.id}`)}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                Ver venta {fmtDocRef(pvActiveDerived.type, pvActiveDerived.number)}
+              </button>
+            )}
             {isConfirmed && (doc.type === "CM" || doc.type === "DVC") && (
               <button
                 onClick={() => doPrint()}
@@ -512,7 +558,7 @@ export default function DocumentDetailPage() {
                 Imprimir
               </button>
             )}
-            {isConfirmed && (
+            {isConfirmed && !pvActiveDerived && (
               <button
                 onClick={() => setVoidOpen(true)}
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-500/30 rounded-xl hover:bg-red-500/10 transition-colors"
@@ -536,6 +582,19 @@ export default function DocumentDetailPage() {
               <p className="text-sm text-content">{formatDate(doc.date)}</p>
             </div>
           </div>
+
+          {/* Antigüedad — solo mientras la PV sigue abierta (confirmada, sin conversión) */}
+          {pvAgeLabel && (
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4 text-content-muted" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint font-accent">Antigüedad</p>
+                <p className="text-sm text-content">{pvAgeLabel}</p>
+              </div>
+            </div>
+          )}
 
           {/* Third party */}
           {doc.thirdParty && (
