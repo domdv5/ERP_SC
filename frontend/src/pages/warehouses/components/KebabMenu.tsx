@@ -1,17 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface KebabMenuProps {
   onEdit: () => void
-  onDelete?: () => void
-  deleteDisabled?: boolean
 }
 
-export function KebabMenu({ onEdit, onDelete, deleteDisabled }: KebabMenuProps) {
+export function KebabMenu({ onEdit }: KebabMenuProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const isDeleteDisabled = deleteDisabled || !onDelete
 
   useEffect(() => {
     if (!open) return
@@ -46,20 +43,6 @@ export function KebabMenu({ onEdit, onDelete, deleteDisabled }: KebabMenuProps) 
           >
             <Pencil className="w-3.5 h-3.5 shrink-0" />
             Editar
-          </button>
-          <button
-            type="button"
-            disabled={isDeleteDisabled}
-            onClick={() => { if (isDeleteDisabled) return; onDelete?.(); setOpen(false) }}
-            className={cn(
-              'w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors',
-              isDeleteDisabled
-                ? 'text-red-400/40 cursor-not-allowed'
-                : 'text-red-500 hover:bg-red-500/10',
-            )}
-          >
-            <Trash2 className="w-3.5 h-3.5 shrink-0" />
-            Eliminar
           </button>
         </div>
       )}

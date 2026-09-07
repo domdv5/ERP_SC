@@ -253,6 +253,17 @@ export default function DocumentFormPage() {
     setValue('destBinId', undefined)
   }, [destWarehouseId, setValue])
 
+  // Origen y destino no pueden ser la misma bodega. El <select> de destino filtra la opción
+  // igual al origen, pero si el usuario cambia el origen DESPUÉS de elegir destino, el id de
+  // destino queda stale (sin <option> visible) y destRequiresBin lo seguiría leyendo →
+  // cascada zona/bulto destino fantasma. Al limpiarlo, los effects de arriba encadenan el
+  // reset de destBinId y selectedZoneId.
+  useEffect(() => {
+    if (destWarehouseId && destWarehouseId === warehouseId) {
+      setValue('destWarehouseId', undefined)
+    }
+  }, [warehouseId, destWarehouseId, setValue])
+
   // Solo las bodegas type 'warehouse' (bodega física) llevan seguimiento por bulto; las
   // type 'store' (almacén de venta) no tienen ese nivel de granularidad, así que el
   // traslado no pide zona/bulto cuando el origen es un 'store'.

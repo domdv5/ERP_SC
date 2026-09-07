@@ -27,19 +27,26 @@ function DetailSkeleton() {
 
 // ─── ZoneSummaryCard ────────────────────────────────────────────────────────
 function ZoneSummaryCard({
-  zone, canManage, onSelect, onEdit, onAddBin,
+  zone, canManage, binsEnabled, onSelect, onEdit, onAddBin,
 }: {
   zone: Zone
   canManage: boolean
+  binsEnabled: boolean
   onSelect: () => void
   onEdit: () => void
   onAddBin: () => void
 }) {
+  // En una bodega `store` la zona nunca tiene bultos: la tarjeta deja de ser un drill-in
+  // y queda como fila estática (solo el kebab de editar/desactivar sigue activo).
+  const drillProps = binsEnabled ? { role: 'button' as const, onClick: onSelect } : {}
+
   return (
     <div
-      role="button"
-      onClick={onSelect}
-      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-ui-border bg-surface-raised hover:bg-surface-hover hover:border-brand-secondary/30 transition-all cursor-pointer group"
+      {...drillProps}
+      className={cn(
+        'w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-ui-border bg-surface-raised',
+        binsEnabled && 'hover:bg-surface-hover hover:border-brand-secondary/30 transition-all cursor-pointer group',
+      )}
     >
       <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 gradient-dark">
         <FolderOpen className="w-4 h-4 text-white/70" />
@@ -53,22 +60,26 @@ function ZoneSummaryCard({
             </span>
           )}
         </div>
-        <p className="text-xs text-content-faint font-accent">
-          {zone.bins.length === 0 ? 'Sin bultos' : `${zone.bins.length} ${zone.bins.length === 1 ? 'bulto' : 'bultos'}`}
-        </p>
+        {binsEnabled && (
+          <p className="text-xs text-content-faint font-accent">
+            {zone.bins.length === 0 ? 'Sin bultos' : `${zone.bins.length} ${zone.bins.length === 1 ? 'bulto' : 'bultos'}`}
+          </p>
+        )}
       </div>
-      <ChevronRight className="w-4 h-4 text-content-faint shrink-0" />
+      {binsEnabled && <ChevronRight className="w-4 h-4 text-content-faint shrink-0" />}
       {canManage && (
         <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={onAddBin}
-            title="Agregar bulto"
-            className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
-          <KebabMenu onEdit={onEdit} deleteDisabled />
+          {binsEnabled && (
+            <button
+              type="button"
+              onClick={onAddBin}
+              title="Agregar bulto"
+              className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <KebabMenu onEdit={onEdit} />
         </div>
       )}
     </div>
@@ -77,10 +88,11 @@ function ZoneSummaryCard({
 
 // ─── BinCard ────────────────────────────────────────────────────────────────
 function BinCard({
-  bin, canManage, onSelect, onEdit,
+  bin, canManage, binsEnabled, onSelect, onEdit,
 }: {
   bin: Bin
   canManage: boolean
+  binsEnabled: boolean
   onSelect: () => void
   onEdit: () => void
 }) {
@@ -102,9 +114,9 @@ function BinCard({
           {bin.active ? 'Activo' : 'Inactivo'}
         </p>
       </div>
-      {canManage && (
+      {canManage && binsEnabled && (
         <div onClick={(e) => e.stopPropagation()}>
-          <KebabMenu onEdit={onEdit} deleteDisabled />
+          <KebabMenu onEdit={onEdit} />
         </div>
       )}
     </div>
@@ -119,9 +131,10 @@ interface DetailPanelProps {
   isError: boolean
   onRetry: () => void
   canManage: boolean
+  /** Los bultos solo existen en bodegas `type: 'warehouse'`; en `store` se ocultan todos sus controles. */
+  binsEnabled: boolean
   onSelect: (next: Selection | null) => void
   onEditWarehouse: () => void
-  onDeleteWarehouse: () => void
   onAddZone: () => void
   onEditZone: (zone: Zone) => void
   onAddBin: (zone: Zone) => void
@@ -130,8 +143,8 @@ interface DetailPanelProps {
 
 // ─── Component ──────────────────────────────────────────────────────────────
 export function DetailPanel({
-  selection, warehouseDetail, isLoading, isError, onRetry, canManage,
-  onSelect, onEditWarehouse, onDeleteWarehouse, onAddZone, onEditZone, onAddBin, onEditBin,
+  selection, warehouseDetail, isLoading, isError, onRetry, canManage, binsEnabled,
+  onSelect, onEditWarehouse, onAddZone, onEditZone, onAddBin, onEditBin,
 }: DetailPanelProps) {
   if (!selection) {
     return (
@@ -190,11 +203,11 @@ export function DetailPanel({
               </span>
             </div>
             <p className="text-content-muted text-sm mt-0.5 font-accent">
-              Zonas y bultos de almacenamiento
+              {binsEnabled ? 'Zonas y bultos de almacenamiento' : 'Zonas de almacenamiento'}
             </p>
           </div>
           {canManage && (
-            <KebabMenu onEdit={onEditWarehouse} onDelete={onDeleteWarehouse} />
+            <KebabMenu onEdit={onEditWarehouse} />
           )}
         </div>
 
@@ -203,7 +216,10 @@ export function DetailPanel({
           <div className="flex divide-x divide-ui-divide">
             {[
               { label: 'Zonas',  value: wh.zones.length, Icon: FolderOpen, isText: false },
-              { label: 'Bultos', value: totalBins, Icon: Package, isText: false },
+              // La stat "Bultos" no aplica a bodegas `store` (nunca tienen bultos).
+              ...(binsEnabled
+                ? [{ label: 'Bultos', value: totalBins, Icon: Package, isText: false }]
+                : []),
               { label: 'Estado', value: wh.active ? 'Activa' : 'Inactiva', Icon: TypeIcon, isText: true },
             ].map(stat => (
               <div key={stat.label} className="flex-1 flex items-center gap-3 px-5 py-4">
@@ -230,7 +246,9 @@ export function DetailPanel({
               <p className="text-xs text-content-faint font-accent mt-0.5">
                 {wh.zones.length === 0
                   ? 'Sin zonas registradas'
-                  : `${wh.zones.length} zonas · ${totalBins} bultos en total`}
+                  : binsEnabled
+                    ? `${wh.zones.length} zonas · ${totalBins} bultos en total`
+                    : `${wh.zones.length} ${wh.zones.length === 1 ? 'zona' : 'zonas'}`}
               </p>
             </div>
             {canManage && (
@@ -256,6 +274,7 @@ export function DetailPanel({
                   key={zone.id}
                   zone={zone}
                   canManage={canManage}
+                  binsEnabled={binsEnabled}
                   onSelect={() => onSelect({ kind: 'zone', warehouseId: wh.id, zoneId: zone.id })}
                   onEdit={() => onEditZone(zone)}
                   onAddBin={() => onAddBin(zone)}
@@ -301,56 +320,61 @@ export function DetailPanel({
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl text-content">{zone.name}</h1>
-            <p className="text-content-muted text-sm mt-0.5 font-accent">
-              {zone.bins.length === 0 ? 'Sin bultos' : `${zone.bins.length} ${zone.bins.length === 1 ? 'bulto' : 'bultos'}`}
-            </p>
+            {binsEnabled && (
+              <p className="text-content-muted text-sm mt-0.5 font-accent">
+                {zone.bins.length === 0 ? 'Sin bultos' : `${zone.bins.length} ${zone.bins.length === 1 ? 'bulto' : 'bultos'}`}
+              </p>
+            )}
           </div>
           {canManage && (
-            <KebabMenu onEdit={() => onEditZone(zone)} deleteDisabled />
+            <KebabMenu onEdit={() => onEditZone(zone)} />
           )}
         </div>
 
-        {/* Bins grid */}
-        <div className="bg-surface rounded-2xl border border-ui-border overflow-hidden">
-          <div className="px-5 py-4 border-b border-ui-border flex items-center justify-between">
-            <p className="text-sm font-medium text-content">Bultos</p>
-            {canManage && (
-              <button
-                onClick={() => onAddBin(zone)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 active:scale-[0.98] gradient-action"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Nuevo bulto
-              </button>
-            )}
+        {/* Bins grid — las bodegas `store` no tienen bultos; solo se llega acá por URL directa. */}
+        {binsEnabled && (
+          <div className="bg-surface rounded-2xl border border-ui-border overflow-hidden">
+            <div className="px-5 py-4 border-b border-ui-border flex items-center justify-between">
+              <p className="text-sm font-medium text-content">Bultos</p>
+              {canManage && (
+                <button
+                  onClick={() => onAddBin(zone)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 active:scale-[0.98] gradient-action"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Nuevo bulto
+                </button>
+              )}
+            </div>
+            <div className="p-4">
+              {zone.bins.length === 0 ? (
+                <EmptyState
+                  icon={Package}
+                  title="Sin bultos en esta zona"
+                  description="Crea el primer bulto para asignar ubicaciones de stock"
+                />
+              ) : (
+                // A diferencia del selector de bulto destino en el formulario de traslados
+                // (DocumentFormPage.tsx), este panel administrativo lista TODOS los bultos de
+                // la zona sin filtrar por `occupied` — aquí el objetivo es gestionar la
+                // ubicación en sí (editarla, ver su estado), no elegir un bulto libre para
+                // recibir stock nuevo.
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {zone.bins.map(bin => (
+                    <BinCard
+                      key={bin.id}
+                      bin={bin}
+                      canManage={canManage}
+                      binsEnabled={binsEnabled}
+                      onSelect={() => onSelect({ kind: 'bin', warehouseId: wh.id, zoneId: zone.id, binId: bin.id })}
+                      onEdit={() => onEditBin(bin, zone)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="p-4">
-            {zone.bins.length === 0 ? (
-              <EmptyState
-                icon={Package}
-                title="Sin bultos en esta zona"
-                description="Crea el primer bulto para asignar ubicaciones de stock"
-              />
-            ) : (
-              // A diferencia del selector de bulto destino en el formulario de traslados
-              // (DocumentFormPage.tsx), este panel administrativo lista TODOS los bultos de
-              // la zona sin filtrar por `occupied` — aquí el objetivo es gestionar la
-              // ubicación en sí (editarla, ver su estado), no elegir un bulto libre para
-              // recibir stock nuevo.
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {zone.bins.map(bin => (
-                  <BinCard
-                    key={bin.id}
-                    bin={bin}
-                    canManage={canManage}
-                    onSelect={() => onSelect({ kind: 'bin', warehouseId: wh.id, zoneId: zone.id, binId: bin.id })}
-                    onEdit={() => onEditBin(bin, zone)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
     )
   }
@@ -401,8 +425,8 @@ export function DetailPanel({
               Bulto de almacenamiento — {zone.name}
             </p>
           </div>
-          {canManage && (
-            <KebabMenu onEdit={() => onEditBin(bin, zone)} deleteDisabled />
+          {canManage && binsEnabled && (
+            <KebabMenu onEdit={() => onEditBin(bin, zone)} />
           )}
         </div>
 

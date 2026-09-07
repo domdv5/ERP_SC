@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   Query,
 } from '@nestjs/common';
 import { WarehousesService } from './warehouses.service';
@@ -39,11 +38,5 @@ export class WarehousesController {
     @Body() updateWarehouseDto: UpdateWarehouseDto,
   ) {
     return this.warehousesService.update(id, updateWarehouseDto);
-  }
-
-  @Delete(':id')
-  @Permissions('warehouse.manage')
-  remove(@Param('id') id: string) {
-    return this.warehousesService.remove(id);
   }
 }

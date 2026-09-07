@@ -70,11 +70,4 @@ export class WarehousesService {
       data: updateWarehouseDto,
     });
   }
-
-  remove(id: string) {
-    return this.prisma.warehouse.update({
-      where: { id },
-      data: { active: false },
-    });
-  }
 }

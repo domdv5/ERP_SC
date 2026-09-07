@@ -23,10 +23,11 @@ export class BinsController {
 
   @Post()
   create(
+    @Param('warehouseId', ParseUUIDPipe) warehouseId: string,
     @Param('zoneId', ParseUUIDPipe) zoneId: string,
     @Body() createBinDto: CreateBinDto,
   ) {
-    return this.binService.create(createBinDto, zoneId);
+    return this.binService.create(createBinDto, zoneId, warehouseId);
   }
 
   @Patch(':id')

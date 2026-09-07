@@ -45,10 +45,6 @@ export async function updateWarehouse(
   return res.data.data;
 }
 
-export async function deleteWarehouse(id: string): Promise<void> {
-  await api.delete(`/warehouses/${id}`);
-}
-
 export async function createZone(
   warehouseId: string,
   payload: CreateZonePayload,

@@ -18,6 +18,7 @@
     "studio": "pnpm prisma studio --config prisma/prisma.config.ts",
     "audit:binstock": "node scripts/audit-binstock-invariant.mjs",
     "audit:bin-products": "node scripts/audit-bin-multi-product.mjs",
+    "backfill:zones-cross-warehouse": "node scripts/backfill-zones-cross-warehouse.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
