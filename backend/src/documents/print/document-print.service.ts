@@ -4,9 +4,8 @@ import { DocumentPrintRegistry } from './strategies/document-print.registry';
 import { PdfGeneratorService } from './pdf-generator.service';
 
 /**
- * Orquestador de impresión: datos (DocumentsService) → layout (DocumentPrintRegistry)
- * → Buffer (PdfGeneratorService). Solo pegamento entre las tres piezas — no conoce
- * el schema de Prisma ni la API de pdfmake.
+ * Orquesta la impresión: datos → diseño → PDF. Es solo el pegamento entre las
+ * tres piezas; no conoce la base de datos ni la librería de PDF.
  */
 @Injectable()
 export class DocumentPrintService {
@@ -26,8 +25,8 @@ export class DocumentPrintService {
     try {
       buffer = await this.pdfGenerator.generate(strategy.buildDefinition(document));
     } catch (err) {
-      // El stack trace de pdfmake nunca debe llegar al cliente — solo se
-      // loguea internamente, la excepción HTTP queda con mensaje genérico.
+      // El detalle del error de la librería de PDF nunca debe llegar al cliente:
+      // solo se registra internamente y la respuesta HTTP lleva un mensaje genérico.
       this.logger.error(`Error generando PDF del documento ${id}`, err as Error);
       throw new InternalServerErrorException(
         'No se pudo generar el PDF del documento',

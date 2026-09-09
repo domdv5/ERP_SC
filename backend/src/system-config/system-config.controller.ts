@@ -39,9 +39,9 @@ export class SystemConfigController {
     const token = req.query.token as string | undefined;
 
     if (!token) {
-      // Lanzar (no emitir+completar) para que Nest nunca llegue a fijar los
-      // headers SSE: la excepción se responde como un 401 HTTP normal, que el
-      // EventSource nativo interpreta como "fail the connection" (sin reintentos).
+      // Lanzar la excepción (en vez de emitir un evento y cerrar) para que Nest
+      // nunca alcance a fijar las cabeceras del stream: así se responde un 401
+      // normal, que el EventSource del navegador toma como "conexión fallida" y no reintenta.
       throw new UnauthorizedException('Token no proporcionado');
     }
 

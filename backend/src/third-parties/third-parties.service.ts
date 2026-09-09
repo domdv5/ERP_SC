@@ -173,8 +173,8 @@ export class ThirdPartiesService {
     } = updateThirdPartyDto;
 
     return this.prisma.$transaction(async (tx) => {
-      // The supplier relation must exist before brands can reference it via
-      // supplierId, so the upsert below has to run before brand.createMany.
+      // La relación de proveedor tiene que existir antes de que las marcas puedan
+      // apuntar a ella, así que el upsert de abajo va antes de crear las marcas.
       const updated = await tx.thirdParty.update({
         where: { id },
         data: {

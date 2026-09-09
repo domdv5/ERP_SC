@@ -49,8 +49,8 @@ export default function AccountsPayableListPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Lightweight status counts for the stats row — the backend doesn't return
-  // status breakdowns in the list meta, so we ask for a single row per status.
+  // Conteos por estado para la fila de estadísticas: el listado no trae ese
+  // desglose, así que se pide una sola fila por cada estado.
   const { data: pendingData, isLoading: isPendingLoading } = useQuery({
     queryKey: ["accounts-payable", "count", "pending"],
     queryFn: () => getAccountsPayable({ status: "pending", page: 1, limit: 1 }),

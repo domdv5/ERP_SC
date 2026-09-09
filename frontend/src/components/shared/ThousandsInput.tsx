@@ -1,10 +1,9 @@
 import { forwardRef, useLayoutEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
-// Formatea con separador de miles es-CO ('.') solo para presentación; el valor que sale por
-// onChange es siempre el number crudo (o undefined si el campo queda vacío). Mismo patrón que
-// el ThousandsInput local de ProductForm, extraído acá para reusarlo (ej. límite de crédito
-// en ThirdPartyForm).
+// Muestra el número con separador de miles ('.') solo como presentación; el valor que emite es
+// siempre el número sin formato (o vacío si el campo queda vacío). Se extrajo del que había en
+// el form de productos para reusarlo (p. ej. el límite de crédito en la ficha de tercero).
 const formatThousands = (value: number): string => new Intl.NumberFormat('es-CO').format(value)
 
 interface ThousandsInputProps {
@@ -24,7 +23,7 @@ export const ThousandsInput = forwardRef<HTMLInputElement, ThousandsInputProps>(
   forwardedRef,
 ) {
   const inputRef = useRef<HTMLInputElement | null>(null)
-  // Posición de cursor a restaurar tras reformatear — evita que salte al final en cada tecleo.
+  // Posición del cursor a restaurar tras reformatear, para que no salte al final en cada tecla.
   const caretRef = useRef<number | null>(null)
 
   useLayoutEffect(() => {
@@ -57,7 +56,7 @@ export const ThousandsInput = forwardRef<HTMLInputElement, ThousandsInputProps>(
         const numericValue = rawDigits ? Number(rawDigits) : undefined
         const newFormatted = numericValue === undefined ? '' : formatThousands(numericValue)
 
-        // Recalcula dónde debe quedar el cursor contando dígitos (no caracteres, por los puntos).
+        // Recalcula dónde debe quedar el cursor contando dígitos, no caracteres (por los puntos).
         let newCaret = digitsBeforeCaret === 0 ? 0 : newFormatted.length
         let seen = 0
         for (let i = 0; i < newFormatted.length; i++) {

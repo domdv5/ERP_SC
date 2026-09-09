@@ -10,7 +10,7 @@ import { assertCreditWithinLimit } from '@/documents/helpers/credit.helpers';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
 
-/** COT — venta a crédito: igual que POS (salida física de stock valorada a unitPrice, PRICE_BASED_TYPES) pero no exige forma de pago, valida el cupo de crédito del cliente, y al confirmar genera una AccountsReceivable. */
+/** Venta a crédito: igual que la venta de contado (saca stock físico, valorado al precio de venta) pero no pide forma de pago, valida el cupo de crédito del cliente y al confirmar crea una cuenta por cobrar. */
 @Injectable()
 export class CotEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.COT;
@@ -58,8 +58,7 @@ export class CotEffectStrategy extends BaseEffectStrategy {
       }),
     );
 
-    // Cupo de crédito: bloqueo duro si el total (valorado a unitPrice) supera
-    // el disponible del cliente.
+    // Cupo de crédito: se bloquea si el total supera el disponible del cliente.
     const requestedTotal = items.reduce(
       (sum, item) => sum + item.quantity * (item.unitPrice ?? 0),
       0,
@@ -74,9 +73,10 @@ export class CotEffectStrategy extends BaseEffectStrategy {
   ) {
     const warehouseId = this.requireWarehouse(document);
 
-    // Re-chequeo (PATCH no vuelve a correr validateCreate). Si viene de convertir
-    // una PV, su reserva sigue activa aquí — hay que excluirla o daría un
-    // shortfall falso contra sí misma (mismo motivo que POS).
+    // Se vuelve a validar acá porque editar un borrador no re-corre las validaciones
+    // de creación. Si viene de convertir una preventa, su reserva sigue activa: hay
+    // que excluirla o daría un faltante falso contra sí misma (mismo motivo que la
+    // venta de contado).
     const shortfalls = await this.assertBatchAvailability(
       tx,
       warehouseId,
@@ -106,10 +106,10 @@ export class CotEffectStrategy extends BaseEffectStrategy {
       throw new BadRequestException('La venta requiere un vendedor');
     }
 
-    // Bloquea la fila del cliente hasta el fin de la tx: dos COT concurrentes del
-    // mismo cliente no pueden superar el cupo en conjunto (mismo patrón FOR UPDATE
-    // que registerPayment). El re-chequeo cubre además el PATCH-bypass: update()
-    // no re-corre validateCreate, así que se valida con el total definitivo.
+    // Bloquea la fila del cliente hasta el fin de la transacción: dos ventas a
+    // crédito del mismo cliente a la vez no pueden superar el cupo entre las dos.
+    // Además, como editar un borrador no re-valida, esta es la validación contra el
+    // total definitivo.
     await tx.$queryRaw`SELECT id FROM customers WHERE id = ${document.thirdPartyId}::uuid FOR UPDATE`;
     await assertCreditWithinLimit(
       tx,
@@ -130,12 +130,11 @@ export class CotEffectStrategy extends BaseEffectStrategy {
       });
     }
 
-    // Venta a crédito: genera la cuenta por cobrar del cliente.
-    // Customer.id === ThirdParty.id (schema:114). dueDate se omite → null (v1).
-    // totalAmount redondeado a pesos enteros: el sistema trata COP sin centavos
-    // (formatCOP, input de pago entero) — la CxC no debe nacer con saldo
-    // fraccionario que el "Registrar pago" no pueda saldar. document.total se
-    // deja exacto; se acepta un delta de hasta ~1 peso.
+    // Venta a crédito: genera la cuenta por cobrar del cliente. La fecha de
+    // vencimiento se deja en null por ahora. El monto se redondea a pesos enteros:
+    // el sistema maneja pesos sin centavos, así que la cuenta no debe nacer con un
+    // saldo con decimales que "Registrar pago" nunca podría saldar. El total del
+    // documento se deja exacto; se acepta una diferencia de hasta ~1 peso.
     await tx.accountsReceivable.create({
       data: {
         clientId: document.thirdPartyId,

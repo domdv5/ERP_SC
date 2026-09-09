@@ -79,15 +79,15 @@ export default function WarehousesPage() {
     if (warehouseId) queryClient.invalidateQueries({ queryKey: ['warehouses', warehouseId] })
   }
 
-  // Crear/renombrar una zona la replica el backend a TODAS las bodegas activas: invalidar el
-  // prefijo raíz cubre lista y detalle de cada bodega. `warehouse-detail` es el namespace que
-  // usa el form de traslados (DocumentFormPage) para su cascada zona/bulto.
+  // Crear o renombrar una zona la replica el backend a TODAS las bodegas activas, así que
+  // refrescar la clave raíz alcanza la lista y el detalle de cada bodega. `warehouse-detail`
+  // es la clave que usa el form de traslados para su cascada zona/bulto.
   const invalidateAllWarehouses = () => {
     queryClient.invalidateQueries({ queryKey: ['warehouses'] })
     queryClient.invalidateQueries({ queryKey: ['warehouse-detail'] })
   }
 
-  // Los bultos solo existen en bodegas `type: 'warehouse'`; en `store` no se ofrece ninguna acción de bulto.
+  // Los bultos solo existen en bodegas físicas; en un almacén de venta no se ofrece ninguna acción de bulto.
   const binsEnabled = warehouseDetail?.type === 'warehouse'
 
   // ── Navigation ────────────────────────────────────────────────────────────

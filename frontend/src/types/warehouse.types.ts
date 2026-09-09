@@ -49,6 +49,6 @@ export interface UpdateZonePayload { name?: string; active?: boolean }
 export interface CreateBinPayload { code: number }
 export interface UpdateBinPayload { code?: number; active?: boolean }
 
-// Zone/Bin creation & update endpoints return the plain Prisma row —
-// zones without their nested `bins` relation.
+// Los endpoints de crear y editar zona/bulto devuelven la fila tal cual,
+// sin la relación anidada de bultos.
 export type ZoneSummary = Omit<Zone, 'bins'>

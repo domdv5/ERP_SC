@@ -2,8 +2,8 @@ import { IsEnum, IsOptional } from 'class-validator';
 import { DocumentType, PaymentMethod } from '@/common/enums';
 
 export class ConvertDocumentDto {
-  // El service valida que sea un valor soportado (hoy solo POS) — el DTO deja
-  // el campo abierto a DocumentType pensando en COT como próxima extensión.
+  // El service valida que sea un tipo soportado (hoy venta de contado o a
+  // crédito); el DTO lo deja abierto para futuros tipos.
   @IsEnum(DocumentType)
   targetType!: DocumentType;
 

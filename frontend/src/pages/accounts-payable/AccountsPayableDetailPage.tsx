@@ -43,9 +43,9 @@ export default function AccountsPayableDetailPage() {
   const { mutate: registerPayment, isPending: isRegistering } = useMutation({
     mutationFn: (payload: RegisterPayablePaymentPayload) => registerPayablePayment(id!, payload),
     onSuccess: () => {
-      // El prefijo ["accounts-payable"] ya cubre ["accounts-payable", "credits", supplierId] y
-      // ["accounts-payable", id] por coincidencia parcial de query key — se listan explícitas
-      // igual para que quede claro qué se está invalidando tras aplicar un pago con crédito.
+      // Invalidar el prefijo ["accounts-payable"] ya alcanzaría a las claves de créditos y de
+      // detalle por coincidencia parcial; se listan una por una igual para que quede claro qué
+      // se está refrescando tras aplicar un pago con crédito.
       queryClient.invalidateQueries({ queryKey: ["accounts-payable"] });
       queryClient.invalidateQueries({ queryKey: ["accounts-payable", id] });
       queryClient.invalidateQueries({ queryKey: ["accounts-payable", "credits"] });
@@ -109,8 +109,8 @@ export default function AccountsPayableDetailPage() {
   }
 
   const creditApplications = account.creditApplications ?? [];
-  // El saldo pendiente debe descontar tanto el efectivo como las notas crédito ya aplicadas
-  // (ver plan 020) — omitir creditApplications aquí subestimaría cuánto falta por pagar.
+  // El saldo pendiente tiene que descontar tanto los pagos en efectivo como las notas crédito
+  // ya aplicadas; si se omiten las notas crédito, se subestima cuánto falta por pagar.
   const paidAmount =
     account.payablePayments.reduce((sum, payment) => sum + payment.amount, 0) +
     creditApplications.reduce((sum, application) => sum + application.amount, 0);

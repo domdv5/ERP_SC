@@ -29,9 +29,9 @@ export class FindAllDocumentsDto {
   @IsEnum(DocumentType)
   type?: DocumentType;
 
-  // Lista de DocumentType separados por coma (ej. "CM,DVC"); se mantiene como
-  // string simple porque llega por query param, y el service la parsea con
-  // split(','). Filtro multi-tipo; `type` arriba sigue siendo el filtro de un solo tipo.
+  // Lista de tipos separados por coma (ej. "CM,DVC"). Llega como texto por la URL
+  // y el service la parte por comas. Es el filtro de varios tipos; el campo `type`
+  // de arriba filtra por uno solo.
   @IsOptional()
   @IsString()
   types?: string;

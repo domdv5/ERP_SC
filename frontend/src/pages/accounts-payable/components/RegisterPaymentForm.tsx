@@ -22,10 +22,10 @@ import type { RegisterPayablePaymentPayload } from "@/types";
 // Schema
 // ---------------------------------------------------------------------------
 
-// `balance` viaja en cada fila del form solo para validar en el cliente que no se
-// aplique más de lo disponible — se descarta antes de enviar el payload al backend.
-// ThousandsInput emite `undefined` cuando el campo queda vacío → preprocess lo trata como 0
-// (una fila/monto vacío = "no aplica"), así el superRefine siempre suma números.
+// El `balance` va en cada fila del formulario solo para validar en el cliente que no se
+// aplique más de lo disponible; se descarta antes de enviar al backend.
+// El input con separador de miles devuelve vacío como `undefined`, que se trata como 0
+// (fila o monto vacío = "no aplica"), así la validación siempre suma números.
 const moneyAmount = z.preprocess(
   (v) => (v == null ? 0 : v),
   z.number().min(0, "El monto no puede ser negativo"),
@@ -33,13 +33,13 @@ const moneyAmount = z.preprocess(
 
 const creditApplicationSchema = z.object({
   supplierCreditId: z.string(),
-  // La API serializa el Decimal de balance como string — coercionar para el superRefine.
+  // El saldo llega como texto desde la API; se pasa a número para poder validarlo.
   balance: z.coerce.number(),
   amount: moneyAmount,
 });
 
 const baseSchema = z.object({
-  // El efectivo ahora puede ser 0: un pago puede saldarse solo con notas crédito (ver plan 020).
+  // El efectivo ahora puede ser 0: un pago puede saldarse solo con notas crédito.
   amount: moneyAmount,
   paymentDate: z.string().min(1, "La fecha es requerida"),
   paymentMethod: z.string().min(1, "Selecciona un método de pago"),
@@ -67,9 +67,9 @@ interface RegisterPaymentFormProps {
   onClose: () => void;
   onSubmit: (data: RegisterPayablePaymentPayload) => void;
   isPending: boolean;
-  /** Saldo pendiente actual de la cuenta — usado para validar que el pago no lo exceda. */
+  /** Saldo pendiente actual de la cuenta; sirve para validar que el pago no lo supere. */
   pendingBalance: number;
-  /** Proveedor dueño de la cuenta — usado para consultar sus notas crédito disponibles. */
+  /** Proveedor dueño de la cuenta; sirve para consultar sus notas crédito disponibles. */
   supplierId: string;
 }
 
@@ -142,8 +142,8 @@ export function RegisterPaymentForm({
     enabled: open && Boolean(supplierId),
   });
 
-  // superRefine valida ambos lados del pago juntos (efectivo + créditos aplicados) contra
-  // el saldo pendiente, y cada fila de crédito contra su propio balance disponible.
+  // La validación revisa las dos partes del pago juntas (efectivo + créditos aplicados) contra
+  // el saldo pendiente, y cada fila de crédito contra su propio saldo disponible.
   const schema = useMemo(
     () =>
       baseSchema.superRefine((data, ctx) => {
@@ -199,8 +199,8 @@ export function RegisterPaymentForm({
     }
   }, [open, reset]);
 
-  // Puebla las filas de crédito una vez que la consulta resuelve — separado del reset de
-  // apertura porque la consulta de créditos llega después de que `open` pasa a true.
+  // Llena las filas de crédito cuando la consulta responde; va aparte del reset de apertura
+  // porque la consulta de créditos llega después de que el diálogo se abre.
   useEffect(() => {
     if (open && credits) {
       replace(credits.map((c) => ({ supplierCreditId: c.id, balance: Number(c.balance), amount: 0 })));
@@ -216,8 +216,8 @@ export function RegisterPaymentForm({
   // Efectivo que falta para saldar la cuenta una vez descontadas las notas crédito ya aplicadas.
   const cashRemainder = Math.max(0, pendingBalance - creditsApplied);
 
-  // Para una fila de nota crédito: lo máximo aplicable = min(disponible de la nota, lo que
-  // falta para cubrir el saldo con el resto del pago fijo).
+  // Para una fila de nota crédito, lo máximo que se puede aplicar es lo menor entre: el saldo
+  // disponible de la nota y lo que falta para cubrir el pago con el resto del efectivo.
   const creditRowMax = (index: number) => {
     const otherCredits = watchedCredits.reduce(
       (sum, c, i) => (i === index ? sum : sum + (Number(c.amount) || 0)),

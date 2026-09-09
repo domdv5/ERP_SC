@@ -15,7 +15,7 @@ interface ComboboxProps {
   options: ComboboxOption[]
   isLoading?: boolean
   placeholder?: string
-  // Controlled search (server-side debounce). If omitted, filters client-side internally.
+  // Búsqueda controlada (con debounce contra el servidor). Si se omite, filtra en el cliente.
   searchValue?: string
   onSearchChange?: (v: string) => void
   disabled?: boolean

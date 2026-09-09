@@ -25,9 +25,9 @@ const baseSchema = z.object({
   notes: z.string().max(500, "Máximo 500 caracteres").optional(),
 });
 
-// Validación por fila vive en un superRefine a nivel de formulario (no en releaseRowSchema)
-// porque cada fila necesita comparar quantity contra su propio pending — mismo patrón que
-// RegisterPaymentForm.tsx usa para validar cada nota crédito contra su balance disponible.
+// La validación por fila se hace a nivel de formulario (no en el schema de cada fila) porque
+// cada fila necesita comparar su cantidad contra su propio pendiente, igual que en el
+// formulario de pagos cada nota crédito se compara contra su saldo disponible.
 const releaseSchema = baseSchema.superRefine((data, ctx) => {
   const anyChecked = data.items.some((item) => item.checked);
   if (!anyChecked) {
@@ -63,8 +63,8 @@ const emptyDefaults = (): ReleaseFormValues => ({ items: [], notes: "" });
 
 interface ReleaseItemsDialogProps {
   open: boolean;
-  // Nombrado `doc` (no `document`) a propósito, en línea con DocumentDetailPage.tsx — evita
-  // sombrear el global `document` del DOM dentro del componente.
+  // Se llama `doc` (no `document`) a propósito, para no tapar el `document` global del navegador
+  // dentro del componente.
   doc: Document;
   onClose: () => void;
 }
@@ -109,8 +109,8 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       queryClient.invalidateQueries({ queryKey: ["document", doc.id] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      // Namespace separado del combobox de producto en ProductRow — 'products' no lo cubre por
-      // prefijo, así que sin esto el disponible mostrado en la siguiente operación queda desactualizado.
+      // El buscador de productos usa una clave de caché aparte que "products" no alcanza; sin
+      // esto, el disponible que se ve en la siguiente operación queda viejo.
       queryClient.invalidateQueries({ queryKey: ["products-search"] });
       toast.success("Stock liberado correctamente");
       onClose();

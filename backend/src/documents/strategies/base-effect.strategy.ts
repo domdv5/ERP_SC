@@ -52,7 +52,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     }
   }
 
-  /** Bloqueo duro: marca/proveedor de un producto son fijos, así que un ítem de otra marca siempre es un error real, nunca un caso a permitir con solo aviso. */
+  /** Bloqueo total: la marca y el proveedor de un producto son fijos, así que un ítem de otra marca siempre es un error real, nunca un caso a permitir con solo aviso. */
   protected async assertItemsMatchSupplierBrands(
     supplierId: string,
     items: { productId: string; brandId: string }[],
@@ -74,7 +74,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     }
   }
 
-  /** Bloqueo duro: vender bajo `Product.minSalePrice` siempre es error real. Acumula todas las violaciones (no corta en la primera) para corregir todo el documento de una vez. */
+  /** Bloqueo total: vender por debajo del precio mínimo del producto siempre es un error real. Junta todos los casos (no corta en el primero) para poder corregir el documento entero de una vez. */
   protected assertPricesAboveFloor(
     items: { code: string; unitPrice: number; minSalePrice: number }[],
   ) {
@@ -95,10 +95,11 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
   }
 
   /**
-   * Valida disponibilidad batch (stock menos reserva PV) de todos los ítems en una sola
-   * consulta con FOR UPDATE (evita N+1 y que dos confirmaciones concurrentes lean el mismo
-   * "disponible" antes de escribir). Acumula los faltantes y los devuelve en vez de lanzar —
-   * cada caller decide el mensaje (PV corta en el primero, POS reporta todos juntos).
+   * Valida el disponible (stock menos reservas) de todos los ítems en una sola consulta
+   * que bloquea las filas, evitando muchas consultas sueltas y que dos confirmaciones a la
+   * vez lean el mismo disponible antes de escribir. Junta los faltantes y los devuelve en
+   * vez de lanzar: cada llamador arma su mensaje (la preventa corta en el primero, la venta
+   * de contado los reporta todos juntos).
    */
   protected async assertBatchAvailability(
     tx: Prisma.TransactionClient,
@@ -151,7 +152,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     return shortfalls;
   }
 
-  /** Aplica el cambio de stock (Inventory) y registra el movimiento kardex. */
+  /** Aplica el cambio de stock en el inventario y registra el movimiento en el kardex. */
   protected async moveStock(
     tx: Prisma.TransactionClient,
     params: {
@@ -159,7 +160,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
       warehouseId: string;
       binId?: string | null;
       movementType: MovementType;
-      /** Cantidad con signo: positiva entra, negativa sale. */
+      /** Cantidad con signo: positiva suma stock, negativa lo resta. */
       quantity: number;
       unitCost: number;
       documentId: string;

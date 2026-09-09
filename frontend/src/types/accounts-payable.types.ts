@@ -42,7 +42,7 @@ export interface AccountsPayable {
   document: AccountsPayableDocument
 }
 
-/** Saldo a favor de un proveedor (originado por una devolución DVC) aplicable manualmente a cualquier cuenta por pagar suya. Ver plan 020. */
+/** Saldo a favor de un proveedor (originado por una devolución) que se puede aplicar a mano a cualquiera de sus cuentas por pagar. */
 export interface SupplierCredit {
   id: string
   supplierId: string
@@ -64,7 +64,7 @@ export interface SupplierCreditApplication {
 
 export interface AccountsPayableDetail extends AccountsPayable {
   payablePayments: PayablePayment[]
-  // Opcional porque el backend puede no incluirlo aún en todas las respuestas — el detalle se degrada a "sin aplicaciones" si falta.
+  // Opcional porque el backend puede no incluirlo todavía en todas las respuestas; si falta, el detalle muestra "sin aplicaciones".
   creditApplications?: SupplierCreditApplication[]
 }
 

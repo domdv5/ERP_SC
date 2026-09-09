@@ -5,9 +5,9 @@ import { CmPrintStrategy } from './cm-print.strategy';
 import { DvcPrintStrategy } from './dvc-print.strategy';
 
 /**
- * Registro de estrategias de impresión por tipo de documento — mismo patrón
- * que DocumentEffectsRegistry. Un tipo sin estrategia registrada es, por
- * definición, un tipo que aún no soporta impresión (fase 2).
+ * Guarda una estrategia de impresión por cada tipo de documento, igual que el
+ * registro de efectos. Un tipo sin estrategia registrada es, por definición, uno
+ * que todavía no se puede imprimir.
  */
 @Injectable()
 export class DocumentPrintRegistry {

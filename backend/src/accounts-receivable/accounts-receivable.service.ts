@@ -17,7 +17,7 @@ const DETAIL_INCLUDE = {
   receivablePayments: { orderBy: { paymentDate: 'desc' } },
 } satisfies Prisma.AccountsReceivableInclude;
 
-/** Convierte a centavos enteros para comparar montos sin errores de punto flotante. */
+/** Convierte a centavos enteros para comparar montos sin errores de coma flotante. */
 function toCents(amount: number | Prisma.Decimal) {
   return Math.round(Number(amount) * 100);
 }
@@ -98,8 +98,8 @@ export class AccountsReceivableService {
 
     return this.prisma.$transaction(
       async (tx) => {
-        // Bloquea la fila hasta terminar la transacción: serializa pagos
-        // concurrentes para que no se validen ambos contra el mismo saldo (overpayment).
+        // Bloquea la fila hasta terminar la transacción: pone en fila los pagos que
+        // llegan a la vez para que no se validen los dos contra el mismo saldo y se pague de más.
         await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE id = ${id} FOR UPDATE`;
 
         const accountReceivable = await tx.accountsReceivable.findUnique({
@@ -135,7 +135,7 @@ export class AccountsReceivableService {
           },
         });
 
-        // Recalcula el status a partir del total pagado tras este pago.
+        // Recalcula el estado a partir del total pagado tras este pago.
         const newPaidCents = paidSoFarCents + amountCents;
         const status =
           newPaidCents >= totalCents

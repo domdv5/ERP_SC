@@ -6,7 +6,7 @@ import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
 import { computeNewAvgCost } from '@/documents/helpers/stock.helpers';
 
-/** CM — Compra de mercancía: entrada de stock, re-ponderación de costos y CxP. */
+/** Compra de mercancía: suma stock, recalcula el costo promedio y crea la cuenta por pagar. */
 @Injectable()
 export class CmEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.CM;
@@ -41,8 +41,8 @@ export class CmEffectStrategy extends BaseEffectStrategy {
       );
     }
 
-    // Defensa en profundidad: update() no revalida un borrador editado, así que
-    // un ítem de marca equivocada podría colarse si solo se validara en validateCreate.
+    // Chequeo extra: editar un borrador no vuelve a validar, así que un ítem de una
+    // marca equivocada podría colarse si solo se revisara al crear.
     await this.assertItemsMatchSupplierBrands(
       supplier.id,
       document.documentItems.map((item) => ({
@@ -55,7 +55,7 @@ export class CmEffectStrategy extends BaseEffectStrategy {
       const quantity = item.quantity;
       const unitCost = Number(item.unitCost);
 
-      // Costo ponderado sobre el stock global ANTES de la entrada.
+      // Costo promedio repartido sobre el stock total ANTES de esta entrada.
       const newAvgCost = await computeNewAvgCost(
         tx,
         item.productId,
@@ -69,8 +69,8 @@ export class CmEffectStrategy extends BaseEffectStrategy {
         data: { avgCost: newAvgCost, lastCost: unitCost },
       });
 
-      // Sin binId: las compras solo entran a Inventory, nunca a BinStock —
-      // el stock queda sin bulto asignado hasta que un traslado lo mueva.
+      // Sin bulto: las compras solo entran al inventario de la bodega, nunca a un
+      // bulto; el stock queda sin bulto asignado hasta que un traslado lo mueva.
       await this.moveStock(tx, {
         productId: item.productId,
         warehouseId,
@@ -83,10 +83,10 @@ export class CmEffectStrategy extends BaseEffectStrategy {
       });
     }
 
-    // Redondeado a pesos enteros: el sistema trata COP sin centavos (formatCOP,
-    // input de pago entero) — la CxP no debe nacer con saldo fraccionario que
-    // el "Registrar pago" no pueda saldar. document.total se deja exacto; se
-    // acepta un delta de hasta ~1 peso entre el total del doc y su CxP.
+    // Redondeado a pesos enteros: el sistema maneja pesos sin centavos (los montos
+    // se muestran y se pagan enteros), así que la cuenta por pagar no debe nacer con
+    // un saldo con decimales que "Registrar pago" nunca podría saldar. El total del
+    // documento se deja exacto; se acepta una diferencia de hasta ~1 peso.
     await tx.accountsPayable.create({
       data: {
         supplierId: supplier.id,

@@ -8,7 +8,7 @@ import {
 } from '../blocks/index';
 import { computePrintTotals } from '../helpers/pdf-totals.helper';
 
-/** Layout compartido entre CM y DVC — ambas comparten header/tabla/totales/footer, solo cambia el título. */
+/** Diseño compartido entre compra y devolución a proveedor: ambas usan el mismo encabezado, tabla, totales y pie; solo cambia el título. */
 export function buildPurchaseDocumentDefinition(
   document: DocumentForPrint,
   opts: { title: string },

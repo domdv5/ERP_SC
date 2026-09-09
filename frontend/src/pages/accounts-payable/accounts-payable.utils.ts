@@ -22,7 +22,7 @@ export const STATUS_LABELS: Record<AccountsPayableStatus, { label: string; class
   paid: { label: 'Pagado', className: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' },
 }
 
-/** Minimal local label map — the document types an AccountsPayable can originate from. */
+/** Mapa local de etiquetas: los tipos de documento que pueden originar una cuenta por pagar. */
 export const DOCUMENT_TYPE_LABELS: Partial<Record<DocumentType, string>> = {
   CM: 'Compra',
   DVC: 'Dev. Compra',

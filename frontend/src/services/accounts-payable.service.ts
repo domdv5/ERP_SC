@@ -24,7 +24,7 @@ export async function getAccountPayable(id: string): Promise<AccountsPayableDeta
   return res.data.data;
 }
 
-/** Créditos (notas crédito de proveedor) disponibles con balance > 0 para aplicar manualmente a un pago. */
+/** Notas crédito de proveedor con saldo disponible para aplicar a mano a un pago. */
 export async function getSupplierCredits(supplierId: string): Promise<SupplierCredit[]> {
   const res = await api.get<ApiResponse<SupplierCredit[]>>("/accounts-payable/credits", {
     params: { supplierId },

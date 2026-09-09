@@ -32,8 +32,8 @@ const schema = z
     brandId: z.string().min(1, 'Selecciona una marca'),
     genderId: z.string().min(1, 'Selecciona un género'),
     categoryId: z.string().min(1, 'Selecciona una categoría'),
-    // ThousandsInput emite number | undefined (undefined = campo vacío) — sin z.coerce:
-    // undefined dispara el mensaje "Requerido" en vez de convertirse en NaN.
+    // El input con separador de miles devuelve número o undefined (vacío). Sin forzar
+    // conversión, el campo vacío da el mensaje "Requerido" en vez de convertirse en NaN.
     salePrice: z
       .number({ error: 'Requerido' })
       .int('Debe ser un número entero')
@@ -113,9 +113,9 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
   const isEdit = !!defaultValues
 
   const [suffix, setSuffix] = useState('')
-  // Stores the original code when the form opens in edit mode — used to auto-fill legacyCode
+  // Guarda el código original al abrir el form en modo edición; sirve para autocompletar el código anterior
   const originalCodeRef = useRef('')
-  // Once the user edits minSalePrice by hand, stop overwriting it from salePrice
+  // En cuanto el usuario edita el precio mínimo a mano, se deja de recalcular desde el precio de venta
   const [minSalePriceTouched, setMinSalePriceTouched] = useState(false)
 
   const {
@@ -133,7 +133,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
       brandId: '',
       genderId: '',
       categoryId: '',
-      // undefined = campo vacío (placeholder "0"); ThousandsInput lo maneja.
+      // undefined = campo vacío (se ve el "0" de fondo); el input con miles lo maneja.
       salePrice: undefined,
       minSalePrice: undefined,
       unitOfMeasure: 'unidad',
@@ -150,7 +150,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
         brandId:      defaultValues?.brandId      ?? '',
         genderId:     defaultValues?.genderId      ?? '',
         categoryId:   defaultValues?.categoryId   ?? '',
-        // undefined transitorio en create (campo vacío) — el schema exige el valor al enviar.
+        // Vacío pasajero al crear; el schema igual exige el valor al enviar.
         salePrice:    (defaultValues?.salePrice    ?? undefined) as number,
         minSalePrice: (defaultValues?.minSalePrice ?? undefined) as number,
         unitOfMeasure: defaultValues?.unitOfMeasure ?? 'unidad',
@@ -190,24 +190,24 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
     return `${g.code}${String(b.supplier.internalNumber).padStart(3, '0')}${c.code}`
   }, [genderIdVal, brandIdVal, categoryIdVal, genders, brands, categories])
 
-  // Sync `code` field on every change (create mode) or when suffix is typed (edit mode)
+  // Mantiene el campo `code` al día: en creación con cada cambio, en edición solo cuando se escribe el sufijo
   useEffect(() => {
     if (!isEdit) {
       setValue('code', prefix + suffix.toUpperCase())
     } else if (suffix) {
-      // New suffix typed → update code and preserve original as legacyCode
+      // Se escribió un sufijo nuevo: actualiza el código y guarda el original como código anterior
       setValue('code', prefix + suffix.toUpperCase())
       if (originalCodeRef.current) setValue('legacyCode', originalCodeRef.current)
     } else {
-      // Suffix cleared → revert to original code
+      // Se borró el sufijo: vuelve al código original
       setValue('code', originalCodeRef.current)
       setValue('legacyCode', defaultValues?.legacyCode ?? '')
     }
   }, [prefix, suffix, isEdit, setValue, defaultValues?.legacyCode])
 
-  // Auto-fill minSalePrice as salePrice - 2% while creating, until the user edits it by hand.
-  // salePrice vacío (undefined) → minSalePrice también vacío, nunca NaN. El cast cubre el
-  // undefined transitorio: el schema sigue exigiendo el campo ("Requerido") al enviar.
+  // Al crear, autocompleta el precio mínimo como el precio de venta menos 2%, hasta que el
+  // usuario lo edite a mano. Si el precio de venta está vacío, el mínimo también queda vacío,
+  // nunca NaN. El schema igual exige el campo al enviar.
   useEffect(() => {
     if (isEdit || minSalePriceTouched) return
     const salePrice = Number(salePriceVal)
@@ -388,7 +388,7 @@ export function ProductForm({ open, onClose, onSubmit, isPending, defaultValues 
                       <ThousandsInput
                         name={field.name}
                         value={field.value}
-                        // Editar el mínimo a mano corta el auto-fill del 2%.
+                        // Editar el mínimo a mano corta el autocompletado del 2%.
                         onChange={(v) => { field.onChange(v); setMinSalePriceTouched(true) }}
                         onBlur={field.onBlur}
                         ref={field.ref}

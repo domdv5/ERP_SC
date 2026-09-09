@@ -28,7 +28,7 @@ interface BinFormProps {
   onClose: () => void
   onSubmit: (data: BinFormValues) => void
   isPending: boolean
-  /** Zone the bin belongs to — used only to display context in the header. */
+  /** Zona a la que pertenece el bulto; solo se usa para dar contexto en el encabezado. */
   zone?: Zone
   defaultValues?: Bin
 }

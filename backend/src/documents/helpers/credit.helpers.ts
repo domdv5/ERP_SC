@@ -4,7 +4,7 @@ import type { PrismaService } from '@/prisma/prisma.service';
 
 type PrismaOrTx = PrismaService | Prisma.TransactionClient;
 
-/** Compara montos en centavos enteros para evitar errores de punto flotante (mismo patrón que accounts-receivable.service.ts). */
+/** Compara montos en centavos enteros para evitar errores de coma flotante. */
 function toCents(amount: number | Prisma.Decimal) {
   return Math.round(Number(amount) * 100);
 }
@@ -61,9 +61,9 @@ export async function getCustomerCreditSummary(
 
 /**
  * Bloqueo duro: si `requestedTotal` supera el cupo disponible, lanza 400 con el
- * detalle del cupo. `credit` viaja como hermano de `message` en el body HTTP
- * (mismo gotcha que `shortfalls` en el 409 de stock) — no hay override en la
- * venta; se resuelve subiendo `Customer.creditLimit` desde la ficha del cliente.
+ * detalle del cupo. `credit` viaja al lado de `message` en la respuesta (igual que
+ * los faltantes en el error de stock). No se puede saltar desde la venta; se
+ * resuelve subiendo el cupo del cliente desde su ficha.
  */
 export async function assertCreditWithinLimit(
   client: PrismaOrTx,

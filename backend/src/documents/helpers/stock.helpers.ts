@@ -4,7 +4,7 @@ import { DocumentStatus, MovementType } from '@/common/enums';
 import type { DocumentWithItems } from '@/documents/strategies/document-effect.strategy';
 import { assertAvailableForReservation } from './reservation.helpers';
 
-/** Suma `delta` a Inventory en un solo UPDATE/ON CONFLICT (no read-then-write): el propio statement bloquea la fila, evitando que dos confirmaciones concurrentes se pisen. */
+/** Suma `delta` al inventario en una sola sentencia (sin leer y luego escribir): la propia sentencia bloquea la fila, evitando que dos confirmaciones a la vez se pisen. */
 export async function applyStockChange(
   tx: Prisma.TransactionClient,
   params: {
@@ -16,7 +16,7 @@ export async function applyStockChange(
   const { productId, warehouseId, delta } = params;
 
   if (delta >= 0) {
-    // ON CONFLICT crea la fila si no existía todavía (seguro aunque sea el primer stock).
+    // Si la fila no existía todavía, se crea (seguro aunque sea el primer stock).
     const rows = await tx.$queryRaw<{ quantity: number }[]>`
       INSERT INTO inventory (product_id, warehouse_id, quantity)
       VALUES (${productId}::uuid, ${warehouseId}::uuid, ${delta})
@@ -28,8 +28,8 @@ export async function applyStockChange(
     return { previousStock: newStock - delta, newStock };
   }
 
-  // UPDATE simple, no INSERT: un decremento sobre una fila inexistente no tiene
-  // sentido. El WHERE valida suficiencia en la misma sentencia que escribe.
+  // Solo actualiza, no crea: descontar de una fila que no existe no tiene sentido.
+  // La misma sentencia que escribe valida que haya stock suficiente.
   const rows = await tx.$queryRaw<{ quantity: number }[]>`
     UPDATE inventory SET quantity = quantity + ${delta}
     WHERE product_id = ${productId}::uuid AND warehouse_id = ${warehouseId}::uuid
@@ -47,7 +47,7 @@ export async function applyStockChange(
   return { previousStock: newStock - delta, newStock };
 }
 
-/** Aplica el delta a BinStock de forma atómica (mismo patrón que applyStockChange). No devuelve previousStock/newStock — sus llamadores descartan el retorno. */
+/** Aplica el delta al stock del bulto de forma atómica (igual que el cambio de stock de bodega). No devuelve el stock antes/después porque sus llamadores no lo usan. */
 export async function applyBinStockChange(
   tx: Prisma.TransactionClient,
   params: {
@@ -84,9 +84,10 @@ export async function applyBinStockChange(
 
 /**
  * Valida stock suficiente para la salida. En bodegas `store` delega en
- * assertAvailableForReservation (descuenta reservas de PV, bloquea la fila) —
- * si no, SAJ/DVC/T podrían sacar stock ya comprometido con una preventa. En
- * bodegas `warehouse` no aplica: las preventas no reservan ahí, compara stock crudo.
+ * la validación de disponibilidad (descuenta las reservas de preventa y bloquea
+ * la fila); si no, una salida, devolución o traslado podría sacar stock ya
+ * comprometido con una preventa. En las bodegas físicas no aplica: las preventas
+ * no reservan ahí, así que compara el stock crudo.
  */
 export async function assertSufficientStock(
   tx: Prisma.TransactionClient,
@@ -127,7 +128,7 @@ export async function assertSufficientStock(
   }
 }
 
-/** Valida que haya stock suficiente del producto en el bulto de origen para la salida. */
+/** Verifica que el bulto de origen tenga stock suficiente del producto para la salida. */
 export async function assertSufficientBinStock(
   tx: Prisma.TransactionClient,
   item: DocumentWithItems['documentItems'][number],
@@ -147,8 +148,8 @@ export async function assertSufficientBinStock(
   }
 }
 
-/** Stock global del producto (sumado entre todas las bodegas). Compartido por
- * computeNewAvgCost/computeReversedAvgCost, que re-ponderan sobre este mismo total. */
+/** Stock total del producto sumando todas las bodegas. Lo usan el recálculo del
+ * costo promedio y su reversa, que reparten sobre este mismo total. */
 async function getGlobalStock(tx: Prisma.TransactionClient, productId: string) {
   const aggregate = await tx.inventory.aggregate({
     _sum: { quantity: true },
@@ -157,7 +158,7 @@ async function getGlobalStock(tx: Prisma.TransactionClient, productId: string) {
   return aggregate._sum.quantity ?? 0;
 }
 
-/** Re-pondera el avgCost sobre el stock global ANTES de la entrada. */
+/** Recalcula el costo promedio repartiéndolo sobre el stock total ANTES de la entrada. */
 export async function computeNewAvgCost(
   tx: Prisma.TransactionClient,
   productId: string,
@@ -174,10 +175,10 @@ export async function computeNewAvgCost(
 }
 
 /**
- * Reversa una re-ponderación de avgCost (inversa de computeNewAvgCost). Solo es
- * exacta si no hubo consumo de stock entre la compra original y esta reversión —
- * por eso el llamador (documents.service.ts::void()) debe garantizar esa ausencia
- * (chequeo de recencia) antes de invocarla.
+ * Deshace un recálculo del costo promedio (la operación inversa). Solo da el valor
+ * exacto si no hubo consumo de stock entre la compra original y esta reversa; por
+ * eso quien la llama (la anulación de documentos) debe verificar antes que ese
+ * movimiento sea el más reciente del producto.
  */
 export async function computeReversedAvgCost(
   tx: Prisma.TransactionClient,
@@ -195,10 +196,10 @@ export async function computeReversedAvgCost(
 }
 
 /**
- * Determina el nuevo Product.lastCost tras anular un CM (`undefined` si no debe
- * tocarse). Solo CM escribe lastCost, así que el fallback nunca mira movimientos
- * `adjustment`. Si ya existe una compra CM viva más reciente, no se toca; si no,
- * busca la compra CM viva inmediatamente anterior (o 0 si no hay ninguna).
+ * Calcula el nuevo "último costo" del producto tras anular una compra (`undefined`
+ * si no hay que tocarlo). Solo las compras escriben el último costo, así que la
+ * búsqueda nunca mira ajustes de inventario. Si ya hay una compra viva más reciente,
+ * no se toca; si no, busca la compra viva inmediatamente anterior (o 0 si no hay).
  */
 export async function resolveLastCostAfterVoidingCm(
   tx: Prisma.TransactionClient,

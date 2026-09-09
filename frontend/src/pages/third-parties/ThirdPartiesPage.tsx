@@ -57,15 +57,15 @@ export default function ThirdPartiesPage() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['third-parties'] })
 
-  // ProductForm cachea ['brands'] con staleTime: Infinity e incluye internalNumber/nombre
-  // del proveedor/marca — hay que invalidarla también cuando esos datos cambian, si no
+  // El form de productos cachea la lista de marcas indefinidamente e incluye el número interno
+  // y el nombre del proveedor y la marca; hay que refrescarla cuando esos datos cambian, si no
   // el código de producto se sigue armando con el valor viejo.
   const invalidateBrands = () => queryClient.invalidateQueries({ queryKey: ['brands'] })
 
   const { mutate: create, isPending: isCreating } = useMutation({
     mutationFn: createThirdParty,
-    // create puede generar marcas nuevas (proveedor con brand.createMany en el backend),
-    // igual que update — hay que invalidar ['brands'] también aquí.
+    // Crear un proveedor puede generar marcas nuevas, igual que editarlo; hay que refrescar la
+    // lista de marcas también acá.
     onSuccess: () => { invalidate(); invalidateBrands(); setFormOpen(false); toast.success('Tercero creado correctamente') },
     onError:   () => toast.error('Error al crear el tercero'),
   })

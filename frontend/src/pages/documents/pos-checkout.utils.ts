@@ -3,9 +3,9 @@ import type { CreditLimitExceededDetail, Document, DocumentItem } from '@/types/
 
 // ─── preventa pendiente (conversión PV → POS) ─────────────────────────────────
 
-// Pendiente de una línea de PV: cantidad reservada menos lo ya liberado (release-items) y lo ya
-// convertido a una venta real — misma fórmula que usa el backend en documents.service.ts::convert()
-// y en void() para decidir si una preventa todavía tiene reserva activa.
+// Pendiente de una línea de preventa: la cantidad reservada menos lo ya liberado y lo ya
+// convertido en venta. Es la misma fórmula que usa el backend para decidir si una preventa
+// todavía tiene reserva activa.
 export function getPendingQuantity(
   item: Pick<DocumentItem, 'quantity' | 'releasedQuantity' | 'convertedQuantity'>,
 ): number {
@@ -17,11 +17,10 @@ export function hasPendingItems(doc: Pick<Document, 'documentItems'>): boolean {
 }
 
 // Busca la primera preventa confirmada de un cliente que todavía tenga cantidad pendiente por
-// convertir. GET /documents no devuelve documentItems en el listado (solo _count), así que hay
-// que resolver el detalle de cada candidata para calcular el pendiente por línea — el backend no
-// expone un endpoint que devuelva "pendiente" precalculado. En la práctica un cliente rara vez
-// tiene más de una PV confirmada activa a la vez, por eso resolver unas pocas candidatas en
-// paralelo (limit bajo) es aceptable en vez de paginar.
+// convertir. El listado de documentos no trae las líneas (solo el conteo), así que hay que
+// pedir el detalle de cada candidata para calcular el pendiente por línea; el backend no
+// expone ese "pendiente" ya calculado. En la práctica un cliente rara vez tiene más de una
+// preventa activa a la vez, así que resolver unas pocas en paralelo alcanza sin paginar.
 export async function findActivePendingPreventa(thirdPartyId: string): Promise<Document | null> {
   const { items } = await getDocuments({
     type: 'PV',
@@ -37,10 +36,9 @@ export async function findActivePendingPreventa(thirdPartyId: string): Promise<D
 
 // ─── piso de precio (2%) ───────────────────────────────────────────────────────
 
-// Un unitPrice editado a mano que quede por debajo del minSalePrice vigente del producto es un
-// error real — mismo criterio que el backend aplica en PosEffectStrategy.assertPricesAboveFloor,
-// replicado acá para bloquear en el frontend antes de que el usuario descubra el error recién al
-// confirmar contra el backend (requisito explícito del checkout POS).
+// Un precio editado a mano que quede por debajo del precio mínimo actual del producto es un
+// error real. Es el mismo criterio que aplica el backend, replicado acá para bloquear en el
+// frontend antes de que el usuario se entere recién al confirmar (requisito del checkout).
 export interface PriceFloorViolation {
   code: string
   unitPrice: number
@@ -62,12 +60,11 @@ export function findPriceFloorViolations(
 
 // ─── 409 de stock insuficiente (POST /documents/:id/confirm, solo POS) ────────
 
-// Shape estructurado nuevo, distinto del 409 de PV (string plano en message) — no asumir el
-// mismo shape para todos los tipos. `PosEffectStrategy.confirm()` lanza
-// `new ConflictException({ message: '...', shortfalls })`: Nest usa ese objeto completo como
-// cuerpo de la respuesta, así que `shortfalls` viaja como hermano de `message` dentro de
-// `response.data` (NO anidado dentro de `message`, que sigue siendo un string). Devuelve null si
-// el error no matchea esta forma, para que el caller haga fallback al toast genérico de siempre.
+// Forma estructurada, distinta del error de stock de la preventa (que es solo texto en
+// `message`): no asumir la misma forma para todos los tipos. Al confirmar una venta, el
+// backend responde `{ message, shortfalls }`, así que `shortfalls` viaja al lado de `message`
+// (no dentro de él, que sigue siendo texto). Devuelve null si el error no tiene esta forma,
+// para que quien llama caiga al aviso genérico de siempre.
 export interface StockShortfall {
   productId: string
   code: string
@@ -84,9 +81,8 @@ export function parseStockShortfallError(err: unknown): StockShortfall[] | null 
 
 // ─── 400 de cupo de crédito excedido (crear/confirmar/convertir COT) ──────────
 
-// Mismo gotcha que parseStockShortfallError: el backend lanza
-// `new BadRequestException({ message, credit })`, así que `credit` viaja como hermano de
-// `message` dentro de `response.data`. Devuelve null si el error no matchea esta forma.
+// Mismo detalle que con el error de stock: el backend responde `{ message, credit }`, así que
+// `credit` viaja al lado de `message`. Devuelve null si el error no tiene esta forma.
 export function parseCreditLimitError(err: unknown): CreditLimitExceededDetail | null {
   const data = (err as { response?: { data?: unknown } })?.response?.data
   if (typeof data !== 'object' || data === null) return null

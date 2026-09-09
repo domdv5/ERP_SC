@@ -10,7 +10,7 @@ import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
 import { computeNewAvgCost } from '@/documents/helpers/stock.helpers';
 
-/** EAI — Entrada por ajuste de inventario: suma stock; re-pondera costo con el unitCost del ítem. */
+/** Entrada por ajuste de inventario: suma stock y recalcula el costo promedio con el costo indicado en la línea. */
 @Injectable()
 export class EaiEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.EAI;
@@ -26,8 +26,8 @@ export class EaiEffectStrategy extends BaseEffectStrategy {
       );
     }
 
-    // Motivo obligatorio para reportería (negativo día a día vs. inventario_general
-    // anual vs. traspaso_costo). El detalle libre solo es obligatorio si es "otro".
+    // El motivo es obligatorio para los reportes (ajuste del día a día vs. conteo
+    // anual vs. traspaso de costo). El detalle libre solo es obligatorio si es "otro".
     if (!createDocumentDto.adjustmentReason) {
       throw new BadRequestException('El motivo del ajuste es obligatorio');
     }
@@ -49,9 +49,9 @@ export class EaiEffectStrategy extends BaseEffectStrategy {
   ) {
     const warehouseId = this.requireWarehouse(document);
 
-    // Revalida lo mismo que validateCreate(): un PATCH reemplaza los ítems sin
-    // volver a pasar por ahí, así que confirm() es el único punto que ve el
-    // estado final antes de aplicar efectos (mismo motivo que en T).
+    // Vuelve a validar lo mismo que al crear: editar un borrador reemplaza los ítems
+    // sin pasar por esa validación, así que confirmar es el único punto que ve el
+    // estado final antes de aplicar los efectos (mismo motivo que en los traslados).
     if (document.documentItems.some((item) => Number(item.unitCost) <= 0)) {
       throw new BadRequestException(
         'El costo unitario debe ser un valor mayor a cero',
@@ -75,7 +75,7 @@ export class EaiEffectStrategy extends BaseEffectStrategy {
       const quantity = item.quantity;
       const unitCost = Number(item.unitCost);
 
-      // Re-ponderar avgCost igual que en compras (sin tocar lastCost).
+      // Recalcula el costo promedio igual que en compras (sin tocar el último costo).
       const newAvgCost = await computeNewAvgCost(
         tx,
         item.productId,

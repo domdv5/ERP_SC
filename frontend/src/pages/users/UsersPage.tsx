@@ -97,7 +97,7 @@ export default function UsersPage() {
     { label: 'Admins',   value: adminCount,  icon: ShieldCheck, bg: 'bg-blue-500/10',        fg: 'text-blue-500' },
   ]
 
-  // Map form values to service payload for create
+  // Arma el cuerpo de creación a partir de los valores del formulario
   const handleCreate = (data: UserFormValues) => {
     create({
       name:     data.name,
@@ -108,7 +108,7 @@ export default function UsersPage() {
     })
   }
 
-  // Map form values to service payload for update
+  // Arma el cuerpo de edición a partir de los valores del formulario
   const handleUpdate = (data: UserFormValues) => {
     if (!editing) return
     const payload: UpdateUserPayload = {

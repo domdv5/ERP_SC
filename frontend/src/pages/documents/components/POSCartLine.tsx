@@ -11,20 +11,19 @@ interface POSCartLineProps {
   register: UseFormRegister<FormValues>
   watch: UseFormWatch<FormValues>
   onRemove: () => void
-  // Precio mínimo vigente del producto (piso del 2%) — resuelto por POSCheckoutPage vía
-  // getProductByCode una vez el código del producto entra al carrito (ver useQueries en la
-  // página). undefined mientras ese detalle todavía no llegó.
+  // Precio mínimo actual del producto (piso del 2%). Lo resuelve la pantalla de checkout al
+  // entrar el código al carrito. Viene sin valor mientras ese dato todavía no llegó.
   minSalePrice?: number
-  // Disponible neto (totalStock - reservado) del producto — mismo dato/fuente que Product.availableStock,
-  // resuelto junto con minSalePrice. Solo informativo: el backend rechaza con 409 estructurado si de
-  // verdad no alcanza al confirmar (ver StockShortfallDialog); esto es feedback temprano no bloqueante.
+  // Disponible del producto (stock total menos lo reservado), el mismo dato que en el listado
+  // de productos, resuelto junto con el precio mínimo. Solo informativo: el backend rechaza al
+  // confirmar si de verdad no alcanza; esto es solo un aviso temprano.
   availableStock?: number
 }
 
-// Fila de carrito del checkout POS — deliberadamente propia (no reusa ProductRow.tsx): ese
-// componente tiene columnas condicionadas por docType (costo/costo readonly/precio) que no
-// calzan con POS, y aquí el producto siempre llega ya resuelto (por escaneo o búsqueda manual),
-// nunca se elige desde un combobox dentro de la fila.
+// Fila de carrito del checkout de ventas, a propósito con su propio componente (no reutiliza el
+// de los otros documentos): aquel tiene columnas que cambian según el tipo de documento y no
+// encajan con la venta, y acá el producto siempre llega ya resuelto (por escaneo o búsqueda),
+// nunca se elige desde un buscador dentro de la fila.
 export function POSCartLine({ index, register, watch, onRemove, minSalePrice, availableStock }: POSCartLineProps) {
   const productCode = watch(`items.${index}.productCode`)
   const productDesc = watch(`items.${index}.productDesc`)

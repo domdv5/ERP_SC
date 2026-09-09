@@ -87,7 +87,7 @@ export class CreateThirdPartyDto {
   @IsBoolean()
   isSupplier?: boolean;
 
-  // Customer-specific
+  // Campos de cliente
   @ValidateIf((o) => o.isCustomer === true)
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -106,7 +106,7 @@ export class CreateThirdPartyDto {
   @IsUUID()
   sellerId?: string;
 
-  // Supplier-specific
+  // Campos de proveedor
   @ValidateIf((o) => o.isSupplier === true)
   @IsNotEmpty()
   @IsInt()

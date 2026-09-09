@@ -21,7 +21,7 @@ const DETAIL_INCLUDE = {
   },
 } satisfies Prisma.AccountsPayableInclude;
 
-/** Convierte a centavos enteros para comparar montos sin errores de punto flotante. */
+/** Convierte a centavos enteros para comparar montos sin errores de coma flotante. */
 function toCents(amount: number | Prisma.Decimal) {
   return Math.round(Number(amount) * 100);
 }
@@ -107,8 +107,8 @@ export class AccountsPayableService {
 
     return this.prisma.$transaction(
       async (tx) => {
-        // Bloquea la fila hasta terminar la transacción: serializa pagos
-        // concurrentes para que no se validen ambos contra el mismo saldo (overpayment).
+        // Bloquea la fila hasta terminar la transacción: pone en fila los pagos que
+        // llegan a la vez para que no se validen los dos contra el mismo saldo y se pague de más.
         await tx.$queryRaw`SELECT id FROM "accounts_payable" WHERE id = ${id} FOR UPDATE`;
 
         const accountPayable = await tx.accountsPayable.findUnique({
@@ -122,9 +122,9 @@ export class AccountsPayableService {
 
         const amountCents = toCents(amount);
 
-        // Agrupa por crédito para validar el saldo total solicitado — si el
-        // mismo crédito aparece dos veces, validar cada línea por separado
-        // dejaría pasar una sobre-aplicación que solo se nota al sumarlas.
+        // Agrupa por crédito para validar el total pedido: si el mismo crédito
+        // aparece dos veces, validar cada línea por separado dejaría pasar una
+        // sobre-aplicación que solo se ve al sumarlas.
         const requestedCentsByCreditId = new Map<string, number>();
         for (const application of creditApplications) {
           const previous =
@@ -155,8 +155,8 @@ export class AccountsPayableService {
         if (requestedCentsByCreditId.size > 0) {
           const creditIds = [...requestedCentsByCreditId.keys()];
 
-          // Bloquea la AP primero y luego los créditos ordenados por id, siempre
-          // en el mismo orden, para no deadlockear con otra transacción paralela.
+          // Bloquea primero la cuenta por pagar y luego los créditos ordenados por
+          // id, siempre en el mismo orden, para no trabarse con otra transacción en paralelo.
           await tx.$queryRaw`SELECT id FROM "supplier_credit" WHERE id = ANY(${creditIds}::uuid[]) ORDER BY id FOR UPDATE`;
 
           credits = await tx.supplierCredit.findMany({
@@ -185,8 +185,8 @@ export class AccountsPayableService {
           }
         }
 
-        // paidSoFar ahora suma dos fuentes: efectivo real (payablePayments) y
-        // saldo neteado sin caja (creditApplications) — ver Plan 020, Opción B.
+        // El total pagado ahora suma dos cosas: los pagos en efectivo y el saldo
+        // cubierto con notas crédito (sin movimiento de caja).
         const paidSoFarCents =
           accountPayable.payablePayments.reduce(
             (sum, payment) => sum + toCents(payment.amount),
@@ -241,7 +241,7 @@ export class AccountsPayableService {
           });
         }
 
-        // Recalcula el status a partir del total saldado (efectivo + crédito) tras este movimiento.
+        // Recalcula el estado a partir del total saldado (efectivo + crédito) tras este movimiento.
         const newPaidCents = paidSoFarCents + settledCents;
         const status =
           newPaidCents >= totalCents

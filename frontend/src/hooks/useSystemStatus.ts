@@ -5,9 +5,9 @@ import { getSystemStatus } from '@/services/system.service'
 import { useAuthStore } from '@/stores/auth.store'
 import type { SystemStatus } from '@/types'
 
-// Conteo de referencias a nivel de módulo: tanto AppLayout como Header llaman
-// a este hook, pero solo debe existir UNA conexión SSE por sesión (advanced-init-once).
-// El primer consumidor en montar abre el EventSource; el último en desmontar lo cierra.
+// Contador de referencias a nivel de módulo: tanto el layout como el header usan este hook,
+// pero solo debe haber UNA conexión de eventos en vivo por sesión. El primero en montarse la
+// abre; el último en desmontarse la cierra.
 let activeSubscribers = 0
 let sharedEventSource: EventSource | null = null
 // Vive a nivel de módulo (no dentro del efecto) por la misma razón que sharedEventSource:
@@ -41,11 +41,9 @@ export function useSystemStatus() {
         `${API_BASE_URL}/system/status/stream?token=${token}`,
       )
       sharedEventSource.onmessage = (event) => {
-        // Nest sirve @Sse() con su propio writer: extrae el campo `data` del
-        // MessageEvent devuelto por el controller y lo serializa tal cual en
-        // la línea "data:" — un solo nivel de wrapping, sin {success,data}
-        // (confirmado empíricamente contra el stream real, no el {success,data}
-        // habitual del resto de la API).
+        // El backend, al servir el stream de eventos, toma el campo `data` del evento y lo
+        // manda tal cual en la línea "data:" — sin el envoltorio estándar del resto de la API
+        // (verificado contra el stream real).
         const parsed = JSON.parse(event.data) as { data: SystemStatus }
         queryClient.setQueryData(['system-status'], parsed.data)
       }

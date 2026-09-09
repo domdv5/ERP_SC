@@ -9,7 +9,7 @@ import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
 
-/** POS — venta de contado: salida física de stock, valorada a unitPrice (PRICE_BASED_TYPES). No crea AccountsPayable/Receivable. paymentMethod es informativo (no hay CashModule aún). */
+/** Venta de contado: saca stock físico, valorado al precio de venta. No crea cuentas por pagar ni por cobrar. La forma de pago es solo informativa. */
 @Injectable()
 export class PosEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.POS;
@@ -70,10 +70,11 @@ export class PosEffectStrategy extends BaseEffectStrategy {
   ) {
     const warehouseId = this.requireWarehouse(document);
 
-    // Re-chequeo (PATCH no vuelve a correr validateCreate, ver base-effect.strategy.ts).
-    // Si viene de convertir una PV, su reserva sigue activa aquí (consumeForConversion
-    // descuenta recién después de confirm()) — hay que excluirla o una PV 100%
-    // reservada siempre daría shortfall falso contra sí misma.
+    // Se vuelve a validar acá porque editar un borrador no re-corre las validaciones
+    // de creación. Si esta venta viene de convertir una preventa, la reserva de esa
+    // preventa sigue activa (se descuenta recién al confirmar), así que hay que
+    // excluirla: si no, una preventa 100% reservada siempre daría un faltante falso
+    // contra sí misma.
     const shortfalls = await this.assertBatchAvailability(
       tx,
       warehouseId,
@@ -109,6 +110,6 @@ export class PosEffectStrategy extends BaseEffectStrategy {
       });
     }
 
-    // Venta de contado: no crea AccountsPayable ni AccountsReceivable.
+    // Venta de contado: no crea cuenta por pagar ni por cobrar.
   }
 }

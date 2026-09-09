@@ -1,4 +1,4 @@
-/** Empareja ítems del documento derivado con líneas del documento fuente por productId, sumando cantidades si el producto se repite (el escáner incrementa la fila existente, pero no hay garantía estructural de 1:1). */
+/** Empareja las líneas del documento derivado con las del documento origen por producto, sumando cantidades si un producto aparece repetido (el escáner suma sobre la fila existente, pero nada garantiza que sean 1 a 1). */
 export function matchItemsByProduct(
   sourceItems: { id: string; productId: string }[],
   targetItems: { productId: string; quantity: number }[],

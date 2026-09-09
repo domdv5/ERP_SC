@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 
-/** Mismo patrón que formatCOP en frontend/src/pages/documents/DocumentDetailPage.tsx. */
+/** Mismo formato de moneda que se usa en el frontend. */
 export function formatCOP(value: Prisma.Decimal | number): string {
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',

@@ -6,7 +6,7 @@ import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
 import { assertSufficientStock } from '@/documents/helpers/stock.helpers';
 
-/** DVC — Devolución a proveedor: salida de stock y nota crédito en CxP. */
+/** Devolución a proveedor: resta stock y genera una nota crédito a favor. */
 @Injectable()
 export class DvcEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.DVC;
@@ -41,8 +41,8 @@ export class DvcEffectStrategy extends BaseEffectStrategy {
       );
     }
 
-    // Defensa en profundidad: update() no revalida un borrador editado, así que
-    // un ítem de marca equivocada podría colarse si solo se validara en validateCreate.
+    // Chequeo extra: editar un borrador no vuelve a validar, así que un ítem de una
+    // marca equivocada podría colarse si solo se revisara al crear.
     await this.assertItemsMatchSupplierBrands(
       supplier.id,
       document.documentItems.map((item) => ({
@@ -68,11 +68,11 @@ export class DvcEffectStrategy extends BaseEffectStrategy {
       });
     }
 
-    // Nota crédito de proveedor: saldo a favor aplicable manualmente contra
-    // cualquier cuenta por pagar pendiente de este proveedor (ver Plan 020).
-    // Redondeado a pesos enteros: el sistema trata COP sin centavos (formatCOP,
-    // input de pago entero) — no debe nacer con saldo fraccionario aplicable.
-    // document.total se deja exacto; se acepta un delta de hasta ~1 peso.
+    // Nota crédito de proveedor: un saldo a favor que se puede aplicar a mano
+    // contra cualquier cuenta por pagar pendiente de este proveedor.
+    // Redondeado a pesos enteros: el sistema maneja pesos sin centavos, así que no
+    // debe nacer con un saldo con decimales. El total del documento se deja exacto;
+    // se acepta una diferencia de hasta ~1 peso.
     const amount = Math.round(Number(document.total));
     await tx.supplierCredit.create({
       data: {

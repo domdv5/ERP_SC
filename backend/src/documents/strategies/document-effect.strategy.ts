@@ -10,7 +10,7 @@ export type DocumentWithItems = Prisma.DocumentGetPayload<{
   };
 }>;
 
-/** Contrato de efectos por tipo de documento (patrón Strategy) — un tipo nuevo solo agrega una clase registrada en DocumentEffectsRegistry, sin tocar el service. */
+/** Contrato de efectos por tipo de documento (patrón Strategy): un tipo nuevo solo agrega una clase registrada, sin tocar el service. */
 export interface DocumentEffectStrategy {
   /** Tipo de documento que maneja esta estrategia. */
   readonly type: DocumentType;
@@ -32,7 +32,7 @@ export interface DocumentEffectStrategy {
   ): Promise<void>;
 }
 
-/** Contrato aparte (ISP) para tipos con reserva lógica de stock (hoy solo PV) — evita forzar releaseItems en tipos que no reservan (CM, T...). */
+/** Contrato aparte para los tipos con reserva lógica de stock (preventas y remisiones): evita obligar a implementar la liberación en tipos que no reservan (compras, traslados...). */
 export interface ReservationEffectStrategy extends DocumentEffectStrategy {
   /**
    * Libera (parcial o totalmente) la reserva pendiente de una o más líneas
@@ -47,8 +47,8 @@ export interface ReservationEffectStrategy extends DocumentEffectStrategy {
   ): Promise<void>;
 
   /**
-   * Descuenta de la reserva (convertedQuantity) lo que el documento de venta
-   * consumió al confirmarse desde una conversión (Document.sourceDocumentId).
+   * Descuenta de la reserva lo que la venta consumió al confirmarse, cuando esa
+   * venta nació de convertir este documento.
    */
   consumeForConversion(
     tx: Prisma.TransactionClient,
@@ -58,7 +58,7 @@ export interface ReservationEffectStrategy extends DocumentEffectStrategy {
   ): Promise<void>;
 }
 
-/** Type guard: distingue en runtime si una estrategia soporta liberación de reservas. */
+/** Comprueba en tiempo de ejecución si una estrategia sabe liberar reservas. */
 export function isReservationStrategy(
   strategy: DocumentEffectStrategy,
 ): strategy is ReservationEffectStrategy {

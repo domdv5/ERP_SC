@@ -133,7 +133,7 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
   if (!open) return null
 
   const handleFormSubmit = (data: UserFormValues) => {
-    // Strip confirmPassword and empty password before sending to service
+    // Quita confirmPassword y la contraseña vacía antes de enviar
     const { confirmPassword: _confirm, ...rest } = data as EditUserFormValues & { confirmPassword?: string }
     void _confirm
     if (isEdit && !rest.password) {

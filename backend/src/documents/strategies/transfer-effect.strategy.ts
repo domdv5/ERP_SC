@@ -10,11 +10,11 @@ import {
   assertSufficientStock,
 } from '@/documents/helpers/stock.helpers';
 
-// Los helpers de bulto corren fuera de transacción (validateCreate, this.prisma)
-// y dentro (confirm, tx) — mismo patrón que reservation.helpers.ts.
+// Los helpers de bulto se usan tanto fuera de una transacción (al validar la
+// creación) como dentro (al confirmar), igual que los helpers de reserva.
 type PrismaOrTx = PrismaService | Prisma.TransactionClient;
 
-/** T — Traslado entre bodegas: salida del origen y entrada al destino (con bulto si aplica). */
+/** Traslado entre bodegas: salida de la bodega origen y entrada en la destino (con bulto si aplica). */
 @Injectable()
 export class TransferEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.T;
@@ -75,8 +75,8 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
     const warehouseId = this.requireWarehouse(document);
     const { destWarehouseId, destBinId, sourceBinId } = document;
 
-    // Se revalida acá (no solo en validateCreate): un PATCH sobre el borrador
-    // no vuelve a pasar por validateCreate, así que confirm() no puede asumirlo.
+    // Se vuelve a validar acá (no solo al crear): editar el borrador no pasa por
+    // esa validación, así que confirmar no puede darla por hecha.
 
     if (!destWarehouseId) {
       throw new BadRequestException(
@@ -89,10 +89,10 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
       tx.warehouse.findUnique({ where: { id: destWarehouseId } }),
     ]);
 
-    // Revalida también que el bulto sea obligatorio (no solo su pertenencia):
-    // un PATCH puede quitar sourceBinId/destBinId sin pasar por validateCreate,
-    // lo que antes dejaba confirmar sin bulto contra bodega bin-tracked y
-    // rompía el invariante SUM(BinStock)===Inventory.
+    // Vuelve a comprobar que el bulto sea obligatorio (no solo que pertenezca a la
+    // bodega): al editar un borrador se puede borrar el bulto de origen o destino
+    // sin pasar por la validación de creación, lo que antes dejaba confirmar sin
+    // bulto contra una bodega que sí lleva bultos y descuadraba el inventario.
     if (sourceWarehouse?.type === 'warehouse' && !sourceBinId) {
       throw new BadRequestException(
         'Los traslados desde bodega requieren un bulto origen',
@@ -108,10 +108,9 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
     if (destBinId) {
       const incomingProductId = this.assertSingleProductPerDestBin(document.documentItems);
 
-      // Lock sobre Bin (no BinStock, que puede no existir aún) para serializar
-      // confirmaciones concurrentes al mismo bulto destino — sin esto, dos
-      // traslados podrían ver el bulto libre a la vez y mezclar productos
-      // distintos en él. Mismo patrón que registerPayment (SELECT...FOR UPDATE).
+      // Bloquea el bulto (no su stock, que puede no existir aún) para poner en fila
+      // las confirmaciones a la vez sobre el mismo bulto destino: sin esto, dos
+      // traslados podrían verlo libre al mismo tiempo y mezclarle productos distintos.
       await tx.$queryRaw`SELECT id FROM bin WHERE id = ${destBinId}::uuid FOR UPDATE`;
       await this.assertDestBinValid(tx, destBinId, destWarehouseId, incomingProductId);
     }
@@ -130,7 +129,7 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
         await assertSufficientBinStock(tx, item, sourceBinId, quantity);
       }
 
-      // Salida de la bodega de origen.
+      // Salida de la bodega origen.
       await this.moveStock(tx, {
         productId: item.productId,
         warehouseId,
@@ -143,7 +142,7 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
         userId,
       });
 
-      // Entrada a la bodega de destino.
+      // Entrada en la bodega destino.
       await this.moveStock(tx, {
         productId: item.productId,
         warehouseId: destWarehouseId,
@@ -159,10 +158,10 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
   }
 
   /**
-   * Valida que el bulto destino exista, pertenezca a la bodega destino y no esté
-   * ocupado por otro producto. Compartida entre validateCreate y confirm — el lock
-   * FOR UPDATE que la hace segura contra carreras vive en el caller de confirm(),
-   * ya que validateCreate no corre dentro de una transacción persistente.
+   * Verifica que el bulto destino exista, pertenezca a la bodega destino y no esté
+   * ocupado por otro producto. Se usa al crear y al confirmar; el bloqueo que la
+   * hace segura contra carreras lo pone quien llama a confirmar, porque la
+   * validación de creación no corre dentro de una transacción.
    */
   private async assertDestBinValid(
     client: PrismaOrTx,
@@ -181,9 +180,9 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
       );
     }
 
-    // Un bulto es contenedor físico de UN producto a la vez: acepta más del
-    // mismo, pero no otro distinto mientras conserve stock. Antes esta regla
-    // solo vivía en el filtro de UI (bin.occupied), sin defensa en el servidor.
+    // Un bulto es un contenedor físico de UN producto a la vez: acepta más del
+    // mismo, pero no otro distinto mientras conserve stock. Antes esta regla solo
+    // vivía en el filtro de la interfaz, sin control en el servidor.
     const conflictingBinStock = await client.binStock.findFirst({
       where: {
         binId: destBinId,
@@ -200,7 +199,7 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
     }
   }
 
-  /** Valida que el bulto origen exista y pertenezca a la bodega origen — sin chequeo de "ocupado": a diferencia del destino, debe tener stock para poder salir de él. */
+  /** Verifica que el bulto origen exista y pertenezca a la bodega origen. No comprueba si está "ocupado": a diferencia del destino, tiene que tener stock para poder sacar de él. */
   private async assertSourceBinValid(
     client: PrismaOrTx,
     sourceBinId: string,
@@ -219,9 +218,9 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
   }
 
   /**
-   * Si el traslado tiene bulto destino, todos los ítems deben compartir el mismo
-   * productId (destBinId es del documento, no del ítem). Devuelve ese productId
-   * para que el llamador lo compare contra lo que ya ocupa el bulto.
+   * Si el traslado tiene bulto destino, todos los ítems deben ser del mismo
+   * producto (el bulto destino es del documento, no de cada línea). Devuelve ese
+   * producto para que quien llama lo compare contra lo que ya ocupa el bulto.
    */
   private assertSingleProductPerDestBin(items: { productId: string }[]): string {
     const productIds = new Set(items.map((item) => item.productId));

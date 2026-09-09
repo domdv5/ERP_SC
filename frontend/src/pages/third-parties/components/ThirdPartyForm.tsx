@@ -192,7 +192,7 @@ function flattenDefaults(tp: ThirdParty): Partial<FormValues> {
     isSeller: tp.isSeller ?? false,
     isCustomer: tp.customer != null,
     isSupplier: tp.supplier != null,
-    // Prisma serializa Decimal como string en JSON — normalizar a number para el input formateado.
+    // El monto llega como texto; se pasa a número para el input con separador de miles.
     creditLimit: tp.customer?.creditLimit != null ? Number(tp.customer.creditLimit) : undefined,
     discount: tp.customer?.discount,
     internalNumber: tp.supplier?.internalNumber,
@@ -217,7 +217,7 @@ export function ThirdPartyForm({
   );
   const cancelRenameRef = useRef(false);
   const isEdit = !!defaultValues;
-  // Once the user edits the display name by hand, stop overwriting it from firstName/lastName
+  // En cuanto el usuario edita el nombre a mano, se deja de recalcular desde nombre y apellido
   const [nameTouched, setNameTouched] = useState(false);
 
   const { register, handleSubmit, watch, setValue, reset, control } = useForm<FormValues>({
@@ -257,7 +257,7 @@ export function ThirdPartyForm({
   const firstName = watch("firstName");
   const lastName = watch("lastName");
 
-  // Auto-fill display name as "firstName lastName" while creating, until the user edits it by hand
+  // Al crear, autocompleta el nombre como "nombre apellido", hasta que el usuario lo edite a mano
   useEffect(() => {
     if (isEdit || nameTouched || personType !== "natural") return;
     setValue("name", `${firstName ?? ""} ${lastName ?? ""}`.trim());
@@ -289,10 +289,10 @@ export function ThirdPartyForm({
     setEditingValue(brand);
   }
 
-  // Only brands not already persisted (not in brandIds) should be created on submit.
-  // Renamed brands live in brandIds with their new name, so they won't be re-created.
-  // Send undefined (not []) when there are no new brands, so the backend skips the
-  // brand block entirely — an empty array would trip @ArrayNotEmpty validation.
+  // Solo se crean al enviar las marcas que todavía no existen (no están en brandIds). Las
+  // marcas renombradas ya viven en brandIds con su nombre nuevo, así que no se recrean.
+  // Se manda undefined (no []) cuando no hay marcas nuevas, para que el backend se salte
+  // ese bloque: un arreglo vacío haría fallar la validación de "no vacío".
   const submitForm = (data: FormValues) => {
     const derivedName = `${data.firstName ?? ""} ${data.lastName ?? ""}`.trim();
     const finalName =

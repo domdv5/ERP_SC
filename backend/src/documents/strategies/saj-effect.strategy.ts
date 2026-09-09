@@ -5,7 +5,7 @@ import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
 import { assertSufficientStock } from '@/documents/helpers/stock.helpers';
 
-/** SAJ — Salida por ajuste de inventario: resta stock al costo promedio vigente. */
+/** Salida por ajuste de inventario: resta stock, valorado al costo promedio actual. */
 @Injectable()
 export class SajEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.SAJ;
@@ -22,8 +22,8 @@ export class SajEffectStrategy extends BaseEffectStrategy {
 
       await assertSufficientStock(tx, item, warehouseId, quantity);
 
-      // Ignora item.unitCost (a diferencia de EAI): la salida siempre se
-      // valora al avgCost vigente, nunca a un costo digitado por el usuario.
+      // Ignora el costo escrito en la línea (a diferencia de la entrada por ajuste):
+      // la salida siempre se valora al costo promedio actual, nunca a uno tipeado.
       await this.moveStock(tx, {
         productId: item.productId,
         warehouseId,

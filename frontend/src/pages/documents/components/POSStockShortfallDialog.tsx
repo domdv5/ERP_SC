@@ -6,10 +6,10 @@ interface POSStockShortfallDialogProps {
   onClose: () => void
 }
 
-// Modal del 409 estructurado de confirmar POS (ver parseStockShortfallError en pos-checkout.utils.ts) —
-// lista TODOS los productos en falta, no solo el primero (requisito explícito: el operario necesita ver
-// el panorama completo antes de decidir qué cantidades ajustar). El documento ya quedó creado como
-// borrador cuando este modal aparece — cerrar solo oculta el aviso, no descarta nada.
+// Modal del error de stock al confirmar una venta. Lista TODOS los productos en falta, no solo
+// el primero (requisito explícito: el operario necesita ver el panorama completo antes de
+// decidir qué cantidades ajustar). Cuando aparece este modal el documento ya quedó creado como
+// borrador; cerrar solo oculta el aviso, no descarta nada.
 export function POSStockShortfallDialog({ shortfalls, onClose }: POSStockShortfallDialogProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
