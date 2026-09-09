@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Package, BarChart2, CheckCircle2, Plus, Pencil, Trash2, RotateCcw } from "lucide-react";
 import {
   getProducts,
+  getBrands,
   createProduct,
   updateProduct,
   deleteProduct,
@@ -47,6 +48,7 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showInactive, setShowInactive] = useState(false);
+  const [brandId, setBrandId] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState<Product | null>(null);
@@ -55,18 +57,26 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, showInactive]);
+  }, [debouncedSearch, showInactive, brandId]);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["products", debouncedSearch, page, showInactive],
+    queryKey: ["products", debouncedSearch, page, showInactive, brandId],
     queryFn: () =>
       getProducts({
         search: debouncedSearch || undefined,
         page,
         limit: 20,
         active: showInactive ? false : undefined,
+        brandId: brandId || undefined,
       }),
     placeholderData: keepPreviousData,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Misma clave que ProductForm para compartir la caché de marcas.
+  const { data: brands = [] } = useQuery({
+    queryKey: ["brands"],
+    queryFn: getBrands,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -177,15 +187,31 @@ export default function ProductsPage() {
 
       {/* Tabla */}
       <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
-        <TableToolbar
-          search={search}
-          onSearchChange={setSearch}
-          placeholder="Buscar por código actual o código legado..."
-          isLoading={isLoading}
-          itemCount={items.length}
-          total={total}
-          onRefresh={refetch}
-        />
+        <div className="border-b border-ui-border">
+          <TableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            placeholder="Buscar por código actual o código legado..."
+            isLoading={isLoading}
+            itemCount={items.length}
+            total={total}
+            onRefresh={refetch}
+          />
+          <div className="px-5 pb-4 flex gap-3">
+            <select
+              value={brandId}
+              onChange={(e) => setBrandId(e.target.value)}
+              className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+            >
+              <option value="">Todas las marcas</option>
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
 
         {isError && <ErrorState message="Error al cargar los productos" onRetry={refetch} />}
 
@@ -197,11 +223,13 @@ export default function ProductsPage() {
             title={
               debouncedSearch
                 ? `Sin resultados para "${debouncedSearch}"`
-                : "No hay productos registrados"
+                : brandId
+                  ? "Sin resultados para esta marca"
+                  : "No hay productos registrados"
             }
             description={
-              debouncedSearch
-                ? "Prueba con otro término de búsqueda"
+              debouncedSearch || brandId
+                ? "Prueba con otro término o filtro"
                 : 'Crea el primero con el botón "Nuevo producto"'
             }
           />

@@ -27,6 +27,7 @@ export default function ThirdPartiesPage() {
   const [search, setSearch]   = useState('')
   const [page, setPage]       = useState(1)
   const [showInactive, setShowInactive] = useState(false)
+  const [roleFilter, setRoleFilter] = useState<'all' | 'customer' | 'supplier' | 'seller'>('all')
   const [formOpen, setFormOpen]   = useState(false)
   const [editing, setEditing]     = useState<ThirdParty | null>(null)
   const [deleting, setDeleting]   = useState<ThirdParty | null>(null)
@@ -35,15 +36,19 @@ export default function ThirdPartiesPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, showInactive])
+  }, [debouncedSearch, showInactive, roleFilter])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['third-parties', debouncedSearch, page, showInactive],
+    queryKey: ['third-parties', debouncedSearch, page, showInactive, roleFilter],
     queryFn: () => getThirdParties({
       search: debouncedSearch || undefined,
       page,
       limit: 20,
       isActive: showInactive ? false : undefined,
+      // Un rol por vez: el backend combina los flags con AND.
+      isCustomer: roleFilter === 'customer' ? true : undefined,
+      isSupplier: roleFilter === 'supplier' ? true : undefined,
+      isSeller: roleFilter === 'seller' ? true : undefined,
     }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
@@ -133,15 +138,29 @@ export default function ThirdPartiesPage() {
 
       {/* Table */}
       <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
-        <TableToolbar
-          search={search}
-          onSearchChange={setSearch}
-          placeholder="Buscar por nombre o documento..."
-          isLoading={isLoading}
-          itemCount={items.length}
-          total={total}
-          onRefresh={refetch}
-        />
+        <div className="border-b border-ui-border">
+          <TableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            placeholder="Buscar por nombre o documento..."
+            isLoading={isLoading}
+            itemCount={items.length}
+            total={total}
+            onRefresh={refetch}
+          />
+          <div className="px-5 pb-4 flex gap-3">
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value as 'all' | 'customer' | 'supplier' | 'seller')}
+              className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+            >
+              <option value="all">Todos los roles</option>
+              <option value="customer">Clientes</option>
+              <option value="supplier">Proveedores</option>
+              <option value="seller">Vendedores</option>
+            </select>
+          </div>
+        </div>
 
         {isError && (
           <ErrorState message="Error al cargar los terceros" onRetry={refetch} />
@@ -154,8 +173,8 @@ export default function ThirdPartiesPage() {
         {!isLoading && !isError && items.length === 0 && (
           <EmptyState
             icon={Users}
-            title={debouncedSearch ? `Sin resultados para "${debouncedSearch}"` : 'No hay terceros registrados'}
-            description={debouncedSearch ? 'Prueba con otro término de búsqueda' : 'Crea el primero con el botón "Nuevo tercero"'}
+            title={debouncedSearch ? `Sin resultados para "${debouncedSearch}"` : roleFilter !== 'all' ? 'Sin resultados para este filtro' : 'No hay terceros registrados'}
+            description={debouncedSearch || roleFilter !== 'all' ? 'Prueba con otro término o filtro' : 'Crea el primero con el botón "Nuevo tercero"'}
           />
         )}
 

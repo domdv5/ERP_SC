@@ -246,6 +246,13 @@ export default function POSCheckoutPage() {
         ? docNumber(converted.sourceDocument.type, converted.sourceDocument.number)
         : 'el documento de origen'
       setPendingPreventa(null)
+      // La conversión ya creó el borrador de venta: el listado de operaciones debe mostrarlo
+      // sin esperar a que se confirme. El origen también cambió (pasa a "en conversión" y
+      // oculta sus botones de anular/convertir), así que se refresca su detalle.
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      if (converted.sourceDocument) {
+        queryClient.invalidateQueries({ queryKey: ['document', converted.sourceDocument.id] })
+      }
       toast.success(`Venta creada a partir de ${sourceLabel}. Revisa los precios antes de confirmar.`)
     },
     onError: (err: unknown) => {

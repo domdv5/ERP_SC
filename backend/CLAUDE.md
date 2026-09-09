@@ -29,7 +29,7 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 
 **AuthModule**:
 
-- `GET /auth` — list all users with roles; requires `user.manage`
+- `GET /auth` — listado paginado de usuarios con filtros; requires `user.manage`. Query params: `page` (default 1), `limit` (default 20, máx 100), `search` (matchea `name` o `username`, case-insensitive), `roleId` (UUID, filtra usuarios que tengan ese rol), `active` (`true`/`false`; sin default — muestra activos e inactivos si se omite). Devuelve `{ items, meta: { total, page, limit, totalPages, activeCount, adminCount } }` (antes era un array plano). Cada item: `{ id, name, username, active, createdAt, userRoles: [{ role: { id, name, description } }] }`. `activeCount`/`adminCount` se calculan sobre el mismo `where` que la página.
 - `GET /auth/roles` — list all active roles with their permissions; requires `user.manage`
 - `POST /auth` — create user (requires name, username, password, roleIds[]); requires `user.manage`
 - `PATCH /auth/:id` — update user (password and roleIds optional); requires `user.manage`. When `password` is present it's bcrypt-hashed (10 salt rounds, same as create) before the `user.update` call — never written in plaintext

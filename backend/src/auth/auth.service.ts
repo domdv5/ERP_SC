@@ -3,7 +3,13 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { CreateAuthDto, UpdateAuthDto, LoginAuthDto } from './dto/index';
+import {
+  CreateAuthDto,
+  UpdateAuthDto,
+  LoginAuthDto,
+  FindAllUsersDto,
+} from './dto/index';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -123,22 +129,61 @@ export class AuthService {
     await this.prisma.user.delete({ where: { id } });
   }
 
-  async findAll() {
-    return this.prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        active: true,
-        createdAt: true,
-        userRoles: {
+  async findAll(dto: FindAllUsersDto) {
+    const { page = 1, limit = 20, search, roleId, active } = dto;
+    const skip = (page - 1) * limit;
+
+    // Sin default de `active`: el listado muestra activos e inactivos salvo
+    // que el filtro lo acote explícitamente.
+    const where: Prisma.UserWhereInput = {
+      ...(active !== undefined && { active }),
+      ...(roleId && { userRoles: { some: { roleId } } }),
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { username: { contains: search, mode: 'insensitive' } },
+        ],
+      }),
+    };
+
+    const [items, total, activeCount, adminCount] =
+      await this.prisma.$transaction([
+        this.prisma.user.findMany({
+          where,
           select: {
-            role: { select: { id: true, name: true, description: true } },
+            id: true,
+            name: true,
+            username: true,
+            active: true,
+            createdAt: true,
+            userRoles: {
+              select: {
+                role: { select: { id: true, name: true, description: true } },
+              },
+            },
           },
-        },
+          orderBy: { name: 'asc' },
+          skip,
+          take: limit,
+        }),
+        this.prisma.user.count({ where }),
+        this.prisma.user.count({ where: { ...where, active: true } }),
+        this.prisma.user.count({
+          where: { ...where, userRoles: { some: { role: { name: 'admin' } } } },
+        }),
+      ]);
+
+    return {
+      items,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        activeCount,
+        adminCount,
       },
-      orderBy: { name: 'asc' },
-    });
+    };
   }
 
   async findAllRoles() {

@@ -1,9 +1,11 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useDebounce } from 'use-debounce'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Users, UserCheck, ShieldCheck, Plus, Pencil, Trash2 } from 'lucide-react'
 import {
   getUsers,
+  getRoles,
   createUser,
   updateUser,
   deleteUser,
@@ -13,7 +15,7 @@ import type { AppUser, CreateUserPayload, UpdateUserPayload } from '@/services/u
 import { UserForm } from './components/UserForm'
 import type { UserFormValues } from './components/UserForm'
 import { DeleteUserDialog } from './components/DeleteUserDialog'
-import { StatsGrid, TableSkeleton, EmptyState, ErrorState } from '@/components/shared'
+import { StatsGrid, TableToolbar, TableSkeleton, EmptyState, ErrorState, TablePagination } from '@/components/shared'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 
@@ -54,21 +56,43 @@ export default function UsersPage() {
   const queryClient = useQueryClient()
   const canManage = usePermission('user.manage')
 
+  const [search, setSearch]     = useState('')
+  const [page, setPage]         = useState(1)
+  const [roleId, setRoleId]     = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing]   = useState<AppUser | null>(null)
   const [deleting, setDeleting] = useState<AppUser | null>(null)
 
-  const { data: items = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['users'],
-    queryFn: getUsers,
+  const [debouncedSearch] = useDebounce(search, 400)
+
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, roleId])
+
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['users', debouncedSearch, roleId, page],
+    queryFn: () => getUsers({
+      page,
+      limit: 20,
+      search: debouncedSearch || undefined,
+      roleId: roleId || undefined,
+    }),
+    placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   })
 
-  const total       = items.length
-  const activeCount = items.filter((u) => u.active).length
-  const adminCount  = items.filter((u) =>
-    u.userRoles.some((ur) => ur.role.name === 'admin'),
-  ).length
+  // Misma clave que UserForm para compartir la caché de roles.
+  const { data: roles = [] } = useQuery({
+    queryKey: ['roles'],
+    queryFn: getRoles,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const items       = data?.items ?? []
+  const total       = data?.meta.total ?? 0
+  const totalPages  = data?.meta.totalPages ?? 1
+  const activeCount = data?.meta.activeCount ?? 0
+  const adminCount  = data?.meta.adminCount ?? 0
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['users'] })
 
@@ -145,17 +169,30 @@ export default function UsersPage() {
 
       {/* Table */}
       <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
-        {/* Toolbar */}
-        <div className="px-5 py-4 border-b border-ui-border flex items-center justify-between">
-          <p className="text-xs text-content-faint">
-            {isLoading ? '...' : `${items.length} usuarios`}
-          </p>
-          <button
-            onClick={() => refetch()}
-            className="text-xs text-content-faint hover:text-content-muted underline transition-colors"
-          >
-            Actualizar
-          </button>
+        <div className="border-b border-ui-border">
+          <TableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            placeholder="Buscar por nombre o usuario..."
+            isLoading={isLoading}
+            itemCount={items.length}
+            total={total}
+            onRefresh={refetch}
+          />
+          <div className="px-5 pb-4 flex gap-3">
+            <select
+              value={roleId}
+              onChange={(e) => setRoleId(e.target.value)}
+              className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+            >
+              <option value="">Todos los roles</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {getRoleLabel(r.name)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {isError && (
@@ -169,8 +206,12 @@ export default function UsersPage() {
         {!isLoading && !isError && items.length === 0 && (
           <EmptyState
             icon={Users}
-            title="No hay usuarios registrados"
-            description={'Crea el primero con el botón "Nuevo usuario"'}
+            title={debouncedSearch || roleId ? 'Sin resultados' : 'No hay usuarios registrados'}
+            description={
+              debouncedSearch || roleId
+                ? 'Prueba con otro término o filtro'
+                : 'Crea el primero con el botón "Nuevo usuario"'
+            }
           />
         )}
 
@@ -257,6 +298,15 @@ export default function UsersPage() {
               </tbody>
             </table>
           </div>
+        )}
+
+        {!isError && (
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            onPageChange={setPage}
+          />
         )}
       </div>
 

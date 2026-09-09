@@ -6,9 +6,15 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CreateAuthDto, UpdateAuthDto, LoginAuthDto } from './dto/index';
+import {
+  CreateAuthDto,
+  UpdateAuthDto,
+  LoginAuthDto,
+  FindAllUsersDto,
+} from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { Public } from '@/common/decorators/public.decorator';
 
@@ -18,8 +24,8 @@ export class AuthController {
 
   @Get()
   @Permissions('user.manage')
-  findAll() {
-    return this.authService.findAll();
+  findAll(@Query() findAllUsersDto: FindAllUsersDto) {
+    return this.authService.findAll(findAllUsersDto);
   }
 
   // Debe declararse antes de cualquier futuro `GET :id` — Nest resolvería

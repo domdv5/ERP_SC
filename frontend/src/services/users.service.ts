@@ -43,6 +43,25 @@ export interface UpdateUserPayload {
   active?: boolean
 }
 
+export interface GetUsersParams {
+  page?: number
+  limit?: number
+  search?: string
+  roleId?: string
+  // Sin default en el backend: omitido trae activos e inactivos.
+  active?: boolean
+}
+
+export interface UsersMeta {
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  // Los conteos se calculan sobre el filtro aplicado, no sobre el total global.
+  activeCount: number
+  adminCount: number
+}
+
 // ---------------------------------------------------------------------------
 // Role display names
 // ---------------------------------------------------------------------------
@@ -65,8 +84,8 @@ export function getRoleLabel(name: string): string {
 // Service functions
 // ---------------------------------------------------------------------------
 
-export async function getUsers(): Promise<AppUser[]> {
-  const res = await api.get<ApiResponse<AppUser[]>>('/auth')
+export async function getUsers(params?: GetUsersParams): Promise<{ items: AppUser[]; meta: UsersMeta }> {
+  const res = await api.get<ApiResponse<{ items: AppUser[]; meta: UsersMeta }>>('/auth', { params })
   return res.data.data
 }
 

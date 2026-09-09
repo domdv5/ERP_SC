@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
-export class FindAllProductsDto {
+export class FindAllUsersDto {
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -28,29 +28,13 @@ export class FindAllProductsDto {
   search?: string;
 
   @IsOptional()
+  @IsUUID()
+  roleId?: string;
+
+  @IsOptional()
   @Transform(({ value }) =>
     value === 'true' ? true : value === 'false' ? false : value,
   )
   @IsBoolean()
   active?: boolean;
-
-  @IsOptional()
-  @IsUUID()
-  categoryId?: string;
-
-  @IsOptional()
-  @IsUUID()
-  brandId?: string;
-
-  @IsOptional()
-  @IsUUID()
-  genderId?: string;
-
-  // Filtro por proveedor (CM/DVC): resuelve las marcas activas de ese
-  // proveedor y filtra por ellas. Independiente de brandId (que sigue
-  // sirviendo al filtro admin de ProductsPage) — con precedencia si algún
-  // día coexistieran ambos en la misma request.
-  @IsOptional()
-  @IsUUID()
-  supplierId?: string;
 }
