@@ -5,21 +5,24 @@ import type { PrismaService } from '@/prisma/prisma.service';
 
 type PrismaOrTx = PrismaService | Prisma.TransactionClient;
 
+/** Tipos que reservan stock de forma lógica: quedan confirmados pero no mueven inventario físico. */
+export const RESERVATION_TYPES: DocumentType[] = [
+  DocumentType.PV,
+  DocumentType.REM,
+];
+
 /**
- * Reserva vigente por producto: suma de líneas PV confirmadas
- * (quantity - releasedQuantity - convertedQuantity). No cuenta bodega — la
- * preventa reserva sobre el stock global, igual que computeNewAvgCost.
- * Devuelve 0 (nunca `undefined`) para productIds sin reservas, así los
- * llamadores pueden usar `.get(id)!` sin `?? 0` defensivo.
+ * Cuánto hay reservado hoy por producto: suma de las líneas de preventas y
+ * remisiones confirmadas, restando lo ya liberado y lo ya convertido en venta.
+ * No distingue bodega: la reserva es sobre el stock total. Devuelve 0 (nunca
+ * indefinido) para los productos sin reservas.
  */
 export async function getReservedByProduct(
   prisma: PrismaOrTx,
   productIds: string[],
   options?: {
-    /** Excluye un documento del cómputo — en confirm() de PvEffectStrategy el propio
-     * documento ya quedó confirmed antes de validar disponibilidad, así que sin
-     * excluirlo restaría su propia reserva contra sí mismo. */
     excludeDocumentId?: string;
+    types?: DocumentType[];
   },
 ): Promise<Map<string, number>> {
   const result = new Map<string, number>(productIds.map((id) => [id, 0]));
@@ -33,7 +36,7 @@ export async function getReservedByProduct(
     where: {
       productId: { in: productIds },
       document: {
-        type: DocumentType.PV,
+        type: { in: options?.types ?? RESERVATION_TYPES },
         status: DocumentStatus.confirmed,
         ...(options?.excludeDocumentId && {
           id: { not: options.excludeDocumentId },
@@ -54,7 +57,7 @@ export async function getReservedByProduct(
   return result;
 }
 
-/** Números crudos que un llamador de assertAvailableForReservation recibe para redactar su propio mensaje de error. */
+/** Cifras en bruto que recibe quien valida disponibilidad para armar su propio mensaje de error. */
 export interface AvailabilityShortfall {
   available: number;
   reserved: number;
@@ -62,12 +65,12 @@ export interface AvailabilityShortfall {
 }
 
 /**
- * Valida disponibilidad de un producto (stock menos reserva) antes de reservarlo
- * o restarle stock (void de compra/EAI, salida SAJ/DVC/T). `buildMessage` deja
- * que cada llamador redacte su mensaje con los números reales. Bloquea
- * `Inventory` con `FOR UPDATE` antes de leer — sin esto, transacciones
- * concurrentes leerían el mismo "disponible" y podrían sobre-reservar. Por eso
- * exige `Prisma.TransactionClient` real: fuera de una transacción el lock no protege.
+ * Verifica que un producto tenga disponible (stock menos reservas) antes de
+ * reservarlo o de quitarle stock (anular una compra o ajuste, una salida o un
+ * traslado). Cada llamador arma su mensaje con `buildMessage`. Bloquea la fila
+ * de inventario antes de leerla: sin ese bloqueo, dos operaciones a la vez
+ * leerían el mismo disponible y podrían reservar de más. Por eso exige correr
+ * dentro de una transacción.
  */
 export async function assertAvailableForReservation(
   tx: Prisma.TransactionClient,

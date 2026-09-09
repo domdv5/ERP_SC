@@ -6,29 +6,28 @@ export const itemSchema = z.object({
   productDesc:   z.string(),
   quantity:      z.coerce.number().positive('La cantidad debe ser mayor a 0'),
   unitCost:      z.coerce.number().nonnegative('El costo no puede ser negativo').optional(),
-  // Solo preventas (PV) — precio de venta de la línea; el backend usa salePrice si se omite.
+  // Preventas y remisiones: precio de venta de la línea; si se omite, el backend usa el precio de venta del producto.
   unitPrice:     z.coerce.number().nonnegative('El precio no puede ser negativo').optional(),
-  // Nota de talla por línea — solo se usa/muestra en traslados (T), ver showObservaciones en
-  // ProductRow.tsx. z.literal('') admite el input vacío del formulario sin fallar la validación.
+  // Nota de talla por línea: solo se usa en traslados. Se admite la cadena vacía para que el
+  // campo vacío del formulario no falle la validación.
   observaciones: z.string().max(500, 'Máximo 500 caracteres').optional().or(z.literal('')),
 })
 
 export const formSchema = z.object({
-  // 'POS'/'COT' se incluyen solo para que existingDoc.type (DocumentType) tipe correctamente
-  // al hacer reset() en modo edición — DocumentFormPage nunca los ofrece como opción
-  // seleccionable (ver availableTypes) y redirige fuera del form si detecta un borrador de
-  // venta existente (esos tipos se editan solo desde POSCheckoutPage).
-  type:            z.enum(['CM', 'DVC', 'EAI', 'SAJ', 'T', 'PV', 'POS', 'COT'] as const),
+  // Los tipos de venta ('POS'/'COT') se incluyen solo para que el tipo del documento existente
+  // encaje al reabrir en modo edición. El form nunca los ofrece como opción y redirige fuera si
+  // detecta un borrador de venta: esos se editan solo desde el checkout.
+  type:            z.enum(['CM', 'DVC', 'EAI', 'SAJ', 'T', 'PV', 'REM', 'POS', 'COT'] as const),
   date:            z.string().min(1, 'La fecha es requerida'),
   thirdPartyId:    z.string().optional(),
-  // Solo preventas (PV) — vendedora responsable de la operación.
+  // Preventas y remisiones: vendedora responsable de la operación.
   sellerId:        z.string().optional(),
   warehouseId:     z.string().optional(),
   sourceBinId:     z.string().optional(),
   destWarehouseId: z.string().optional(),
   destBinId:       z.string().optional(),
-  // Solo EAI — motivo del ajuste; adjustmentReasonOther se valida como obligatorio en el
-  // superRefine de abajo solo cuando adjustmentReason === 'otro'.
+  // Solo en entradas por ajuste: el motivo. La explicación libre se valida como obligatoria más
+  // abajo, solo cuando el motivo es "otro".
   adjustmentReason:      z.enum(['negativo', 'inventario_general', 'traspaso_costo', 'otro'] as const).optional(),
   adjustmentReasonOther: z.string().max(300, 'Máximo 300 caracteres').optional().or(z.literal('')),
   notes:           z.string().optional(),
@@ -39,7 +38,8 @@ export const formSchema = z.object({
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'El proveedor es requerido', path: ['thirdPartyId'] })
     }
   }
-  if (data.type === 'PV') {
+  // Preventas y remisiones comparten campos de venta: cliente y vendedora obligatorios.
+  if (data.type === 'PV' || data.type === 'REM') {
     if (!data.thirdPartyId) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'El cliente es requerido', path: ['thirdPartyId'] })
     }

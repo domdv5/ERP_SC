@@ -9,12 +9,13 @@ import { CmEffectStrategy } from './cm-effect.strategy';
 import { DvcEffectStrategy } from './dvc-effect.strategy';
 import { EaiEffectStrategy } from './eai-effect.strategy';
 import { PvEffectStrategy } from './pv-effect.strategy';
+import { RemEffectStrategy } from './rem-effect.strategy';
 import { PosEffectStrategy } from './pos-effect.strategy';
 import { CotEffectStrategy } from './cot-effect.strategy';
 import { SajEffectStrategy } from './saj-effect.strategy';
 import { TransferEffectStrategy } from './transfer-effect.strategy';
 
-/** Registro de estrategias por tipo de documento — un tipo sin estrategia registrada es, por definición, aún no soportado (get() lanza el error, sin necesitar una lista aparte). */
+/** Guarda una estrategia por cada tipo de documento. Un tipo sin estrategia registrada es, por definición, uno que todavía no está soportado: al pedirlo se lanza el error, sin necesidad de una lista aparte. */
 @Injectable()
 export class DocumentEffectsRegistry {
   private readonly strategies = new Map<DocumentType, DocumentEffectStrategy>();
@@ -26,6 +27,7 @@ export class DocumentEffectsRegistry {
     sajEffectStrategy: SajEffectStrategy,
     transferEffectStrategy: TransferEffectStrategy,
     pvEffectStrategy: PvEffectStrategy,
+    remEffectStrategy: RemEffectStrategy,
     posEffectStrategy: PosEffectStrategy,
     cotEffectStrategy: CotEffectStrategy,
   ) {
@@ -36,6 +38,7 @@ export class DocumentEffectsRegistry {
       sajEffectStrategy,
       transferEffectStrategy,
       pvEffectStrategy,
+      remEffectStrategy,
       posEffectStrategy,
       cotEffectStrategy,
     ]) {
@@ -53,7 +56,7 @@ export class DocumentEffectsRegistry {
     return strategy;
   }
 
-  /** Igual que get(), pero exige que la estrategia maneje reservas (ver ReservationEffectStrategy). */
+  /** Igual que obtener la estrategia, pero además exige que sepa manejar reservas. */
   getReservation(type: DocumentType): ReservationEffectStrategy {
     const strategy = this.get(type);
 

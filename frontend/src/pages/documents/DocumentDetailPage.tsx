@@ -58,7 +58,7 @@ const formatDate = (iso: string) =>
     year: "numeric",
   });
 
-// El backend ya envía el número de las derivadas PV zero-padded; padStart es defensivo/idempotente.
+// El backend ya manda el número con ceros a la izquierda; el relleno de acá es por si acaso.
 const fmtDocRef = (type: string, number: string | number) =>
   `${type}-${String(number).padStart(6, "0")}`;
 
@@ -67,10 +67,9 @@ const fmtDocRef = (type: string, number: string | number) =>
 const TYPE_LABELS = DOC_TYPE_BADGE;
 const STATUS_LABELS = DOC_STATUS_BADGE;
 
-// axios entrega error.response.data como Blob (no JSON parseado) cuando la request se hizo con
-// responseType: 'blob' — pasa aunque el backend haya respondido un error JSON normal, porque el
-// parseo del cuerpo depende del responseType fijado en la request, no del status code. Hay que
-// leerlo como texto y parsearlo a mano para sacar el message.
+// Cuando la petición pide un archivo (PDF), la respuesta de error también llega como archivo,
+// no como JSON, aunque el backend haya mandado un error normal. Hay que leerla como texto y
+// parsearla a mano para sacar el mensaje.
 async function extractPrintErrorMessage(err: unknown): Promise<string | undefined> {
   const data = (err as { response?: { data?: unknown } })?.response?.data;
   if (data instanceof Blob) {
@@ -162,6 +161,8 @@ export default function DocumentDetailPage() {
 
   const canReleasePV = usePermission("document.release.PV");
   const canConvertPV = usePermission("document.convert.PV");
+  const canReleaseREM = usePermission("document.release.REM");
+  const canConvertREM = usePermission("document.convert.REM");
   const canDuplicateCM = usePermission("document.create.CM");
 
   const {
@@ -180,18 +181,18 @@ export default function DocumentDetailPage() {
     queryClient.invalidateQueries({ queryKey: ["documents"] });
     queryClient.invalidateQueries({ queryKey: ["document", id] });
     queryClient.invalidateQueries({ queryKey: ["products"] });
-    // Namespace separado del combobox de producto en ProductRow — 'products' no lo cubre por
-    // prefijo, así que sin esto el avgCost mostrado en la siguiente operación queda desactualizado.
+    // El buscador de productos usa una clave de caché aparte que "products" no alcanza; sin
+    // esto, el costo promedio que se ve en la siguiente operación queda viejo.
     queryClient.invalidateQueries({ queryKey: ["products-search"] });
-    // Keys propias del checkout de ventas (POSCheckoutPage) — confirmar/anular una venta cambia
-    // el stock disponible; sin esto el checkout las muestra stale hasta recargar.
+    // Claves de caché propias del checkout de ventas: confirmar o anular una venta cambia el
+    // stock disponible, y sin esto el checkout lo sigue mostrando viejo hasta recargar.
     queryClient.invalidateQueries({ queryKey: ["product-by-code"] });
     queryClient.invalidateQueries({ queryKey: ["products-search-pos"] });
-    // CM crea AccountsPayable y DVC crea/elimina SupplierCredit al confirmar/anular
+    // Una compra crea su cuenta por pagar y una devolución crea o elimina la nota crédito al confirmar o anular.
     queryClient.invalidateQueries({ queryKey: ["accounts-payable"] });
-    // Confirmar/anular un traslado cambia BinStock — el detalle de bodega (bins con occupied) debe
-    // refrescarse, si no el formulario de un traslado nuevo sigue mostrando bines ocupados/libres
-    // desactualizados hasta recargar.
+    // Confirmar o anular un traslado cambia el stock de los bultos; el detalle de la bodega
+    // debe refrescarse, si no el form de un traslado nuevo sigue mostrando bultos ocupados o
+    // libres que ya no lo están.
     queryClient.invalidateQueries({ queryKey: ["warehouse-detail"] });
   };
 
@@ -253,8 +254,8 @@ export default function DocumentDetailPage() {
     onSuccess: (blob) => {
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
-      // La pestaña nueva necesita el blob URL vivo mientras carga el PDF — se revoca
-      // después de un margen razonable en vez de al instante.
+      // La pestaña nueva necesita el enlace del PDF mientras carga; se libera después de un
+      // rato en vez de al instante.
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     },
     onError: async (err: unknown) => {
@@ -321,30 +322,35 @@ export default function DocumentDetailPage() {
   const isConfirmed = doc.status === "confirmed";
   const isVoided = doc.status === "voided";
 
-  // SAJ y T nunca persisten unitCost/subtotal en DocumentItem (SajEffectStrategy/
-  // TransferEffectStrategy solo usan el avgCost del producto para el kardex, no lo
-  // escriben de vuelta en el ítem) — por eso esos dos tipos derivan el costo/subtotal
-  // en vivo desde item.product.avgCost en lugar de leer los campos siempre-cero.
+  // Las salidas por ajuste y los traslados no guardan costo ni subtotal en la línea: solo
+  // usan el costo promedio del producto para el movimiento de inventario. Por eso, para esos
+  // dos tipos, el costo y el subtotal se calculan en vivo desde el costo promedio del
+  // producto, en vez de leer unos campos que siempre valen cero.
   const usesAvgCostFallback = doc.type === "SAJ" || doc.type === "T";
-  // Preventas (PV) no persisten costo — el precio unitario relevante es item.unitPrice.
-  const isPV = doc.type === "PV";
-  // Bloque `pv` computado por el backend — solo presente en type === 'PV', y aun así puede ser null.
-  const pvConversion = isPV ? doc.pv?.conversion : undefined;
+  // Preventas y remisiones comparten toda la mecánica de reserva y conversión: no guardan
+  // costo (lo que importa es el precio de venta de la línea), tienen columnas Liberado y
+  // Pendiente, panel "Liberar Stock", botón "Convertir a venta" y chip de conversión.
+  const isReservationType = doc.type === "PV" || doc.type === "REM";
+  const canRelease = doc.type === "PV" ? canReleasePV : doc.type === "REM" ? canReleaseREM : false;
+  const canConvert = doc.type === "PV" ? canConvertPV : doc.type === "REM" ? canConvertREM : false;
+  // Bloque de estado de conversión que arma el backend; solo llega en preventas y remisiones, y aun así puede venir vacío.
+  const pvConversion = isReservationType ? doc.pv?.conversion : undefined;
   const pvConvBadge =
     pvConversion && pvConversion.status !== "none"
       ? PV_CONVERSION_BADGE[pvConversion.status]
       : null;
-  // Derivada de venta (POS/COT) todavía vigente. Mientras exista, la PV no puede anularse ni
-  // volver a convertirse: se ocultan esos botones y se ofrece un acceso directo a la venta.
+  // Venta derivada todavía vigente. Mientras exista, el documento no se puede anular ni volver
+  // a convertir: se ocultan esos botones y se ofrece un acceso directo a esa venta.
   const pvActiveDerived = pvConversion?.documents.find((d) => d.status !== "voided");
-  // Antigüedad solo mientras la PV sigue abierta: confirmada y sin conversión en curso ni hecha.
+  // Antigüedad solo mientras la reserva sigue abierta: confirmada y sin conversión en curso ni hecha.
   const pvAgeLabel =
-    isPV && isConfirmed && pvConversion?.status === "none"
+    isReservationType && isConfirmed && pvConversion?.status === "none"
       ? formatDaysSince(daysSince(doc.createdAt))
       : null;
-  // Tipos valorados a precio de venta, no a costo — coincide con PRICE_BASED_TYPES del backend
-  // (documents.service.ts). Pos/CotEffectStrategy persisten unitPrice, no unitCost (queda en 0/null).
-  const isPriceBasedType = doc.type === "PV" || doc.type === "POS" || doc.type === "COT";
+  // Tipos que se valoran al precio de venta, no al costo (misma lista que en el backend). En
+  // estos, la línea guarda el precio de venta y el costo queda en cero.
+  const isPriceBasedType =
+    doc.type === "PV" || doc.type === "REM" || doc.type === "POS" || doc.type === "COT";
   const itemUnitCost = (item: (typeof doc.documentItems)[number]) =>
     isPriceBasedType ? item.unitPrice : usesAvgCostFallback ? Number(item.product.avgCost) : item.unitCost;
   const itemSubtotal = (item: (typeof doc.documentItems)[number]) =>
@@ -354,20 +360,17 @@ export default function DocumentDetailPage() {
         ? item.quantity * Number(item.product.avgCost)
         : item.subtotal;
 
-  // Number(...) es necesario acá: item.subtotal viaja como string (Decimal de Prisma
-  // serializado a JSON, pese a que DocumentItem lo tipa como `number`) — sin la conversión,
-  // `sum + itemSubtotal(item)` hace concatenación de strings en vez de suma a partir del segundo
-  // ítem (el primer `+` con sum=0 numérico ya fuerza todo el acumulador a string). Bug real
-  // encontrado probando el checkout POS con una venta de 2 ítems (con 1 solo ítem el resultado
-  // coincidía por casualidad y pasaba desapercibido) — afecta a cualquier tipo de documento con
-  // más de un ítem, no solo POS.
+  // El subtotal llega como texto aunque el tipo diga que es número. Sin convertirlo, a partir
+  // de la segunda línea la suma concatena texto en vez de sumar. Bug real visto en una venta
+  // de 2 líneas (con una sola coincidía de casualidad); afecta a cualquier documento con más
+  // de una línea.
   const itemsTotal = doc.documentItems.reduce((sum, item) => sum + Number(itemSubtotal(item)), 0);
-  // Nota de talla por línea — solo se muestra en traslados (T), donde el mismo código de producto
-  // puede repartirse en varios bultos con tallas distintas. Ver ProductRow.tsx showObservaciones.
+  // Nota de talla por línea: solo se muestra en traslados, donde un mismo producto puede
+  // repartirse en varios bultos con tallas distintas.
   const showObservaciones = doc.type === "T";
-  // SAJ y T muestran el costo promedio vigente del producto (avgCost) — ver nota arriba en
-  // usesAvgCostFallback — nunca un costo transaccional tipeado por el usuario. CM/DVC/EAI sí
-  // manejan un costo real ingresado, por eso conservan la etiqueta plana.
+  // Las salidas por ajuste y los traslados muestran el costo promedio del producto (ver la
+  // nota de arriba), nunca un costo tipeado por el usuario. Las compras, devoluciones y
+  // entradas por ajuste sí manejan un costo real, por eso conservan la etiqueta simple.
   const costHeaderLabel = isPriceBasedType
     ? "Precio unit."
     : usesAvgCostFallback
@@ -375,12 +378,12 @@ export default function DocumentDetailPage() {
       : "Costo unit.";
   const itemHeaders = showObservaciones
     ? ["Código", "Descripción", "Cantidad", "Observaciones", costHeaderLabel, "Subtotal"]
-    : isPV
+    : isReservationType
       ? ["Código", "Descripción", "Cantidad", "Liberado", "Pendiente", costHeaderLabel, "Subtotal"]
       : ["Código", "Descripción", "Cantidad", costHeaderLabel, "Subtotal"];
-  // Celdas vacías a saltar en el pie de tabla antes de la etiqueta "Total" — debe alinearse
-  // bajo la columna "Costo unit." sin importar si Observaciones/Liberado+Pendiente están presentes.
-  const footerSkipCols = showObservaciones ? 4 : isPV ? 5 : 3;
+  // Cuántas celdas vacías dejar en el pie de la tabla antes del "Total", para que quede
+  // alineado bajo la columna de costo aunque haya columnas extra (Observaciones, o Liberado y Pendiente).
+  const footerSkipCols = showObservaciones ? 4 : isReservationType ? 5 : 3;
 
   return (
     <div className="space-y-6 pb-10">
@@ -460,6 +463,17 @@ export default function DocumentDetailPage() {
                   Anulado por {doc.voidedBy.name}
                 </p>
               )}
+              {doc.updatedBy && (
+                <p className="text-content-muted text-sm font-accent">
+                  Editado por {doc.updatedBy.name}
+                </p>
+              )}
+              {doc.convertedBy && (
+                <p className="text-content-muted text-sm font-accent">
+                  Convertido por {doc.convertedBy.name}
+                  {doc.convertedAt && ` el ${formatDate(doc.convertedAt)}`}
+                </p>
+              )}
             </div>
           </div>
 
@@ -504,7 +518,7 @@ export default function DocumentDetailPage() {
                 Duplicar
               </button>
             )}
-            {isConfirmed && doc.type === "PV" && canReleasePV && (
+            {isConfirmed && isReservationType && canRelease && (
               <button
                 onClick={() => setReleaseOpen(true)}
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors"
@@ -513,18 +527,22 @@ export default function DocumentDetailPage() {
                 Liberar Stock
               </button>
             )}
-            {isConfirmed && doc.type === "PV" && canConvertPV && !pvActiveDerived && (
-              // POS ya tiene Strategy — la conversión real ocurre en el checkout POS
-              // (POSCheckoutPage), precargado con esta PV vía ?fromPV=. Deshabilitado solo si
-              // ya no queda cantidad pendiente (todo liberado y/o ya convertido).
+            {isConfirmed && isReservationType && canConvert && !pvActiveDerived && (
+              // La conversión real ocurre en el checkout de ventas, que se abre precargado con
+              // este documento. Se deshabilita solo si ya no queda cantidad pendiente (todo
+              // liberado o ya convertido).
               <button
                 type="button"
-                onClick={() => navigate(`/documents/pos/new?fromPV=${doc.id}`)}
+                onClick={() =>
+                  navigate(
+                    `/documents/pos/new?${doc.type === "REM" ? "fromREM" : "fromPV"}=${doc.id}`,
+                  )
+                }
                 disabled={!hasPendingItems(doc)}
                 title={
                   hasPendingItems(doc)
                     ? undefined
-                    : "Esta preventa ya no tiene cantidad pendiente por convertir"
+                    : "Este documento ya no tiene cantidad pendiente por convertir"
                 }
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
               >
@@ -532,9 +550,9 @@ export default function DocumentDetailPage() {
                 Convertir a venta
               </button>
             )}
-            {isPV && pvActiveDerived && (
-              // Ya hay una venta derivada vigente (borrador o confirmada): en vez de Anular/Convertir
-              // se ofrece navegar directo a esa venta. El backend además responde 409 si se intenta.
+            {isReservationType && pvActiveDerived && (
+              // Ya hay una venta derivada vigente (borrador o confirmada): en vez de anular o
+              // convertir, se ofrece ir directo a esa venta. El backend igual lo rechaza si se intenta.
               <button
                 type="button"
                 onClick={() => navigate(`/documents/${pvActiveDerived.id}`)}
@@ -606,7 +624,7 @@ export default function DocumentDetailPage() {
                 <p className="text-xs text-content-faint font-accent">
                   {doc.type === "CM" || doc.type === "DVC"
                     ? "Proveedor"
-                    : doc.type === "PV"
+                    : doc.type === "PV" || doc.type === "REM"
                       ? "Cliente"
                       : "Tercero"}
                 </p>
@@ -615,8 +633,8 @@ export default function DocumentDetailPage() {
             </div>
           )}
 
-          {/* Seller — solo preventas (PV) */}
-          {doc.type === "PV" && doc.seller && (
+          {/* Seller — preventas (PV) y remisiones (REM) */}
+          {isReservationType && doc.seller && (
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
                 <UserCog className="w-4 h-4 text-content-muted" />
@@ -721,7 +739,7 @@ export default function DocumentDetailPage() {
                         <span className="truncate block">{item.observaciones || "—"}</span>
                       </td>
                     )}
-                    {isPV && (
+                    {isReservationType && (
                       <>
                         <td className="px-5 py-3.5 text-content-muted text-xs">
                           {(item.releasedQuantity ?? 0).toLocaleString("es-CO")}
@@ -816,8 +834,8 @@ export default function DocumentDetailPage() {
         }
       />
 
-      {/* Release reserved items — solo preventas (PV) confirmadas */}
-      {isPV && (
+      {/* Release reserved items — preventas (PV) y remisiones (REM) confirmadas */}
+      {isReservationType && (
         <ReleaseItemsDialog open={releaseOpen} doc={doc} onClose={() => setReleaseOpen(false)} />
       )}
     </div>

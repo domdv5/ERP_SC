@@ -55,6 +55,9 @@ const formatCOP = (v: number) =>
 
 const docNumber = (type: string, number: number) => `${type}-${String(number).padStart(6, '0')}`
 
+// Sustantivo del documento de origen para el aviso de conversión: preventa o remisión.
+const sourceKindNoun = (type: DocumentType) => (type === 'REM' ? 'remisión' : 'preventa')
+
 const TODAY = new Date().toISOString().slice(0, 10)
 
 const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
@@ -74,13 +77,18 @@ export default function POSCheckoutPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
-  const fromPVId = searchParams.get('fromPV') || undefined
+  // Entrada desde "Convertir a venta" en el detalle de una preventa o remisión. Se acepta un
+  // parámetro genérico y también los nombres antiguos (?fromPV= era el único antes de la remisión).
+  const fromSourceId =
+    searchParams.get('fromPV') ||
+    searchParams.get('fromREM') ||
+    searchParams.get('fromDocId') ||
+    undefined
 
-  // Carrito — reusa el mismo FormValues/useFieldArray que DocumentFormPage porque
-  // BarcodeScanInput (reutilizado tal cual, ver componente) exige exactamente ese tipo en sus
-  // props append/getValues/setValue. El resto de FormValues (type/warehouseId/etc.) queda sin
-  // usar — el payload real de POS se arma aparte, a mano, con los estados propios de esta página
-  // (cliente/vendedor/forma de pago).
+  // Carrito — usa el mismo formulario que el form genérico de documentos porque el input de
+  // escaneo se reutiliza tal cual y exige ese tipo. El resto de los campos del formulario no
+  // se usan: el cuerpo real de la venta se arma aparte, a mano, con los estados propios de
+  // esta pantalla (cliente, vendedora, forma de pago).
   const { control, register, watch, setValue, getValues } = useForm<FormValues>({
     defaultValues: { type: 'PV', date: TODAY, items: [] },
   })
@@ -126,9 +134,9 @@ export default function POSCheckoutPage() {
     : sellerOptions
 
   // ── modo de venta: contado (POS) / crédito (COT) ─────────────────────────
-  // El toggle solo aparece si el usuario puede crear COT; sin ese permiso el checkout
-  // es siempre de contado (comportamiento previo). Se bloquea una vez que hay un borrador
-  // en curso — el tipo de un documento ya creado no se puede cambiar.
+  // El toggle solo aparece si el usuario puede crear ventas a crédito; sin ese permiso la
+  // venta es siempre de contado. Se bloquea una vez que hay un borrador en curso: el tipo de
+  // un documento ya creado no se puede cambiar.
   const canCreateCOT = usePermission('document.create.COT')
   const [mode, setMode] = useState<SaleMode>('POS')
   const isCredit = mode === 'COT'
@@ -137,9 +145,9 @@ export default function POSCheckoutPage() {
   // ── forma de pago (solo contado) ─────────────────────────────────────────
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('')
 
-  // Error 400 de cupo excedido devuelto por el backend (crear COT / confirmar / convertir).
-  // Complementa el bloqueo local `total > availableCredit`: cubre la carrera del re-chequeo
-  // con lock que el backend hace en confirm (PATCH-bypass) y el chequeo al convertir.
+  // Error de cupo excedido que devuelve el backend al crear, confirmar o convertir una venta
+  // a crédito. Complementa el bloqueo local (total mayor al cupo disponible): cubre el
+  // momento en que dos ventas del mismo cliente compiten por el cupo y la revalidación al convertir.
   const [creditError, setCreditError] = useState<{ message: string; detail: CreditLimitExceededDetail } | null>(null)
 
   // ── borrador en curso (create→confirm, o conversión ya aplicada) ─────────
@@ -151,11 +159,10 @@ export default function POSCheckoutPage() {
   const [pendingPreventa, setPendingPreventa] = useState<Document | null>(null)
   const [checkingPreventa, setCheckingPreventa] = useState(false)
 
-  // Detección al elegir cliente manualmente — vive en el propio onChange del combobox (no en un
-  // useEffect sobre thirdPartyId) para no re-dispararse cuando el hydrate de una conversión ya
-  // aplicada fija thirdPartyId por código: esa misma PV convertida sigue teniendo pendiente > 0
-  // hasta que el POS derivado se confirme (ver comentario en convertDocument, documents.service.ts),
-  // así que un efecto reactivo volvería a mostrar el aviso en bucle justo después de aceptarlo.
+  // La detección corre al elegir cliente a mano, dentro del propio onChange del buscador, no
+  // en un efecto sobre el cliente. Si fuera un efecto, se volvería a disparar cuando una
+  // conversión ya aceptada fija el cliente por código: esa preventa sigue con cantidad
+  // pendiente hasta que la venta derivada se confirme, así que el aviso reaparecería en bucle.
   async function handleCustomerSelected(id: string, label: string) {
     setThirdPartyId(id)
     setTpSelectedName(label)
@@ -165,8 +172,8 @@ export default function POSCheckoutPage() {
       const pv = await findActivePendingPreventa(id)
       setPendingPreventa(pv)
     } catch {
-      // Aviso no bloqueante — si la detección falla, el operario simplemente no ve el banner y
-      // sigue con una venta normal; no vale la pena un toast de error para esto.
+      // El aviso no es crítico: si la detección falla, el operario no ve el banner y sigue con
+      // una venta normal. No vale la pena mostrar un error por esto.
     } finally {
       setCheckingPreventa(false)
     }
@@ -180,35 +187,35 @@ export default function POSCheckoutPage() {
     staleTime: 30 * 1000,
   })
 
-  // Cualquier cambio de contexto invalida el 400 de cupo ya mostrado (el usuario cambió de
+  // Cualquier cambio de contexto borra el error de cupo ya mostrado (el usuario cambió de
   // cliente, de modo, o ajustó el carrito y va a reintentar).
   useEffect(() => {
     setCreditError(null)
   }, [mode, thirdPartyId])
 
-  // Entrada desde "Convertir a venta" (DocumentDetailPage) — precarga la preventa por id y
-  // dispara el mismo aviso/flujo de conversión, sin que el operario tenga que rebuscar al cliente.
-  const { data: fromPVDoc } = useQuery({
-    queryKey: ['document', fromPVId],
-    queryFn: () => getDocument(fromPVId!),
-    enabled: Boolean(fromPVId) && !draftId,
+  // Entrada desde "Convertir a venta" en el detalle: precarga la preventa o remisión por su
+  // id y dispara el mismo aviso y flujo de conversión, sin que el operario tenga que volver a
+  // buscar al cliente.
+  const { data: fromSourceDoc } = useQuery({
+    queryKey: ['document', fromSourceId],
+    queryFn: () => getDocument(fromSourceId!),
+    enabled: Boolean(fromSourceId) && !draftId,
     staleTime: 5 * 60 * 1000,
   })
 
   useEffect(() => {
-    if (!fromPVDoc) return
-    if (!hasPendingItems(fromPVDoc)) {
-      toast.error('Esta preventa ya no tiene cantidad pendiente por convertir')
+    if (!fromSourceDoc) return
+    if (!hasPendingItems(fromSourceDoc)) {
+      toast.error(`Esta ${sourceKindNoun(fromSourceDoc.type)} ya no tiene cantidad pendiente por convertir`)
       return
     }
-    setPendingPreventa(fromPVDoc)
-  }, [fromPVDoc])
+    setPendingPreventa(fromSourceDoc)
+  }, [fromSourceDoc])
 
-  // NOTA DE CONTRATO: al convertir a contado (POS), documents.service.ts::convert() re-corre
-  // PosEffectStrategy.validateCreate() sobre el borrador derivado, que exige paymentMethod
-  // truthy — por eso el botón queda deshabilitado hasta elegir forma de pago (ver disabled
-  // más abajo). Al convertir a crédito (COT) no se envía paymentMethod y el chequeo de cupo
-  // puede devolver el 400 de cupo excedido aquí mismo.
+  // Al convertir a contado, el backend revalida el borrador derivado y exige forma de pago,
+  // por eso el botón queda deshabilitado hasta elegir una (ver más abajo). Al convertir a
+  // crédito no se manda forma de pago y la validación de cupo puede devolver aquí mismo el
+  // error de cupo excedido.
   const { mutate: doConvert, isPending: isConverting } = useMutation({
     mutationFn: (pvId: string) =>
       convertDocument(pvId, {
@@ -237,7 +244,7 @@ export default function POSCheckoutPage() {
       setSourceDocument(converted.sourceDocument)
       const sourceLabel = converted.sourceDocument
         ? docNumber(converted.sourceDocument.type, converted.sourceDocument.number)
-        : 'la preventa'
+        : 'el documento de origen'
       setPendingPreventa(null)
       toast.success(`Venta creada a partir de ${sourceLabel}. Revisa los precios antes de confirmar.`)
     },
@@ -272,8 +279,8 @@ export default function POSCheckoutPage() {
   function handleManualProductAdd(id: string) {
     const product = manualProductData?.items.find((p) => p.id === id)
     if (!product) return
-    // Pre-siembra la caché de getProductByCode con el producto ya conocido — evita un round-trip
-    // redundante para resolver minSalePrice/availableStock de esta misma fila (ver useQueries abajo).
+    // Deja el producto ya conocido en la caché de búsqueda por código, para no volver a pedir
+    // al servidor el precio mínimo y el disponible de esta misma fila.
     queryClient.setQueryData(['product-by-code', product.code], product)
 
     const currentItems = getValues('items')
@@ -298,10 +305,9 @@ export default function POSCheckoutPage() {
   }
 
   // ── detalle de producto por código (minSalePrice + disponible) ───────────
-  // BarcodeScanInput solo entrega avgCost/unitOfMeasure/availableStock por su callback
-  // onProductScanned (no minSalePrice, no el Product completo) — en vez de acoplarse a eso, se
-  // resuelve el detalle completo de cada código presente en el carrito vía TanStack Query, cacheado
-  // y compartido con la búsqueda manual (ver setQueryData arriba).
+  // El input de escaneo solo entrega costo promedio, unidad de medida y disponible, no el
+  // precio mínimo ni el producto completo. En vez de depender de eso, se pide el detalle
+  // completo de cada código que hay en el carrito y se comparte con la búsqueda manual.
   const uniqueProductCodes = useMemo(
     () => Array.from(new Set(cartItems.map((i) => i.productCode).filter(Boolean))),
     [cartItems],
@@ -342,8 +348,8 @@ export default function POSCheckoutPage() {
   const total = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0)
   const hasValidItems = fields.length > 0 && cartItems.every((item) => item.productId && Number(item.quantity) > 0)
 
-  // Bloqueo duro de cupo: la venta a crédito no puede superar el disponible del cliente.
-  // No hay override — se resuelve subiendo el cupo desde la ficha del cliente.
+  // Bloqueo de cupo: la venta a crédito no puede superar el disponible del cliente. No se
+  // puede saltar; se resuelve subiendo el cupo desde la ficha del cliente.
   const creditExceeded = isCredit && Boolean(creditData) && total > creditData!.availableCredit
 
   const missingItems: string[] = []
@@ -372,20 +378,20 @@ export default function POSCheckoutPage() {
     queryClient.invalidateQueries({ queryKey: ['documents'] })
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['products-search'] })
-    // La venta descontó stock: refrescar las queries de producto propias de este checkout
-    // ('products' no las cubre por prefijo). Sin esto el disponible mostrado en la búsqueda
-    // manual y en las líneas del carrito queda con el stock viejo hasta recargar (F5), y la
-    // validación cliente de cantidad máxima usa ese valor stale.
+    // La venta descontó stock: hay que refrescar las claves de caché de producto propias de
+    // este checkout. Sin esto, el disponible que se ve en la búsqueda manual y en las líneas
+    // del carrito queda con el stock viejo hasta recargar, y la validación de cantidad máxima
+    // usa ese valor viejo.
     queryClient.invalidateQueries({ queryKey: ['product-by-code'] })
     queryClient.invalidateQueries({ queryKey: ['products-search-pos'] })
-    // COT genera una cuenta por cobrar → el cupo disponible del cliente cambió.
+    // La venta a crédito genera una cuenta por cobrar, así que cambió el cupo disponible del cliente.
     queryClient.invalidateQueries({ queryKey: ['customer-credit'] })
     if (confirmed.sourceDocument) {
       queryClient.invalidateQueries({ queryKey: ['document', confirmed.sourceDocument.id] })
     }
   }
 
-  // Traduce un 400 de cupo excedido al panel dedicado; devuelve true si lo consumió.
+  // Pasa un error de cupo excedido al panel de error dedicado; devuelve true si lo manejó.
   function handleCreditError(err: unknown): boolean {
     const credit = parseCreditLimitError(err)
     if (!credit) return false
@@ -406,7 +412,7 @@ export default function POSCheckoutPage() {
       date: TODAY,
       thirdPartyId,
       sellerId,
-      // COT no lleva forma de pago; contado la exige (validado arriba en missingItems).
+      // La venta a crédito no lleva forma de pago; la de contado la exige (ya validado arriba).
       paymentMethod: isCredit ? undefined : (paymentMethod as PaymentMethod),
       items,
     }
@@ -444,7 +450,7 @@ export default function POSCheckoutPage() {
 
   return (
     <div className="space-y-6 pb-10">
-      {/* Header */}
+      {/* Encabezado */}
       <div className="flex items-center gap-4">
         <button
           type="button"
@@ -548,8 +554,8 @@ export default function POSCheckoutPage() {
               )}
             </div>
 
-            {/* Panel de cupo de crédito — informativo, solo lectura. El backend es la
-                autoridad; esto solo anticipa el bloqueo antes de confirmar. */}
+            {/* Panel de cupo de crédito — informativo, solo lectura. La validación real la hace
+                el backend; esto solo muestra el bloqueo antes de confirmar. */}
             {isCredit && thirdPartyId && (
               <div className="rounded-xl border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/60 dark:bg-indigo-500/10 p-4">
                 <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
@@ -590,7 +596,7 @@ export default function POSCheckoutPage() {
               </div>
             )}
 
-            {/* 400 de cupo devuelto por el backend (carrera del re-chequeo con lock / convert). */}
+            {/* Error de cupo devuelto por el backend (dos ventas compitiendo por el cupo, o al convertir). */}
             {creditError && (
               <div className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 p-4">
                 <p className="text-sm text-red-700 dark:text-red-400 font-medium">{creditError.message}</p>
@@ -622,11 +628,11 @@ export default function POSCheckoutPage() {
               <ArrowRightLeft className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">
-                  {pendingPreventa.thirdParty?.name ?? 'Este cliente'} tiene una preventa activa (
+                  {pendingPreventa.thirdParty?.name ?? 'Este cliente'} tiene una {sourceKindNoun(pendingPreventa.type)} activa (
                   {docNumber(pendingPreventa.type, pendingPreventa.number)}) con productos pendientes por convertir.
                 </p>
                 <p className="text-xs text-blue-600/80 dark:text-blue-400/70 mt-1 font-accent">
-                  Se creará una venta {isCredit ? 'a crédito' : 'nueva'} con los mismos ítems y precios cotizados de esa preventa.
+                  Se creará una venta {isCredit ? 'a crédito' : 'nueva'} con los mismos ítems y precios cotizados de esa {sourceKindNoun(pendingPreventa.type)}.
                   {fields.length > 0 && ` Esto reemplazará los ${fields.length} producto(s) ya agregados al carrito.`}
                 </p>
                 {!isCredit && !paymentMethod && (

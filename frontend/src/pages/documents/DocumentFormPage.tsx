@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -36,52 +36,78 @@ const DOC_TYPE_OPTIONS = DOC_TYPE_SELECT_OPTIONS
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
+// Sustantivo por tipo para títulos y botones: solo la remisión tiene texto propio; el resto usa "operación".
+const TYPE_NOUN: Record<string, string> = { REM: 'remisión' }
+const nounFor = (t: string) => TYPE_NOUN[t] ?? 'operación'
+
 // ─── main page ───────────────────────────────────────────────────────────────
 
 export default function DocumentFormPage() {
   const navigate    = useNavigate()
   const { id }      = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const isEditing   = Boolean(id)
   const queryClient = useQueryClient()
 
   const userPermissions = useAuthStore((s) => s.user?.permissions ?? [])
-  // POS y COT tienen su propia pantalla de checkout (POSCheckoutPage con toggle Contado/
-  // Crédito) — nunca se crean desde este formulario genérico aunque el usuario tenga el permiso.
+  const canCreateType = (t: string) => userPermissions.includes(`document.create.${t}`)
+
+  // Tipos que NO salen en el desplegable "Tipo de operación": las ventas tienen su propia
+  // pantalla de checkout; la remisión se crea solo desde el enlace "Nueva remisión" del menú,
+  // con el tipo ya fijado, para que no parezca "una operación de inventario más".
   const availableTypes = DOC_TYPE_OPTIONS.filter(
-    (opt) => opt.value !== 'POS' && opt.value !== 'COT' && userPermissions.includes(`document.create.${opt.value}`)
+    (opt) => opt.value !== 'POS' && opt.value !== 'COT' && opt.value !== 'REM' && canCreateType(opt.value)
   )
 
-  // Third-party search — proveedor (CM/DVC) o cliente (PV), según docType (ver needsSupplier/needsCustomer)
+  // Tipos que solo se pueden crear desde un enlace directo, no desde el desplegable.
+  const DEEP_LINK_TYPES: readonly FormValues['type'][] = ['REM']
+  const requestedType = searchParams.get('type') as FormValues['type'] | null
+  const requestedTypeAllowed =
+    requestedType != null &&
+    canCreateType(requestedType) &&
+    (DEEP_LINK_TYPES.includes(requestedType) || availableTypes.some((opt) => opt.value === requestedType))
+  const defaultType = (
+    requestedTypeAllowed ? requestedType : availableTypes[0]?.value ?? 'CM'
+  ) as FormValues['type']
+
+  // Si el enlace pide crear un tipo para el que el usuario no tiene permiso, no romper:
+  // mandarlo al listado. Al editar, el tipo lo fija el documento existente.
+  useEffect(() => {
+    if (isEditing || !requestedType || canCreateType(requestedType)) return
+    toast.error('No tienes permiso para crear este tipo de documento')
+    navigate('/documents', { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedType, isEditing])
+
+  // Búsqueda de tercero: proveedor en compras y devoluciones, cliente en preventas y remisiones.
   const [tpSearch, setTpSearch] = useState('')
   const [debouncedTpSearch] = useDebounce(tpSearch, 400)
   const [tpSelectedName, setTpSelectedName] = useState('')
-  // Marcas activas del proveedor elegido (solo CM/DVC) — bloqueo duro del buscador/escaneo de
-  // producto a esas marcas (ver plan de negocio "Filtrar productos por marca del proveedor").
+  // Marcas activas del proveedor elegido (solo compras y devoluciones): el buscador y el
+  // escaneo de productos quedan restringidos a esas marcas.
   const [selectedSupplierBrandIds, setSelectedSupplierBrandIds] = useState<string[]>([])
-  // Condiciones de descuento del proveedor elegido (solo informativo, sin cálculo) — banner
-  // visible únicamente para CM (compra), ver JSX debajo del combobox de proveedor.
+  // Condiciones de descuento del proveedor elegido, solo informativas (no se calcula nada).
+  // Se muestran en un aviso, solo en compras.
   const [selectedSupplierDiscountNotes, setSelectedSupplierDiscountNotes] = useState<string | undefined>()
 
-  // Vendedora — solo preventas (PV)
+  // Vendedora: solo preventas y remisiones.
   const [sellerSearch, setSellerSearch] = useState('')
   const [debouncedSellerSearch] = useDebounce(sellerSearch, 400)
   const [sellerSelectedName, setSellerSelectedName] = useState('')
 
-  // avgCost + unitOfMeasure + availableStock por producto conocidos al momento de agregarlo vía
-  // escaneo de código de barras — permite que ProductRow inicialice su
-  // selectedAvgCost/selectedUnitOfMeasure/selectedAvailableStock aunque la fila no se haya creado
-  // a través del combobox propio de la fila (ver initialAvgCost/initialUnitOfMeasure/
-  // initialAvailableStock en ProductRow). availableStock es opcional: al reconstruir en modo
-  // edición desde existingDoc.documentItems no hay un valor persistido equivalente (no se guarda
-  // en DocumentItem, y mostrar el "vigente" sería engañoso ya que esos ítems ya están reservando
-  // ese stock) — queda sin dato hasta que el combobox propio de la fila lo resuelva.
+  // Costo promedio, unidad de medida y disponible de cada producto, tal como estaban al
+  // agregarlo por escaneo. Sirve para que la fila muestre esos datos aunque el producto no se
+  // haya elegido desde su propio buscador. El disponible es opcional: al reabrir un borrador
+  // para editar no hay un valor guardado equivalente (y mostrar el "actual" engañaría, porque
+  // esas líneas ya están reservando stock), así que queda vacío hasta que el buscador de la
+  // fila lo resuelva.
   const [scannedProductInfo, setScannedProductInfo] = useState<
     Record<string, { avgCost: number; unitOfMeasure: 'unidad' | 'docena'; availableStock?: number }>
   >({})
 
-  // Ciclo de foco escaneo→cantidad→escaneo del lector de código de barras (ver
-  // BarcodeScanInput/ProductRow). Un Map de refs DOM que cambia con cada fila agregada/eliminada
-  // debe vivir en useRef, no en useState — mutarlo nunca debe disparar un re-render.
+  // Ciclo de foco del lector de código de barras: escanear → cantidad → escanear. La lista de
+  // referencias a los inputs cambia con cada fila que se agrega o quita, así que va en useRef,
+  // no en useState: modificarla nunca debe provocar un re-render.
   const quantityInputRefs = useRef<Map<number, HTMLInputElement>>(new Map())
   const barcodeInputRef = useRef<{ focus: () => void }>(null)
   const [pendingQuantityFocusIndex, setPendingQuantityFocusIndex] = useState<number | null>(null)
@@ -98,7 +124,7 @@ export default function DocumentFormPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(formSchema) as any,
     defaultValues: {
-      type:  (availableTypes[0]?.value ?? 'CM') as FormValues['type'],
+      type:  defaultType,
       date:  TODAY,
       items: [],
     },
@@ -106,11 +132,11 @@ export default function DocumentFormPage() {
 
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'items' })
 
-  // React garantiza que los refs del árbol ya están adjuntados antes de correr los efectos
-  // de ese mismo commit — a diferencia de requestAnimationFrame (heurística de timing), este
-  // efecto siempre encuentra el input de cantidad ya montado. `fields` en deps: si el índice
-  // pendiente se fija en el mismo tick en que se agrega la fila, el efecto se reevalúa cuando
-  // la fila realmente aparece en el DOM.
+  // React garantiza que las referencias del árbol ya están conectadas antes de correr los
+  // efectos de ese mismo render, así que este efecto siempre encuentra el input de cantidad
+  // montado. Se incluye `fields` en las dependencias: si el índice pendiente se fija en el
+  // mismo momento en que se agrega la fila, el efecto se vuelve a evaluar cuando la fila
+  // aparece de verdad en pantalla.
   useEffect(() => {
     if (pendingQuantityFocusIndex === null) return
     quantityInputRefs.current.get(pendingQuantityFocusIndex)?.focus()
@@ -120,8 +146,7 @@ export default function DocumentFormPage() {
   const docType         = watch('type')
   const warehouseId     = watch('warehouseId')
   const destWarehouseId = watch('destWarehouseId')
-  // Ícono + borde de acento del header/card — se recalcula en vivo si el usuario cambia el
-  // selector "Tipo de operación", ya que docType viene de watch().
+  // Ícono y color de acento del encabezado; se recalculan en vivo al cambiar el tipo de operación.
   const accent          = DOC_TYPE_ACCENT[docType]
 
   // ── load existing document for edit ──────────────────────────────────────
@@ -139,10 +164,9 @@ export default function DocumentFormPage() {
       navigate(`/documents/${existingDoc.id}`)
       return
     }
-    // Un borrador POS/COT (creado desde el checkout, aún no confirmado) no se edita desde este
-    // form genérico — no tiene selector de cliente/vendedor/forma de pago/cupo ni columna de
-    // precio para esos tipos. Se retoma desde POSCheckoutPage (a través de "Nueva venta" / el
-    // detalle del documento), no aquí.
+    // Un borrador de venta (creado desde el checkout y todavía sin confirmar) no se edita en
+    // este form genérico: acá no hay selección de cliente, vendedora, forma de pago ni cupo,
+    // ni columna de precio para esos tipos. Se retoma desde el checkout, no acá.
     if (existingDoc.type === 'POS' || existingDoc.type === 'COT') {
       toast.error('Las ventas se editan desde el checkout, no desde este formulario')
       navigate(`/documents/${existingDoc.id}`)
@@ -194,10 +218,10 @@ export default function DocumentFormPage() {
     staleTime: 10 * 60 * 1000,
   })
 
-  // CM/DVC piden proveedor; PV pide cliente — mismo combobox, distinto filtro server-side.
+  // CM/DVC piden proveedor; PV y REM piden cliente — mismo combobox, distinto filtro server-side.
   const needsSupplier = docType === 'CM' || docType === 'DVC'
-  const needsCustomer = docType === 'PV'
-  const needsSeller    = docType === 'PV'
+  const needsCustomer = docType === 'PV' || docType === 'REM'
+  const needsSeller    = docType === 'PV' || docType === 'REM'
 
   const hasTpSearch = debouncedTpSearch.length >= 1
 
@@ -225,7 +249,7 @@ export default function DocumentFormPage() {
     enabled: needsSeller && hasSellerSearch,
   })
 
-  // Load source warehouse detail for zone/bin cascade (only for T type)
+  // Carga el detalle de la bodega origen para la cascada zona/bulto (solo en traslados).
   const { data: sourceWarehouseDetail, isLoading: isLoadingSourceDetail } = useQuery({
     queryKey: ['warehouse-detail', warehouseId],
     queryFn: () => getWarehouse(warehouseId!),
@@ -233,7 +257,7 @@ export default function DocumentFormPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  // Load dest warehouse detail for zone/bin cascade (only for T type)
+  // Carga el detalle de la bodega destino para la cascada zona/bulto (solo en traslados).
   const { data: destWarehouseDetail, isLoading: isLoadingDestDetail } = useQuery({
     queryKey: ['warehouse-detail', destWarehouseId],
     queryFn: () => getWarehouse(destWarehouseId!),
@@ -241,9 +265,8 @@ export default function DocumentFormPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  // Un bulto pertenece a una bodega específica (Bin → Zone → Warehouse) — si cambia la
-  // bodega origen, el bulto ya seleccionado casi seguro ya no es válido, así que se limpia
-  // junto con la zona (selectedSourceZoneId, ver abajo) en vez de dejar un valor huérfano.
+  // Cada bulto pertenece a una bodega concreta. Si cambia la bodega origen, el bulto ya
+  // elegido casi seguro deja de ser válido, así que se limpia junto con la zona.
   useEffect(() => {
     setValue('sourceBinId', undefined)
   }, [warehouseId, setValue])
@@ -253,26 +276,24 @@ export default function DocumentFormPage() {
     setValue('destBinId', undefined)
   }, [destWarehouseId, setValue])
 
-  // Origen y destino no pueden ser la misma bodega. El <select> de destino filtra la opción
-  // igual al origen, pero si el usuario cambia el origen DESPUÉS de elegir destino, el id de
-  // destino queda stale (sin <option> visible) y destRequiresBin lo seguiría leyendo →
-  // cascada zona/bulto destino fantasma. Al limpiarlo, los effects de arriba encadenan el
-  // reset de destBinId y selectedZoneId.
+  // Origen y destino no pueden ser la misma bodega. El selector de destino ya oculta la
+  // opción igual al origen, pero si el usuario cambia el origen DESPUÉS de elegir destino,
+  // el destino queda apuntando a algo que ya no se ve y arrastraría una cascada zona/bulto
+  // fantasma. Al limpiarlo, los efectos de arriba encadenan el reinicio de bulto y zona.
   useEffect(() => {
     if (destWarehouseId && destWarehouseId === warehouseId) {
       setValue('destWarehouseId', undefined)
     }
   }, [warehouseId, destWarehouseId, setValue])
 
-  // Solo las bodegas type 'warehouse' (bodega física) llevan seguimiento por bulto; las
-  // type 'store' (almacén de venta) no tienen ese nivel de granularidad, así que el
-  // traslado no pide zona/bulto cuando el origen es un 'store'.
+  // Solo las bodegas físicas llevan seguimiento por bulto; los almacenes de venta no tienen
+  // ese detalle, así que el traslado no pide zona ni bulto cuando el origen es un almacén.
   const sourceRequiresBin =
     docType === 'T' &&
     Boolean(warehouseId) &&
     warehouses.find((w: Warehouse) => w.id === warehouseId)?.type === 'warehouse'
 
-  // Mismo criterio que sourceRequiresBin, aplicado a la bodega destino.
+  // Mismo criterio, aplicado a la bodega destino.
   const destRequiresBin =
     docType === 'T' &&
     Boolean(destWarehouseId) &&
@@ -306,9 +327,9 @@ export default function DocumentFormPage() {
       bin.binStocks.some((bs) => bs.quantity > 0 && itemProductIds.has(bs.productId)),
     )
 
-    // Si el bulto ya elegido (ej. al editar un borrador) dejó de calificar por el filtro de
-    // arriba (se agregó/quitó un ítem desde entonces), igual se re-inyecta en la lista para
-    // que el <select> no muestre un value sin <option> correspondiente.
+    // Si el bulto ya elegido (p. ej. al editar un borrador) dejó de pasar el filtro de arriba
+    // porque desde entonces se agregó o quitó un ítem, igual se vuelve a meter en la lista
+    // para que el selector no quede apuntando a una opción que no existe.
     if (currentSourceBinId && !available.some((b) => b.id === currentSourceBinId)) {
       const staleSelected = baseBins.find((b) => b.id === currentSourceBinId)
       if (staleSelected) return [...available, staleSelected]
@@ -322,21 +343,19 @@ export default function DocumentFormPage() {
       ? destZones.find((z) => z.id === selectedZoneId)?.bins ?? []
       : destZones.flatMap((z) => z.bins)
 
-    // `bin.occupied` es un campo derivado (no persistido) que el backend calcula como
-    // SUM(BinStock.quantity) > 0 para ese bulto — nunca un toggle manual. Un bulto ya
-    // ocupado por un traslado anterior no debe recibir un segundo traslado hasta que su
-    // stock se mueva por completo; se libera solo automáticamente. El panel admin de
-    // bodegas (DetailPanel.tsx) sí lista todos los bultos sin este filtro.
-    // Excepción: un bulto ocupado sigue calificando si todo lo que ya contiene coincide con
-    // los productos que el documento actual ya tiene agregados — eso es "apilar" el mismo
-    // producto, no mezclar. Un bulto debe contener stock de un único producto a la vez; el
-    // backend valida esto de forma autoritativa, este filtro es solo el guardrail de UX.
+    // "occupied" lo calcula el backend en vivo (tiene stock > 0), no es un interruptor manual.
+    // Un bulto ya ocupado por un traslado anterior no debe recibir otro hasta que se vacíe;
+    // se libera solo. El panel de administración de bodegas sí muestra todos los bultos.
+    // Excepción: un bulto ocupado sigue sirviendo si todo lo que contiene coincide con los
+    // productos que ya tiene este documento — eso es apilar el mismo producto, no mezclar.
+    // Un bulto solo puede tener un producto a la vez; el backend lo valida de verdad, este
+    // filtro es solo una ayuda visual.
     const available = baseBins.filter((bin) =>
       !bin.occupied || bin.binStocks.every((bs) => itemProductIds.has(bs.productId)),
     )
 
-    // Mismo motivo que en sourceBins: mantener visible el bulto ya seleccionado aunque ya
-    // no califique (p. ej. quedó ocupado por otro cambio) para no dejar un <select> huérfano.
+    // Mismo motivo que en los bultos de origen: mantener visible el bulto ya elegido aunque
+    // ya no pase el filtro, para no dejar el selector apuntando a una opción inexistente.
     if (currentDestBinId && !available.some((b) => b.id === currentDestBinId)) {
       const staleSelected = baseBins.find((b) => b.id === currentDestBinId)
       if (staleSelected) return [...available, staleSelected]
@@ -345,7 +364,7 @@ export default function DocumentFormPage() {
     return available
   })()
 
-  // Third-party options (proveedor para CM/DVC, cliente para PV)
+  // Opciones de tercero: proveedor en compras y devoluciones, cliente en preventas y remisiones.
   const tpOptions: ComboboxOption[] = (tpData?.items ?? []).map((tp: ThirdParty) => ({
     id: tp.id,
     label: tp.name,
@@ -358,7 +377,7 @@ export default function DocumentFormPage() {
     ? [{ id: currentTpId, label: tpSelectedName }, ...tpOptions.filter((o) => o.id !== currentTpId)]
     : tpOptions
 
-  // Seller options — solo preventas (PV)
+  // Opciones de vendedora: solo preventas y remisiones.
   const sellerOptions: ComboboxOption[] = (sellerData?.items ?? []).map((tp: ThirdParty) => ({
     id: tp.id,
     label: tp.name,
@@ -411,16 +430,16 @@ export default function DocumentFormPage() {
       type:            values.type,
       date:            values.date,
       thirdPartyId:    values.thirdPartyId || undefined,
-      sellerId:        values.type === 'PV' ? (values.sellerId || undefined) : undefined,
+      sellerId:        (values.type === 'PV' || values.type === 'REM') ? (values.sellerId || undefined) : undefined,
       warehouseId:     values.type === 'T' ? (values.warehouseId || undefined) : undefined,
       sourceBinId:     values.sourceBinId || undefined,
       destWarehouseId: values.destWarehouseId || undefined,
       destBinId:       values.destBinId || undefined,
       adjustmentReason:
         values.type === 'EAI' ? (values.adjustmentReason || undefined) : undefined,
-      // null explícito (no undefined) cuando no aplica "otro": JSON.stringify elimina las
-      // claves undefined del body, así que un texto viejo de adjustmentReasonOther quedaría
-      // huérfano en la base de datos si el motivo cambia a otra categoría antes de guardar.
+      // Se manda null explícito (no undefined) cuando el motivo no es "otro": al serializar,
+      // las claves undefined se quitan del cuerpo, y un texto viejo de "otro motivo" quedaría
+      // guardado en la base si el motivo cambia de categoría antes de guardar.
       adjustmentReasonOther:
         values.type === 'EAI' && values.adjustmentReason === 'otro'
           ? (values.adjustmentReasonOther || undefined)
@@ -466,17 +485,17 @@ export default function DocumentFormPage() {
   const needsAdjustmentReason = docType === 'EAI'
   const currentAdjustmentReason = watch('adjustmentReason')
   const showCostColumn  = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
-  // Preventas (PV) muestran precio de venta editable en vez de costo — columna separada.
-  const showPriceColumn = docType === 'PV'
-  // SAJ y T también necesitan la columna de costo (de solo lectura) para que el número de <td> por
-  // fila siga alineado con el <thead> — antes la columna quedaba totalmente ausente para ambos.
+  // Preventas y remisiones muestran precio de venta editable en vez de costo: es una columna aparte.
+  const showPriceColumn = docType === 'PV' || docType === 'REM'
+  // Las salidas por ajuste y los traslados también necesitan la columna de costo (de solo
+  // lectura) para que las celdas de cada fila sigan alineadas con el encabezado.
   const hasCostColumn   = showCostColumn || showPriceColumn || docType === 'SAJ' || docType === 'T'
-  // Nota de talla por línea — solo traslados (T), ver showObservaciones en ProductRow.tsx.
+  // Nota de talla por línea: solo en traslados.
   const showObservacionesColumn = docType === 'T'
 
   return (
     <div className="space-y-6 pb-10">
-      {/* Header */}
+      {/* Encabezado */}
       <div className="flex items-center gap-4">
         <button
           type="button"
@@ -490,12 +509,14 @@ export default function DocumentFormPage() {
         </div>
         <div>
           <h1 className="text-2xl text-content">
-            {isEditing ? 'Editar operación' : 'Nueva operación'}
+            {isEditing ? `Editar ${nounFor(docType)}` : `Nueva ${nounFor(docType)}`}
           </h1>
           <p className="text-content-muted text-sm mt-0.5 font-accent">
             {isEditing
               ? 'Editando borrador'
-              : 'Crea una nueva operación de inventario'}
+              : docType === 'REM'
+                ? 'Crea una nueva remisión'
+                : 'Crea una nueva operación de inventario'}
           </p>
         </div>
       </div>
@@ -506,7 +527,7 @@ export default function DocumentFormPage() {
         noValidate
         className="space-y-6"
       >
-        {/* ── General info card — borde de acento izquierdo por tipo, ancla visual del form ── */}
+        {/* ── Datos generales — borde de acento izquierdo según el tipo, ancla visual del form ── */}
         <div className={cn(
           'bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-5 border-l-4',
           accent.border
@@ -516,11 +537,19 @@ export default function DocumentFormPage() {
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {/* Type */}
+            {/* Tipo — la remisión va con tipo fijo (no editable); el resto usa el desplegable */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-content-secondary">
-                Tipo de operación <span className="text-red-500">*</span>
+                Tipo de operación {docType !== 'REM' && <span className="text-red-500">*</span>}
               </label>
+              {docType === 'REM' ? (
+                <div className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg border border-ui-border-medium bg-surface-raised text-content opacity-90">
+                  <span className={cn('w-6 h-6 rounded-md flex items-center justify-center shrink-0', accent.iconBg)}>
+                    <accent.icon className={cn('w-4 h-4', accent.iconText)} />
+                  </span>
+                  Remisión
+                </div>
+              ) : (
               <Controller
                 name="type"
                 control={control}
@@ -558,9 +587,10 @@ export default function DocumentFormPage() {
                   </select>
                 )}
               />
+              )}
             </div>
 
-            {/* Date */}
+            {/* Fecha */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-content-secondary">
                 Fecha <span className="text-red-500">*</span>
@@ -572,7 +602,7 @@ export default function DocumentFormPage() {
               />
             </div>
 
-            {/* Third party — proveedor (CM/DVC) o cliente (PV) */}
+            {/* Tercero — proveedor en compras y devoluciones, cliente en preventas y remisiones */}
             {needsThirdParty && (
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-content-secondary">
@@ -592,10 +622,10 @@ export default function DocumentFormPage() {
                         setSelectedSupplierBrandIds(tp?.supplier?.brands.map((b) => b.id) ?? [])
                         setSelectedSupplierDiscountNotes(tp?.supplier?.discountNotes ?? undefined)
 
-                        // Cambiar de proveedor (CM/DVC) con ítems ya cargados invalida la marca de
-                        // todos ellos — mismo patrón que el selector de tipo de documento
-                        // (replace([])). Este combobox también se usa para elegir cliente en PV
-                        // (needsCustomer), que no filtra por marca — no debe vaciar el carrito ahí.
+                        // Cambiar de proveedor con ítems ya cargados invalida la marca de todos
+                        // ellos, así que se vacían (igual que al cambiar el tipo de documento).
+                        // Este mismo buscador sirve para elegir cliente en preventas y remisiones,
+                        // que no filtran por marca: ahí no se debe vaciar el carrito.
                         if (needsSupplier && getValues('items').length > 0) {
                           replace([])
                         }
@@ -620,7 +650,7 @@ export default function DocumentFormPage() {
               </div>
             )}
 
-            {/* Seller — solo preventas (PV) */}
+            {/* Vendedora — solo preventas y remisiones */}
             {needsSeller && (
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-content-secondary">
@@ -647,7 +677,7 @@ export default function DocumentFormPage() {
               </div>
             )}
 
-            {/* Transfer: source + dest warehouses */}
+            {/* Traslado: bodega origen y destino */}
             {needsTransfer && (
               <>
                 <div className="space-y-1.5">
@@ -674,7 +704,7 @@ export default function DocumentFormPage() {
                   />
                 </div>
 
-                {/* Zone + bin cascade when source is type 'warehouse' */}
+                {/* Cascada zona + bulto cuando el origen es una bodega física */}
                 {sourceRequiresBin && (
                   <>
                     <div className="space-y-1.5">
@@ -760,7 +790,7 @@ export default function DocumentFormPage() {
                   />
                 </div>
 
-                {/* Zone + bin cascade when dest is type 'warehouse' */}
+                {/* Cascada zona + bulto cuando el destino es una bodega física */}
                 {destRequiresBin && (
                   <>
                     <div className="space-y-1.5">
@@ -823,7 +853,7 @@ export default function DocumentFormPage() {
               </>
             )}
 
-            {/* Adjustment reason (EAI only) */}
+            {/* Motivo del ajuste (solo entradas por ajuste) */}
             {needsAdjustmentReason && (
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-content-secondary">
@@ -844,7 +874,7 @@ export default function DocumentFormPage() {
             )}
           </div>
 
-          {/* Adjustment reason detail — solo EAI cuando el motivo es "Otro" */}
+          {/* Detalle del motivo — solo en entradas por ajuste cuando el motivo es "Otro" */}
           {needsAdjustmentReason && currentAdjustmentReason === 'otro' && (
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-content-secondary">
@@ -860,7 +890,7 @@ export default function DocumentFormPage() {
             </div>
           )}
 
-          {/* Notes */}
+          {/* Notas */}
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-content-secondary">
               Notas
@@ -874,7 +904,7 @@ export default function DocumentFormPage() {
           </div>
         </div>
 
-        {/* ── Items editor ──────────────────────────────────────────────── */}
+        {/* ── Editor de ítems ──────────────────────────────────────────── */}
         <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-ui-divide flex items-center justify-between">
             <div>
@@ -1008,7 +1038,7 @@ export default function DocumentFormPage() {
           )}
         </div>
 
-        {/* ── Actions ───────────────────────────────────────────────────── */}
+        {/* ── Acciones ─────────────────────────────────────────────────── */}
         <div className="flex items-center justify-end gap-3">
           <button
             type="button"
@@ -1023,7 +1053,7 @@ export default function DocumentFormPage() {
             className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-xl gradient-action hover:opacity-90 transition-opacity disabled:opacity-60"
           >
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isEditing ? 'Guardar cambios' : 'Crear operación'}
+            {isEditing ? 'Guardar cambios' : `Crear ${nounFor(docType)}`}
           </button>
         </div>
       </form>

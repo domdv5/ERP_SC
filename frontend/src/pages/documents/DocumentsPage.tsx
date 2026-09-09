@@ -62,12 +62,12 @@ export default function DocumentsPage() {
   const userPermissions = useAuthStore((s) => s.user?.permissions ?? [])
   const canCreateAnyDoc = userPermissions.some((p) => p.startsWith('document.create.'))
 
-  // Types this user is allowed to create/work with — used to scope the list
+  // Tipos que este usuario puede crear; se usan para acotar el listado.
   const allowedTypes = userPermissions
     .filter((p) => p.startsWith('document.create.'))
     .map((p) => p.replace('document.create.', '') as DocumentType)
 
-  // Filter dropdown: only show types the user can work with (keep "Todos" option)
+  // En el filtro de tipo solo se muestran los que el usuario puede crear (más la opción "Todos").
   const visibleTypeOptions = allowedTypes.length > 0
     ? ALL_TYPES.filter((t) => t.value === '' || allowedTypes.includes(t.value as DocumentType))
     : ALL_TYPES
@@ -79,7 +79,7 @@ export default function DocumentsPage() {
 
   const [debouncedSearch] = useDebounce(search, 400)
 
-  // Reset page when filters change
+  // Volver a la página 1 cuando cambian los filtros.
   useEffect(() => { setPage(1) }, [debouncedSearch, typeFilter, statusFilter])
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -88,7 +88,7 @@ export default function DocumentsPage() {
       getDocuments({
         search: debouncedSearch || undefined,
         type: typeFilter || undefined,
-        // Scope list to allowed types when user has specific create permissions
+        // Si el usuario solo puede crear ciertos tipos, el listado se limita a esos.
         types: !typeFilter && allowedTypes.length > 0 ? allowedTypes.join(',') : undefined,
         status: statusFilter || undefined,
         page,
@@ -242,15 +242,16 @@ export default function DocumentsPage() {
                 {items.map((doc) => {
                   const typeInfo   = TYPE_LABELS[doc.type]
                   const statusInfo = STATUS_LABELS[doc.status]
-                  // Bloque `pv` solo viaja en documentos PV — optional chaining siempre (puede ser null).
-                  const pvConversion = doc.type === 'PV' ? doc.pv?.conversion : undefined
+                  // El bloque de conversión solo llega en preventas y remisiones, y puede venir vacío.
+                  const isReservationType = doc.type === 'PV' || doc.type === 'REM'
+                  const pvConversion = isReservationType ? doc.pv?.conversion : undefined
                   const convChip =
                     pvConversion && pvConversion.status !== 'none'
                       ? PV_CONVERSION_BADGE[pvConversion.status]
                       : null
-                  // Antigüedad solo mientras la PV sigue abierta (confirmada y sin derivada activa).
+                  // Antigüedad solo mientras la reserva sigue abierta (confirmada y sin derivada activa).
                   const ageLabel =
-                    doc.status === 'confirmed' && doc.pv?.conversion.status === 'none'
+                    isReservationType && doc.status === 'confirmed' && doc.pv?.conversion.status === 'none'
                       ? formatDaysSince(daysSince(doc.createdAt))
                       : null
                   return (

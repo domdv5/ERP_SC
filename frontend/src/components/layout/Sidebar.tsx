@@ -17,6 +17,7 @@ import {
   Contact,
   MapPinned,
   Banknote,
+  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth.store";
@@ -33,12 +34,24 @@ function getNavLinkClass(isActive: boolean) {
   );
 }
 
-// "/documents/pos/new" empieza con "/documents", así que el isActive por-defecto de
-// NavLink (startsWith, sin prop `end`) marcaría "Operaciones" activo también estando en
-// POS. `end` tampoco sirve: exigiría match exacto y rompería el highlight en
-// /documents/new y /documents/:id. Se excluye el subpath /documents/pos explícitamente.
-function isDocumentsActive(pathname: string) {
-  return pathname.startsWith("/documents") && !pathname.startsWith("/documents/pos");
+const REM_NEW_PATH = "/documents/new?type=REM";
+
+// Ruta del ítem "Nueva remisión" del grupo Ventas. Al calcular si el enlace está
+// activo, NavLink ignora la parte de "?type=REM", así que hay que compararla a mano.
+function isRemNewActive(pathname: string, search: string) {
+  return pathname === "/documents/new" && new URLSearchParams(search).get("type") === "REM";
+}
+
+// "/documents/pos/new" y "/documents/new?type=REM" también empiezan con "/documents", así
+// que NavLink, por defecto, marcaría "Operaciones" como activo estando en el checkout de
+// venta o en el form de remisión. Forzar coincidencia exacta tampoco sirve: rompería el
+// resaltado en "/documents/new" y "/documents/:id". Se excluyen esas dos rutas a mano.
+function isDocumentsActive(pathname: string, search: string) {
+  return (
+    pathname.startsWith("/documents") &&
+    !pathname.startsWith("/documents/pos") &&
+    !isRemNewActive(pathname, search)
+  );
 }
 
 const topGroups = [
@@ -132,23 +145,28 @@ export function Sidebar() {
   const canViewFinance = canReadAr || canReadAp;
   const canCreatePOS = usePermission("document.create.POS");
   const canCreateCOT = usePermission("document.create.COT");
+  const canCreateREM = usePermission("document.create.REM");
   const canSell = canCreatePOS || canCreateCOT;
+  // "Ventas" aparece si el usuario puede facturar (contado/crédito) o crear remisiones.
+  const showVentas = canSell || canCreateREM;
 
   const operacionesGroup = {
     label: "Operaciones",
     items: [{ to: "/documents", icon: FileText, label: "Operaciones" }],
   };
 
-  // "Ventas" se arma acá (no como constante de módulo) porque el ítem solo debe aparecer
-  // para roles que pueden vender (contado y/o crédito) — mismo criterio que financeGroup
-  // (canViewFinance) más abajo. El checkout (`/documents/pos/new`) atiende ambos modos con
-  // un toggle Contado/Crédito. Sección separada de Operaciones: acá van a caer a futuro
-  // otros tipos de venta (DVV/REM) sin mezclarse con compras/ajustes/traslados.
+  // "Ventas" se arma acá (no como constante de módulo) porque cada ítem depende de su propio
+  // permiso, igual que el grupo de Finanzas más abajo. La venta de contado y a crédito usan
+  // una misma pantalla con un toggle; la remisión se crea en el form genérico de documentos.
+  // Es una sección aparte de Operaciones, que es solo compras, ajustes y traslados.
   const ventasGroup = {
     label: "Ventas",
     items: [
       ...(canSell
         ? [{ to: "/documents/pos/new", icon: Banknote, label: "Nueva venta" }]
+        : []),
+      ...(canCreateREM
+        ? [{ to: REM_NEW_PATH, icon: Truck, label: "Nueva remisión" }]
         : []),
     ],
   };
@@ -244,10 +262,10 @@ export function Sidebar() {
           </NavLink>
         </div>
 
-        {/* Operaciones + Ventas (oculta sin permiso de venta contado/crédito) + Finanzas (oculta sin ar.read/ap.read) */}
+        {/* Operaciones + Ventas (oculta si no puede vender ni hacer remisiones) + Finanzas (oculta sin permiso de cuentas) */}
         {[
           operacionesGroup,
-          ...(canSell ? [ventasGroup] : []),
+          ...(showVentas ? [ventasGroup] : []),
           ...(canViewFinance ? [financeGroup] : []),
         ].map((group) => (
           <div key={group.label} className="space-y-0.5">
@@ -259,11 +277,14 @@ export function Sidebar() {
                 key={to}
                 to={to}
                 className={
-                  // El ítem "/documents" ("Operaciones") no puede depender del isActive
-                  // por-defecto de NavLink: ver isDocumentsActive arriba.
+                  // "Operaciones" y "Nueva remisión" no pueden usar el cálculo automático de
+                  // NavLink: uno coincidiría de más por prefijo, el otro ignora el "?type=REM".
+                  // Se resuelven con las funciones de arriba.
                   to === "/documents"
-                    ? () => getNavLinkClass(isDocumentsActive(location.pathname))
-                    : ({ isActive }) => getNavLinkClass(isActive)
+                    ? () => getNavLinkClass(isDocumentsActive(location.pathname, location.search))
+                    : to === REM_NEW_PATH
+                      ? () => getNavLinkClass(isRemNewActive(location.pathname, location.search))
+                      : ({ isActive }) => getNavLinkClass(isActive)
                 }
               >
                 <Icon className="w-4 h-4 shrink-0" />

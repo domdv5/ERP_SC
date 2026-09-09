@@ -30,6 +30,8 @@ export async function seedRolePermissions(prisma: PrismaClient) {
       'document.create.PV',
       'document.release.PV',
       'document.convert.PV',
+      'document.release.REM',
+      'document.convert.REM',
       'document.read',
       'label.print',
       'thirdparty.create',
@@ -73,18 +75,21 @@ export async function seedRolePermissions(prisma: PrismaClient) {
     ],
     basket_management: [
       'product.read',
-      'document.create.POS', // Point of sale
+      'document.create.POS', // Punto de venta
       'document.create.PV',
       'document.release.PV',
       'document.convert.PV',
+      'document.create.REM',
+      'document.release.REM',
+      'document.convert.REM',
       'document.read',
       'label.print',
       'warehouse.manage',
     ],
     billing: [
       'product.read',
-      'document.create.DVC', // Sales invoice
-      'document.create.RMDVC', // Sales invoice return
+      'document.create.DVC', // Factura de venta
+      'document.create.RMDVC', // Devolución de factura de venta
       'document.read',
       'thirdparty.read',
       'ar.read',

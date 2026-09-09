@@ -430,6 +430,8 @@ model User {
   documents                Document[]
   confirmedDocuments       Document[]           @relation("DocumentConfirmedBy")
   voidedDocuments          Document[]           @relation("DocumentVoidedBy")
+  documentsUpdated         Document[]           @relation("DocumentUpdatedBy")
+  documentsConverted       Document[]           @relation("DocumentConvertedBy")
   inventoryMovements       InventoryMovement[]
   deletedProducts          Product[]            @relation("ProductDeletedBy")
   deletedThirdParties      ThirdParty[]         @relation("ThirdPartyDeletedBy")
@@ -524,6 +526,11 @@ model Document {
   confirmedById         String?              @map("confirmed_by_id") @db.Uuid
   /// Quién anuló — null si nunca fue anulado
   voidedById            String?              @map("voided_by_id") @db.Uuid
+  /// Quién editó por última vez el borrador — null si nunca se editó tras crear
+  updatedById           String?              @map("updated_by_id") @db.Uuid
+  /// Quién convirtió el documento a una venta (solo preventas y remisiones) — null si no se convirtió
+  convertedById         String?              @map("converted_by_id") @db.Uuid
+  convertedAt           DateTime?            @map("converted_at") @db.Timestamptz
   createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -532,6 +539,8 @@ model Document {
   user             User        @relation(fields: [userId], references: [id])
   confirmedBy      User?       @relation("DocumentConfirmedBy", fields: [confirmedById], references: [id])
   voidedBy         User?       @relation("DocumentVoidedBy", fields: [voidedById], references: [id])
+  updatedBy        User?       @relation("DocumentUpdatedBy", fields: [updatedById], references: [id])
+  convertedBy      User?       @relation("DocumentConvertedBy", fields: [convertedById], references: [id])
   warehouse        Warehouse?  @relation("DocumentWarehouse", fields: [warehouseId], references: [id])
   destWarehouse    Warehouse?  @relation("DocumentDestWarehouse", fields: [destWarehouseId], references: [id])
   sourceBin        Bin?        @relation("DocumentSourceBin", fields: [sourceBinId], references: [id])

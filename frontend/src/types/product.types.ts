@@ -46,10 +46,13 @@ export interface Product {
   category: ProductCategory
   stockByWarehouse: StockByWarehouse[]
   totalStock: number
-  // Cantidad reservada lógicamente por preventas (PV) confirmadas y aún no liberadas del todo.
+  // Cantidad reservada por preventas confirmadas que aún no se han liberado del todo.
   reservedQuantity: number
-  // totalStock - reservedQuantity. Puede ser negativo si un ajuste de stock (SAJ) saca mercancía
-  // ya reservada — comportamiento esperado, no un bug; se muestra en rojo en la UI.
+  // Cantidad reservada por remisiones confirmadas, ya restadas las liberaciones y conversiones.
+  remisionQuantity: number
+  // Stock total menos lo reservado por preventas y remisiones (ya calculado por el backend).
+  // Puede ser negativo si una salida por ajuste saca mercancía ya reservada: es esperado, no
+  // un bug, y se muestra en rojo.
   availableStock: number
 }
 

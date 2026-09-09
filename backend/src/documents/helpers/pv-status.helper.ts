@@ -1,5 +1,8 @@
 import { DocumentStatus, DocumentType } from '@/common/enums';
 
+/** Tipos cuya reserva se puede convertir en venta; el bloque de estado de conversión aplica a ellos. */
+const CONVERTIBLE_TYPES: DocumentType[] = [DocumentType.PV, DocumentType.REM];
+
 export interface PvDerivedDoc {
   id: string;
   type: DocumentType;
@@ -20,14 +23,16 @@ export interface PvStatus {
 }
 
 /**
- * Estado de conversión de una PV, derivado en vivo de derivedDocuments (no se
- * persiste) para que también funcione en las filas de lista, que no cargan items.
- * converted: hay >=1 venta derivada confirmada. pending: hay >=1 derivada no
- * anulada pero ninguna confirmada. none: sin derivadas o todas anuladas.
- * Devuelve null para type != PV (deja la fila de otros tipos sin el bloque).
+ * Estado de conversión de una preventa o remisión, calculado en vivo a partir de
+ * sus documentos derivados (no se guarda), para que también funcione en el
+ * listado, que no trae las líneas.
+ * "converted": tiene al menos una venta derivada confirmada.
+ * "pending": tiene alguna venta derivada sin anular, pero ninguna confirmada.
+ * "none": no tiene derivadas o están todas anuladas.
+ * Devuelve null para el resto de tipos.
  */
 export function buildPvStatus(doc: PvStatusInput): PvStatus | null {
-  if (doc.type !== DocumentType.PV) return null;
+  if (!CONVERTIBLE_TYPES.includes(doc.type)) return null;
 
   const active = doc.derivedDocuments.filter(
     (d) => d.status !== DocumentStatus.voided,

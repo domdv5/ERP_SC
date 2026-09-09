@@ -33,7 +33,7 @@ const formatCOP = (value: number) =>
     minimumFractionDigits: 0,
   }).format(value);
 
-// Los únicos dos warehouses del seed son "Almacén" (store) y "Bodega" (warehouse) — ver WarehousesModule.
+// Las dos únicas bodegas que crea el seed son "Almacén" (tienda) y "Bodega" (bodega física).
 const getStockQuantity = (product: Product, warehouseName: string) =>
   product.stockByWarehouse.find((s) => s.warehouseName === warehouseName)?.quantity ?? 0;
 
@@ -78,7 +78,7 @@ export default function ProductsPage() {
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["products"] });
-    // Namespace separado del combobox de producto en documentos (ProductRow) — no cubierto por prefijo.
+    // Clave de caché aparte, la del buscador de productos en documentos; "products" no la alcanza.
     queryClient.invalidateQueries({ queryKey: ["products-search"] });
   };
 
@@ -148,7 +148,7 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Encabezado */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl text-content">Productos</h1>
@@ -175,7 +175,7 @@ export default function ProductsPage() {
 
       <StatsGrid cards={statCards} isLoading={isLoading} />
 
-      {/* Table */}
+      {/* Tabla */}
       <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
         <TableToolbar
           search={search}
@@ -222,6 +222,7 @@ export default function ProductsPage() {
                     { label: "Almacén", align: "text-right" },
                     { label: "Bodega", align: "text-right" },
                     { label: "PREVENTA", align: "text-right" },
+                    { label: "EN REMISIÓN", align: "text-right" },
                     { label: "Disponible", align: "text-right" },
                     { label: "Últ. Costo", align: "text-right" },
                     { label: "Costo Prom.", align: "text-right" },
@@ -273,6 +274,9 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-5 py-3.5 text-right text-content-muted text-xs">
                       {p.reservedQuantity.toLocaleString("es-CO")}
+                    </td>
+                    <td className="px-5 py-3.5 text-right text-content-muted text-xs">
+                      {p.remisionQuantity.toLocaleString("es-CO")}
                     </td>
                     <td className="px-5 py-3.5 text-right text-xs font-medium">
                       <span className={p.availableStock < 0 ? "text-red-500" : "text-content-muted"}>
@@ -340,7 +344,7 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* Modals */}
+      {/* Modales */}
       <ProductForm
         open={formOpen}
         onClose={() => setFormOpen(false)}

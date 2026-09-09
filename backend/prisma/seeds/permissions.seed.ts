@@ -24,10 +24,12 @@ export async function seedPermissions(prisma: PrismaClient) {
       { code: 'document.create.PV', module: 'documents' },
       { code: 'document.read', module: 'documents' },
 
-      // Preventa — liberar reserva y convertir a venta son acciones distintas
-      // de crear, por eso tienen permiso propio
+      // Preventa / remisión — liberar reserva y convertir a venta son acciones
+      // distintas de crear, por eso tienen permiso propio
       { code: 'document.release.PV', module: 'documents' },
       { code: 'document.convert.PV', module: 'documents' },
+      { code: 'document.release.REM', module: 'documents' },
+      { code: 'document.convert.REM', module: 'documents' },
 
       // Etiquetas
       { code: 'label.print', module: 'labels' },

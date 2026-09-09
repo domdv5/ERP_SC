@@ -6,6 +6,7 @@ import {
   UpdateProductDto,
 } from './dto/index';
 import { PrismaService } from '@/prisma/prisma.service';
+import { DocumentType } from '@/common/enums';
 import { getReservedByProduct } from '@/documents/helpers/reservation.helpers';
 
 @Injectable()
@@ -25,9 +26,9 @@ export class ProductsService {
     } = findAllProductsDto;
     const skip = (page - 1) * limit;
 
-    // supplierId tiene precedencia sobre brandId: se resuelven las marcas
-    // activas del proveedor y se filtra por ellas ({ in: [] } cuando el
-    // proveedor no tiene marcas activas ya devuelve 0 resultados sin caso especial).
+    // Si viene el proveedor, manda sobre la marca: se buscan las marcas activas
+    // de ese proveedor y se filtra por ellas. Si no tiene marcas activas, la
+    // lista vacía ya devuelve cero resultados sin necesidad de un caso aparte.
     const brandFilter = supplierId
       ? {
           brandId: {
@@ -85,14 +86,20 @@ export class ProductsService {
         }),
       ]);
 
-    // Fuera de la $transaction principal a propósito: necesita los productId
-    // de la página ya resuelta, y no hace falta que corra en la misma
-    // transacción serializada (reservedQuantity es una lectura derivada, no
-    // afecta ninguna invariante de escritura como BinStock/Inventory).
-    const reservedByProduct = await getReservedByProduct(
-      this.prisma,
-      items.map((item) => item.id),
-    );
+    // Va fuera de la transacción principal a propósito: necesita los ids de la
+    // página ya resuelta y no requiere correr en la misma transacción (solo son
+    // lecturas, no cambian el inventario).
+    // Preventas y remisiones se cuentan por separado para mostrarlas en columnas
+    // distintas ("Reservado" y "En remisión"), aunque las dos descuentan del disponible.
+    const productIds = items.map((item) => item.id);
+    const [reservedByProduct, remisionByProduct] = await Promise.all([
+      getReservedByProduct(this.prisma, productIds, {
+        types: [DocumentType.PV],
+      }),
+      getReservedByProduct(this.prisma, productIds, {
+        types: [DocumentType.REM],
+      }),
+    ]);
 
     return {
       items: items.map((item) => {
@@ -102,12 +109,15 @@ export class ProductsService {
           activeWarehouses,
         );
         const reservedQuantity = reservedByProduct.get(item.id) ?? 0;
+        const remisionQuantity = remisionByProduct.get(item.id) ?? 0;
 
         return {
           ...rest,
           ...stockBreakdown,
           reservedQuantity,
-          availableStock: stockBreakdown.totalStock - reservedQuantity,
+          remisionQuantity,
+          availableStock:
+            stockBreakdown.totalStock - reservedQuantity - remisionQuantity,
         };
       }),
       meta: {
@@ -203,9 +213,9 @@ export class ProductsService {
       return acc + item.quantity;
     }, 0);
 
-    // BinStock solo se llena por traslados (T); las compras (CM) entran solo a
-    // Inventory sin bin. Por eso totalBinQuantity puede quedar por debajo del
-    // total de Inventory — eso no es "sin stock", es "stock sin bulto asignado".
+    // El stock por bulto solo se llena con traslados; las compras entran a la
+    // bodega sin bulto. Por eso el total en bultos puede ser menor que el total
+    // de la bodega: no es "sin stock", es "stock sin bulto asignado".
     return {
       product: {
         id,
