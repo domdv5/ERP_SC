@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -126,7 +127,28 @@ export class AuthService {
 
   async remove(id: string) {
     await this.prisma.user.findFirstOrThrow({ where: { id } });
-    await this.prisma.user.delete({ where: { id } });
+
+    // El schema no borra los roles en cascada y todo usuario tiene al menos uno,
+    // así que hay que quitarlos primero. La transacción hace ambos pasos atómicos:
+    // si el borrado del usuario falla por otra llave foránea, los roles vuelven.
+    try {
+      await this.prisma.$transaction([
+        this.prisma.userRole.deleteMany({ where: { userId: id } }),
+        this.prisma.user.delete({ where: { id } }),
+      ]);
+    } catch (error) {
+      // Si el usuario ya tiene actividad asociada (documentos, movimientos, etc.)
+      // devolvemos un 409 explicativo en vez del 400 genérico de Prisma.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003'
+      ) {
+        throw new ConflictException(
+          'No se puede eliminar: el usuario tiene documentos u operaciones asociadas',
+        );
+      }
+      throw error;
+    }
   }
 
   async findAll(dto: FindAllUsersDto) {

@@ -70,7 +70,7 @@ export const ROLE_LABELS: Record<string, string> = {
   admin:                       'Administrador',
   purchasing:                  'Compras',
   warehouse:                   'Bodega',
-  basket_management:           'Gestión de Canasta',
+  preventa:                    'Gestión de preventa',
   billing:                     'Facturación',
   accounts_admin:              'Admin. de Cuentas',
   accounts_assistant:          'Asistente de Cuentas',

@@ -116,7 +116,21 @@ export class DocumentsService {
     private readonly effectsRegistry: DocumentEffectsRegistry,
   ) {}
 
-  async findAll(findAllDocumentsDto: FindAllDocumentsDto) {
+  /**
+   * Tipos de documento que el rol puede ver en el listado. Se derivan de los
+   * permisos document.create.{TIPO} del usuario — no existe un document.read.{TIPO}
+   * aparte. El gate grueso sigue siendo @Permissions('document.read').
+   */
+  private visibleDocumentTypes(permissions: string[]): DocumentType[] {
+    const prefix = 'document.create.';
+    const valid = new Set<string>(Object.values(DocumentType));
+    return permissions
+      .filter((p) => p.startsWith(prefix))
+      .map((p) => p.slice(prefix.length))
+      .filter((t): t is DocumentType => valid.has(t));
+  }
+
+  async findAll(findAllDocumentsDto: FindAllDocumentsDto, user: JwtPayload) {
     const {
       page = 1,
       limit = 20,
@@ -134,8 +148,22 @@ export class DocumentsService {
       ? (types.split(',').filter(Boolean) as DocumentType[])
       : undefined;
 
+    const requestedTypes = typeList?.length
+      ? typeList
+      : type
+        ? [type]
+        : undefined;
+    const allowedTypes = this.visibleDocumentTypes(user.permissions);
+    // Si el cliente pide tipos, se intersecan con los visibles del rol; si no
+    // pide nada, se limita a los visibles. Intersección vacía deja la lista
+    // vacía, nunca un 403: pedir un tipo fuera del alcance del rol simplemente
+    // devuelve la lista filtrada en silencio.
+    const effectiveTypes = requestedTypes
+      ? requestedTypes.filter((t) => allowedTypes.includes(t))
+      : allowedTypes;
+
     const where: Prisma.DocumentWhereInput = {
-      ...(typeList?.length ? { type: { in: typeList } } : type && { type }),
+      type: { in: effectiveTypes },
       ...(status && { status }),
       ...((dateFrom || dateTo) && {
         date: {

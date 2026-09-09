@@ -2,19 +2,42 @@ import { Package, Users, Warehouse, FileText, TrendingUp, TrendingDown, ArrowUpR
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
+import { usePermission } from '@/hooks/usePermission'
 import { getThirdParties } from '@/services/third-parties.service'
 import { getProducts } from '@/services/products.service'
 import { getWarehouses } from '@/services/warehouses.service'
 import { getDocuments } from '@/services/documents.service'
 
+// Clases literales para que Tailwind las detecte (no se puede interpolar el número en el string).
+// La zona operativa siempre muestra "Productos", así que en la práctica hay de 2 a 4 tarjetas;
+// se incluye el caso 1 por defensa si algún rol pierde todos los demás permisos.
+const OPERATIONAL_GRID_COLS: Record<number, string> = {
+  1: 'xl:grid-cols-2',
+  2: 'xl:grid-cols-2',
+  3: 'xl:grid-cols-3',
+  4: 'xl:grid-cols-4',
+}
+
+const FINANCIAL_GRID_COLS: Record<number, string> = {
+  1: 'md:grid-cols-1',
+  2: 'md:grid-cols-2',
+}
+
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
+  const canManageWarehouses = usePermission('warehouse.manage')
+  const canReadThirdParties = usePermission('thirdparty.read')
+  const canReadDocuments = usePermission('document.read')
+  const canReadReceivable = usePermission('ar.read')
+  const canReadPayable = usePermission('ap.read')
 
   const { data: thirdPartiesData, isLoading: loadingThirdParties } = useQuery({
     queryKey: ['third-parties-count'],
     queryFn: () => getThirdParties({ limit: 1 }),
     staleTime: 5 * 60 * 1000,
+    // GET /third-parties exige thirdparty.read; sin el permiso ni se dispara.
+    enabled: canReadThirdParties,
   })
 
   const { data: productsData, isLoading: loadingProducts } = useQuery({
@@ -27,12 +50,16 @@ export default function DashboardPage() {
     queryKey: ['warehouses-count'],
     queryFn: () => getWarehouses(),
     staleTime: 5 * 60 * 1000,
+    // GET /warehouses ahora exige warehouse.manage; sin el permiso ni se dispara.
+    enabled: canManageWarehouses,
   })
 
   const { data: documentsData, isLoading: loadingDocuments } = useQuery({
     queryKey: ['documents-count'],
     queryFn: () => getDocuments({ limit: 1 }),
     staleTime: 5 * 60 * 1000,
+    // GET /documents exige document.read; sin el permiso ni se dispara.
+    enabled: canReadDocuments,
   })
 
   const dateLabel = new Date().toLocaleDateString('es-CO', {
@@ -42,26 +69,34 @@ export default function DashboardPage() {
   })
 
   const financialCards = [
-    {
-      label: 'Cuentas por Cobrar',
-      subtitle: 'Cartera pendiente de clientes',
-      icon: TrendingUp,
-      iconBg: 'bg-brand-secondary/10',
-      iconColor: 'text-brand-secondary',
-      dotColor: 'bg-brand-secondary',
-      path: '/accounts-receivable',
-      context: 'Módulo en desarrollo',
-    },
-    {
-      label: 'Cuentas por Pagar',
-      subtitle: 'Obligaciones con proveedores',
-      icon: TrendingDown,
-      iconBg: 'bg-amber-500/10',
-      iconColor: 'text-amber-500 dark:text-amber-400',
-      dotColor: 'bg-amber-500',
-      path: '/accounts-payable',
-      context: 'Módulo en desarrollo',
-    },
+    ...(canReadReceivable
+      ? [
+          {
+            label: 'Cuentas por Cobrar',
+            subtitle: 'Cartera pendiente de clientes',
+            icon: TrendingUp,
+            iconBg: 'bg-brand-secondary/10',
+            iconColor: 'text-brand-secondary',
+            dotColor: 'bg-brand-secondary',
+            path: '/accounts-receivable',
+            context: 'Módulo en desarrollo',
+          },
+        ]
+      : []),
+    ...(canReadPayable
+      ? [
+          {
+            label: 'Cuentas por Pagar',
+            subtitle: 'Obligaciones con proveedores',
+            icon: TrendingDown,
+            iconBg: 'bg-amber-500/10',
+            iconColor: 'text-amber-500 dark:text-amber-400',
+            dotColor: 'bg-amber-500',
+            path: '/accounts-payable',
+            context: 'Módulo en desarrollo',
+          },
+        ]
+      : []),
   ]
 
   const operationalCards = [
@@ -73,30 +108,42 @@ export default function DashboardPage() {
       iconColor: 'text-amber-600 dark:text-amber-400',
       path: '/products',
     },
-    {
-      label: 'Terceros',
-      value: loadingThirdParties ? null : String(thirdPartiesData?.meta.total ?? '—'),
-      icon: Users,
-      iconBg: 'bg-blue-500/10',
-      iconColor: 'text-blue-600 dark:text-blue-400',
-      path: '/third-parties',
-    },
-    {
-      label: 'Bodegas',
-      value: loadingWarehouses ? null : String(warehousesData?.length ?? '—'),
-      icon: Warehouse,
-      iconBg: 'bg-violet-500/10',
-      iconColor: 'text-violet-600 dark:text-violet-400',
-      path: '/warehouses',
-    },
-    {
-      label: 'Documentos',
-      value: loadingDocuments ? null : String(documentsData?.meta.total ?? '—'),
-      icon: FileText,
-      iconBg: 'bg-teal-500/10',
-      iconColor: 'text-teal-600 dark:text-teal-400',
-      path: '/documents',
-    },
+    ...(canReadThirdParties
+      ? [
+          {
+            label: 'Terceros',
+            value: loadingThirdParties ? null : String(thirdPartiesData?.meta.total ?? '—'),
+            icon: Users,
+            iconBg: 'bg-blue-500/10',
+            iconColor: 'text-blue-600 dark:text-blue-400',
+            path: '/third-parties',
+          },
+        ]
+      : []),
+    ...(canManageWarehouses
+      ? [
+          {
+            label: 'Bodegas',
+            value: loadingWarehouses ? null : String(warehousesData?.length ?? '—'),
+            icon: Warehouse,
+            iconBg: 'bg-violet-500/10',
+            iconColor: 'text-violet-600 dark:text-violet-400',
+            path: '/warehouses',
+          },
+        ]
+      : []),
+    ...(canReadDocuments
+      ? [
+          {
+            label: 'Documentos',
+            value: loadingDocuments ? null : String(documentsData?.meta.total ?? '—'),
+            icon: FileText,
+            iconBg: 'bg-teal-500/10',
+            iconColor: 'text-teal-600 dark:text-teal-400',
+            path: '/documents',
+          },
+        ]
+      : []),
   ]
 
   return (
@@ -116,32 +163,34 @@ export default function DashboardPage() {
       </div>
 
       {/* Financial zone — primary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {financialCards.map(({ label, subtitle, icon: Icon, iconBg, iconColor, dotColor, path, context }) => (
-          <div
-            key={label}
-            onClick={() => navigate(path)}
-            className="bg-surface rounded-2xl p-6 border border-ui-border shadow-sm hover:shadow-md transition-all group cursor-pointer"
-          >
-            <div className="flex items-start justify-between mb-5">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}>
-                <Icon className={`w-5 h-5 ${iconColor}`} />
+      {financialCards.length > 0 ? (
+        <div className={`grid grid-cols-1 gap-4 ${FINANCIAL_GRID_COLS[financialCards.length]}`}>
+          {financialCards.map(({ label, subtitle, icon: Icon, iconBg, iconColor, dotColor, path, context }) => (
+            <div
+              key={label}
+              onClick={() => navigate(path)}
+              className="bg-surface rounded-2xl p-6 border border-ui-border shadow-sm hover:shadow-md transition-all group cursor-pointer"
+            >
+              <div className="flex items-start justify-between mb-5">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}>
+                  <Icon className={`w-5 h-5 ${iconColor}`} />
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-content-faint group-hover:text-content-muted group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
               </div>
-              <ArrowUpRight className="w-4 h-4 text-content-faint group-hover:text-content-muted group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              <p className="text-3xl text-content mb-1">—</p>
+              <p className="text-sm font-medium text-content-secondary">{label}</p>
+              <p className="text-xs text-content-faint mt-0.5 font-accent">{subtitle}</p>
+              <div className="mt-4 pt-4 border-t border-ui-border flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                <span className="text-xs text-content-faint">{context}</span>
+              </div>
             </div>
-            <p className="text-3xl text-content mb-1">—</p>
-            <p className="text-sm font-medium text-content-secondary">{label}</p>
-            <p className="text-xs text-content-faint mt-0.5 font-accent">{subtitle}</p>
-            <div className="mt-4 pt-4 border-t border-ui-border flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-              <span className="text-xs text-content-faint">{context}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : null}
 
       {/* Operational zone — secondary */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className={`grid grid-cols-2 gap-3 ${OPERATIONAL_GRID_COLS[operationalCards.length]}`}>
         {operationalCards.map(({ label, value, icon: Icon, iconBg, iconColor, path }) => (
           <div
             key={label}

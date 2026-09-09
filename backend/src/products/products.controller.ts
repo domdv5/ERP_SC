@@ -53,7 +53,7 @@ export class ProductsController {
   }
 
   @Get('by-code/:code/locations')
-  @Permissions('product.read')
+  @Permissions('inventory.manage')
   findLocationsByCode(@Param('code') code: string) {
     return this.productsService.findLocationsByCode(code);
   }

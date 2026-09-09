@@ -34,8 +34,11 @@ export class DocumentsController {
 
   @Get()
   @Permissions('document.read')
-  findAll(@Query() findAllDocumentsDto: FindAllDocumentsDto) {
-    return this.documentsService.findAll(findAllDocumentsDto);
+  findAll(
+    @Query() findAllDocumentsDto: FindAllDocumentsDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.documentsService.findAll(findAllDocumentsDto, req.user);
   }
 
   // Antes de @Get(':id') para que "customers" no se interprete como un id.

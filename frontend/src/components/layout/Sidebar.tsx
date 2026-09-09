@@ -3,27 +3,17 @@ import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
-  Package,
   Warehouse,
   Store,
-  FileText,
-  TrendingUp,
-  TrendingDown,
   ChevronRight,
   LogOut,
   ChevronUp,
-  ShieldCheck,
-  Contact,
-  MapPinned,
-  Banknote,
-  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth.store";
-import { usePermission } from "@/hooks/usePermission";
 import { getRoleLabel } from "@/services/users.service";
 import { getWarehouses } from "@/services/warehouses.service";
+import { navGroups, REM_NEW_PATH, type NavItem } from "@/config/navigation";
 
 function getNavLinkClass(isActive: boolean) {
   return cn(
@@ -33,8 +23,6 @@ function getNavLinkClass(isActive: boolean) {
       : "text-content-secondary dark:text-white/60 hover:text-content dark:hover:text-white hover:bg-surface-hover dark:hover:bg-white/5",
   );
 }
-
-const REM_NEW_PATH = "/documents/new?type=REM";
 
 // Ruta del ítem "Nueva remisión" del grupo Ventas. Al calcular si el enlace está
 // activo, NavLink ignora la parte de "?type=REM", así que hay que compararla a mano.
@@ -53,20 +41,6 @@ function isDocumentsActive(pathname: string, search: string) {
     !isRemNewActive(pathname, search)
   );
 }
-
-const topGroups = [
-  {
-    items: [{ to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" }],
-  },
-];
-
-const financeGroup = {
-  label: "Finanzas",
-  items: [
-    { to: "/accounts-receivable", icon: TrendingUp, label: "Cuentas × Cobrar" },
-    { to: "/accounts-payable", icon: TrendingDown, label: "Cuentas × Pagar" },
-  ],
-};
 
 function WarehousesSidebarItem() {
   const location = useLocation();
@@ -133,43 +107,34 @@ function WarehousesSidebarItem() {
   );
 }
 
+// El cálculo de "activo" para "/documents" y "Nueva remisión" no puede delegarse a
+// NavLink (uno coincide de más por prefijo, el otro ignora el "?type=REM"), así que
+// esas dos rutas usan las funciones de arriba en vez del isActive automático.
+function navLinkClassFor(item: NavItem, pathname: string, search: string) {
+  if (item.to === "/documents") {
+    return () => getNavLinkClass(isDocumentsActive(pathname, search));
+  }
+  if (item.to === REM_NEW_PATH) {
+    return () => getNavLinkClass(isRemNewActive(pathname, search));
+  }
+  return ({ isActive }: { isActive: boolean }) => getNavLinkClass(isActive);
+}
+
 export function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const canManageUsers = usePermission("user.manage");
-  const canReadThirdParties = usePermission("thirdparty.read");
-  const canReadAr = usePermission("ar.read");
-  const canReadAp = usePermission("ap.read");
-  const canViewFinance = canReadAr || canReadAp;
-  const canCreatePOS = usePermission("document.create.POS");
-  const canCreateCOT = usePermission("document.create.COT");
-  const canCreateREM = usePermission("document.create.REM");
-  const canSell = canCreatePOS || canCreateCOT;
-  // "Ventas" aparece si el usuario puede facturar (contado/crédito) o crear remisiones.
-  const showVentas = canSell || canCreateREM;
+  const hasPermission = useAuthStore((s) => s.hasPermission);
 
-  const operacionesGroup = {
-    label: "Operaciones",
-    items: [{ to: "/documents", icon: FileText, label: "Operaciones" }],
+  // La estructura del menú vive en config/navigation.ts; acá solo se filtra por
+  // permiso. Sin permiso declarado el ítem se ve siempre; un array es OR.
+  const canSee = (item: NavItem) => {
+    if (!item.permission) return true;
+    if (typeof item.permission === "string") return hasPermission(item.permission);
+    return item.permission.some(hasPermission);
   };
 
-  // "Ventas" se arma acá (no como constante de módulo) porque cada ítem depende de su propio
-  // permiso, igual que el grupo de Finanzas más abajo. La venta de contado y a crédito usan
-  // una misma pantalla con un toggle; la remisión se crea en el form genérico de documentos.
-  // Es una sección aparte de Operaciones, que es solo compras, ajustes y traslados.
-  const ventasGroup = {
-    label: "Ventas",
-    items: [
-      ...(canSell
-        ? [{ to: "/documents/pos/new", icon: Banknote, label: "Nueva venta" }]
-        : []),
-      ...(canCreateREM
-        ? [{ to: REM_NEW_PATH, icon: Truck, label: "Nueva remisión" }]
-        : []),
-    ],
-  };
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -212,102 +177,36 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-4">
-        {/* Dashboard */}
-        {topGroups.map((group, i) => (
-          <div key={i} className="space-y-0.5">
-            {group.items.map(({ to, icon: Icon, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) => getNavLinkClass(isActive)}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="flex-1">{label}</span>
-                              </NavLink>
-            ))}
-          </div>
-        ))}
+        {navGroups.map((group, groupIdx) => {
+          const visibleItems = group.items.filter(canSee);
+          if (visibleItems.length === 0) return null;
 
-        {/* Maestros */}
-        <div className="space-y-0.5">
-          <p className="text-content-faint dark:text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
-            Maestros
-          </p>
-          {canReadThirdParties && (
-            <NavLink
-              to="/third-parties"
-              className={({ isActive }) => getNavLinkClass(isActive)}
-            >
-              <Contact className="w-4 h-4 shrink-0" />
-              <span className="flex-1">Terceros</span>
-                          </NavLink>
-          )}
-          <NavLink
-            to="/products"
-            className={({ isActive }) => getNavLinkClass(isActive)}
-          >
-            <Package className="w-4 h-4 shrink-0" />
-            <span className="flex-1">Productos</span>
-                      </NavLink>
-
-          {/* Bodegas — acordeón */}
-          <WarehousesSidebarItem />
-
-          <NavLink
-            to="/stock-lookup"
-            className={({ isActive }) => getNavLinkClass(isActive)}
-          >
-            <MapPinned className="w-4 h-4 shrink-0" />
-            <span className="flex-1">Ubicación de stock</span>
-          </NavLink>
-        </div>
-
-        {/* Operaciones + Ventas (oculta si no puede vender ni hacer remisiones) + Finanzas (oculta sin permiso de cuentas) */}
-        {[
-          operacionesGroup,
-          ...(showVentas ? [ventasGroup] : []),
-          ...(canViewFinance ? [financeGroup] : []),
-        ].map((group) => (
-          <div key={group.label} className="space-y-0.5">
-            <p className="text-content-faint dark:text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
-              {group.label}
-            </p>
-            {group.items.map(({ to, icon: Icon, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={
-                  // "Operaciones" y "Nueva remisión" no pueden usar el cálculo automático de
-                  // NavLink: uno coincidiría de más por prefijo, el otro ignora el "?type=REM".
-                  // Se resuelven con las funciones de arriba.
-                  to === "/documents"
-                    ? () => getNavLinkClass(isDocumentsActive(location.pathname, location.search))
-                    : to === REM_NEW_PATH
-                      ? () => getNavLinkClass(isRemNewActive(location.pathname, location.search))
-                      : ({ isActive }) => getNavLinkClass(isActive)
+          return (
+            <div key={group.label ?? `group-${groupIdx}`} className="space-y-0.5">
+              {group.label && (
+                <p className="text-content-faint dark:text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
+                  {group.label}
+                </p>
+              )}
+              {visibleItems.map((item) => {
+                if (item.component === "warehouses-accordion") {
+                  return <WarehousesSidebarItem key={item.to} />;
                 }
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="flex-1">{label}</span>
-              </NavLink>
-            ))}
-          </div>
-        ))}
-
-        {canManageUsers && (
-          <div className="space-y-0.5">
-            <p className="text-content-faint dark:text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
-              Administración
-            </p>
-            <NavLink
-              to="/users"
-              className={({ isActive }) => getNavLinkClass(isActive)}
-            >
-              <ShieldCheck className="w-4 h-4 shrink-0" />
-              <span className="flex-1">Usuarios</span>
-                          </NavLink>
-          </div>
-        )}
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={navLinkClassFor(item, location.pathname, location.search)}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="flex-1">{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Footer — user dropdown */}

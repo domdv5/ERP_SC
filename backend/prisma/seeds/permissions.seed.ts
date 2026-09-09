@@ -42,6 +42,8 @@ export async function seedPermissions(prisma: PrismaClient) {
 
       // Bodegas — manage porque solo bodega las gestiona completamente
       { code: 'warehouse.manage', module: 'warehouses' },
+      // Ubicación de stock: consulta de dónde está físicamente un producto
+      { code: 'inventory.manage', module: 'warehouses' },
 
       // Cuentas por cobrar
       { code: 'ar.read', module: 'accounts' },

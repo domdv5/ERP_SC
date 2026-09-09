@@ -1,6 +1,17 @@
 import { PrismaClient } from '@prisma/client';
 
 export async function seedRoles(prisma: PrismaClient) {
+  // El seed usa createMany+skipDuplicates y no puede renombrar una fila ya
+  // existente. Renombramos en el lugar para conservar las asignaciones de
+  // usuario (UserRole) que apuntan al rol por id.
+  await prisma.role.updateMany({
+    where: { name: 'basket_management' },
+    data: {
+      name: 'preventa',
+      description: 'Gestión de preventas y reservas de stock',
+    },
+  });
+
   await prisma.role.createMany({
     data: [
       {
@@ -19,8 +30,8 @@ export async function seedRoles(prisma: PrismaClient) {
       },
 
       {
-        name: 'basket_management',
-        description: 'Manages product baskets and packaging',
+        name: 'preventa',
+        description: 'Gestión de preventas y reservas de stock',
       },
 
       {

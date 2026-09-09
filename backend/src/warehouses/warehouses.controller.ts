@@ -16,11 +16,13 @@ export class WarehousesController {
   constructor(private readonly warehousesService: WarehousesService) {}
 
   @Get()
+  @Permissions('warehouse.manage')
   findAll() {
     return this.warehousesService.findAll();
   }
 
   @Get(':id')
+  @Permissions('warehouse.manage')
   findOne(@Param('id') id: string) {
     return this.warehousesService.findOne(id);
   }
