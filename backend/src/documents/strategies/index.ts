@@ -2,6 +2,7 @@ export * from './document-effect.strategy';
 export * from './base-effect.strategy';
 export * from './cm-effect.strategy';
 export * from './dvc-effect.strategy';
+export * from './dvv-effect.strategy';
 export * from './eai-effect.strategy';
 export * from './abstract-reservation.strategy';
 export * from './pv-effect.strategy';

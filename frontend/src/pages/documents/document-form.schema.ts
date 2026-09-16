@@ -17,7 +17,7 @@ export const formSchema = z.object({
   // Los tipos de venta ('POS'/'COT') se incluyen solo para que el tipo del documento existente
   // encaje al reabrir en modo edición. El form nunca los ofrece como opción y redirige fuera si
   // detecta un borrador de venta: esos se editan solo desde el checkout.
-  type:            z.enum(['CM', 'DVC', 'EAI', 'SAJ', 'T', 'PV', 'REM', 'POS', 'COT'] as const),
+  type:            z.enum(['CM', 'DVC', 'EAI', 'SAJ', 'T', 'PV', 'REM', 'DVV', 'POS', 'COT'] as const),
   date:            z.string().min(1, 'La fecha es requerida'),
   thirdPartyId:    z.string().optional(),
   // Preventas y remisiones: vendedora responsable de la operación.
@@ -30,6 +30,8 @@ export const formSchema = z.object({
   // abajo, solo cuando el motivo es "otro".
   adjustmentReason:      z.enum(['negativo', 'inventario_general', 'traspaso_costo', 'otro'] as const).optional(),
   adjustmentReasonOther: z.string().max(300, 'Máximo 300 caracteres').optional().or(z.literal('')),
+  // Devoluciones en venta: modalidad de la devolución. Obligatoria solo para DVV (se valida más abajo).
+  refundMethod:          z.enum(['saldo_a_favor', 'cambio_producto', 'devolucion_dinero'] as const).optional(),
   notes:           z.string().optional(),
   items:           z.array(itemSchema).min(1, 'Agrega al menos un ítem'),
 }).superRefine((data, ctx) => {
@@ -45,6 +47,16 @@ export const formSchema = z.object({
     }
     if (!data.sellerId) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'La vendedora es requerida', path: ['sellerId'] })
+    }
+  }
+  // Devolución en venta: cliente y modalidad obligatorios. No cuelga del bloque PV/REM porque
+  // la DVV no lleva vendedora.
+  if (data.type === 'DVV') {
+    if (!data.thirdPartyId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'El cliente es requerido', path: ['thirdPartyId'] })
+    }
+    if (!data.refundMethod) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'La modalidad de devolución es requerida', path: ['refundMethod'] })
     }
   }
   if (data.type === 'EAI') {

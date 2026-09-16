@@ -7,6 +7,7 @@ import {
   FileText,
   Banknote,
   Truck,
+  RotateCcw,
   TrendingUp,
   TrendingDown,
   ShieldCheck,
@@ -16,6 +17,9 @@ import {
 // Fuente de verdad de la ruta del ítem "Nueva remisión". El "?type=REM" hace que
 // DrawerLink/NavLink no puedan calcular solos si está activo — ver Sidebar.tsx.
 export const REM_NEW_PATH = '/documents/new?type=REM'
+
+// Ruta del ítem "Nueva devolución" (grupo Ventas). Mismo problema del "?type=" que REM.
+export const DVV_NEW_PATH = '/documents/new?type=DVV'
 
 // Marcador para ítems que el Sidebar renderiza con un componente propio en vez
 // de un NavLink plano (hoy solo el acordeón de bodegas).
@@ -72,6 +76,7 @@ export const navGroups: NavGroup[] = [
         permission: ['document.create.POS', 'document.create.COT'],
       },
       { to: REM_NEW_PATH, label: 'Nueva remisión', icon: Truck, permission: 'document.create.REM' },
+      { to: DVV_NEW_PATH, label: 'Nueva devolución', icon: RotateCcw, permission: 'document.create.DVV' },
     ],
   },
   {

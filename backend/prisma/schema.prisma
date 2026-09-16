@@ -114,6 +114,7 @@ model Customer {
   thirdParty         ThirdParty           @relation(fields: [id], references: [id])
   seller             ThirdParty?          @relation("SellerThirdParty", fields: [sellerId], references: [id])
   accountsReceivable AccountsReceivable[]
+  customerCredits    CustomerCredit[]
 
   @@map("customers")
 }
@@ -495,6 +496,18 @@ enum EaiAdjustmentReason {
   otro
 }
 
+/// Modalidad de una devolución en venta (DVV) — obligatoria para ese tipo (ver DvvEffectStrategy).
+/// saldo_a_favor: caso normal, entra inventario y se genera un saldo a favor del cliente.
+/// cambio_producto: mismo efecto que saldo_a_favor; el cambio se opera como esta DVV más
+/// una venta aparte del producto nuevo. Se separa solo para reportería.
+/// devolucion_dinero: reembolso de efectivo — solo entra inventario, no genera saldo a favor
+/// (el desembolso es manual, no hay módulo de caja).
+enum DvvRefundMethod {
+  saldo_a_favor
+  cambio_producto
+  devolucion_dinero
+}
+
 model Document {
   id                    String               @id @default(uuid(7)) @db.Uuid
   type                  DocumentType
@@ -513,6 +526,8 @@ model Document {
   adjustmentReasonOther String?              @map("adjustment_reason_other") @db.VarChar(300)
   /// Forma de pago — solo POS por ahora; informativo, sin lógica de caja.
   paymentMethod         PaymentMethod?       @map("payment_method")
+  /// Modalidad de devolución — solo DVV, obligatoria para ese tipo
+  refundMethod          DvvRefundMethod?     @map("refund_method")
   /// Bodega principal: destino en CM/EAI, origen en DVC/SAJ/T
   warehouseId           String?              @map("warehouse_id") @db.Uuid
   /// Bodega destino — solo traslados (T)
@@ -548,11 +563,15 @@ model Document {
   sourceDocument   Document?   @relation("DocumentSource", fields: [sourceDocumentId], references: [id])
   derivedDocuments Document[]  @relation("DocumentSource")
 
-  documentItems      DocumentItem[]
-  inventoryMovements InventoryMovement[]
-  accountsReceivable AccountsReceivable[]
-  accountsPayable    AccountsPayable[]
-  supplierCredits    SupplierCredit[]     @relation("DvcSupplierCredit")
+  documentItems         DocumentItem[]
+  inventoryMovements    InventoryMovement[]
+  accountsReceivable    AccountsReceivable[]
+  accountsPayable       AccountsPayable[]
+  supplierCredits       SupplierCredit[]              @relation("DvcSupplierCredit")
+  // Créditos a favor del cliente generados por esta DVV
+  customerCredits       CustomerCredit[]              @relation("DvvCustomerCredit")
+  // Aplicaciones de saldo a favor hechas al confirmar esta venta (POS/COT)
+  appliedCustomerCredits CustomerCreditApplication[]  @relation("CustomerCreditSaleApplication")
 
   @@unique([type, number])
   @@index([type, status])
@@ -728,6 +747,63 @@ model SupplierCreditApplication {
   @@index([accountPayableId])
   @@index([supplierCreditId])
   @@map("supplier_credit_application")
+}
+
+// ─── Customer credit (saldo a favor del cliente) ─────────────────────────────
+// Homólogo lado cliente de SupplierCredit. Se genera al confirmar una DVV
+// (salvo modalidad devolucion_dinero) y se aplica al momento de una venta
+// POS/COT — nunca como abono contra una cuenta por cobrar existente. NO se
+// unifica con SupplierCredit (decisión de arquitectura): comparten solo la
+// lógica de servicio (centavos + FOR UPDATE ordenado).
+
+model CustomerCredit {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  customerId       String   @map("customer_id") @db.Uuid
+  // Monto original del saldo a favor, en positivo.
+  amount           Decimal  @db.Decimal(16, 2)
+  // Saldo sin aplicar. Invariante de negocio: 0 <= balance <= amount; al llegar
+  // a 0 el status pasa a 'used'. Todo decremento pasa por SELECT ... FOR UPDATE.
+  // Reforzado a nivel DB por el CHECK "customer_credit_balance_range_chk" (definido
+  // a mano en la migración 20260910120000_add_customer_credit — Prisma no declara
+  // CHECKs; es la única red contra un saldo corrupto, aceptada por ser dinero).
+  balance          Decimal  @db.Decimal(16, 2)
+  sourceDocumentId String?  @map("source_document_id") @db.Uuid
+  /// available | used
+  status           String   @default("available") @db.VarChar(10)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  customer       Customer                    @relation(fields: [customerId], references: [id])
+  sourceDocument Document?                   @relation("DvvCustomerCredit", fields: [sourceDocumentId], references: [id])
+  applications   CustomerCreditApplication[]
+
+  // Incluye createdAt para que la consulta de créditos disponibles del cliente
+  // (WHERE customerId + status, ORDER BY createdAt) salga ordenada sin nodo Sort.
+  @@index([customerId, status, createdAt])
+  // Una DVV genera exactamente un crédito: bloquea duplicados por doble confirm
+  // o retry. En PostgreSQL varios NULL conviven, así que créditos sin documento
+  // origen no chocarían entre sí.
+  @@unique([sourceDocumentId])
+  @@map("customer_credit")
+}
+
+model CustomerCreditApplication {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  customerCreditId String   @map("customer_credit_id") @db.Uuid
+  // Referencia al documento de venta (POS/COT) donde se aplicó el saldo. La
+  // aplicación ocurre en la venta y POS no crea cuenta, así que se ancla al
+  // documento, no a una AccountsReceivable.
+  saleDocumentId   String   @map("sale_document_id") @db.Uuid
+  amount           Decimal  @db.Decimal(16, 2)
+  appliedAt        DateTime @default(now()) @map("applied_at") @db.Timestamptz
+
+  customerCredit CustomerCredit @relation(fields: [customerCreditId], references: [id])
+  saleDocument   Document       @relation("CustomerCreditSaleApplication", fields: [saleDocumentId], references: [id])
+
+  @@index([saleDocumentId])
+  // Un mismo crédito no se aplica dos veces a la misma venta; el prefijo cubre
+  // el lookup "¿este crédito ya tiene aplicaciones?" al anular la DVV.
+  @@unique([customerCreditId, saleDocumentId])
+  @@map("customer_credit_application")
 }
 
 // ─── Configuración del sistema ────────────────────────────────────────────────

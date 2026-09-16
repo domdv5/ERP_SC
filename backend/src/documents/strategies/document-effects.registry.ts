@@ -7,6 +7,7 @@ import type {
 import { isReservationStrategy } from './document-effect.strategy';
 import { CmEffectStrategy } from './cm-effect.strategy';
 import { DvcEffectStrategy } from './dvc-effect.strategy';
+import { DvvEffectStrategy } from './dvv-effect.strategy';
 import { EaiEffectStrategy } from './eai-effect.strategy';
 import { PvEffectStrategy } from './pv-effect.strategy';
 import { RemEffectStrategy } from './rem-effect.strategy';
@@ -23,6 +24,7 @@ export class DocumentEffectsRegistry {
   constructor(
     cmEffectStrategy: CmEffectStrategy,
     dvcEffectStrategy: DvcEffectStrategy,
+    dvvEffectStrategy: DvvEffectStrategy,
     eaiEffectStrategy: EaiEffectStrategy,
     sajEffectStrategy: SajEffectStrategy,
     transferEffectStrategy: TransferEffectStrategy,
@@ -34,6 +36,7 @@ export class DocumentEffectsRegistry {
     for (const strategy of [
       cmEffectStrategy,
       dvcEffectStrategy,
+      dvvEffectStrategy,
       eaiEffectStrategy,
       sajEffectStrategy,
       transferEffectStrategy,

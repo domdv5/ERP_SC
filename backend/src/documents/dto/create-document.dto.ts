@@ -16,9 +16,11 @@ import {
 import { Type } from 'class-transformer';
 import {
   DocumentType,
+  DvvRefundMethod,
   EaiAdjustmentReason,
   PaymentMethod,
 } from '@/common/enums';
+import { AppliedCustomerCreditDto } from './confirm-document.dto';
 
 export class CreateDocumentItemDto {
   @IsUUID()
@@ -99,6 +101,20 @@ export class CreateDocumentDto {
   @IsOptional()
   @IsEnum(PaymentMethod)
   paymentMethod?: PaymentMethod;
+
+  // Solo se envía en devoluciones en venta (DVV); la obligatoriedad la impone
+  // la estrategia, igual que adjustmentReason en EAI.
+  @IsOptional()
+  @IsEnum(DvvRefundMethod)
+  refundMethod?: DvvRefundMethod;
+
+  // Solo en COT: saldos a favor que la venta va a aplicar. No se persiste — solo
+  // lo lee CotEffectStrategy.validateCreate para netear antes del chequeo de cupo.
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AppliedCustomerCreditDto)
+  customerCredits?: AppliedCustomerCreditDto[];
 
   @IsArray()
   @ArrayNotEmpty()

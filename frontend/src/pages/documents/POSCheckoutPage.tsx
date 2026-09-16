@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray } from 'react-hook-form'
@@ -13,6 +13,7 @@ import {
   confirmDocument,
   convertDocument,
   getCustomerCredit,
+  getAvailableCustomerCredits,
 } from '@/services/documents.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import { getProducts, getProductByCode } from '@/services/products.service'
@@ -25,13 +26,18 @@ import type { FormValues } from './document-form.schema'
 import { BarcodeScanInput } from './components/BarcodeScanInput'
 import { POSCartLine } from './components/POSCartLine'
 import { POSStockShortfallDialog } from './components/POSStockShortfallDialog'
+import { CustomerCreditsPanel } from './components/CustomerCreditsPanel'
 import {
   hasPendingItems,
   findActivePendingPreventa,
   findPriceFloorViolations,
   parseStockShortfallError,
   parseCreditLimitError,
+  proposeCreditApplication,
+  clampCreditAmount,
+  capCreditsToTotal,
   type StockShortfall,
+  type SelectedCredit,
 } from './pos-checkout.utils'
 
 import type {
@@ -184,6 +190,15 @@ export default function POSCheckoutPage() {
     queryKey: ['customer-credit', thirdPartyId],
     queryFn: () => getCustomerCredit(thirdPartyId),
     enabled: isCredit && Boolean(thirdPartyId),
+    staleTime: 30 * 1000,
+  })
+
+  // Saldos a favor disponibles del cliente. Se consultan también en contado: un saldo a favor
+  // se puede aplicar tanto a una venta de contado como a una a crédito.
+  const { data: availableCreditsData } = useQuery({
+    queryKey: ['customer-available-credits', thirdPartyId],
+    queryFn: () => getAvailableCustomerCredits(thirdPartyId),
+    enabled: Boolean(thirdPartyId),
     staleTime: 30 * 1000,
   })
 
@@ -355,9 +370,55 @@ export default function POSCheckoutPage() {
   const total = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0)
   const hasValidItems = fields.length > 0 && cartItems.every((item) => item.productId && Number(item.quantity) > 0)
 
-  // Bloqueo de cupo: la venta a crédito no puede superar el disponible del cliente. No se
-  // puede saltar; se resuelve subiendo el cupo desde la ficha del cliente.
-  const creditExceeded = isCredit && Boolean(creditData) && total > creditData!.availableCredit
+  // ── saldos a favor aplicados a la venta ─────────────────────────────────
+  const availableCredits = availableCreditsData?.credits ?? []
+  // Monto aplicado por cada saldo a favor (id del saldo → monto). El usuario puede bajarlo.
+  const [creditAmounts, setCreditAmounts] = useState<Record<string, number>>({})
+  // Mientras el usuario no toque los montos a mano, la propuesta se recalcula sola cuando
+  // cambia el total (el cliente se suele elegir antes de escanear los productos).
+  const creditsTouchedRef = useRef(false)
+
+  useEffect(() => {
+    creditsTouchedRef.current = false
+  }, [thirdPartyId])
+
+  // Propone aplicar el máximo posible (los saldos más antiguos primero) hasta cubrir el total.
+  useEffect(() => {
+    if (creditsTouchedRef.current) return
+    const proposal = proposeCreditApplication(availableCredits, total)
+    setCreditAmounts(Object.fromEntries(proposal.map((p) => [p.customerCreditId, p.amount])))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thirdPartyId, availableCreditsData, total])
+
+  const balanceByCreditId = new Map(availableCredits.map((c) => [c.id, c.balance]))
+  // Lista final aplicada: cada monto recortado a su saldo, y la suma recortada al total.
+  const selectedCredits: SelectedCredit[] = capCreditsToTotal(
+    availableCredits
+      .map((c) => ({
+        customerCreditId: c.id,
+        amount: Math.max(0, Math.min(creditAmounts[c.id] ?? 0, c.balance)),
+      }))
+      .filter((c) => c.amount > 0),
+    total,
+  )
+  const creditsApplied = selectedCredits.reduce((sum, c) => sum + c.amount, 0)
+  const totalToPay = Math.max(total - creditsApplied, 0)
+
+  function setCreditAmount(creditId: string, next: number) {
+    creditsTouchedRef.current = true
+    setCreditAmounts((prev) => {
+      const balance = balanceByCreditId.get(creditId) ?? 0
+      const othersSum = Object.entries(prev)
+        .filter(([id]) => id !== creditId)
+        .reduce((sum, [, amt]) => sum + amt, 0)
+      return { ...prev, [creditId]: clampCreditAmount(next, balance, total, othersSum) }
+    })
+  }
+
+  // Bloqueo de cupo: la venta a crédito no puede superar el disponible del cliente. Se evalúa
+  // sobre el neto (total menos saldos a favor aplicados), que es lo que realmente entra a la
+  // cuenta por cobrar. No se puede saltar; se resuelve subiendo el cupo desde la ficha del cliente.
+  const creditExceeded = isCredit && Boolean(creditData) && total - creditsApplied > creditData!.availableCredit
 
   const missingItems: string[] = []
   if (!thirdPartyId) missingItems.push('Selecciona un cliente')
@@ -377,7 +438,10 @@ export default function POSCheckoutPage() {
   const { mutateAsync: updateMutateAsync, isPending: isUpdating } = useMutation({
     mutationFn: ({ docId, payload }: { docId: string; payload: UpdateDocumentPayload }) => updateDocument(docId, payload),
   })
-  const { mutateAsync: confirmMutateAsync, isPending: isConfirming } = useMutation({ mutationFn: confirmDocument })
+  const { mutateAsync: confirmMutateAsync, isPending: isConfirming } = useMutation({
+    mutationFn: ({ id, customerCredits }: { id: string; customerCredits: SelectedCredit[] }) =>
+      confirmDocument(id, customerCredits.length ? { customerCredits } : undefined),
+  })
 
   const isSubmitting = isCreating || isUpdating || isConfirming
 
@@ -393,6 +457,8 @@ export default function POSCheckoutPage() {
     queryClient.invalidateQueries({ queryKey: ['products-search-pos'] })
     // La venta a crédito genera una cuenta por cobrar, así que cambió el cupo disponible del cliente.
     queryClient.invalidateQueries({ queryKey: ['customer-credit'] })
+    // Una venta que aplicó saldos a favor cambió el saldo disponible de esas notas.
+    queryClient.invalidateQueries({ queryKey: ['customer-available-credits'] })
     if (confirmed.sourceDocument) {
       queryClient.invalidateQueries({ queryKey: ['document', confirmed.sourceDocument.id] })
     }
@@ -429,7 +495,14 @@ export default function POSCheckoutPage() {
       if (draftId) {
         doc = await updateMutateAsync({ docId: draftId, payload })
       } else {
-        doc = await createMutateAsync({ type: mode, ...payload })
+        // La venta a crédito nace con la cuenta por cobrar ya neteada por los saldos a favor,
+        // así que el backend necesita conocerlos desde el create para validar el cupo sobre el
+        // neto. En contado los saldos se aplican recién al confirmar.
+        doc = await createMutateAsync({
+          type: mode,
+          ...payload,
+          customerCredits: isCredit && selectedCredits.length ? selectedCredits : undefined,
+        })
         setDraftId(doc.id)
         setDraftNumber(doc.number)
       }
@@ -440,7 +513,7 @@ export default function POSCheckoutPage() {
     }
 
     try {
-      const confirmed = await confirmMutateAsync(doc.id)
+      const confirmed = await confirmMutateAsync({ id: doc.id, customerCredits: selectedCredits })
       invalidateAfterSale(confirmed)
       toast.success(`Venta ${docNumber(confirmed.type, confirmed.number)} confirmada. El inventario fue actualizado.`)
       navigate(`/documents/${confirmed.id}`)
@@ -596,7 +669,7 @@ export default function POSCheckoutPage() {
                 )}
                 {creditExceeded && creditData && (
                   <p className="text-xs text-red-600 dark:text-red-400 mt-3">
-                    La venta ({formatCOP(total)}) supera el cupo disponible ({formatCOP(creditData.availableCredit)}).
+                    El neto a crédito ({formatCOP(total - creditsApplied)}) supera el cupo disponible ({formatCOP(creditData.availableCredit)}).
                     Para realizarla, aumenta el cupo del cliente desde su ficha (requiere autorización).
                   </p>
                 )}
@@ -627,6 +700,15 @@ export default function POSCheckoutPage() {
                 </div>
               </div>
             )}
+
+            {/* Saldo a favor del cliente aplicable a esta venta. */}
+            <CustomerCreditsPanel
+              availableCredits={availableCredits}
+              creditAmounts={creditAmounts}
+              setCreditAmount={setCreditAmount}
+              creditsApplied={creditsApplied}
+              totalAvailable={availableCreditsData?.totalAvailable ?? 0}
+            />
           </div>
 
           {/* Aviso de preventa activa */}
@@ -756,9 +838,27 @@ export default function POSCheckoutPage() {
         <div className="lg:sticky lg:top-6 space-y-4">
           <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-4">
             <div>
-              <p className="text-xs text-content-faint font-accent uppercase tracking-wider">Total a pagar</p>
-              <p className="text-4xl text-content mt-1 font-mono">{formatCOP(total)}</p>
-              <p className="text-xs text-content-muted mt-1 font-accent">
+              <p className="text-xs text-content-faint font-accent uppercase tracking-wider">
+                {creditsApplied > 0
+                  ? isCredit
+                    ? 'Total a crédito (neto)'
+                    : 'Total a pagar en efectivo'
+                  : 'Total a pagar'}
+              </p>
+              <p className="text-4xl text-content mt-1 font-mono">{formatCOP(totalToPay)}</p>
+              {creditsApplied > 0 && (
+                <div className="mt-2 space-y-0.5 text-xs font-accent">
+                  <div className="flex items-center justify-between text-content-muted">
+                    <span>Total</span>
+                    <span className="font-mono">{formatCOP(total)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                    <span>Saldo a favor</span>
+                    <span className="font-mono">− {formatCOP(creditsApplied)}</span>
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-content-muted mt-2 font-accent">
                 {fields.length} producto{fields.length === 1 ? '' : 's'}
               </p>
             </div>

@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type {
+  ConfirmContext,
   DocumentWithItems,
   ReservationEffectStrategy,
 } from './document-effect.strategy';
@@ -61,6 +62,7 @@ export abstract class AbstractReservationStrategy
     tx: Prisma.TransactionClient,
     document: DocumentWithItems,
     _userId: string,
+    _context?: ConfirmContext,
   ) {
     const warehouseId = this.requireWarehouse(document);
 

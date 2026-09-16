@@ -21,6 +21,8 @@ import {
   ShoppingCart,
   Printer,
   Clock,
+  RotateCcw,
+  Wallet,
 } from "lucide-react";
 
 import {
@@ -38,6 +40,7 @@ import {
   DOC_TYPE_ACCENT,
   DOC_STATUS_BADGE,
   PV_CONVERSION_BADGE,
+  DVV_REFUND_METHOD_OPTIONS,
 } from "./document.constants";
 import { ReleaseItemsDialog } from "./components/ReleaseItemsDialog";
 import { getPendingQuantity, hasPendingItems } from "./pos-checkout.utils";
@@ -66,6 +69,26 @@ const fmtDocRef = (type: string, number: string | number) =>
 
 const TYPE_LABELS = DOC_TYPE_BADGE;
 const STATUS_LABELS = DOC_STATUS_BADGE;
+
+const refundMethodLabelFor = (method: string) =>
+  DVV_REFUND_METHOD_OPTIONS.find((o) => o.value === method)?.label ?? method;
+
+// Estado de una nota de saldo a favor: solo 'available' | 'used' en el backend.
+const CREDIT_STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  available: {
+    label: "Disponible",
+    className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
+  },
+  used: {
+    label: "Agotado",
+    className: "bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400",
+  },
+};
+const creditStatusBadgeFor = (status: string) =>
+  CREDIT_STATUS_BADGE[status] ?? {
+    label: status,
+    className: "bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400",
+  };
 
 // Cuando la petición pide un archivo (PDF), la respuesta de error también llega como archivo,
 // no como JSON, aunque el backend haya mandado un error normal. Hay que leerla como texto y
@@ -350,7 +373,7 @@ export default function DocumentDetailPage() {
   // Tipos que se valoran al precio de venta, no al costo (misma lista que en el backend). En
   // estos, la línea guarda el precio de venta y el costo queda en cero.
   const isPriceBasedType =
-    doc.type === "PV" || doc.type === "REM" || doc.type === "POS" || doc.type === "COT";
+    doc.type === "PV" || doc.type === "REM" || doc.type === "POS" || doc.type === "COT" || doc.type === "DVV";
   const itemUnitCost = (item: (typeof doc.documentItems)[number]) =>
     isPriceBasedType ? item.unitPrice : usesAvgCostFallback ? Number(item.product.avgCost) : item.unitCost;
   const itemSubtotal = (item: (typeof doc.documentItems)[number]) =>
@@ -624,11 +647,24 @@ export default function DocumentDetailPage() {
                 <p className="text-xs text-content-faint font-accent">
                   {doc.type === "CM" || doc.type === "DVC"
                     ? "Proveedor"
-                    : doc.type === "PV" || doc.type === "REM"
+                    : doc.type === "PV" || doc.type === "REM" || doc.type === "DVV"
                       ? "Cliente"
                       : "Tercero"}
                 </p>
                 <p className="text-sm text-content">{doc.thirdParty.name}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Modalidad de devolución — solo devoluciones en venta */}
+          {doc.type === "DVV" && doc.refundMethod && (
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <RotateCcw className="w-4 h-4 text-content-muted" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint font-accent">Modalidad de devolución</p>
+                <p className="text-sm text-content">{refundMethodLabelFor(doc.refundMethod)}</p>
               </div>
             </div>
           )}
@@ -780,6 +816,118 @@ export default function DocumentDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Saldo a favor generado — solo devoluciones en venta con modalidad que deja saldo
+          (nada en "devolución de dinero"). */}
+      {doc.type === "DVV" && doc.customerCredits && doc.customerCredits.length > 0 && (
+        <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-ui-divide">
+            <h2 className="text-base text-content">Saldo a favor generado</h2>
+            <p className="text-xs text-content-faint font-accent mt-0.5">
+              Notas de saldo a favor que esta devolución creó para el cliente
+            </p>
+          </div>
+          <div className="p-6 space-y-4">
+            {doc.customerCredits.map((credit) => {
+              const creditBadge = creditStatusBadgeFor(credit.status);
+              return (
+                <div
+                  key={credit.id}
+                  className="rounded-xl border border-ui-border bg-surface-raised p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-fuchsia-100 dark:bg-fuchsia-500/20 flex items-center justify-center shrink-0">
+                        <Wallet className="w-4 h-4 text-fuchsia-700 dark:text-fuchsia-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-content-faint font-accent">Generado</p>
+                        <p className="text-sm text-content font-mono">{formatCOP(credit.amount)}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-content-faint font-accent">Disponible</p>
+                      <p className="text-sm text-content font-mono">{formatCOP(credit.balance)}</p>
+                    </div>
+                    <span
+                      className={cn(
+                        "px-2.5 py-1 rounded-full text-xs font-medium",
+                        creditBadge.className,
+                      )}
+                    >
+                      {creditBadge.label}
+                    </span>
+                  </div>
+                  {credit.applications.length > 0 && (
+                    <div className="mt-3 border-t border-ui-divide pt-3 space-y-1.5">
+                      <p className="text-xs text-content-faint font-accent">Aplicado en</p>
+                      {credit.applications.map((app) => (
+                        <button
+                          key={app.id}
+                          type="button"
+                          onClick={() => navigate(`/documents/${app.saleDocumentId}`)}
+                          className="flex items-center gap-2 text-sm text-brand-secondary hover:underline"
+                        >
+                          <ArrowRight className="w-3.5 h-3.5" />
+                          {formatCOP(app.amount)} · {formatDate(app.appliedAt)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Saldo a favor aplicado — ventas POS/COT que consumieron notas de saldo a favor. */}
+      {(doc.type === "POS" || doc.type === "COT") &&
+        doc.appliedCustomerCredits &&
+        doc.appliedCustomerCredits.length > 0 && (
+          <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-ui-divide">
+              <h2 className="text-base text-content">Saldo a favor aplicado</h2>
+              <p className="text-xs text-content-faint font-accent mt-0.5">
+                Notas de saldo a favor del cliente usadas en esta venta
+              </p>
+            </div>
+            <div className="p-6 space-y-2">
+              {doc.appliedCustomerCredits.map((applied) => (
+                <div
+                  key={applied.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ui-border bg-surface-raised px-4 py-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-fuchsia-100 dark:bg-fuchsia-500/20 flex items-center justify-center shrink-0">
+                      <Wallet className="w-4 h-4 text-fuchsia-700 dark:text-fuchsia-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-content font-mono">{formatCOP(applied.amount)}</p>
+                      <p className="text-xs text-content-faint font-accent">
+                        {formatDate(applied.appliedAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(`/documents/${applied.customerCredit.sourceDocument.id}`)
+                    }
+                    className="flex items-center gap-1.5 text-sm text-brand-secondary hover:underline"
+                  >
+                    Origen{" "}
+                    {fmtDocRef(
+                      applied.customerCredit.sourceDocument.type,
+                      applied.customerCredit.sourceDocument.number,
+                    )}
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       {/* ── Dialogs ────────────────────────────────────────────────────────── */}
 

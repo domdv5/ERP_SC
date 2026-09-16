@@ -3,6 +3,7 @@ export {
   DocumentType,
   DocumentStatus,
   EaiAdjustmentReason,
+  DvvRefundMethod,
   WithholdingAgentType,
   TaxRegime,
   PaymentMethod,

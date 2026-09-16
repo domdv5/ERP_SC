@@ -7,8 +7,17 @@ import { Prisma } from '@prisma/client';
 import { DocumentType, MovementType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { assertCreditWithinLimit } from '@/documents/helpers/credit.helpers';
+import { applyCustomerCredits } from '@/documents/helpers/customer-credit.helpers';
 import { BaseEffectStrategy } from './base-effect.strategy';
-import type { DocumentWithItems } from './document-effect.strategy';
+import type {
+  ConfirmContext,
+  DocumentWithItems,
+} from './document-effect.strategy';
+
+/** Convierte a centavos enteros para operar montos sin errores de coma flotante. */
+function toCents(amount: number) {
+  return Math.round(amount * 100);
+}
 
 /** Venta a crédito: igual que la venta de contado (saca stock físico, valorado al precio de venta) pero no pide forma de pago, valida el cupo de crédito del cliente y al confirmar crea una cuenta por cobrar. */
 @Injectable()
@@ -58,18 +67,26 @@ export class CotEffectStrategy extends BaseEffectStrategy {
       }),
     );
 
-    // Cupo de crédito: se bloquea si el total supera el disponible del cliente.
-    const requestedTotal = items.reduce(
+    // Cupo de crédito: se valida sobre el neto (total menos los saldos a favor
+    // que se van a aplicar). Un cliente con saldo a favor no debe consumir cupo
+    // por la parte que ya tiene cubierta.
+    const grossTotal = items.reduce(
       (sum, item) => sum + item.quantity * (item.unitPrice ?? 0),
       0,
     );
-    await assertCreditWithinLimit(this.prisma, thirdParty.id, requestedTotal);
+    const creditsTotal = (createDocumentDto.customerCredits ?? []).reduce(
+      (sum, credit) => sum + credit.amount,
+      0,
+    );
+    const netTotal = Math.max(0, grossTotal - creditsTotal);
+    await assertCreditWithinLimit(this.prisma, thirdParty.id, netTotal);
   }
 
   async confirm(
     tx: Prisma.TransactionClient,
     document: DocumentWithItems,
     userId: string,
+    context?: ConfirmContext,
   ) {
     const warehouseId = this.requireWarehouse(document);
 
@@ -106,15 +123,25 @@ export class CotEffectStrategy extends BaseEffectStrategy {
       throw new BadRequestException('La venta requiere un vendedor');
     }
 
+    // Saldos a favor que esta venta aplica. La cuenta por cobrar nace neta y el
+    // cupo se valida sobre el neto: el cliente no consume cupo por la parte que
+    // ya tiene cubierta con su saldo a favor.
+    const appliedCents = (context?.appliedCustomerCredits ?? []).reduce(
+      (sum, credit) => sum + toCents(credit.amount),
+      0,
+    );
+    const totalCents = toCents(Number(document.total));
+    const netCents = totalCents - appliedCents;
+
     // Bloquea la fila del cliente hasta el fin de la transacción: dos ventas a
     // crédito del mismo cliente a la vez no pueden superar el cupo entre las dos.
     // Además, como editar un borrador no re-valida, esta es la validación contra el
-    // total definitivo.
+    // total definitivo. Orden global de bloqueo: customers -> customer_credit -> accounts_receivable.
     await tx.$queryRaw`SELECT id FROM customers WHERE id = ${document.thirdPartyId}::uuid FOR UPDATE`;
     await assertCreditWithinLimit(
       tx,
       document.thirdPartyId,
-      Number(document.total),
+      Math.max(0, netCents) / 100,
     );
 
     for (const item of document.documentItems) {
@@ -130,19 +157,29 @@ export class CotEffectStrategy extends BaseEffectStrategy {
       });
     }
 
-    // Venta a crédito: genera la cuenta por cobrar del cliente. La fecha de
-    // vencimiento se deja en null por ahora. El monto se redondea a pesos enteros:
-    // el sistema maneja pesos sin centavos, así que la cuenta no debe nacer con un
-    // saldo con decimales que "Registrar pago" nunca podría saldar. El total del
-    // documento se deja exacto; se acepta una diferencia de hasta ~1 peso.
+    // Venta a crédito: genera la cuenta por cobrar del cliente, ya neta de los
+    // saldos a favor aplicados. La fecha de vencimiento se deja en null por ahora.
+    // El monto se redondea a pesos enteros (el sistema maneja pesos sin centavos).
+    // Si el saldo a favor cubre toda la venta, la cuenta nace saldada.
     await tx.accountsReceivable.create({
       data: {
         clientId: document.thirdPartyId,
         sellerId: document.sellerId,
         documentId: document.id,
-        totalAmount: Math.round(Number(document.total)),
-        status: 'pending',
+        totalAmount: Math.round(netCents / 100),
+        status: netCents === 0 ? 'paid' : 'pending',
       },
     });
+
+    // Descuenta el balance de cada saldo a favor citado. Techo = total bruto de
+    // la venta (no el neto): la suma aplicada nunca puede superar lo que se vende.
+    if (context?.appliedCustomerCredits?.length) {
+      await applyCustomerCredits(tx, {
+        customerId: document.thirdPartyId,
+        saleDocumentId: document.id,
+        saleTotal: document.total,
+        appliedCustomerCredits: context.appliedCustomerCredits,
+      });
+    }
   }
 }

@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth.store";
 import { getRoleLabel } from "@/services/users.service";
 import { getWarehouses } from "@/services/warehouses.service";
-import { navGroups, REM_NEW_PATH, type NavItem } from "@/config/navigation";
+import { navGroups, REM_NEW_PATH, DVV_NEW_PATH, type NavItem } from "@/config/navigation";
 
 function getNavLinkClass(isActive: boolean) {
   return cn(
@@ -30,6 +30,12 @@ function isRemNewActive(pathname: string, search: string) {
   return pathname === "/documents/new" && new URLSearchParams(search).get("type") === "REM";
 }
 
+// Ruta del ítem "Nueva devolución" del grupo Ventas. Mismo motivo que la remisión: NavLink
+// no distingue el "?type=DVV", así que se compara a mano.
+function isDvvNewActive(pathname: string, search: string) {
+  return pathname === "/documents/new" && new URLSearchParams(search).get("type") === "DVV";
+}
+
 // "/documents/pos/new" y "/documents/new?type=REM" también empiezan con "/documents", así
 // que NavLink, por defecto, marcaría "Operaciones" como activo estando en el checkout de
 // venta o en el form de remisión. Forzar coincidencia exacta tampoco sirve: rompería el
@@ -38,7 +44,8 @@ function isDocumentsActive(pathname: string, search: string) {
   return (
     pathname.startsWith("/documents") &&
     !pathname.startsWith("/documents/pos") &&
-    !isRemNewActive(pathname, search)
+    !isRemNewActive(pathname, search) &&
+    !isDvvNewActive(pathname, search)
   );
 }
 
@@ -116,6 +123,9 @@ function navLinkClassFor(item: NavItem, pathname: string, search: string) {
   }
   if (item.to === REM_NEW_PATH) {
     return () => getNavLinkClass(isRemNewActive(pathname, search));
+  }
+  if (item.to === DVV_NEW_PATH) {
+    return () => getNavLinkClass(isDvvNewActive(pathname, search));
   }
   return ({ isActive }: { isActive: boolean }) => getNavLinkClass(isActive);
 }

@@ -6,8 +6,12 @@ import {
 import { Prisma } from '@prisma/client';
 import { DocumentType, MovementType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
+import { applyCustomerCredits } from '@/documents/helpers/customer-credit.helpers';
 import { BaseEffectStrategy } from './base-effect.strategy';
-import type { DocumentWithItems } from './document-effect.strategy';
+import type {
+  ConfirmContext,
+  DocumentWithItems,
+} from './document-effect.strategy';
 
 /** Venta de contado: saca stock físico, valorado al precio de venta. No crea cuentas por pagar ni por cobrar. La forma de pago es solo informativa. */
 @Injectable()
@@ -15,8 +19,7 @@ export class PosEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.POS;
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
-    const { thirdPartyId, sellerId, paymentMethod, items } =
-      createDocumentDto;
+    const { thirdPartyId, sellerId, paymentMethod, items } = createDocumentDto;
 
     const thirdParty = thirdPartyId
       ? await this.prisma.thirdParty.findUnique({
@@ -67,6 +70,7 @@ export class PosEffectStrategy extends BaseEffectStrategy {
     tx: Prisma.TransactionClient,
     document: DocumentWithItems,
     userId: string,
+    context?: ConfirmContext,
   ) {
     const warehouseId = this.requireWarehouse(document);
 
@@ -107,6 +111,22 @@ export class PosEffectStrategy extends BaseEffectStrategy {
         documentId: document.id,
         documentItemId: item.id,
         userId,
+      });
+    }
+
+    // Saldos a favor aplicados a esta venta: descuentan el balance del crédito.
+    // El "total a pagar en efectivo" (total − crédito) es informativo del frontend.
+    if (context?.appliedCustomerCredits?.length) {
+      if (!document.thirdPartyId) {
+        throw new ConflictException(
+          'La venta requiere un cliente para aplicar saldos a favor',
+        );
+      }
+      await applyCustomerCredits(tx, {
+        customerId: document.thirdPartyId,
+        saleDocumentId: document.id,
+        saleTotal: document.total,
+        appliedCustomerCredits: context.appliedCustomerCredits,
       });
     }
 

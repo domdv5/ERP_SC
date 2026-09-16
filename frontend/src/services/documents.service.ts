@@ -10,6 +10,8 @@ import type {
   ReleaseItemsPayload,
   ConvertDocumentPayload,
   CustomerCreditSummary,
+  ConfirmDocumentPayload,
+  AvailableCustomerCreditsResponse,
 } from '@/types/document.types'
 
 export async function getDocuments(
@@ -40,8 +42,13 @@ export async function updateDocument(
   return res.data.data
 }
 
-export async function confirmDocument(id: string): Promise<Document> {
-  const res = await api.post<ApiResponse<Document>>(`/documents/${id}/confirm`)
+// El cuerpo es opcional: solo las ventas POS/COT lo mandan, para aplicar saldos a favor del
+// cliente al confirmar. Sin cuerpo, el backend confirma igual que siempre.
+export async function confirmDocument(
+  id: string,
+  payload?: ConfirmDocumentPayload,
+): Promise<Document> {
+  const res = await api.post<ApiResponse<Document>>(`/documents/${id}/confirm`, payload)
   return res.data.data
 }
 
@@ -74,6 +81,18 @@ export async function deleteDocument(id: string): Promise<void> {
 export async function getCustomerCredit(customerId: string): Promise<CustomerCreditSummary> {
   const res = await api.get<ApiResponse<CustomerCreditSummary>>(
     `/documents/customers/${customerId}/credit`,
+  )
+  return res.data.data
+}
+
+// Saldos a favor disponibles del cliente (notas generadas por devoluciones en venta). Se usa
+// en el checkout para aplicarlos a la venta. Distinto de getCustomerCredit, que es el cupo de
+// crédito. El backend solo devuelve los que están disponibles y con saldo mayor a cero.
+export async function getAvailableCustomerCredits(
+  customerId: string,
+): Promise<AvailableCustomerCreditsResponse> {
+  const res = await api.get<ApiResponse<AvailableCustomerCreditsResponse>>(
+    `/documents/customers/${customerId}/available-credits`,
   )
   return res.data.data
 }

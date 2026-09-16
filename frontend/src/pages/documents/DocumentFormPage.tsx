@@ -16,7 +16,12 @@ import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { formSchema, type FormValues } from './document-form.schema'
-import { DOC_TYPE_SELECT_OPTIONS, DOC_TYPE_ACCENT, EAI_ADJUSTMENT_REASON_OPTIONS } from './document.constants'
+import {
+  DOC_TYPE_SELECT_OPTIONS,
+  DOC_TYPE_ACCENT,
+  EAI_ADJUSTMENT_REASON_OPTIONS,
+  DVV_REFUND_METHOD_OPTIONS,
+} from './document.constants'
 import { ProductRow } from './components/ProductRow'
 import { BarcodeScanInput } from './components/BarcodeScanInput'
 
@@ -36,8 +41,9 @@ const DOC_TYPE_OPTIONS = DOC_TYPE_SELECT_OPTIONS
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
-// Sustantivo por tipo para títulos y botones: solo la remisión tiene texto propio; el resto usa "operación".
-const TYPE_NOUN: Record<string, string> = { REM: 'remisión' }
+// Sustantivo por tipo para títulos y botones: la remisión y la devolución en venta tienen
+// texto propio; el resto usa "operación".
+const TYPE_NOUN: Record<string, string> = { REM: 'remisión', DVV: 'devolución en venta' }
 const nounFor = (t: string) => TYPE_NOUN[t] ?? 'operación'
 
 // ─── main page ───────────────────────────────────────────────────────────────
@@ -53,14 +59,19 @@ export default function DocumentFormPage() {
   const canCreateType = (t: string) => userPermissions.includes(`document.create.${t}`)
 
   // Tipos que NO salen en el desplegable "Tipo de operación": las ventas tienen su propia
-  // pantalla de checkout; la remisión se crea solo desde el enlace "Nueva remisión" del menú,
-  // con el tipo ya fijado, para que no parezca "una operación de inventario más".
+  // pantalla de checkout; la remisión y la devolución en venta se crean solo desde su enlace
+  // del menú, con el tipo ya fijado, para que no parezcan "una operación de inventario más".
   const availableTypes = DOC_TYPE_OPTIONS.filter(
-    (opt) => opt.value !== 'POS' && opt.value !== 'COT' && opt.value !== 'REM' && canCreateType(opt.value)
+    (opt) =>
+      opt.value !== 'POS' &&
+      opt.value !== 'COT' &&
+      opt.value !== 'REM' &&
+      opt.value !== 'DVV' &&
+      canCreateType(opt.value),
   )
 
   // Tipos que solo se pueden crear desde un enlace directo, no desde el desplegable.
-  const DEEP_LINK_TYPES: readonly FormValues['type'][] = ['REM']
+  const DEEP_LINK_TYPES: readonly FormValues['type'][] = ['REM', 'DVV']
   const requestedType = searchParams.get('type') as FormValues['type'] | null
   const requestedTypeAllowed =
     requestedType != null &&
@@ -148,6 +159,10 @@ export default function DocumentFormPage() {
   const destWarehouseId = watch('destWarehouseId')
   // Ícono y color de acento del encabezado; se recalculan en vivo al cambiar el tipo de operación.
   const accent          = DOC_TYPE_ACCENT[docType]
+  // Tipos que llegan con el tipo ya fijado por deep-link: el selector se reemplaza por un pill
+  // no editable.
+  const isFixedType     = docType === 'REM' || docType === 'DVV'
+  const fixedTypeLabel  = docType === 'REM' ? 'Remisión' : 'Devolución en venta'
 
   // ── load existing document for edit ──────────────────────────────────────
   const { data: existingDoc, isLoading: isLoadingDoc } = useQuery({
@@ -198,6 +213,7 @@ export default function DocumentFormPage() {
       destBinId:       existingDoc.destBin?.id ?? undefined,
       adjustmentReason:      existingDoc.adjustmentReason ?? undefined,
       adjustmentReasonOther: existingDoc.adjustmentReasonOther ?? undefined,
+      refundMethod:          existingDoc.refundMethod ?? undefined,
       notes:           existingDoc.notes ?? undefined,
       items: existingDoc.documentItems.map((item) => ({
         productId:     item.productId,
@@ -218,9 +234,10 @@ export default function DocumentFormPage() {
     staleTime: 10 * 60 * 1000,
   })
 
-  // CM/DVC piden proveedor; PV y REM piden cliente — mismo combobox, distinto filtro server-side.
+  // CM/DVC piden proveedor; PV, REM y DVV piden cliente — mismo combobox, distinto filtro
+  // server-side. La devolución en venta no lleva vendedora (v1, igual que la devolución compra).
   const needsSupplier = docType === 'CM' || docType === 'DVC'
-  const needsCustomer = docType === 'PV' || docType === 'REM'
+  const needsCustomer = docType === 'PV' || docType === 'REM' || docType === 'DVV'
   const needsSeller    = docType === 'PV' || docType === 'REM'
 
   const hasTpSearch = debouncedTpSearch.length >= 1
@@ -444,6 +461,9 @@ export default function DocumentFormPage() {
         values.type === 'EAI' && values.adjustmentReason === 'otro'
           ? (values.adjustmentReasonOther || undefined)
           : null,
+      // Solo la devolución en venta manda modalidad; el backend la exige para ese tipo.
+      refundMethod:
+        values.type === 'DVV' ? (values.refundMethod || undefined) : undefined,
       notes:           values.notes || undefined,
       items: values.items.map((item) => ({
         productId:     item.productId,
@@ -485,8 +505,9 @@ export default function DocumentFormPage() {
   const needsAdjustmentReason = docType === 'EAI'
   const currentAdjustmentReason = watch('adjustmentReason')
   const showCostColumn  = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
-  // Preventas y remisiones muestran precio de venta editable en vez de costo: es una columna aparte.
-  const showPriceColumn = docType === 'PV' || docType === 'REM'
+  // Preventas, remisiones y devoluciones en venta muestran precio de venta editable en vez de
+  // costo: es una columna aparte.
+  const showPriceColumn = docType === 'PV' || docType === 'REM' || docType === 'DVV'
   // Las salidas por ajuste y los traslados también necesitan la columna de costo (de solo
   // lectura) para que las celdas de cada fila sigan alineadas con el encabezado.
   const hasCostColumn   = showCostColumn || showPriceColumn || docType === 'SAJ' || docType === 'T'
@@ -516,7 +537,9 @@ export default function DocumentFormPage() {
               ? 'Editando borrador'
               : docType === 'REM'
                 ? 'Crea una nueva remisión'
-                : 'Crea una nueva operación de inventario'}
+                : docType === 'DVV'
+                  ? 'Crea una nueva devolución en venta'
+                  : 'Crea una nueva operación de inventario'}
           </p>
         </div>
       </div>
@@ -537,17 +560,17 @@ export default function DocumentFormPage() {
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {/* Tipo — la remisión va con tipo fijo (no editable); el resto usa el desplegable */}
+            {/* Tipo — la remisión y la devolución en venta van con tipo fijo (no editable); el resto usa el desplegable */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-content-secondary">
-                Tipo de operación {docType !== 'REM' && <span className="text-red-500">*</span>}
+                Tipo de operación {!isFixedType && <span className="text-red-500">*</span>}
               </label>
-              {docType === 'REM' ? (
+              {isFixedType ? (
                 <div className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg border border-ui-border-medium bg-surface-raised text-content opacity-90">
                   <span className={cn('w-6 h-6 rounded-md flex items-center justify-center shrink-0', accent.iconBg)}>
                     <accent.icon className={cn('w-4 h-4', accent.iconText)} />
                   </span>
-                  Remisión
+                  {fixedTypeLabel}
                 </div>
               ) : (
               <Controller
@@ -873,6 +896,27 @@ export default function DocumentFormPage() {
               </div>
             )}
           </div>
+
+          {/* Modalidad de devolución — solo devoluciones en venta. Define si la devolución deja
+              saldo a favor, es un cambio de producto, o se devuelve el dinero. */}
+          {docType === 'DVV' && (
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-content-secondary">
+                Modalidad de devolución <span className="text-red-500">*</span>
+              </label>
+              <select
+                {...register('refundMethod')}
+                className="w-full sm:w-72 px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+              >
+                <option value="">Selecciona una modalidad</option>
+                {DVV_REFUND_METHOD_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Detalle del motivo — solo en entradas por ajuste cuando el motivo es "Otro" */}
           {needsAdjustmentReason && currentAdjustmentReason === 'otro' && (

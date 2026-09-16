@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, useSearchParams } from 'react-router-dom'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AuthGuard } from '@/components/layout/AuthGuard'
@@ -41,6 +41,15 @@ function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<DelayedPageLoader />}>{children}</Suspense>
 }
 
+// La ruta /documents/new es la misma para todos los tipos que llegan por enlace directo
+// (?type=REM, ?type=DVV). Sin este key, ir de una remisión a una devolución no remonta el
+// formulario y la pantalla se queda con el tipo anterior. El key fuerza un formulario limpio
+// por cada tipo.
+function NewDocumentForm() {
+  const [searchParams] = useSearchParams()
+  return <DocumentFormPage key={searchParams.get('type') ?? 'default'} />
+}
+
 export const router = createBrowserRouter([
   {
     path: '/login',
@@ -63,7 +72,7 @@ export const router = createBrowserRouter([
       { path: 'warehouses',            element: <Lazy><PermissionGuard permission="warehouse.manage"><WarehousesPage /></PermissionGuard></Lazy> },
       { path: 'documents',             element: <Lazy><PermissionGuard permission="document.read"><DocumentsPage /></PermissionGuard></Lazy> },
       { path: 'stock-lookup',          element: <Lazy><PermissionGuard permission="inventory.manage"><StockLookupPage /></PermissionGuard></Lazy> },
-      { path: 'documents/new',         element: <Lazy><PermissionGuard permission="document.read"><DocumentFormPage /></PermissionGuard></Lazy> },
+      { path: 'documents/new',         element: <Lazy><PermissionGuard permission="document.read"><NewDocumentForm /></PermissionGuard></Lazy> },
       { path: 'documents/pos/new',     element: <Lazy><PermissionGuard permission={['document.create.POS', 'document.create.COT']}><POSCheckoutPage /></PermissionGuard></Lazy> },
       { path: 'documents/:id',         element: <Lazy><PermissionGuard permission="document.read"><DocumentDetailPage /></PermissionGuard></Lazy> },
       { path: 'documents/:id/edit',    element: <Lazy><PermissionGuard permission="document.read"><DocumentFormPage /></PermissionGuard></Lazy> },

@@ -16,6 +16,7 @@ import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
 import { DocumentPrintService } from './print/index';
 import {
+  ConfirmDocumentDto,
   ConvertDocumentDto,
   CreateDocumentDto,
   FindAllDocumentsDto,
@@ -50,6 +51,15 @@ export class DocumentsController {
     return this.documentsService.getCustomerCreditSummary(customerId);
   }
 
+  // Saldos a favor del cliente disponibles para aplicar a una venta. Permiso
+  // document.create.POS: quien cobra una venta necesita verlos. NO confundir con
+  // customers/:customerId/credit (cupo de crédito).
+  @Get('customers/:customerId/available-credits')
+  @Permissions('document.create.POS')
+  getAvailableCustomerCredits(@Param('customerId') customerId: string) {
+    return this.documentsService.listAvailableCustomerCredits(customerId);
+  }
+
   @Get(':id')
   @Permissions('document.read')
   findOne(@Param('id') id: string) {
@@ -77,8 +87,12 @@ export class DocumentsController {
   }
 
   @Post(':id/confirm')
-  confirm(@Param('id') id: string, @Req() req: RequestWithUser) {
-    return this.documentsService.confirm(id, req.user);
+  confirm(
+    @Param('id') id: string,
+    @Body() confirmDocumentDto: ConfirmDocumentDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.documentsService.confirm(id, confirmDocumentDto, req.user);
   }
 
   @Post(':id/void')
@@ -109,7 +123,10 @@ export class DocumentsController {
   @Permissions('document.read')
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
-  async print(@Param('id') id: string, @Res({ passthrough: false }) res: Response) {
+  async print(
+    @Param('id') id: string,
+    @Res({ passthrough: false }) res: Response,
+  ) {
     const { buffer, filename } = await this.documentPrintService.print(id);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${filename}"`);

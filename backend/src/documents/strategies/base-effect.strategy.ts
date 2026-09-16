@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { DocumentType, MovementType } from '@/common/enums';
 import { PrismaService } from '@/prisma/prisma.service';
 import type {
+  ConfirmContext,
   DocumentEffectStrategy,
   DocumentWithItems,
 } from './document-effect.strategy';
@@ -27,6 +28,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     tx: Prisma.TransactionClient,
     document: DocumentWithItems,
     userId: string,
+    context?: ConfirmContext,
   ): Promise<void>;
 
   protected requireWarehouse(document: { warehouseId: string | null }) {
@@ -49,6 +51,19 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
       throw new BadRequestException(
         'El documento requiere un proveedor válido',
       );
+    }
+  }
+
+  protected async assertValidCustomer(thirdPartyId?: string) {
+    const thirdParty = thirdPartyId
+      ? await this.prisma.thirdParty.findUnique({
+          where: { id: thirdPartyId },
+          include: { customer: true },
+        })
+      : null;
+
+    if (!thirdParty?.customer) {
+      throw new BadRequestException('El documento requiere un cliente válido');
     }
   }
 

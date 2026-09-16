@@ -6,9 +6,17 @@ import { CreateDocumentDto } from '@/documents/dto/index';
 export type DocumentWithItems = Prisma.DocumentGetPayload<{
   include: {
     documentItems: { include: { product: true } };
-    thirdParty: { include: { supplier: true } };
+    thirdParty: { include: { supplier: true; customer: true } };
   };
 }>;
+
+/**
+ * Datos extra que el service pasa a confirm() según el body del endpoint.
+ * Hoy solo lo usan las ventas POS/COT para aplicar saldos a favor del cliente.
+ */
+export type ConfirmContext = {
+  appliedCustomerCredits?: { customerCreditId: string; amount: number }[];
+};
 
 /** Contrato de efectos por tipo de documento (patrón Strategy): un tipo nuevo solo agrega una clase registrada, sin tocar el service. */
 export interface DocumentEffectStrategy {
@@ -23,12 +31,14 @@ export interface DocumentEffectStrategy {
 
   /**
    * Efectos al confirmar: movimientos kardex, inventario, cuentas.
-   * Corre dentro del $transaction del service.
+   * Corre dentro del $transaction del service. `context` es opcional: los tipos
+   * que no lo necesitan lo ignoran.
    */
   confirm(
     tx: Prisma.TransactionClient,
     document: DocumentWithItems,
     userId: string,
+    context?: ConfirmContext,
   ): Promise<void>;
 }
 

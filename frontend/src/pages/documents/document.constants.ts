@@ -8,10 +8,16 @@ import {
   Banknote,
   CreditCard,
   Truck,
+  RotateCcw,
   type LucideIcon,
 } from 'lucide-react'
 
-import type { DocumentType, DocumentStatus, EaiAdjustmentReason } from '@/types/document.types'
+import type {
+  DocumentType,
+  DocumentStatus,
+  EaiAdjustmentReason,
+  DvvRefundMethod,
+} from '@/types/document.types'
 
 // Etiquetas largas — se usan en el filtro de tipo del listado y en el selector "Tipo de
 // operación" del formulario. Las ventas aparecen acá solo para poder filtrar el listado; el
@@ -27,6 +33,14 @@ export const DOC_TYPE_SELECT_OPTIONS: { value: DocumentType; label: string }[] =
   { value: 'REM', label: 'Remisión' },
   { value: 'POS', label: 'Venta (POS)' },
   { value: 'COT', label: 'Venta crédito' },
+  { value: 'DVV', label: 'Devolución venta' },
+]
+
+// Modalidad de una devolución en venta — obligatoria al crear una DVV.
+export const DVV_REFUND_METHOD_OPTIONS: { value: DvvRefundMethod; label: string }[] = [
+  { value: 'saldo_a_favor',     label: 'Saldo a favor del cliente' },
+  { value: 'cambio_producto',   label: 'Cambio de producto' },
+  { value: 'devolucion_dinero', label: 'Devolución de dinero' },
 ]
 
 // Motivo del ajuste — solo en entradas por ajuste. Etiquetas pensadas para el operador de
@@ -49,6 +63,7 @@ export const DOC_TYPE_BADGE: Record<DocumentType, { label: string; className: st
   REM: { label: 'Remisión',        className: 'bg-cyan-100   text-cyan-700   dark:bg-cyan-500/20   dark:text-cyan-400'   },
   POS: { label: 'Venta',           className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' },
   COT: { label: 'Venta crédito',   className: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400' },
+  DVV: { label: 'Dev. Venta',      className: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/20 dark:text-fuchsia-400' },
 }
 
 // Refuerzo visual del tipo a simple vista (ícono + borde de acento a la izquierda). Se usa en
@@ -69,6 +84,7 @@ export const DOC_TYPE_ACCENT: Record<DocumentType, {
   REM: { icon: Truck,          iconBg: 'bg-cyan-100   dark:bg-cyan-500/20',   iconText: 'text-cyan-700   dark:text-cyan-400',   border: 'border-l-cyan-500'   },
   POS: { icon: Banknote,       iconBg: 'bg-emerald-100 dark:bg-emerald-500/20', iconText: 'text-emerald-700 dark:text-emerald-400', border: 'border-l-emerald-500' },
   COT: { icon: CreditCard,     iconBg: 'bg-indigo-100 dark:bg-indigo-500/20', iconText: 'text-indigo-700 dark:text-indigo-400', border: 'border-l-indigo-500' },
+  DVV: { icon: RotateCcw,      iconBg: 'bg-fuchsia-100 dark:bg-fuchsia-500/20', iconText: 'text-fuchsia-700 dark:text-fuchsia-400', border: 'border-l-fuchsia-500' },
 }
 
 // Chip de estado de conversión de una preventa o remisión — bajo el pill de estado en el

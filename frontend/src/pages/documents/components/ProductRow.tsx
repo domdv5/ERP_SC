@@ -95,10 +95,13 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   // con el costo promedio del producto elegido.
   const readonlySubtotal = selectedAvgCost !== null ? Number(quantity) * selectedAvgCost : null
 
-  // Preventas y remisiones no llevan costo (son venta, no compra): el campo editable es el
-  // precio de venta, prellenado con el del producto pero ajustable (p. ej. un descuento puntual).
-  const showPrice = docType === 'PV' || docType === 'REM'
+  // Preventas, remisiones y devoluciones en venta no llevan costo (son venta, no compra): el
+  // campo editable es el precio de venta, prellenado con el del producto pero ajustable.
+  const showPrice = docType === 'PV' || docType === 'REM' || docType === 'DVV'
   const priceSubtotal = Number(quantity) * Number(unitPrice)
+  // El aviso de disponible solo aplica a la venta que saca stock (PV/REM). En la devolución en
+  // venta el stock entra, así que ese dato solo confundiría.
+  const showSaleAvailability = showPrice && docType !== 'DVV'
 
   // Traslados: bodega origen elegida en el formulario. Se usa para mostrar el disponible en esa
   // bodega, no el del bulto concreto: el disponible por bulto cambia según cuál elijas, y el
@@ -116,7 +119,7 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   // aviso con su propia fuente. El backend igual rechaza al confirmar si de verdad no alcanza;
   // esto es solo un aviso temprano.
   const showPvAvailableWarning =
-    showPrice && selectedAvailableStock !== null && Number(quantity) > selectedAvailableStock
+    showSaleAvailability && selectedAvailableStock !== null && Number(quantity) > selectedAvailableStock
   const showTransferAvailableWarning =
     showTransferAvailability && availableInSourceWarehouse !== null && Number(quantity) > availableInSourceWarehouse
   const showAvailableStockWarning = showPvAvailableWarning || showTransferAvailableWarning
@@ -126,7 +129,7 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   // entre columnas sin importar cuántos avisos apliquen.
   const showUnitOfMeasureHint = docType === 'T' && selectedUnitOfMeasure === 'docena'
   const showPvAvailableHint =
-    showPrice && selectedAvailableStock !== null && !showPvAvailableWarning
+    showSaleAvailability && selectedAvailableStock !== null && !showPvAvailableWarning
   const showTransferAvailableHint =
     showTransferAvailability && availableInSourceWarehouse !== null && !showTransferAvailableWarning
   const showAvailableStockHint = showPvAvailableHint || showTransferAvailableHint

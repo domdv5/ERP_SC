@@ -10,6 +10,7 @@ import { DocumentStatus, DocumentType, MovementType } from '@/common/enums';
 import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
+  ConfirmDocumentDto,
   ConvertDocumentDto,
   CreateDocumentDto,
   CreateDocumentItemDto,
@@ -17,6 +18,7 @@ import {
   ReleaseItemsDto,
   UpdateDocumentDto,
 } from './dto/index';
+import { revertCustomerCreditApplications } from './helpers/customer-credit.helpers';
 import {
   assertAvailableForReservation,
   RESERVATION_TYPES,
@@ -79,6 +81,30 @@ const DETAIL_INCLUDE = {
   derivedDocuments: {
     select: { id: true, type: true, number: true, status: true },
   },
+  // Solo en el detalle: los saldos a favor que originó una DVV...
+  customerCredits: {
+    include: {
+      applications: {
+        select: {
+          id: true,
+          amount: true,
+          saleDocumentId: true,
+          appliedAt: true,
+        },
+      },
+    },
+  },
+  // ...y, para POS/COT, los saldos a favor que la venta aplicó (con la DVV origen).
+  appliedCustomerCredits: {
+    include: {
+      customerCredit: {
+        select: {
+          id: true,
+          sourceDocument: { select: { id: true, type: true, number: true } },
+        },
+      },
+    },
+  },
 } satisfies Prisma.DocumentInclude;
 
 // Datos recortados para el PDF: solo lo que muestra la impresión de compras y
@@ -88,7 +114,12 @@ const PRINT_INCLUDE = {
   documentItems: {
     include: {
       product: {
-        select: { id: true, code: true, description: true, unitOfMeasure: true },
+        select: {
+          id: true,
+          code: true,
+          description: true,
+          unitOfMeasure: true,
+        },
       },
     },
   },
@@ -253,6 +284,35 @@ export class DocumentsService {
     return getCustomerCreditSummary(this.prisma, customerId);
   }
 
+  /**
+   * Saldos a favor del cliente con balance disponible, para aplicar al momento de
+   * una venta (POS/COT). Distinto del cupo de crédito: acá es dinero a favor del
+   * cliente, no su línea de crédito.
+   */
+  async listAvailableCustomerCredits(customerId: string) {
+    const credits = await this.prisma.customerCredit.findMany({
+      where: { customerId, status: 'available', balance: { gt: 0 } },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        amount: true,
+        balance: true,
+        status: true,
+        createdAt: true,
+        sourceDocument: {
+          select: { id: true, type: true, number: true, date: true },
+        },
+      },
+    });
+
+    const totalAvailable = credits.reduce(
+      (sum, credit) => sum + Number(credit.balance),
+      0,
+    );
+
+    return { credits, totalAvailable };
+  }
+
   async create(createDocumentDto: CreateDocumentDto, user: JwtPayload) {
     const {
       type,
@@ -267,6 +327,7 @@ export class DocumentsService {
       adjustmentReason,
       adjustmentReasonOther,
       paymentMethod,
+      refundMethod,
       ...rest
     } = createDocumentDto;
 
@@ -317,6 +378,7 @@ export class DocumentsService {
           adjustmentReason,
           adjustmentReasonOther,
           paymentMethod: paymentMethod ?? null,
+          refundMethod: refundMethod ?? null,
           documentItems: {
             create: items.map((item) => ({
               productId: item.productId,
@@ -354,7 +416,14 @@ export class DocumentsService {
       );
     }
 
-    const { items, date, ...rest } = updateDocumentDto;
+    // customerCredits no es columna de Document (solo lo usa la venta a crédito
+    // para netear el cupo al validar); se descarta antes de tocar la fila.
+    const {
+      items,
+      date,
+      customerCredits: _customerCredits,
+      ...rest
+    } = updateDocumentDto;
 
     // Al editar un borrador no se vuelven a correr las validaciones de creación.
     // Por eso la confirmación del traslado revalida bulto y bodega desde cero.
@@ -389,12 +458,16 @@ export class DocumentsService {
     return this.withPvStatus(updated);
   }
 
-  async confirm(id: string, user: JwtPayload) {
+  async confirm(
+    id: string,
+    dto: ConfirmDocumentDto | undefined,
+    user: JwtPayload,
+  ) {
     const document = await this.prisma.document.findUnique({
       where: { id },
       include: {
         documentItems: { include: { product: true } },
-        thirdParty: { include: { supplier: true } },
+        thirdParty: { include: { supplier: true, customer: true } },
       },
     });
 
@@ -430,9 +503,13 @@ export class DocumentsService {
           );
         }
 
+        // context lleva los saldos a favor del cliente citados en el body; solo
+        // los usan POS/COT, el resto de estrategias lo ignora.
         await this.effectsRegistry
           .get(document.type)
-          .confirm(tx, document, user.sub);
+          .confirm(tx, document, user.sub, {
+            appliedCustomerCredits: dto?.customerCredits,
+          });
 
         // Si este documento nació de convertir una preventa o remisión, descuenta
         // lo vendido de la reserva original en la misma transacción (todo o nada).
@@ -441,7 +518,7 @@ export class DocumentsService {
             where: { id: document.sourceDocumentId },
             include: {
               documentItems: { include: { product: true } },
-              thirdParty: { include: { supplier: true } },
+              thirdParty: { include: { supplier: true, customer: true } },
             },
           });
 
@@ -477,7 +554,9 @@ export class DocumentsService {
     const document = await this.prisma.document.findUnique({
       where: { id },
       include: {
-        documentItems: { select: { id: true, productId: true, quantity: true } },
+        documentItems: {
+          select: { id: true, productId: true, quantity: true },
+        },
         derivedDocuments: { select: { id: true, status: true } },
         inventoryMovements: {
           include: { documentItem: { select: { unitCost: true } } },
@@ -487,6 +566,8 @@ export class DocumentsService {
         },
         accountsReceivable: { include: { receivablePayments: true } },
         supplierCredits: { include: { applications: true } },
+        customerCredits: { include: { applications: true } },
+        appliedCustomerCredits: true,
       },
     });
 
@@ -507,9 +588,7 @@ export class DocumentsService {
     // Primero hay que anular esa venta.
     if (
       RESERVATION_TYPES.includes(document.type) &&
-      document.derivedDocuments.some(
-        (d) => d.status !== DocumentStatus.voided,
-      )
+      document.derivedDocuments.some((d) => d.status !== DocumentStatus.voided)
     ) {
       throw new ConflictException(
         'No se puede anular: este documento fue convertido a una venta. Anule primero el documento de venta derivado.',
@@ -540,6 +619,18 @@ export class DocumentsService {
     if (hasCreditApplications) {
       throw new ConflictException(
         'No se puede anular: la nota crédito generada por este documento ya fue aplicada a un pago',
+      );
+    }
+
+    // Igual del lado cliente: si el saldo a favor de esta DVV ya se aplicó a una
+    // venta, anularla lo dejaría inconsistente. Primero hay que anular la venta.
+    const hasCustomerCreditApplications = document.customerCredits.some(
+      (credit) => credit.applications.length > 0,
+    );
+
+    if (hasCustomerCreditApplications) {
+      throw new ConflictException(
+        'No se puede anular: el saldo a favor generado por esta devolución ya fue aplicado en una venta',
       );
     }
 
@@ -812,6 +903,20 @@ export class DocumentsService {
             where: { sourceDocumentId: id },
           });
         }
+
+        // DVV anulada: borra el saldo a favor que generó (ya se verificó que no
+        // tiene aplicaciones).
+        if (document.customerCredits.length > 0) {
+          await tx.customerCredit.deleteMany({
+            where: { sourceDocumentId: id },
+          });
+        }
+
+        // POS/COT anulada: restituye los saldos a favor que la venta había
+        // aplicado (restaura el balance y borra las aplicaciones).
+        if (document.appliedCustomerCredits.length > 0) {
+          await revertCustomerCreditApplications(tx, id);
+        }
       },
       { timeout: 30000 },
     );
@@ -937,7 +1042,9 @@ export class DocumentsService {
     // Por ahora solo se permite conversión total: cada preventa o remisión tiene
     // como mucho una venta derivada activa. Sin esto, una segunda conversión deja
     // un borrador que nunca se podrá confirmar.
-    if (source.derivedDocuments.some((d) => d.status !== DocumentStatus.voided)) {
+    if (
+      source.derivedDocuments.some((d) => d.status !== DocumentStatus.voided)
+    ) {
       throw new ConflictException(
         'Este documento ya tiene una venta derivada activa. Anúlela antes de convertir de nuevo.',
       );
@@ -1067,7 +1174,7 @@ export class DocumentsService {
       where: { id },
       include: {
         documentItems: { include: { product: true } },
-        thirdParty: { include: { supplier: true } },
+        thirdParty: { include: { supplier: true, customer: true } },
       },
     });
 
@@ -1132,15 +1239,18 @@ export class DocumentsService {
   }
 
   /**
-   * Preventas, remisiones y ventas se valoran al precio de venta; el resto de
-   * los documentos, al costo. Tener la lista en un Set evita repartir condicionales
-   * por todo el código cuando se agregue otro tipo valorado a precio.
+   * Preventas, remisiones, ventas y devoluciones en venta se valoran al precio de
+   * venta; el resto de los documentos, al costo. Tener la lista en un Set evita
+   * repartir condicionales por todo el código cuando se agregue otro tipo valorado
+   * a precio. La DVV usa unitPrice (lo que el cliente pagó), a diferencia de la DVC
+   * que usa unitCost.
    */
   private static readonly PRICE_BASED_TYPES = new Set<DocumentType>([
     DocumentType.PV,
     DocumentType.REM,
     DocumentType.POS,
     DocumentType.COT,
+    DocumentType.DVV,
   ]);
 
   private computeItemSubtotal(item: CreateDocumentItemDto, type: DocumentType) {
