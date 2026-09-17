@@ -217,8 +217,6 @@ export function ThirdPartyForm({
   );
   const cancelRenameRef = useRef(false);
   const isEdit = !!defaultValues;
-  // En cuanto el usuario edita el nombre a mano, se deja de recalcular desde nombre y apellido
-  const [nameTouched, setNameTouched] = useState(false);
 
   const { register, handleSubmit, watch, setValue, reset, control } = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
@@ -246,7 +244,6 @@ export function ThirdPartyForm({
       });
       setBrandIds(new Map(defaultValues?.supplier?.brands?.map((b) => [b.name, b.id]) ?? []));
       setEditingBrand(null);
-      setNameTouched(false);
     }
   }, [open, defaultValues, reset]);
 
@@ -257,11 +254,13 @@ export function ThirdPartyForm({
   const firstName = watch("firstName");
   const lastName = watch("lastName");
 
-  // Al crear, autocompleta el nombre como "nombre apellido", hasta que el usuario lo edite a mano
+  // El nombre completo de persona natural siempre es calculado (nombre + apellido); no tiene
+  // campo visible en el form, se manda solo internamente. Se recalcula en vivo tanto al crear
+  // como al editar.
   useEffect(() => {
-    if (isEdit || nameTouched || personType !== "natural") return;
+    if (personType !== "natural") return;
     setValue("name", `${firstName ?? ""} ${lastName ?? ""}`.trim());
-  }, [firstName, lastName, personType, isEdit, nameTouched, setValue]);
+  }, [firstName, lastName, personType, setValue]);
 
   function addBrand() {
     const trimmed = brandInput.trim();
@@ -389,20 +388,12 @@ export function ThirdPartyForm({
 
             {/* Campos condicionales por tipo */}
             {personType === "natural" ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Nombres">
-                    <Input {...register("firstName")} placeholder="Ej. Juan Carlos" />
-                  </Field>
-                  <Field label="Apellidos">
-                    <Input {...register("lastName")} placeholder="Ej. Pérez Gómez" />
-                  </Field>
-                </div>
-                <Field label="Nombre completo (display)">
-                  <Input
-                    {...register("name", { onChange: () => setNameTouched(true) })}
-                    placeholder="Nombre que aparecerá en el sistema"
-                  />
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Nombres">
+                  <Input {...register("firstName")} placeholder="Ej. Juan Carlos" />
+                </Field>
+                <Field label="Apellidos">
+                  <Input {...register("lastName")} placeholder="Ej. Pérez Gómez" />
                 </Field>
               </div>
             ) : (
