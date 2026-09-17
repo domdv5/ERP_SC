@@ -408,6 +408,14 @@ export default function DocumentDetailPage() {
   // alineado bajo la columna de costo aunque haya columnas extra (Observaciones, o Liberado y Pendiente).
   const footerSkipCols = showObservaciones ? 4 : isReservationType ? 5 : 3;
 
+  // Cuánto de itemsTotal se cubrió con saldo a favor del cliente. En el resto de tipos de
+  // documento (y en POS/COT sin saldo aplicado) appliedCustomerCredits llega undefined/vacío,
+  // así que creditsApplied queda en 0 y el tfoot no cambia.
+  // Number(...) por el mismo motivo que itemsTotal arriba: amount puede llegar como string.
+  const creditsApplied =
+    doc.appliedCustomerCredits?.reduce((sum, c) => sum + Number(c.amount), 0) ?? 0;
+  const netPaid = Math.max(itemsTotal - creditsApplied, 0);
+
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
@@ -802,15 +810,47 @@ export default function DocumentDetailPage() {
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t border-ui-border bg-surface-raised">
-                  <td colSpan={footerSkipCols} />
-                  <td className="px-5 py-3.5 text-xs font-semibold text-content-faint uppercase tracking-wider">
-                    Total
-                  </td>
-                  <td className="px-5 py-3.5 text-sm font-medium text-content-secondary">
-                    {formatCOP(itemsTotal)}
-                  </td>
-                </tr>
+                {creditsApplied > 0 ? (
+                  <>
+                    <tr className="border-t border-ui-border bg-surface-raised">
+                      <td colSpan={footerSkipCols} />
+                      <td className="px-5 py-3 text-xs font-semibold text-content-faint uppercase tracking-wider">
+                        Total
+                      </td>
+                      <td className="px-5 py-3 text-sm font-medium text-content-secondary">
+                        {formatCOP(itemsTotal)}
+                      </td>
+                    </tr>
+                    <tr className="bg-surface-raised">
+                      <td colSpan={footerSkipCols} />
+                      <td className="px-5 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                        Saldo a favor aplicado
+                      </td>
+                      <td className="px-5 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                        − {formatCOP(creditsApplied)}
+                      </td>
+                    </tr>
+                    <tr className="border-t border-ui-border bg-surface-raised">
+                      <td colSpan={footerSkipCols} />
+                      <td className="px-5 py-3.5 text-xs font-semibold text-content uppercase tracking-wider">
+                        Total pagado
+                      </td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-content">
+                        {formatCOP(netPaid)}
+                      </td>
+                    </tr>
+                  </>
+                ) : (
+                  <tr className="border-t border-ui-border bg-surface-raised">
+                    <td colSpan={footerSkipCols} />
+                    <td className="px-5 py-3.5 text-xs font-semibold text-content-faint uppercase tracking-wider">
+                      Total
+                    </td>
+                    <td className="px-5 py-3.5 text-sm font-medium text-content-secondary">
+                      {formatCOP(itemsTotal)}
+                    </td>
+                  </tr>
+                )}
               </tfoot>
             </table>
           </div>
