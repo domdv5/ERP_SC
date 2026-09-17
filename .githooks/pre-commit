@@ -1,0 +1,27 @@
+#!/bin/sh
+# Corre Prettier sobre los archivos staged de frontend/backend antes de cada commit, para que
+# un editor con autoformato distinto (comillas/punto y coma) no vuelva a colar un reformateo
+# masivo mezclado con un cambio de logica chico. Usa el binario de prettier ya instalado en
+# cada workspace (node_modules propio), no uno global ni uno en la raiz del repo.
+set -e
+
+root=$(git rev-parse --show-toplevel)
+
+format_workspace() {
+  workspace="$1"
+  bin="$root/$workspace/node_modules/.bin/prettier"
+
+  files=$(git diff --cached --name-only --diff-filter=ACM -- "$workspace" | grep -E '\.(ts|tsx)$' || true)
+  [ -z "$files" ] && return 0
+
+  if [ ! -x "$bin" ]; then
+    echo "pre-commit: no se encontro $bin (¿falta 'pnpm install' en $workspace?)" >&2
+    exit 1
+  fi
+
+  (cd "$root" && echo "$files" | xargs "$bin" --write)
+  echo "$files" | xargs git add
+}
+
+format_workspace frontend
+format_workspace backend
