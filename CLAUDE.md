@@ -39,6 +39,14 @@ Cuando una tarea introduce una **decisión de arquitectura, regla de negocio, en
 
 Al delegar a `nestjs-code-crafter`/`react-code-crafter`, el prompt de delegación debe pedir explícitamente que el agente actualice el CLAUDE.md que corresponda si su cambio califica. Antes de cerrar una tarea o comitear, verificar que el CLAUDE.md relevante refleje el estado real del código — no dejar secciones que digan "no implementado"/"phase 2" sobre algo que ya se implementó.
 
+## Git Hooks
+
+Este repo usa un pre-commit hook versionado en `.githooks/pre-commit` (no `.husky/`, no hay `package.json` en la raíz) que corre Prettier sobre los archivos `.ts`/`.tsx` staged de `frontend/`/`backend/` antes de cada commit, usando el binario local de cada workspace (`frontend/node_modules/.bin/prettier`, `backend/node_modules/.bin/prettier`). Objetivo: evitar que un editor con autoformato distinto (comillas dobles + punto y coma, los defaults de Prettier) cuele un reformateo masivo mezclado con un cambio de lógica chico.
+
+**Activación** — `git config core.hooksPath .githooks` es una config local de git, no se propaga sola. Cualquier clon nuevo del repo (o worktree nuevo) necesita correrlo una vez para que el hook funcione; si no está activo, los commits no fallan, simplemente no corren Prettier automáticamente.
+
+`frontend/.prettierrc` fija `semi: false, singleQuote: true` (matching el estilo a mano ya establecido en el código); `backend/.prettierrc` ya tenía `singleQuote: true` y usa el default `semi: true` de Prettier (matching el estilo a mano del backend, que sí usa punto y coma). No asumir que ambos workspaces comparten el mismo estilo — son consistentes cada uno consigo mismo, no entre sí.
+
 ## Project Overview
 
 ERP Supply Chain — full-stack application for managing products, inventory, warehouses, customers, suppliers, accounts receivable/payable, and documents.
