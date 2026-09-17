@@ -1,4 +1,9 @@
-import { useEffect, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react'
+import {
+  useEffect,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+} from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -75,14 +80,16 @@ function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSele
 // Component
 // ---------------------------------------------------------------------------
 
-export function WarehouseForm({ open, onClose, onSubmit, isPending, defaultValues }: WarehouseFormProps) {
+export function WarehouseForm({
+  open,
+  onClose,
+  onSubmit,
+  isPending,
+  defaultValues,
+}: WarehouseFormProps) {
   const isEdit = !!defaultValues
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-  } = useForm<WarehouseFormValues>({
+  const { register, handleSubmit, reset } = useForm<WarehouseFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: '',
@@ -94,8 +101,8 @@ export function WarehouseForm({ open, onClose, onSubmit, isPending, defaultValue
   useEffect(() => {
     if (open) {
       reset({
-        name:   defaultValues?.name   ?? '',
-        type:   defaultValues?.type   ?? 'warehouse',
+        name: defaultValues?.name ?? '',
+        type: defaultValues?.type ?? 'warehouse',
         active: defaultValues?.active ?? true,
       })
     }
@@ -115,22 +122,29 @@ export function WarehouseForm({ open, onClose, onSubmit, isPending, defaultValue
               {isEdit ? 'Editar bodega' : 'Nueva bodega'}
             </h2>
             <p className="text-white/50 text-xs mt-0.5 font-accent">
-              {isEdit ? 'Modifica la información de la bodega' : 'Completa la información de la bodega'}
+              {isEdit
+                ? 'Modifica la información de la bodega'
+                : 'Completa la información de la bodega'}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="text-white/50 hover:text-white transition-colors">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-white/50 hover:text-white transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body + Footer */}
         <form
-          onSubmit={handleSubmit(onSubmit, (formErrors) => toast.error(getFirstErrorMessage(formErrors)))}
+          onSubmit={handleSubmit(onSubmit, (formErrors) =>
+            toast.error(getFirstErrorMessage(formErrors)),
+          )}
           noValidate
           className="flex flex-col"
         >
           <div className="px-6 py-5 space-y-4">
-
             <Field label="Nombre">
               <Input
                 {...register('name')}
@@ -159,7 +173,6 @@ export function WarehouseForm({ open, onClose, onSubmit, isPending, defaultValue
                 </label>
               </Field>
             )}
-
           </div>
 
           {/* Footer */}

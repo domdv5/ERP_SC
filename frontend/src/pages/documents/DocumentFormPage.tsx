@@ -49,10 +49,10 @@ const nounFor = (t: string) => TYPE_NOUN[t] ?? 'operación'
 // ─── main page ───────────────────────────────────────────────────────────────
 
 export default function DocumentFormPage() {
-  const navigate    = useNavigate()
-  const { id }      = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
-  const isEditing   = Boolean(id)
+  const isEditing = Boolean(id)
   const queryClient = useQueryClient()
 
   const userPermissions = useAuthStore((s) => s.user?.permissions ?? [])
@@ -76,9 +76,10 @@ export default function DocumentFormPage() {
   const requestedTypeAllowed =
     requestedType != null &&
     canCreateType(requestedType) &&
-    (DEEP_LINK_TYPES.includes(requestedType) || availableTypes.some((opt) => opt.value === requestedType))
+    (DEEP_LINK_TYPES.includes(requestedType) ||
+      availableTypes.some((opt) => opt.value === requestedType))
   const defaultType = (
-    requestedTypeAllowed ? requestedType : availableTypes[0]?.value ?? 'CM'
+    requestedTypeAllowed ? requestedType : (availableTypes[0]?.value ?? 'CM')
   ) as FormValues['type']
 
   // Si el enlace pide crear un tipo para el que el usuario no tiene permiso, no romper:
@@ -99,7 +100,9 @@ export default function DocumentFormPage() {
   const [selectedSupplierBrandIds, setSelectedSupplierBrandIds] = useState<string[]>([])
   // Condiciones de descuento del proveedor elegido, solo informativas (no se calcula nada).
   // Se muestran en un aviso, solo en compras.
-  const [selectedSupplierDiscountNotes, setSelectedSupplierDiscountNotes] = useState<string | undefined>()
+  const [selectedSupplierDiscountNotes, setSelectedSupplierDiscountNotes] = useState<
+    string | undefined
+  >()
 
   // Vendedora: solo preventas y remisiones.
   const [sellerSearch, setSellerSearch] = useState('')
@@ -123,23 +126,16 @@ export default function DocumentFormPage() {
   const barcodeInputRef = useRef<{ focus: () => void }>(null)
   const [pendingQuantityFocusIndex, setPendingQuantityFocusIndex] = useState<number | null>(null)
 
-  const {
-    control,
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    getValues,
-    reset,
-  } = useForm<FormValues>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(formSchema) as any,
-    defaultValues: {
-      type:  defaultType,
-      date:  TODAY,
-      items: [],
-    },
-  })
+  const { control, register, handleSubmit, watch, setValue, getValues, reset } =
+    useForm<FormValues>({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      resolver: zodResolver(formSchema) as any,
+      defaultValues: {
+        type: defaultType,
+        date: TODAY,
+        items: [],
+      },
+    })
 
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'items' })
 
@@ -154,15 +150,15 @@ export default function DocumentFormPage() {
     setPendingQuantityFocusIndex(null)
   }, [pendingQuantityFocusIndex, fields])
 
-  const docType         = watch('type')
-  const warehouseId     = watch('warehouseId')
+  const docType = watch('type')
+  const warehouseId = watch('warehouseId')
   const destWarehouseId = watch('destWarehouseId')
   // Ícono y color de acento del encabezado; se recalculan en vivo al cambiar el tipo de operación.
-  const accent          = DOC_TYPE_ACCENT[docType]
+  const accent = DOC_TYPE_ACCENT[docType]
   // Tipos que llegan con el tipo ya fijado por deep-link: el selector se reemplaza por un pill
   // no editable.
-  const isFixedType     = docType === 'REM' || docType === 'DVV'
-  const fixedTypeLabel  = docType === 'REM' ? 'Remisión' : 'Devolución en venta'
+  const isFixedType = docType === 'REM' || docType === 'DVV'
+  const fixedTypeLabel = docType === 'REM' ? 'Remisión' : 'Devolución en venta'
 
   // ── load existing document for edit ──────────────────────────────────────
   const { data: existingDoc, isLoading: isLoadingDoc } = useQuery({
@@ -203,25 +199,25 @@ export default function DocumentFormPage() {
       ),
     )
     reset({
-      type:            existingDoc.type,
-      date:            existingDoc.date.slice(0, 10),
-      thirdPartyId:    existingDoc.thirdParty?.id ?? undefined,
-      sellerId:        existingDoc.seller?.id ?? undefined,
-      warehouseId:     existingDoc.warehouse?.id ?? undefined,
-      sourceBinId:     existingDoc.sourceBin?.id ?? undefined,
+      type: existingDoc.type,
+      date: existingDoc.date.slice(0, 10),
+      thirdPartyId: existingDoc.thirdParty?.id ?? undefined,
+      sellerId: existingDoc.seller?.id ?? undefined,
+      warehouseId: existingDoc.warehouse?.id ?? undefined,
+      sourceBinId: existingDoc.sourceBin?.id ?? undefined,
       destWarehouseId: existingDoc.destWarehouse?.id ?? undefined,
-      destBinId:       existingDoc.destBin?.id ?? undefined,
-      adjustmentReason:      existingDoc.adjustmentReason ?? undefined,
+      destBinId: existingDoc.destBin?.id ?? undefined,
+      adjustmentReason: existingDoc.adjustmentReason ?? undefined,
       adjustmentReasonOther: existingDoc.adjustmentReasonOther ?? undefined,
-      refundMethod:          existingDoc.refundMethod ?? undefined,
-      notes:           existingDoc.notes ?? undefined,
+      refundMethod: existingDoc.refundMethod ?? undefined,
+      notes: existingDoc.notes ?? undefined,
       items: existingDoc.documentItems.map((item) => ({
-        productId:     item.productId,
-        productCode:   item.product.code,
-        productDesc:   item.product.description,
-        quantity:      item.quantity,
-        unitCost:      item.unitCost ?? undefined,
-        unitPrice:     item.unitPrice ?? undefined,
+        productId: item.productId,
+        productCode: item.product.code,
+        productDesc: item.product.description,
+        quantity: item.quantity,
+        unitCost: item.unitCost ?? undefined,
+        unitPrice: item.unitPrice ?? undefined,
         observaciones: item.observaciones ?? undefined,
       })),
     })
@@ -238,7 +234,7 @@ export default function DocumentFormPage() {
   // server-side. La devolución en venta no lleva vendedora (v1, igual que la devolución compra).
   const needsSupplier = docType === 'CM' || docType === 'DVC'
   const needsCustomer = docType === 'PV' || docType === 'REM' || docType === 'DVV'
-  const needsSeller    = docType === 'PV' || docType === 'REM'
+  const needsSeller = docType === 'PV' || docType === 'REM'
 
   const hasTpSearch = debouncedTpSearch.length >= 1
 
@@ -261,7 +257,12 @@ export default function DocumentFormPage() {
   const { data: sellerData, isLoading: isLoadingSeller } = useQuery({
     queryKey: ['third-parties-search-seller', debouncedSellerSearch],
     queryFn: () =>
-      getThirdParties({ search: debouncedSellerSearch || undefined, page: 1, limit: 30, isSeller: true }),
+      getThirdParties({
+        search: debouncedSellerSearch || undefined,
+        page: 1,
+        limit: 30,
+        isSeller: true,
+      }),
     staleTime: 2 * 60 * 1000,
     enabled: needsSeller && hasSellerSearch,
   })
@@ -320,10 +321,14 @@ export default function DocumentFormPage() {
   const destZones = (destWarehouseDetail as WarehouseDetail | undefined)?.zones ?? []
 
   const [selectedSourceZoneId, setSelectedSourceZoneId] = useState('')
-  useEffect(() => { setSelectedSourceZoneId('') }, [warehouseId])
+  useEffect(() => {
+    setSelectedSourceZoneId('')
+  }, [warehouseId])
 
   const [selectedZoneId, setSelectedZoneId] = useState('')
-  useEffect(() => { setSelectedZoneId('') }, [destWarehouseId])
+  useEffect(() => {
+    setSelectedZoneId('')
+  }, [destWarehouseId])
 
   const currentSourceBinId = watch('sourceBinId')
   const currentDestBinId = watch('destBinId')
@@ -337,7 +342,7 @@ export default function DocumentFormPage() {
 
   const sourceBins = (() => {
     const baseBins = selectedSourceZoneId
-      ? sourceZones.find((z) => z.id === selectedSourceZoneId)?.bins ?? []
+      ? (sourceZones.find((z) => z.id === selectedSourceZoneId)?.bins ?? [])
       : sourceZones.flatMap((z) => z.bins)
 
     const available = baseBins.filter((bin) =>
@@ -357,7 +362,7 @@ export default function DocumentFormPage() {
 
   const destBins = (() => {
     const baseBins = selectedZoneId
-      ? destZones.find((z) => z.id === selectedZoneId)?.bins ?? []
+      ? (destZones.find((z) => z.id === selectedZoneId)?.bins ?? [])
       : destZones.flatMap((z) => z.bins)
 
     // "occupied" lo calcula el backend en vivo (tiene stock > 0), no es un interruptor manual.
@@ -367,8 +372,8 @@ export default function DocumentFormPage() {
     // productos que ya tiene este documento — eso es apilar el mismo producto, no mezclar.
     // Un bulto solo puede tener un producto a la vez; el backend lo valida de verdad, este
     // filtro es solo una ayuda visual.
-    const available = baseBins.filter((bin) =>
-      !bin.occupied || bin.binStocks.every((bs) => itemProductIds.has(bs.productId)),
+    const available = baseBins.filter(
+      (bin) => !bin.occupied || bin.binStocks.every((bs) => itemProductIds.has(bs.productId)),
     )
 
     // Mismo motivo que en los bultos de origen: mantener visible el bulto ya elegido aunque
@@ -390,9 +395,13 @@ export default function DocumentFormPage() {
 
   const currentTpId = watch('thirdPartyId') ?? ''
 
-  const tpDisplayOptions: ComboboxOption[] = currentTpId && !debouncedTpSearch
-    ? [{ id: currentTpId, label: tpSelectedName }, ...tpOptions.filter((o) => o.id !== currentTpId)]
-    : tpOptions
+  const tpDisplayOptions: ComboboxOption[] =
+    currentTpId && !debouncedTpSearch
+      ? [
+          { id: currentTpId, label: tpSelectedName },
+          ...tpOptions.filter((o) => o.id !== currentTpId),
+        ]
+      : tpOptions
 
   // Opciones de vendedora: solo preventas y remisiones.
   const sellerOptions: ComboboxOption[] = (sellerData?.items ?? []).map((tp: ThirdParty) => ({
@@ -402,9 +411,13 @@ export default function DocumentFormPage() {
 
   const currentSellerId = watch('sellerId') ?? ''
 
-  const sellerDisplayOptions: ComboboxOption[] = currentSellerId && !debouncedSellerSearch
-    ? [{ id: currentSellerId, label: sellerSelectedName }, ...sellerOptions.filter((o) => o.id !== currentSellerId)]
-    : sellerOptions
+  const sellerDisplayOptions: ComboboxOption[] =
+    currentSellerId && !debouncedSellerSearch
+      ? [
+          { id: currentSellerId, label: sellerSelectedName },
+          ...sellerOptions.filter((o) => o.id !== currentSellerId),
+        ]
+      : sellerOptions
 
   // ── mutations ─────────────────────────────────────────────────────────────
   const invalidate = useCallback(() => {
@@ -425,8 +438,13 @@ export default function DocumentFormPage() {
   })
 
   const { mutate: update, isPending: isUpdating } = useMutation({
-    mutationFn: ({ docId, payload }: { docId: string; payload: Parameters<typeof updateDocument>[1] }) =>
-      updateDocument(docId, payload),
+    mutationFn: ({
+      docId,
+      payload,
+    }: {
+      docId: string
+      payload: Parameters<typeof updateDocument>[1]
+    }) => updateDocument(docId, payload),
     onSuccess: (doc) => {
       invalidate()
       queryClient.invalidateQueries({ queryKey: ['document', id] })
@@ -444,32 +462,32 @@ export default function DocumentFormPage() {
   // ── submit ────────────────────────────────────────────────────────────────
   const onSubmit = (values: FormValues) => {
     const payload = {
-      type:            values.type,
-      date:            values.date,
-      thirdPartyId:    values.thirdPartyId || undefined,
-      sellerId:        (values.type === 'PV' || values.type === 'REM') ? (values.sellerId || undefined) : undefined,
-      warehouseId:     values.type === 'T' ? (values.warehouseId || undefined) : undefined,
-      sourceBinId:     values.sourceBinId || undefined,
+      type: values.type,
+      date: values.date,
+      thirdPartyId: values.thirdPartyId || undefined,
+      sellerId:
+        values.type === 'PV' || values.type === 'REM' ? values.sellerId || undefined : undefined,
+      warehouseId: values.type === 'T' ? values.warehouseId || undefined : undefined,
+      sourceBinId: values.sourceBinId || undefined,
       destWarehouseId: values.destWarehouseId || undefined,
-      destBinId:       values.destBinId || undefined,
-      adjustmentReason:
-        values.type === 'EAI' ? (values.adjustmentReason || undefined) : undefined,
+      destBinId: values.destBinId || undefined,
+      adjustmentReason: values.type === 'EAI' ? values.adjustmentReason || undefined : undefined,
       // Se manda null explícito (no undefined) cuando el motivo no es "otro": al serializar,
       // las claves undefined se quitan del cuerpo, y un texto viejo de "otro motivo" quedaría
       // guardado en la base si el motivo cambia de categoría antes de guardar.
       adjustmentReasonOther:
         values.type === 'EAI' && values.adjustmentReason === 'otro'
-          ? (values.adjustmentReasonOther || undefined)
+          ? values.adjustmentReasonOther || undefined
           : null,
       // Solo la devolución en venta manda modalidad; el backend la exige para ese tipo.
-      refundMethod:
-        values.type === 'DVV' ? (values.refundMethod || undefined) : undefined,
-      notes:           values.notes || undefined,
+      refundMethod: values.type === 'DVV' ? values.refundMethod || undefined : undefined,
+      notes: values.notes || undefined,
       items: values.items.map((item) => ({
-        productId:     item.productId,
-        quantity:      item.quantity,
-        unitCost:      item.unitCost !== undefined && !isNaN(item.unitCost) ? item.unitCost : undefined,
-        unitPrice:     item.unitPrice !== undefined && !isNaN(item.unitPrice) ? item.unitPrice : undefined,
+        productId: item.productId,
+        quantity: item.quantity,
+        unitCost: item.unitCost !== undefined && !isNaN(item.unitCost) ? item.unitCost : undefined,
+        unitPrice:
+          item.unitPrice !== undefined && !isNaN(item.unitPrice) ? item.unitPrice : undefined,
         observaciones: item.observaciones || undefined,
       })),
     }
@@ -501,16 +519,16 @@ export default function DocumentFormPage() {
 
   // ── helpers ───────────────────────────────────────────────────────────────
   const needsThirdParty = needsSupplier || needsCustomer
-  const needsTransfer   = docType === 'T'
+  const needsTransfer = docType === 'T'
   const needsAdjustmentReason = docType === 'EAI'
   const currentAdjustmentReason = watch('adjustmentReason')
-  const showCostColumn  = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
+  const showCostColumn = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
   // Preventas, remisiones y devoluciones en venta muestran precio de venta editable en vez de
   // costo: es una columna aparte.
   const showPriceColumn = docType === 'PV' || docType === 'REM' || docType === 'DVV'
   // Las salidas por ajuste y los traslados también necesitan la columna de costo (de solo
   // lectura) para que las celdas de cada fila sigan alineadas con el encabezado.
-  const hasCostColumn   = showCostColumn || showPriceColumn || docType === 'SAJ' || docType === 'T'
+  const hasCostColumn = showCostColumn || showPriceColumn || docType === 'SAJ' || docType === 'T'
   // Nota de talla por línea: solo en traslados.
   const showObservacionesColumn = docType === 'T'
 
@@ -525,7 +543,12 @@ export default function DocumentFormPage() {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center shrink-0', accent.iconBg)}>
+        <div
+          className={cn(
+            'w-12 h-12 rounded-xl flex items-center justify-center shrink-0',
+            accent.iconBg,
+          )}
+        >
           <accent.icon className={cn('w-6 h-6', accent.iconText)} />
         </div>
         <div>
@@ -546,15 +569,19 @@ export default function DocumentFormPage() {
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <form
-        onSubmit={handleSubmit(onSubmit as any, (formErrors) => toast.error(getFirstErrorMessage(formErrors)))}
+        onSubmit={handleSubmit(onSubmit as any, (formErrors) =>
+          toast.error(getFirstErrorMessage(formErrors)),
+        )}
         noValidate
         className="space-y-6"
       >
         {/* ── Datos generales — borde de acento izquierdo según el tipo, ancla visual del form ── */}
-        <div className={cn(
-          'bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-5 border-l-4',
-          accent.border
-        )}>
+        <div
+          className={cn(
+            'bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-5 border-l-4',
+            accent.border,
+          )}
+        >
           <h2 className="text-base text-content border-b border-ui-divide pb-3">
             Información general
           </h2>
@@ -567,49 +594,54 @@ export default function DocumentFormPage() {
               </label>
               {isFixedType ? (
                 <div className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg border border-ui-border-medium bg-surface-raised text-content opacity-90">
-                  <span className={cn('w-6 h-6 rounded-md flex items-center justify-center shrink-0', accent.iconBg)}>
+                  <span
+                    className={cn(
+                      'w-6 h-6 rounded-md flex items-center justify-center shrink-0',
+                      accent.iconBg,
+                    )}
+                  >
                     <accent.icon className={cn('w-4 h-4', accent.iconText)} />
                   </span>
                   {fixedTypeLabel}
                 </div>
               ) : (
-              <Controller
-                name="type"
-                control={control}
-                render={({ field }) => (
-                  <select
-                    {...field}
-                    disabled={isEditing}
-                    onChange={(e) => {
-                      field.onChange(e)
-                      setValue('thirdPartyId', undefined)
-                      setValue('sellerId', undefined)
-                      setValue('warehouseId', undefined)
-                      setValue('sourceBinId', undefined)
-                      setValue('destWarehouseId', undefined)
-                      setValue('destBinId', undefined)
-                      setValue('adjustmentReason', undefined)
-                      setValue('adjustmentReasonOther', undefined)
-                      setTpSelectedName('')
-                      setSellerSelectedName('')
-                      setSelectedSupplierBrandIds([])
-                      setSelectedSupplierDiscountNotes(undefined)
-                      replace([])
-                    }}
-                    className={cn(
-                      'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all',
-                      'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary',
-                      isEditing ? 'opacity-60 cursor-not-allowed' : 'border-ui-border-medium',
-                    )}
-                  >
-                    {availableTypes.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              />
+                <Controller
+                  name="type"
+                  control={control}
+                  render={({ field }) => (
+                    <select
+                      {...field}
+                      disabled={isEditing}
+                      onChange={(e) => {
+                        field.onChange(e)
+                        setValue('thirdPartyId', undefined)
+                        setValue('sellerId', undefined)
+                        setValue('warehouseId', undefined)
+                        setValue('sourceBinId', undefined)
+                        setValue('destWarehouseId', undefined)
+                        setValue('destBinId', undefined)
+                        setValue('adjustmentReason', undefined)
+                        setValue('adjustmentReasonOther', undefined)
+                        setTpSelectedName('')
+                        setSellerSelectedName('')
+                        setSelectedSupplierBrandIds([])
+                        setSelectedSupplierDiscountNotes(undefined)
+                        replace([])
+                      }}
+                      className={cn(
+                        'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all',
+                        'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary',
+                        isEditing ? 'opacity-60 cursor-not-allowed' : 'border-ui-border-medium',
+                      )}
+                    >
+                      {availableTypes.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                />
               )}
             </div>
 
@@ -655,7 +687,9 @@ export default function DocumentFormPage() {
                       }}
                       options={tpDisplayOptions}
                       isLoading={isLoadingTp}
-                      placeholder={needsCustomer ? 'Selecciona un cliente...' : 'Selecciona un proveedor...'}
+                      placeholder={
+                        needsCustomer ? 'Selecciona un cliente...' : 'Selecciona un proveedor...'
+                      }
                       searchValue={tpSearch}
                       onSearchChange={setTpSearch}
                     />
@@ -666,7 +700,9 @@ export default function DocumentFormPage() {
                     <Info className="w-4 h-4 shrink-0 mt-0.5" />
                     <div className="text-xs">
                       <p className="font-medium">Condiciones de descuento</p>
-                      <p className="font-accent mt-0.5 whitespace-pre-wrap">{selectedSupplierDiscountNotes}</p>
+                      <p className="font-accent mt-0.5 whitespace-pre-wrap">
+                        {selectedSupplierDiscountNotes}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -936,9 +972,7 @@ export default function DocumentFormPage() {
 
           {/* Notas */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-content-secondary">
-              Notas
-            </label>
+            <label className="block text-sm font-medium text-content-secondary">Notas</label>
             <textarea
               rows={2}
               {...register('notes')}
@@ -961,12 +995,12 @@ export default function DocumentFormPage() {
               type="button"
               onClick={() =>
                 append({
-                  productId:     '',
-                  productCode:   '',
-                  productDesc:   '',
-                  quantity:      1,
-                  unitCost:      undefined,
-                  unitPrice:     undefined,
+                  productId: '',
+                  productCode: '',
+                  productDesc: '',
+                  quantity: 1,
+                  unitCost: undefined,
+                  unitPrice: undefined,
                   observaciones: undefined,
                 })
               }
@@ -1065,7 +1099,7 @@ export default function DocumentFormPage() {
                       <td className="px-3 py-3 text-right text-sm font-medium text-content-secondary">
                         {formatCOP(
                           fields.reduce((sum, _, i) => {
-                            const qty   = Number(watch(`items.${i}.quantity`) ?? 0)
+                            const qty = Number(watch(`items.${i}.quantity`) ?? 0)
                             const price = showPriceColumn
                               ? Number(watch(`items.${i}.unitPrice`) ?? 0)
                               : Number(watch(`items.${i}.unitCost`) ?? 0)

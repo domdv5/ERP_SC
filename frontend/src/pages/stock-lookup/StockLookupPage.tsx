@@ -65,7 +65,10 @@ export default function StockLookupPage() {
         </div>
         <div className="bg-surface rounded-2xl border border-ui-border overflow-hidden">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-ui-divide last:border-0">
+            <div
+              key={i}
+              className="flex items-center gap-4 px-5 py-4 border-b border-ui-divide last:border-0"
+            >
               <div className="h-3 w-24 bg-surface-hover rounded" />
               <div className="h-3 w-20 bg-surface-hover rounded" />
               <div className="h-3 w-14 bg-surface-hover rounded" />
@@ -92,7 +95,9 @@ export default function StockLookupPage() {
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 gradient-dark">
           <MapPinned className="w-7 h-7 text-white/60" />
         </div>
-        <p className="text-content-muted text-sm font-medium">Escanea o ingresa un código de producto</p>
+        <p className="text-content-muted text-sm font-medium">
+          Escanea o ingresa un código de producto
+        </p>
         <p className="text-content-faint text-xs mt-1 font-accent">
           Verás en qué bodega, zona y bulto está ubicado
         </p>

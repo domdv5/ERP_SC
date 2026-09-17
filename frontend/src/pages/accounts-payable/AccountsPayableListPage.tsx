@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useDebounce } from "use-debounce";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { Wallet, Clock, CheckCircle2 } from "lucide-react";
-import { getAccountsPayable } from "@/services/accounts-payable.service";
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useDebounce } from 'use-debounce'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { Wallet, Clock, CheckCircle2 } from 'lucide-react'
+import { getAccountsPayable } from '@/services/accounts-payable.service'
 import {
   StatsGrid,
   TableToolbar,
@@ -11,33 +11,33 @@ import {
   EmptyState,
   ErrorState,
   TablePagination,
-} from "@/components/shared";
-import { StatusBadge } from "./components/StatusBadge";
-import { formatCOP, formatDate, DOCUMENT_TYPE_LABELS, docNumber } from "./accounts-payable.utils";
-import type { AccountsPayableStatus } from "@/types";
+} from '@/components/shared'
+import { StatusBadge } from './components/StatusBadge'
+import { formatCOP, formatDate, DOCUMENT_TYPE_LABELS, docNumber } from './accounts-payable.utils'
+import type { AccountsPayableStatus } from '@/types'
 
-const ALL_STATUSES: { value: AccountsPayableStatus | ""; label: string }[] = [
-  { value: "", label: "Todos los estados" },
-  { value: "pending", label: "Pendiente" },
-  { value: "partial", label: "Parcial" },
-  { value: "paid", label: "Pagado" },
-];
+const ALL_STATUSES: { value: AccountsPayableStatus | ''; label: string }[] = [
+  { value: '', label: 'Todos los estados' },
+  { value: 'pending', label: 'Pendiente' },
+  { value: 'partial', label: 'Parcial' },
+  { value: 'paid', label: 'Pagado' },
+]
 
 export default function AccountsPayableListPage() {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<AccountsPayableStatus | "">("");
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<AccountsPayableStatus | ''>('')
+  const [page, setPage] = useState(1)
 
-  const [debouncedSearch] = useDebounce(search, 400);
+  const [debouncedSearch] = useDebounce(search, 400)
 
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, statusFilter]);
+    setPage(1)
+  }, [debouncedSearch, statusFilter])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["accounts-payable", debouncedSearch, statusFilter, page],
+    queryKey: ['accounts-payable', debouncedSearch, statusFilter, page],
     queryFn: () =>
       getAccountsPayable({
         search: debouncedSearch || undefined,
@@ -47,51 +47,51 @@ export default function AccountsPayableListPage() {
       }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
-  });
+  })
 
   // Conteos por estado para la fila de estadísticas: el listado no trae ese
   // desglose, así que se pide una sola fila por cada estado.
   const { data: pendingData, isLoading: isPendingLoading } = useQuery({
-    queryKey: ["accounts-payable", "count", "pending"],
-    queryFn: () => getAccountsPayable({ status: "pending", page: 1, limit: 1 }),
+    queryKey: ['accounts-payable', 'count', 'pending'],
+    queryFn: () => getAccountsPayable({ status: 'pending', page: 1, limit: 1 }),
     staleTime: 5 * 60 * 1000,
-  });
+  })
 
   const { data: paidData, isLoading: isPaidLoading } = useQuery({
-    queryKey: ["accounts-payable", "count", "paid"],
-    queryFn: () => getAccountsPayable({ status: "paid", page: 1, limit: 1 }),
+    queryKey: ['accounts-payable', 'count', 'paid'],
+    queryFn: () => getAccountsPayable({ status: 'paid', page: 1, limit: 1 }),
     staleTime: 5 * 60 * 1000,
-  });
+  })
 
-  const items = data?.items ?? [];
-  const total = data?.meta.total ?? 0;
-  const totalPages = data?.meta.totalPages ?? 1;
-  const pendingCount = pendingData?.meta.total ?? 0;
-  const paidCount = paidData?.meta.total ?? 0;
+  const items = data?.items ?? []
+  const total = data?.meta.total ?? 0
+  const totalPages = data?.meta.totalPages ?? 1
+  const pendingCount = pendingData?.meta.total ?? 0
+  const paidCount = paidData?.meta.total ?? 0
 
   const statCards = [
     {
-      label: "Total",
+      label: 'Total',
       value: total,
       icon: Wallet,
-      bg: "bg-brand-primary/10",
-      fg: "text-brand-primary dark:text-content",
+      bg: 'bg-brand-primary/10',
+      fg: 'text-brand-primary dark:text-content',
     },
     {
-      label: "Pendientes",
+      label: 'Pendientes',
       value: pendingCount,
       icon: Clock,
-      bg: "bg-amber-500/10",
-      fg: "text-amber-500",
+      bg: 'bg-amber-500/10',
+      fg: 'text-amber-500',
     },
     {
-      label: "Pagadas",
+      label: 'Pagadas',
       value: paidCount,
       icon: CheckCircle2,
-      bg: "bg-brand-secondary/10",
-      fg: "text-brand-secondary",
+      bg: 'bg-brand-secondary/10',
+      fg: 'text-brand-secondary',
     },
-  ];
+  ]
 
   return (
     <div className="space-y-6">
@@ -122,7 +122,7 @@ export default function AccountsPayableListPage() {
           <div className="px-5 pb-4 flex gap-3">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as AccountsPayableStatus | "")}
+              onChange={(e) => setStatusFilter(e.target.value as AccountsPayableStatus | '')}
               className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
             >
               {ALL_STATUSES.map((s) => (
@@ -138,7 +138,7 @@ export default function AccountsPayableListPage() {
           <ErrorState message="Error al cargar las cuentas por pagar" onRetry={refetch} />
         )}
 
-        {isLoading && <TableSkeleton rows={6} widths={["w-40", "w-28", "w-24", "w-20"]} />}
+        {isLoading && <TableSkeleton rows={6} widths={['w-40', 'w-28', 'w-24', 'w-20']} />}
 
         {!isLoading && !isError && items.length === 0 && (
           <EmptyState
@@ -146,12 +146,12 @@ export default function AccountsPayableListPage() {
             title={
               debouncedSearch
                 ? `Sin resultados para "${debouncedSearch}"`
-                : "No hay cuentas por pagar registradas"
+                : 'No hay cuentas por pagar registradas'
             }
             description={
               debouncedSearch
-                ? "Prueba con otro término de búsqueda"
-                : "Las cuentas se generan automáticamente al confirmar compras"
+                ? 'Prueba con otro término de búsqueda'
+                : 'Las cuentas se generan automáticamente al confirmar compras'
             }
           />
         )}
@@ -161,7 +161,7 @@ export default function AccountsPayableListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {["Proveedor", "Documento", "Monto total", "Vencimiento", "Estado"].map((h) => (
+                  {['Proveedor', 'Documento', 'Monto total', 'Vencimiento', 'Estado'].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -181,7 +181,7 @@ export default function AccountsPayableListPage() {
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
-                          {account.supplier.thirdParty.name[0]?.toUpperCase() ?? "?"}
+                          {account.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
                         </div>
                         <p className="font-medium text-content">
                           {account.supplier.thirdParty.name}
@@ -224,5 +224,5 @@ export default function AccountsPayableListPage() {
         )}
       </div>
     </div>
-  );
+  )
 }

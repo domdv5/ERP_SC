@@ -16,8 +16,12 @@ const DocumentFormPage = lazy(() => import('@/pages/documents/DocumentFormPage')
 const DocumentDetailPage = lazy(() => import('@/pages/documents/DocumentDetailPage'))
 const POSCheckoutPage = lazy(() => import('@/pages/documents/POSCheckoutPage'))
 const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
-const AccountsPayableListPage = lazy(() => import('@/pages/accounts-payable/AccountsPayableListPage'))
-const AccountsPayableDetailPage = lazy(() => import('@/pages/accounts-payable/AccountsPayableDetailPage'))
+const AccountsPayableListPage = lazy(
+  () => import('@/pages/accounts-payable/AccountsPayableListPage'),
+)
+const AccountsPayableDetailPage = lazy(
+  () => import('@/pages/accounts-payable/AccountsPayableDetailPage'),
+)
 const StockLookupPage = lazy(() => import('@/pages/stock-lookup/StockLookupPage'))
 
 // Fallback de Suspense con delay de 200ms antes de mostrar el loader de
@@ -53,33 +57,157 @@ function NewDocumentForm() {
 export const router = createBrowserRouter([
   {
     path: '/login',
-    element: <Lazy><LoginPage /></Lazy>,
+    element: (
+      <Lazy>
+        <LoginPage />
+      </Lazy>
+    ),
   },
   {
     path: '/',
-    element: <AuthGuard><AppLayout /></AuthGuard>,
+    element: (
+      <AuthGuard>
+        <AppLayout />
+      </AuthGuard>
+    ),
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       {
         path: 'dashboard',
-        element: <Lazy><DashboardPage /></Lazy>,
+        element: (
+          <Lazy>
+            <DashboardPage />
+          </Lazy>
+        ),
       },
       {
         path: 'third-parties',
-        element: <Lazy><PermissionGuard permission="thirdparty.read"><ThirdPartiesPage /></PermissionGuard></Lazy>,
+        element: (
+          <Lazy>
+            <PermissionGuard permission="thirdparty.read">
+              <ThirdPartiesPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
       },
-      { path: 'products',              element: <Lazy><ProductsPage /></Lazy> },
-      { path: 'warehouses',            element: <Lazy><PermissionGuard permission="warehouse.manage"><WarehousesPage /></PermissionGuard></Lazy> },
-      { path: 'documents',             element: <Lazy><PermissionGuard permission="document.read"><DocumentsPage /></PermissionGuard></Lazy> },
-      { path: 'stock-lookup',          element: <Lazy><PermissionGuard permission="inventory.manage"><StockLookupPage /></PermissionGuard></Lazy> },
-      { path: 'documents/new',         element: <Lazy><PermissionGuard permission="document.read"><NewDocumentForm /></PermissionGuard></Lazy> },
-      { path: 'documents/pos/new',     element: <Lazy><PermissionGuard permission={['document.create.POS', 'document.create.COT']}><POSCheckoutPage /></PermissionGuard></Lazy> },
-      { path: 'documents/:id',         element: <Lazy><PermissionGuard permission="document.read"><DocumentDetailPage /></PermissionGuard></Lazy> },
-      { path: 'documents/:id/edit',    element: <Lazy><PermissionGuard permission="document.read"><DocumentFormPage /></PermissionGuard></Lazy> },
-      { path: 'accounts-receivable',   element: <Lazy><PermissionGuard permission="ar.read"><ComingSoonPage /></PermissionGuard></Lazy> },
-      { path: 'accounts-payable',      element: <Lazy><PermissionGuard permission="ap.read"><AccountsPayableListPage /></PermissionGuard></Lazy> },
-      { path: 'accounts-payable/:id',  element: <Lazy><PermissionGuard permission="ap.read"><AccountsPayableDetailPage /></PermissionGuard></Lazy> },
-      { path: 'users',                 element: <Lazy><PermissionGuard permission="user.manage"><UsersPage /></PermissionGuard></Lazy> },
+      {
+        path: 'products',
+        element: (
+          <Lazy>
+            <ProductsPage />
+          </Lazy>
+        ),
+      },
+      {
+        path: 'warehouses',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="warehouse.manage">
+              <WarehousesPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'documents',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="document.read">
+              <DocumentsPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'stock-lookup',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="inventory.manage">
+              <StockLookupPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'documents/new',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="document.read">
+              <NewDocumentForm />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'documents/pos/new',
+        element: (
+          <Lazy>
+            <PermissionGuard permission={['document.create.POS', 'document.create.COT']}>
+              <POSCheckoutPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'documents/:id',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="document.read">
+              <DocumentDetailPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'documents/:id/edit',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="document.read">
+              <DocumentFormPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'accounts-receivable',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="ar.read">
+              <ComingSoonPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'accounts-payable',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="ap.read">
+              <AccountsPayableListPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'accounts-payable/:id',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="ap.read">
+              <AccountsPayableDetailPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'users',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="user.manage">
+              <UsersPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
     ],
   },
 ])

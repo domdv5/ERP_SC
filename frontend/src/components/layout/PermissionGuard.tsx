@@ -8,7 +8,11 @@ interface PermissionGuardProps {
   redirectTo?: string
 }
 
-export function PermissionGuard({ permission, children, redirectTo = '/dashboard' }: PermissionGuardProps) {
+export function PermissionGuard({
+  permission,
+  children,
+  redirectTo = '/dashboard',
+}: PermissionGuardProps) {
   const hasPermission = useAuthStore((s) => s.hasPermission)
   const perms = Array.isArray(permission) ? permission : [permission]
   const allowed = perms.some((p) => hasPermission(p))

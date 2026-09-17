@@ -63,11 +63,7 @@ function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
 export function ZoneForm({ open, onClose, onSubmit, isPending, defaultValues }: ZoneFormProps) {
   const isEdit = !!defaultValues
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-  } = useForm<ZoneFormValues>({
+  const { register, handleSubmit, reset } = useForm<ZoneFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: '',
@@ -78,7 +74,7 @@ export function ZoneForm({ open, onClose, onSubmit, isPending, defaultValues }: 
   useEffect(() => {
     if (open) {
       reset({
-        name:   defaultValues?.name   ?? '',
+        name: defaultValues?.name ?? '',
         active: defaultValues?.active ?? true,
       })
     }
@@ -94,33 +90,31 @@ export function ZoneForm({ open, onClose, onSubmit, isPending, defaultValues }: 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-ui-border gradient-dark">
           <div>
-            <h2 className="text-white font-semibold">
-              {isEdit ? 'Editar zona' : 'Nueva zona'}
-            </h2>
+            <h2 className="text-white font-semibold">{isEdit ? 'Editar zona' : 'Nueva zona'}</h2>
             <p className="text-white/50 text-xs mt-0.5 font-accent">
               {isEdit ? 'Modifica la información de la zona' : 'Completa la información de la zona'}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="text-white/50 hover:text-white transition-colors">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-white/50 hover:text-white transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body + Footer */}
         <form
-          onSubmit={handleSubmit(onSubmit, (formErrors) => toast.error(getFirstErrorMessage(formErrors)))}
+          onSubmit={handleSubmit(onSubmit, (formErrors) =>
+            toast.error(getFirstErrorMessage(formErrors)),
+          )}
           noValidate
           className="flex flex-col"
         >
           <div className="px-6 py-5 space-y-4">
-
             <Field label="Nombre">
-              <Input
-                {...register('name')}
-                placeholder="Ej: Zona A"
-                autoComplete="off"
-                autoFocus
-              />
+              <Input {...register('name')} placeholder="Ej: Zona A" autoComplete="off" autoFocus />
             </Field>
 
             {isEdit && (
@@ -135,7 +129,6 @@ export function ZoneForm({ open, onClose, onSubmit, isPending, defaultValues }: 
                 </label>
               </Field>
             )}
-
           </div>
 
           {/* Footer */}

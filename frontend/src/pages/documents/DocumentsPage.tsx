@@ -49,10 +49,10 @@ const ALL_TYPES: { value: string; label: string }[] = [
 ]
 
 const ALL_STATUSES: { value: string; label: string }[] = [
-  { value: '',          label: 'Todos los estados' },
-  { value: 'draft',     label: 'Borrador' },
+  { value: '', label: 'Todos los estados' },
+  { value: 'draft', label: 'Borrador' },
   { value: 'confirmed', label: 'Confirmado' },
-  { value: 'voided',    label: 'Anulado' },
+  { value: 'voided', label: 'Anulado' },
 ]
 
 // ─── component ──────────────────────────────────────────────────────────────
@@ -68,11 +68,12 @@ export default function DocumentsPage() {
     .map((p) => p.replace('document.create.', '') as DocumentType)
 
   // En el filtro de tipo solo se muestran los que el usuario puede crear (más la opción "Todos").
-  const visibleTypeOptions = allowedTypes.length > 0
-    ? ALL_TYPES.filter((t) => t.value === '' || allowedTypes.includes(t.value as DocumentType))
-    : ALL_TYPES
+  const visibleTypeOptions =
+    allowedTypes.length > 0
+      ? ALL_TYPES.filter((t) => t.value === '' || allowedTypes.includes(t.value as DocumentType))
+      : ALL_TYPES
 
-  const [search, setSearch]         = useState('')
+  const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<DocumentType | ''>('')
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | ''>('')
   const [page, setPage] = useState(1)
@@ -80,7 +81,9 @@ export default function DocumentsPage() {
   const [debouncedSearch] = useDebounce(search, 400)
 
   // Volver a la página 1 cuando cambian los filtros.
-  useEffect(() => { setPage(1) }, [debouncedSearch, typeFilter, statusFilter])
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, typeFilter, statusFilter])
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['documents', debouncedSearch, typeFilter, statusFilter, page, allowedTypes],
@@ -98,12 +101,12 @@ export default function DocumentsPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const items        = data?.items ?? []
-  const meta         = data?.meta
-  const total        = meta?.total ?? 0
-  const totalPages   = meta?.totalPages ?? 1
+  const items = data?.items ?? []
+  const meta = data?.meta
+  const total = meta?.total ?? 0
+  const totalPages = meta?.totalPages ?? 1
   const confirmedCount = meta?.confirmedCount ?? 0
-  const draftCount   = meta?.draftCount ?? 0
+  const draftCount = meta?.draftCount ?? 0
 
   const statCards = [
     {
@@ -129,8 +132,7 @@ export default function DocumentsPage() {
     },
   ]
 
-  const docNumber = (doc: DocumentListItem) =>
-    `${doc.type}-${String(doc.number).padStart(6, '0')}`
+  const docNumber = (doc: DocumentListItem) => `${doc.type}-${String(doc.number).padStart(6, '0')}`
 
   return (
     <div className="space-y-6">
@@ -197,13 +199,9 @@ export default function DocumentsPage() {
           </div>
         </div>
 
-        {isError && (
-          <ErrorState message="Error al cargar las operaciones" onRetry={refetch} />
-        )}
+        {isError && <ErrorState message="Error al cargar las operaciones" onRetry={refetch} />}
 
-        {isLoading && (
-          <TableSkeleton rows={6} widths={['w-28', 'w-36', 'w-24', 'w-20']} />
-        )}
+        {isLoading && <TableSkeleton rows={6} widths={['w-28', 'w-36', 'w-24', 'w-20']} />}
 
         {!isLoading && !isError && items.length === 0 && (
           <EmptyState
@@ -226,21 +224,19 @@ export default function DocumentsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Número', 'Fecha', 'Tipo', 'Tercero', 'Bodega', 'Total', 'Estado'].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
-                      >
-                        {h}
-                      </th>
-                    ),
-                  )}
+                  {['Número', 'Fecha', 'Tipo', 'Tercero', 'Bodega', 'Total', 'Estado'].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
                 {items.map((doc) => {
-                  const typeInfo   = TYPE_LABELS[doc.type]
+                  const typeInfo = TYPE_LABELS[doc.type]
                   const statusInfo = STATUS_LABELS[doc.status]
                   // El bloque de conversión solo llega en preventas y remisiones, y puede venir vacío.
                   const isReservationType = doc.type === 'PV' || doc.type === 'REM'
@@ -251,7 +247,9 @@ export default function DocumentsPage() {
                       : null
                   // Antigüedad solo mientras la reserva sigue abierta (confirmada y sin derivada activa).
                   const ageLabel =
-                    isReservationType && doc.status === 'confirmed' && doc.pv?.conversion.status === 'none'
+                    isReservationType &&
+                    doc.status === 'confirmed' &&
+                    doc.pv?.conversion.status === 'none'
                       ? formatDaysSince(daysSince(doc.createdAt))
                       : null
                   return (
@@ -291,9 +289,7 @@ export default function DocumentsPage() {
 
                       {/* Third party */}
                       <td className="px-5 py-3.5 text-content-secondary text-xs max-w-[180px]">
-                        <span className="truncate block">
-                          {doc.thirdParty?.name ?? '—'}
-                        </span>
+                        <span className="truncate block">{doc.thirdParty?.name ?? '—'}</span>
                       </td>
 
                       {/* Warehouse */}

@@ -65,11 +65,7 @@ function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
 export function BinForm({ open, onClose, onSubmit, isPending, zone, defaultValues }: BinFormProps) {
   const isEdit = !!defaultValues
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-  } = useForm<BinFormValues>({
+  const { register, handleSubmit, reset } = useForm<BinFormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
       code: 1,
@@ -80,7 +76,7 @@ export function BinForm({ open, onClose, onSubmit, isPending, zone, defaultValue
   useEffect(() => {
     if (open) {
       reset({
-        code:   defaultValues?.code   ?? 1,
+        code: defaultValues?.code ?? 1,
         active: defaultValues?.active ?? true,
       })
     }
@@ -96,26 +92,33 @@ export function BinForm({ open, onClose, onSubmit, isPending, zone, defaultValue
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-ui-border gradient-dark">
           <div>
-            <h2 className="text-white font-semibold">
-              {isEdit ? 'Editar bulto' : 'Nuevo bulto'}
-            </h2>
+            <h2 className="text-white font-semibold">{isEdit ? 'Editar bulto' : 'Nuevo bulto'}</h2>
             <p className="text-white/50 text-xs mt-0.5 font-accent">
-              {zone ? `Zona ${zone.name}` : isEdit ? 'Modifica la información del bulto' : 'Completa la información del bulto'}
+              {zone
+                ? `Zona ${zone.name}`
+                : isEdit
+                  ? 'Modifica la información del bulto'
+                  : 'Completa la información del bulto'}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="text-white/50 hover:text-white transition-colors">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-white/50 hover:text-white transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body + Footer */}
         <form
-          onSubmit={handleSubmit(onSubmit, (formErrors) => toast.error(getFirstErrorMessage(formErrors)))}
+          onSubmit={handleSubmit(onSubmit, (formErrors) =>
+            toast.error(getFirstErrorMessage(formErrors)),
+          )}
           noValidate
           className="flex flex-col"
         >
           <div className="px-6 py-5 space-y-4">
-
             <Field label="Número de bulto">
               <Input
                 {...register('code')}
@@ -139,7 +142,6 @@ export function BinForm({ open, onClose, onSubmit, isPending, zone, defaultValue
                 </label>
               </Field>
             )}
-
           </div>
 
           {/* Footer */}

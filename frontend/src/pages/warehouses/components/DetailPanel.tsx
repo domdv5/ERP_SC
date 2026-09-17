@@ -1,7 +1,4 @@
-import {
-  Warehouse, Store, Plus, Package,
-  FolderOpen, ChevronRight, Boxes,
-} from 'lucide-react'
+import { Warehouse, Store, Plus, Package, FolderOpen, ChevronRight, Boxes } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { EmptyState, ErrorState } from '@/components/shared'
 import { KebabMenu } from './KebabMenu'
@@ -27,7 +24,12 @@ function DetailSkeleton() {
 
 // ─── ZoneSummaryCard ────────────────────────────────────────────────────────
 function ZoneSummaryCard({
-  zone, canManage, binsEnabled, onSelect, onEdit, onAddBin,
+  zone,
+  canManage,
+  binsEnabled,
+  onSelect,
+  onEdit,
+  onAddBin,
 }: {
   zone: Zone
   canManage: boolean
@@ -45,7 +47,8 @@ function ZoneSummaryCard({
       {...drillProps}
       className={cn(
         'w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-ui-border bg-surface-raised',
-        binsEnabled && 'hover:bg-surface-hover hover:border-brand-secondary/30 transition-all cursor-pointer group',
+        binsEnabled &&
+          'hover:bg-surface-hover hover:border-brand-secondary/30 transition-all cursor-pointer group',
       )}
     >
       <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 gradient-dark">
@@ -62,7 +65,9 @@ function ZoneSummaryCard({
         </div>
         {binsEnabled && (
           <p className="text-xs text-content-faint font-accent">
-            {zone.bins.length === 0 ? 'Sin bultos' : `${zone.bins.length} ${zone.bins.length === 1 ? 'bulto' : 'bultos'}`}
+            {zone.bins.length === 0
+              ? 'Sin bultos'
+              : `${zone.bins.length} ${zone.bins.length === 1 ? 'bulto' : 'bultos'}`}
           </p>
         )}
       </div>
@@ -88,7 +93,11 @@ function ZoneSummaryCard({
 
 // ─── BinCard ────────────────────────────────────────────────────────────────
 function BinCard({
-  bin, canManage, binsEnabled, onSelect, onEdit,
+  bin,
+  canManage,
+  binsEnabled,
+  onSelect,
+  onEdit,
 }: {
   bin: Bin
   canManage: boolean
@@ -107,10 +116,12 @@ function BinCard({
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-content truncate">Bulto {bin.code}</p>
-        <p className={cn(
-          'text-[10px] font-accent',
-          bin.active ? 'text-brand-secondary' : 'text-content-muted',
-        )}>
+        <p
+          className={cn(
+            'text-[10px] font-accent',
+            bin.active ? 'text-brand-secondary' : 'text-content-muted',
+          )}
+        >
           {bin.active ? 'Activo' : 'Inactivo'}
         </p>
       </div>
@@ -143,8 +154,19 @@ interface DetailPanelProps {
 
 // ─── Component ──────────────────────────────────────────────────────────────
 export function DetailPanel({
-  selection, warehouseDetail, isLoading, isError, onRetry, canManage, binsEnabled,
-  onSelect, onEditWarehouse, onAddZone, onEditZone, onAddBin, onEditBin,
+  selection,
+  warehouseDetail,
+  isLoading,
+  isError,
+  onRetry,
+  canManage,
+  binsEnabled,
+  onSelect,
+  onEditWarehouse,
+  onAddZone,
+  onEditZone,
+  onAddBin,
+  onEditBin,
 }: DetailPanelProps) {
   if (!selection) {
     return (
@@ -175,9 +197,10 @@ export function DetailPanel({
   if (selection.kind === 'warehouse') {
     const TypeIcon = wh.type === 'store' ? Store : Warehouse
     const totalBins = wh.zones.reduce((acc, z) => acc + z.bins.length, 0)
-    const typeBadge = wh.type === 'store'
-      ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-      : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
+    const typeBadge =
+      wh.type === 'store'
+        ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+        : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
     const typeLabel = wh.type === 'store' ? 'Almacén' : 'Bodega'
 
     return (
@@ -190,15 +213,19 @@ export function DetailPanel({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-2xl text-content">{wh.name}</h1>
-              <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0', typeBadge)}>
+              <span
+                className={cn('px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0', typeBadge)}
+              >
                 {typeLabel}
               </span>
-              <span className={cn(
-                'px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0',
-                wh.active
-                  ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-                  : 'bg-surface-hover text-content-muted',
-              )}>
+              <span
+                className={cn(
+                  'px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0',
+                  wh.active
+                    ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+                    : 'bg-surface-hover text-content-muted',
+                )}
+              >
                 {wh.active ? 'Activa' : 'Inactiva'}
               </span>
             </div>
@@ -206,32 +233,36 @@ export function DetailPanel({
               {binsEnabled ? 'Zonas y bultos de almacenamiento' : 'Zonas de almacenamiento'}
             </p>
           </div>
-          {canManage && (
-            <KebabMenu onEdit={onEditWarehouse} />
-          )}
+          {canManage && <KebabMenu onEdit={onEditWarehouse} />}
         </div>
 
         {/* Stats strip */}
         <div className="bg-surface rounded-2xl border border-ui-border overflow-hidden">
           <div className="flex divide-x divide-ui-divide">
             {[
-              { label: 'Zonas',  value: wh.zones.length, Icon: FolderOpen, isText: false },
+              { label: 'Zonas', value: wh.zones.length, Icon: FolderOpen, isText: false },
               // La stat "Bultos" no aplica a bodegas `store` (nunca tienen bultos).
               ...(binsEnabled
                 ? [{ label: 'Bultos', value: totalBins, Icon: Package, isText: false }]
                 : []),
-              { label: 'Estado', value: wh.active ? 'Activa' : 'Inactiva', Icon: TypeIcon, isText: true },
-            ].map(stat => (
+              {
+                label: 'Estado',
+                value: wh.active ? 'Activa' : 'Inactiva',
+                Icon: TypeIcon,
+                isText: true,
+              },
+            ].map((stat) => (
               <div key={stat.label} className="flex-1 flex items-center gap-3 px-5 py-4">
                 <div className="w-9 h-9 rounded-xl bg-brand-secondary/10 flex items-center justify-center shrink-0">
                   <stat.Icon className="w-4 h-4 text-brand-secondary" />
                 </div>
                 <div>
                   <p className="text-xs text-content-muted font-accent">{stat.label}</p>
-                  {stat.isText
-                    ? <p className="text-sm font-medium text-content mt-0.5">{stat.value}</p>
-                    : <p className="text-2xl leading-tight font-medium text-content">{stat.value}</p>
-                  }
+                  {stat.isText ? (
+                    <p className="text-sm font-medium text-content mt-0.5">{stat.value}</p>
+                  ) : (
+                    <p className="text-2xl leading-tight font-medium text-content">{stat.value}</p>
+                  )}
                 </div>
               </div>
             ))}
@@ -269,7 +300,7 @@ export function DetailPanel({
                 description="Crea la primera zona para empezar a organizar el almacenamiento"
               />
             ) : (
-              wh.zones.map(zone => (
+              wh.zones.map((zone) => (
                 <ZoneSummaryCard
                   key={zone.id}
                   zone={zone}
@@ -288,7 +319,7 @@ export function DetailPanel({
   }
 
   if (selection.kind === 'zone') {
-    const zone = wh.zones.find(z => z.id === selection.zoneId)
+    const zone = wh.zones.find((z) => z.id === selection.zoneId)
     if (!zone) {
       return (
         <EmptyState
@@ -322,13 +353,13 @@ export function DetailPanel({
             <h1 className="text-2xl text-content">{zone.name}</h1>
             {binsEnabled && (
               <p className="text-content-muted text-sm mt-0.5 font-accent">
-                {zone.bins.length === 0 ? 'Sin bultos' : `${zone.bins.length} ${zone.bins.length === 1 ? 'bulto' : 'bultos'}`}
+                {zone.bins.length === 0
+                  ? 'Sin bultos'
+                  : `${zone.bins.length} ${zone.bins.length === 1 ? 'bulto' : 'bultos'}`}
               </p>
             )}
           </div>
-          {canManage && (
-            <KebabMenu onEdit={() => onEditZone(zone)} />
-          )}
+          {canManage && <KebabMenu onEdit={() => onEditZone(zone)} />}
         </div>
 
         {/* Bins grid — las bodegas `store` no tienen bultos; solo se llega acá por URL directa. */}
@@ -360,13 +391,20 @@ export function DetailPanel({
                 // ubicación en sí (editarla, ver su estado), no elegir un bulto libre para
                 // recibir stock nuevo.
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {zone.bins.map(bin => (
+                  {zone.bins.map((bin) => (
                     <BinCard
                       key={bin.id}
                       bin={bin}
                       canManage={canManage}
                       binsEnabled={binsEnabled}
-                      onSelect={() => onSelect({ kind: 'bin', warehouseId: wh.id, zoneId: zone.id, binId: bin.id })}
+                      onSelect={() =>
+                        onSelect({
+                          kind: 'bin',
+                          warehouseId: wh.id,
+                          zoneId: zone.id,
+                          binId: bin.id,
+                        })
+                      }
                       onEdit={() => onEditBin(bin, zone)}
                     />
                   ))}
@@ -380,8 +418,8 @@ export function DetailPanel({
   }
 
   if (selection.kind === 'bin') {
-    const zone = wh.zones.find(z => z.id === selection.zoneId)
-    const bin  = zone?.bins.find(b => b.id === selection.binId)
+    const zone = wh.zones.find((z) => z.id === selection.zoneId)
+    const bin = zone?.bins.find((b) => b.id === selection.binId)
 
     if (!zone || !bin) {
       return (
@@ -425,9 +463,7 @@ export function DetailPanel({
               Bulto de almacenamiento — {zone.name}
             </p>
           </div>
-          {canManage && binsEnabled && (
-            <KebabMenu onEdit={() => onEditBin(bin, zone)} />
-          )}
+          {canManage && binsEnabled && <KebabMenu onEdit={() => onEditBin(bin, zone)} />}
         </div>
 
         {/* Info card */}
@@ -438,10 +474,10 @@ export function DetailPanel({
           <div className="divide-y divide-ui-divide">
             {[
               { label: 'Número', value: String(bin.code) },
-              { label: 'Zona',   value: zone.name },
+              { label: 'Zona', value: zone.name },
               { label: 'Bodega', value: wh.name },
               { label: 'Estado', value: bin.active ? 'Activo' : 'Inactivo' },
-            ].map(row => (
+            ].map((row) => (
               <div key={row.label} className="flex items-center justify-between px-5 py-3.5">
                 <span className="text-xs text-content-muted font-accent">{row.label}</span>
                 <span className="text-sm text-content">{row.value}</span>

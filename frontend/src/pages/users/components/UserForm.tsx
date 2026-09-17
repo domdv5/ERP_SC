@@ -15,35 +15,47 @@ import type { AppUser } from '@/services/users.service'
 // Schema
 // ---------------------------------------------------------------------------
 
-const createSchema = z.object({
-  name:            z.string().min(1, 'El nombre es requerido').max(100, 'Máximo 100 caracteres'),
-  username:        z.string().min(3, 'Mínimo 3 caracteres').max(50, 'Máximo 50 caracteres'),
-  password:        z.string().min(6, 'Mínimo 6 caracteres'),
-  confirmPassword: z.string().min(1, 'Confirma la contraseña'),
-  roleIds:         z.array(z.string()).min(1, 'Selecciona al menos un rol'),
-  active:          z.boolean().optional(),
-}).superRefine((val, ctx) => {
-  if (val.password !== val.confirmPassword) {
-    ctx.addIssue({ code: 'custom', path: ['confirmPassword'], message: 'Las contraseñas no coinciden' })
-  }
-})
+const createSchema = z
+  .object({
+    name: z.string().min(1, 'El nombre es requerido').max(100, 'Máximo 100 caracteres'),
+    username: z.string().min(3, 'Mínimo 3 caracteres').max(50, 'Máximo 50 caracteres'),
+    password: z.string().min(6, 'Mínimo 6 caracteres'),
+    confirmPassword: z.string().min(1, 'Confirma la contraseña'),
+    roleIds: z.array(z.string()).min(1, 'Selecciona al menos un rol'),
+    active: z.boolean().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.password !== val.confirmPassword) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['confirmPassword'],
+        message: 'Las contraseñas no coinciden',
+      })
+    }
+  })
 
-const editSchema = z.object({
-  name:            z.string().min(1, 'El nombre es requerido').max(100, 'Máximo 100 caracteres'),
-  username:        z.string().min(3, 'Mínimo 3 caracteres').max(50, 'Máximo 50 caracteres'),
-  password:        z.string().min(6, 'Mínimo 6 caracteres').optional().or(z.literal('')),
-  confirmPassword: z.string().optional().or(z.literal('')),
-  roleIds:         z.array(z.string()).min(1, 'Selecciona al menos un rol'),
-  active:          z.boolean().optional(),
-}).superRefine((val, ctx) => {
-  if (val.password && val.password !== val.confirmPassword) {
-    ctx.addIssue({ code: 'custom', path: ['confirmPassword'], message: 'Las contraseñas no coinciden' })
-  }
-})
+const editSchema = z
+  .object({
+    name: z.string().min(1, 'El nombre es requerido').max(100, 'Máximo 100 caracteres'),
+    username: z.string().min(3, 'Mínimo 3 caracteres').max(50, 'Máximo 50 caracteres'),
+    password: z.string().min(6, 'Mínimo 6 caracteres').optional().or(z.literal('')),
+    confirmPassword: z.string().optional().or(z.literal('')),
+    roleIds: z.array(z.string()).min(1, 'Selecciona al menos un rol'),
+    active: z.boolean().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.password && val.password !== val.confirmPassword) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['confirmPassword'],
+        message: 'Las contraseñas no coinciden',
+      })
+    }
+  })
 
 export type CreateUserFormValues = z.infer<typeof createSchema>
-export type EditUserFormValues   = z.infer<typeof editSchema>
-export type UserFormValues       = CreateUserFormValues | EditUserFormValues
+export type EditUserFormValues = z.infer<typeof editSchema>
+export type UserFormValues = CreateUserFormValues | EditUserFormValues
 
 // ---------------------------------------------------------------------------
 // Props
@@ -88,7 +100,7 @@ function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
 
 export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: UserFormProps) {
   const isEdit = !!defaultValues
-  const [showPassword, setShowPassword]        = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const { data: roles = [], isLoading: loadingRoles } = useQuery({
@@ -100,31 +112,26 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
 
   const schema = isEdit ? editSchema : createSchema
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    control,
-  } = useForm<UserFormValues>({
+  const { register, handleSubmit, reset, control } = useForm<UserFormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
-      name:     '',
+      name: '',
       username: '',
       password: '',
-      roleIds:  [],
-      active:   true,
+      roleIds: [],
+      active: true,
     },
   })
 
   useEffect(() => {
     if (open) {
       reset({
-        name:            defaultValues?.name     ?? '',
-        username:        defaultValues?.username ?? '',
-        password:        '',
+        name: defaultValues?.name ?? '',
+        username: defaultValues?.username ?? '',
+        password: '',
         confirmPassword: '',
-        roleIds:         defaultValues?.userRoles.map((ur) => ur.role.id) ?? [],
-        active:          defaultValues?.active   ?? true,
+        roleIds: defaultValues?.userRoles.map((ur) => ur.role.id) ?? [],
+        active: defaultValues?.active ?? true,
       })
       setShowPassword(false)
     }
@@ -134,7 +141,9 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
 
   const handleFormSubmit = (data: UserFormValues) => {
     // Quita confirmPassword y la contraseña vacía antes de enviar
-    const { confirmPassword: _confirm, ...rest } = data as EditUserFormValues & { confirmPassword?: string }
+    const { confirmPassword: _confirm, ...rest } = data as EditUserFormValues & {
+      confirmPassword?: string
+    }
     void _confirm
     if (isEdit && !rest.password) {
       const { password: _pw, ...withoutPw } = rest
@@ -157,25 +166,29 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
               {isEdit ? 'Editar usuario' : 'Nuevo usuario'}
             </h2>
             <p className="text-white/50 text-xs mt-0.5 font-accent">
-              {isEdit ? 'Modifica la información del usuario' : 'Completa la información del usuario'}
+              {isEdit
+                ? 'Modifica la información del usuario'
+                : 'Completa la información del usuario'}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="text-white/50 hover:text-white transition-colors">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-white/50 hover:text-white transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body + Footer */}
         <form
-          onSubmit={handleSubmit(
-            handleFormSubmit,
-            (formErrors) => toast.error(getFirstErrorMessage(formErrors)),
+          onSubmit={handleSubmit(handleFormSubmit, (formErrors) =>
+            toast.error(getFirstErrorMessage(formErrors)),
           )}
           noValidate
           className="flex flex-col"
         >
           <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
-
             <Field label="Nombre completo">
               <Input
                 {...register('name')}
@@ -186,11 +199,7 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
             </Field>
 
             <Field label="Nombre de usuario">
-              <Input
-                {...register('username')}
-                placeholder="Ej: jgarcia"
-                autoComplete="off"
-              />
+              <Input {...register('username')} placeholder="Ej: jgarcia" autoComplete="off" />
             </Field>
 
             <Field label={isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña'}>
@@ -228,7 +237,11 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-content-faint hover:text-content-muted transition-colors"
                   tabIndex={-1}
                 >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </Field>
@@ -268,7 +281,9 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
                                 }}
                                 className="mt-0.5 w-4 h-4 rounded border-ui-border-medium accent-brand-secondary shrink-0"
                               />
-                              <p className="text-sm font-medium text-content">{getRoleLabel(role.name)}</p>
+                              <p className="text-sm font-medium text-content">
+                                {getRoleLabel(role.name)}
+                              </p>
                             </label>
                           )
                         })}
@@ -291,7 +306,6 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
                 </label>
               </Field>
             )}
-
           </div>
 
           {/* Footer */}

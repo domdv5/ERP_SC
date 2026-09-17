@@ -114,7 +114,11 @@ export function Header() {
           <button
             onClick={handleReadOnlyToggle}
             disabled={toggleReadOnlyMutation.isPending}
-            title={readOnlyMode ? 'Desactivar modo de solo lectura' : 'Activar modo de solo lectura (cierre contable)'}
+            title={
+              readOnlyMode
+                ? 'Desactivar modo de solo lectura'
+                : 'Activar modo de solo lectura (cierre contable)'
+            }
             className={cn(
               'p-2 rounded-lg transition-colors disabled:opacity-50',
               readOnlyMode
@@ -141,7 +145,9 @@ export function Header() {
             )}
           >
             <div className="text-right">
-              <p className="text-sm font-medium text-content leading-tight">{user?.name ?? 'Usuario'}</p>
+              <p className="text-sm font-medium text-content leading-tight">
+                {user?.name ?? 'Usuario'}
+              </p>
               <p className="text-xs text-content-faint">{user?.username}</p>
             </div>
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 gradient-user">

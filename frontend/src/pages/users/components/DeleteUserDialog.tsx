@@ -24,8 +24,8 @@ export function DeleteUserDialog({ user, onConfirm, onCancel, isPending }: Delet
             <h3 className="font-semibold text-content">Eliminar usuario</h3>
             <p className="text-sm text-content-muted mt-1">
               ¿Estás seguro de eliminar a{' '}
-              <span className="font-medium text-content-secondary">{user.name}</span>?
-              Esta acción no se puede deshacer.
+              <span className="font-medium text-content-secondary">{user.name}</span>? Esta acción
+              no se puede deshacer.
             </p>
           </div>
         </div>

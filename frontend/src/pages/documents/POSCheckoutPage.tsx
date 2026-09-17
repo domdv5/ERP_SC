@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm, useFieldArray } from "react-hook-form";
-import { useDebounce } from "use-debounce";
-import { toast } from "sonner";
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useForm, useFieldArray } from 'react-hook-form'
+import { useDebounce } from 'use-debounce'
+import { toast } from 'sonner'
 import {
   ArrowLeft,
   Loader2,
@@ -13,7 +13,7 @@ import {
   Wallet,
   ArrowRightLeft,
   CreditCard,
-} from "lucide-react";
+} from 'lucide-react'
 
 import {
   getDocument,
@@ -23,19 +23,19 @@ import {
   convertDocument,
   getCustomerCredit,
   getAvailableCustomerCredits,
-} from "@/services/documents.service";
-import { getThirdParties } from "@/services/third-parties.service";
-import { getProducts, getProductByCode } from "@/services/products.service";
-import { Combobox, SegmentedToggle } from "@/components/shared";
-import type { ComboboxOption } from "@/components/shared";
-import { usePermission } from "@/hooks/usePermission";
-import { cn } from "@/lib/utils";
-import { DOC_TYPE_ACCENT } from "./document.constants";
-import type { FormValues } from "./document-form.schema";
-import { BarcodeScanInput } from "./components/BarcodeScanInput";
-import { POSCartLine } from "./components/POSCartLine";
-import { POSStockShortfallDialog } from "./components/POSStockShortfallDialog";
-import { CustomerCreditsPanel } from "./components/CustomerCreditsPanel";
+} from '@/services/documents.service'
+import { getThirdParties } from '@/services/third-parties.service'
+import { getProducts, getProductByCode } from '@/services/products.service'
+import { Combobox, SegmentedToggle } from '@/components/shared'
+import type { ComboboxOption } from '@/components/shared'
+import { usePermission } from '@/hooks/usePermission'
+import { cn } from '@/lib/utils'
+import { DOC_TYPE_ACCENT } from './document.constants'
+import type { FormValues } from './document-form.schema'
+import { BarcodeScanInput } from './components/BarcodeScanInput'
+import { POSCartLine } from './components/POSCartLine'
+import { POSStockShortfallDialog } from './components/POSStockShortfallDialog'
+import { CustomerCreditsPanel } from './components/CustomerCreditsPanel'
 import {
   hasPendingItems,
   findActivePendingPreventa,
@@ -47,7 +47,7 @@ import {
   capCreditsToTotal,
   type StockShortfall,
   type SelectedCredit,
-} from "./pos-checkout.utils";
+} from './pos-checkout.utils'
 
 import type {
   CreditLimitExceededDetail,
@@ -56,73 +56,73 @@ import type {
   DocumentType,
   PaymentMethod,
   UpdateDocumentPayload,
-} from "@/types/document.types";
-import type { ThirdParty } from "@/types/third-party.types";
+} from '@/types/document.types'
+import type { ThirdParty } from '@/types/third-party.types'
 
 // Modo del checkout: venta de contado (POS) o venta a crédito (COT). COT no lleva forma de
 // pago, valida el cupo de crédito del cliente y genera una cuenta por cobrar al confirmar.
-type SaleMode = Extract<DocumentType, "POS" | "COT">;
+type SaleMode = Extract<DocumentType, 'POS' | 'COT'>
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
 const formatCOP = (v: number) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
+  new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
     minimumFractionDigits: 0,
-  }).format(v);
+  }).format(v)
 
-const docNumber = (type: string, number: number) => `${type}-${String(number).padStart(6, "0")}`;
+const docNumber = (type: string, number: number) => `${type}-${String(number).padStart(6, '0')}`
 
 // Sustantivo del documento de origen para el aviso de conversión: preventa o remisión.
-const sourceKindNoun = (type: DocumentType) => (type === "REM" ? "remisión" : "preventa");
+const sourceKindNoun = (type: DocumentType) => (type === 'REM' ? 'remisión' : 'preventa')
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = new Date().toISOString().slice(0, 10)
 
 const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
-  { value: "efectivo", label: "Efectivo" },
-  { value: "tarjeta", label: "Tarjeta" },
-  { value: "transferencia", label: "Transferencia" },
-];
+  { value: 'efectivo', label: 'Efectivo' },
+  { value: 'tarjeta', label: 'Tarjeta' },
+  { value: 'transferencia', label: 'Transferencia' },
+]
 
 function extractErrorMessage(err: unknown): string | undefined {
-  const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
-  return typeof message === "string" ? message : undefined;
+  const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
+  return typeof message === 'string' ? message : undefined
 }
 
 // ─── page ────────────────────────────────────────────────────────────────────
 
 export default function POSCheckoutPage() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
   // Entrada desde "Convertir a venta" en el detalle de una preventa o remisión. Se acepta un
   // parámetro genérico y también los nombres antiguos (?fromPV= era el único antes de la remisión).
   const fromSourceId =
-    searchParams.get("fromPV") ||
-    searchParams.get("fromREM") ||
-    searchParams.get("fromDocId") ||
-    undefined;
+    searchParams.get('fromPV') ||
+    searchParams.get('fromREM') ||
+    searchParams.get('fromDocId') ||
+    undefined
 
   // Carrito — usa el mismo formulario que el form genérico de documentos porque el input de
   // escaneo se reutiliza tal cual y exige ese tipo. El resto de los campos del formulario no
   // se usan: el cuerpo real de la venta se arma aparte, a mano, con los estados propios de
   // esta pantalla (cliente, vendedora, forma de pago).
   const { control, register, watch, setValue, getValues } = useForm<FormValues>({
-    defaultValues: { type: "PV", date: TODAY, items: [] },
-  });
-  const { fields, append, remove, replace } = useFieldArray({ control, name: "items" });
-  const cartItems = watch("items");
+    defaultValues: { type: 'PV', date: TODAY, items: [] },
+  })
+  const { fields, append, remove, replace } = useFieldArray({ control, name: 'items' })
+  const cartItems = watch('items')
 
   // ── cliente ────────────────────────────────────────────────────────────────
-  const [thirdPartyId, setThirdPartyId] = useState("");
-  const [tpSelectedName, setTpSelectedName] = useState("");
-  const [tpSearch, setTpSearch] = useState("");
-  const [debouncedTpSearch] = useDebounce(tpSearch, 400);
-  const hasTpSearch = debouncedTpSearch.length >= 1;
+  const [thirdPartyId, setThirdPartyId] = useState('')
+  const [tpSelectedName, setTpSelectedName] = useState('')
+  const [tpSearch, setTpSearch] = useState('')
+  const [debouncedTpSearch] = useDebounce(tpSearch, 400)
+  const hasTpSearch = debouncedTpSearch.length >= 1
 
   const { data: tpData, isLoading: isLoadingTp } = useQuery({
-    queryKey: ["third-parties-search-pos-customer", debouncedTpSearch],
+    queryKey: ['third-parties-search-pos-customer', debouncedTpSearch],
     queryFn: () =>
       getThirdParties({
         search: debouncedTpSearch || undefined,
@@ -132,29 +132,29 @@ export default function POSCheckoutPage() {
       }),
     staleTime: 2 * 60 * 1000,
     enabled: hasTpSearch,
-  });
+  })
 
   const tpOptions: ComboboxOption[] = (tpData?.items ?? []).map((tp: ThirdParty) => ({
     id: tp.id,
     label: tp.name,
-  }));
+  }))
   const tpDisplayOptions: ComboboxOption[] =
     thirdPartyId && !debouncedTpSearch
       ? [
           { id: thirdPartyId, label: tpSelectedName },
           ...tpOptions.filter((o) => o.id !== thirdPartyId),
         ]
-      : tpOptions;
+      : tpOptions
 
   // ── vendedor ───────────────────────────────────────────────────────────────
-  const [sellerId, setSellerId] = useState("");
-  const [sellerSelectedName, setSellerSelectedName] = useState("");
-  const [sellerSearch, setSellerSearch] = useState("");
-  const [debouncedSellerSearch] = useDebounce(sellerSearch, 400);
-  const hasSellerSearch = debouncedSellerSearch.length >= 1;
+  const [sellerId, setSellerId] = useState('')
+  const [sellerSelectedName, setSellerSelectedName] = useState('')
+  const [sellerSearch, setSellerSearch] = useState('')
+  const [debouncedSellerSearch] = useDebounce(sellerSearch, 400)
+  const hasSellerSearch = debouncedSellerSearch.length >= 1
 
   const { data: sellerData, isLoading: isLoadingSeller } = useQuery({
-    queryKey: ["third-parties-search-pos-seller", debouncedSellerSearch],
+    queryKey: ['third-parties-search-pos-seller', debouncedSellerSearch],
     queryFn: () =>
       getThirdParties({
         search: debouncedSellerSearch || undefined,
@@ -164,112 +164,112 @@ export default function POSCheckoutPage() {
       }),
     staleTime: 2 * 60 * 1000,
     enabled: hasSellerSearch,
-  });
+  })
 
   const sellerOptions: ComboboxOption[] = (sellerData?.items ?? []).map((tp: ThirdParty) => ({
     id: tp.id,
     label: tp.name,
-  }));
+  }))
   const sellerDisplayOptions: ComboboxOption[] =
     sellerId && !debouncedSellerSearch
       ? [
           { id: sellerId, label: sellerSelectedName },
           ...sellerOptions.filter((o) => o.id !== sellerId),
         ]
-      : sellerOptions;
+      : sellerOptions
 
   // ── modo de venta: contado (POS) / crédito (COT) ─────────────────────────
   // El toggle solo aparece si el usuario puede crear ventas a crédito; sin ese permiso la
   // venta es siempre de contado. Se bloquea una vez que hay un borrador en curso: el tipo de
   // un documento ya creado no se puede cambiar.
-  const canCreateCOT = usePermission("document.create.COT");
-  const [mode, setMode] = useState<SaleMode>("POS");
-  const isCredit = mode === "COT";
-  const accent = DOC_TYPE_ACCENT[mode];
+  const canCreateCOT = usePermission('document.create.COT')
+  const [mode, setMode] = useState<SaleMode>('POS')
+  const isCredit = mode === 'COT'
+  const accent = DOC_TYPE_ACCENT[mode]
 
   // ── forma de pago (solo contado) ─────────────────────────────────────────
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('')
 
   // Error de cupo excedido que devuelve el backend al crear, confirmar o convertir una venta
   // a crédito. Complementa el bloqueo local (total mayor al cupo disponible): cubre el
   // momento en que dos ventas del mismo cliente compiten por el cupo y la revalidación al convertir.
   const [creditError, setCreditError] = useState<{
-    message: string;
-    detail: CreditLimitExceededDetail;
-  } | null>(null);
+    message: string
+    detail: CreditLimitExceededDetail
+  } | null>(null)
 
   // ── borrador en curso (create→confirm, o conversión ya aplicada) ─────────
-  const [draftId, setDraftId] = useState<string | null>(null);
-  const [draftNumber, setDraftNumber] = useState<number | null>(null);
-  const [sourceDocument, setSourceDocument] = useState<DocumentSourceRef | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null)
+  const [draftNumber, setDraftNumber] = useState<number | null>(null)
+  const [sourceDocument, setSourceDocument] = useState<DocumentSourceRef | null>(null)
 
   // ── preventa activa pendiente de convertir ────────────────────────────────
-  const [pendingPreventa, setPendingPreventa] = useState<Document | null>(null);
-  const [checkingPreventa, setCheckingPreventa] = useState(false);
+  const [pendingPreventa, setPendingPreventa] = useState<Document | null>(null)
+  const [checkingPreventa, setCheckingPreventa] = useState(false)
 
   // La detección corre al elegir cliente a mano, dentro del propio onChange del buscador, no
   // en un efecto sobre el cliente. Si fuera un efecto, se volvería a disparar cuando una
   // conversión ya aceptada fija el cliente por código: esa preventa sigue con cantidad
   // pendiente hasta que la venta derivada se confirme, así que el aviso reaparecería en bucle.
   async function handleCustomerSelected(id: string, label: string) {
-    setThirdPartyId(id);
-    setTpSelectedName(label);
-    setPendingPreventa(null);
-    setCheckingPreventa(true);
+    setThirdPartyId(id)
+    setTpSelectedName(label)
+    setPendingPreventa(null)
+    setCheckingPreventa(true)
     try {
-      const pv = await findActivePendingPreventa(id);
-      setPendingPreventa(pv);
+      const pv = await findActivePendingPreventa(id)
+      setPendingPreventa(pv)
     } catch {
       // El aviso no es crítico: si la detección falla, el operario no ve el banner y sigue con
       // una venta normal. No vale la pena mostrar un error por esto.
     } finally {
-      setCheckingPreventa(false);
+      setCheckingPreventa(false)
     }
   }
 
   // ── cupo de crédito del cliente (solo modo crédito) ──────────────────────
   const { data: creditData, isLoading: isLoadingCredit } = useQuery({
-    queryKey: ["customer-credit", thirdPartyId],
+    queryKey: ['customer-credit', thirdPartyId],
     queryFn: () => getCustomerCredit(thirdPartyId),
     enabled: isCredit && Boolean(thirdPartyId),
     staleTime: 30 * 1000,
-  });
+  })
 
   // Saldos a favor disponibles del cliente. Se consultan también en contado: un saldo a favor
   // se puede aplicar tanto a una venta de contado como a una a crédito.
   const { data: availableCreditsData } = useQuery({
-    queryKey: ["customer-available-credits", thirdPartyId],
+    queryKey: ['customer-available-credits', thirdPartyId],
     queryFn: () => getAvailableCustomerCredits(thirdPartyId),
     enabled: Boolean(thirdPartyId),
     staleTime: 30 * 1000,
-  });
+  })
 
   // Cualquier cambio de contexto borra el error de cupo ya mostrado (el usuario cambió de
   // cliente, de modo, o ajustó el carrito y va a reintentar).
   useEffect(() => {
-    setCreditError(null);
-  }, [mode, thirdPartyId]);
+    setCreditError(null)
+  }, [mode, thirdPartyId])
 
   // Entrada desde "Convertir a venta" en el detalle: precarga la preventa o remisión por su
   // id y dispara el mismo aviso y flujo de conversión, sin que el operario tenga que volver a
   // buscar al cliente.
   const { data: fromSourceDoc } = useQuery({
-    queryKey: ["document", fromSourceId],
+    queryKey: ['document', fromSourceId],
     queryFn: () => getDocument(fromSourceId!),
     enabled: Boolean(fromSourceId) && !draftId,
     staleTime: 5 * 60 * 1000,
-  });
+  })
 
   useEffect(() => {
-    if (!fromSourceDoc) return;
+    if (!fromSourceDoc) return
     if (!hasPendingItems(fromSourceDoc)) {
       toast.error(
         `Esta ${sourceKindNoun(fromSourceDoc.type)} ya no tiene cantidad pendiente por convertir`,
-      );
-      return;
+      )
+      return
     }
-    setPendingPreventa(fromSourceDoc);
-  }, [fromSourceDoc]);
+    setPendingPreventa(fromSourceDoc)
+  }, [fromSourceDoc])
 
   // Al convertir a contado, el backend revalida el borrador derivado y exige forma de pago,
   // por eso el botón queda deshabilitado hasta elegir una (ver más abajo). Al convertir a
@@ -282,13 +282,13 @@ export default function POSCheckoutPage() {
         paymentMethod: isCredit ? undefined : paymentMethod || undefined,
       }),
     onSuccess: (converted) => {
-      setDraftId(converted.id);
-      setDraftNumber(converted.number);
-      setMode(converted.type as SaleMode);
-      setThirdPartyId(converted.thirdParty?.id ?? "");
-      setTpSelectedName(converted.thirdParty?.name ?? "");
-      setSellerId(converted.seller?.id ?? "");
-      setSellerSelectedName(converted.seller?.name ?? "");
+      setDraftId(converted.id)
+      setDraftNumber(converted.number)
+      setMode(converted.type as SaleMode)
+      setThirdPartyId(converted.thirdParty?.id ?? '')
+      setTpSelectedName(converted.thirdParty?.name ?? '')
+      setSellerId(converted.seller?.id ?? '')
+      setSellerSelectedName(converted.seller?.name ?? '')
       replace(
         converted.documentItems.map((item) => ({
           productId: item.productId,
@@ -299,67 +299,67 @@ export default function POSCheckoutPage() {
           unitPrice: item.unitPrice,
           observaciones: undefined,
         })),
-      );
-      setSourceDocument(converted.sourceDocument);
+      )
+      setSourceDocument(converted.sourceDocument)
       const sourceLabel = converted.sourceDocument
         ? docNumber(converted.sourceDocument.type, converted.sourceDocument.number)
-        : "el documento de origen";
-      setPendingPreventa(null);
+        : 'el documento de origen'
+      setPendingPreventa(null)
       // La conversión ya creó el borrador de venta: el listado de operaciones debe mostrarlo
       // sin esperar a que se confirme. El origen también cambió (pasa a "en conversión" y
       // oculta sus botones de anular/convertir), así que se refresca su detalle.
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
       if (converted.sourceDocument) {
-        queryClient.invalidateQueries({ queryKey: ["document", converted.sourceDocument.id] });
+        queryClient.invalidateQueries({ queryKey: ['document', converted.sourceDocument.id] })
       }
       toast.success(
         `Venta creada a partir de ${sourceLabel}. Revisa los precios antes de confirmar.`,
-      );
+      )
     },
     onError: (err: unknown) => {
-      const credit = parseCreditLimitError(err);
+      const credit = parseCreditLimitError(err)
       if (credit) {
         setCreditError({
-          message: extractErrorMessage(err) ?? "Cupo de crédito insuficiente",
+          message: extractErrorMessage(err) ?? 'Cupo de crédito insuficiente',
           detail: credit,
-        });
-        return;
+        })
+        return
       }
-      toast.error(extractErrorMessage(err) ?? "Error al convertir la preventa");
+      toast.error(extractErrorMessage(err) ?? 'Error al convertir la preventa')
     },
-  });
+  })
 
   // ── búsqueda manual de producto (alternativa al escaneo) ─────────────────
-  const [manualProductSearch, setManualProductSearch] = useState("");
-  const [debouncedManualSearch] = useDebounce(manualProductSearch, 400);
-  const hasManualSearch = debouncedManualSearch.length >= 1;
+  const [manualProductSearch, setManualProductSearch] = useState('')
+  const [debouncedManualSearch] = useDebounce(manualProductSearch, 400)
+  const hasManualSearch = debouncedManualSearch.length >= 1
 
   const { data: manualProductData, isLoading: isLoadingManualProducts } = useQuery({
-    queryKey: ["products-search-pos", debouncedManualSearch],
+    queryKey: ['products-search-pos', debouncedManualSearch],
     queryFn: () => getProducts({ search: debouncedManualSearch, page: 1, limit: 20 }),
     staleTime: 2 * 60 * 1000,
     enabled: hasManualSearch,
-  });
+  })
 
   const manualProductOptions: ComboboxOption[] = (manualProductData?.items ?? []).map((p) => ({
     id: p.id,
     label: `${p.code} — ${p.description}`,
     sublabel: `Disponible: ${p.availableStock}`,
-  }));
+  }))
 
   function handleManualProductAdd(id: string) {
-    const product = manualProductData?.items.find((p) => p.id === id);
-    if (!product) return;
+    const product = manualProductData?.items.find((p) => p.id === id)
+    if (!product) return
     // Deja el producto ya conocido en la caché de búsqueda por código, para no volver a pedir
     // al servidor el precio mínimo y el disponible de esta misma fila.
-    queryClient.setQueryData(["product-by-code", product.code], product);
+    queryClient.setQueryData(['product-by-code', product.code], product)
 
-    const currentItems = getValues("items");
-    const existingIndex = currentItems.findIndex((item) => item.productId === id);
+    const currentItems = getValues('items')
+    const existingIndex = currentItems.findIndex((item) => item.productId === id)
     if (existingIndex >= 0) {
-      const currentQty = Number(currentItems[existingIndex].quantity) || 0;
-      setValue(`items.${existingIndex}.quantity`, currentQty + 1);
-      toast.success(`${product.code} — cantidad +1`);
+      const currentQty = Number(currentItems[existingIndex].quantity) || 0
+      setValue(`items.${existingIndex}.quantity`, currentQty + 1)
+      toast.success(`${product.code} — cantidad +1`)
     } else {
       append({
         productId: product.id,
@@ -369,10 +369,10 @@ export default function POSCheckoutPage() {
         unitCost: undefined,
         unitPrice: Number(product.salePrice),
         observaciones: undefined,
-      });
-      toast.success(`${product.code} agregado`);
+      })
+      toast.success(`${product.code} agregado`)
     }
-    setManualProductSearch("");
+    setManualProductSearch('')
   }
 
   // ── detalle de producto por código (minSalePrice + disponible) ───────────
@@ -382,29 +382,29 @@ export default function POSCheckoutPage() {
   const uniqueProductCodes = useMemo(
     () => Array.from(new Set(cartItems.map((i) => i.productCode).filter(Boolean))),
     [cartItems],
-  );
+  )
 
   const productDetailQueries = useQueries({
     queries: uniqueProductCodes.map((code) => ({
-      queryKey: ["product-by-code", code],
+      queryKey: ['product-by-code', code],
       queryFn: () => getProductByCode(code),
       staleTime: 5 * 60 * 1000,
     })),
-  });
+  })
 
   const productDetailByCode = useMemo(() => {
-    const map = new Map<string, { minSalePrice: number; availableStock: number; id: string }>();
+    const map = new Map<string, { minSalePrice: number; availableStock: number; id: string }>()
     productDetailQueries.forEach((q) => {
-      if (q.data) map.set(q.data.code, q.data);
-    });
-    return map;
-  }, [productDetailQueries]);
+      if (q.data) map.set(q.data.code, q.data)
+    })
+    return map
+  }, [productDetailQueries])
 
   const minSalePriceByProductId = useMemo(() => {
-    const map = new Map<string, number>();
-    productDetailByCode.forEach((p) => map.set(p.id, p.minSalePrice));
-    return map;
-  }, [productDetailByCode]);
+    const map = new Map<string, number>()
+    productDetailByCode.forEach((p) => map.set(p.id, p.minSalePrice))
+    return map
+  }, [productDetailByCode])
 
   const priceFloorViolations = findPriceFloorViolations(
     cartItems
@@ -415,58 +415,58 @@ export default function POSCheckoutPage() {
         unitPrice: Number(i.unitPrice ?? 0),
       })),
     minSalePriceByProductId,
-  );
+  )
 
   // ── total + validaciones ──────────────────────────────────────────────────
   const total = cartItems.reduce(
     (sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0),
     0,
-  );
+  )
   const hasValidItems =
-    fields.length > 0 && cartItems.every((item) => item.productId && Number(item.quantity) > 0);
-  const totalUnits = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    fields.length > 0 && cartItems.every((item) => item.productId && Number(item.quantity) > 0)
+  const totalUnits = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
 
   // ── saldos a favor aplicados a la venta ─────────────────────────────────
-  const availableCredits = availableCreditsData?.credits ?? [];
+  const availableCredits = availableCreditsData?.credits ?? []
   // Monto aplicado por cada saldo a favor (id del saldo → monto). El usuario puede bajarlo.
-  const [creditAmounts, setCreditAmounts] = useState<Record<string, number>>({});
+  const [creditAmounts, setCreditAmounts] = useState<Record<string, number>>({})
   // Por-crédito, no global: tocar un saldo no debe congelar la propuesta de los demás. El
   // cliente se suele elegir antes de escanear productos (total todavía en $0), así que la
   // propuesta debe seguir recalculando los saldos que el usuario no tocó a medida que el
   // total sube, respetando el monto manual de los que sí tocó.
-  const creditsTouchedRef = useRef<Set<string>>(new Set());
+  const creditsTouchedRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
-    creditsTouchedRef.current = new Set();
-  }, [thirdPartyId]);
+    creditsTouchedRef.current = new Set()
+  }, [thirdPartyId])
 
   // Propone aplicar el máximo posible (los saldos más antiguos primero, excluyendo los ya
   // tocados a mano) hasta cubrir lo que falta del total tras descontar lo aplicado a mano.
   useEffect(() => {
     setCreditAmounts((prev) => {
-      const touched = creditsTouchedRef.current;
+      const touched = creditsTouchedRef.current
       const manuallyAppliedSum = availableCredits
         .filter((c) => touched.has(c.id))
-        .reduce((sum, c) => sum + Math.max(0, Math.min(prev[c.id] ?? 0, c.balance)), 0);
-      const remaining = Math.max(total - manuallyAppliedSum, 0);
+        .reduce((sum, c) => sum + Math.max(0, Math.min(prev[c.id] ?? 0, c.balance)), 0)
+      const remaining = Math.max(total - manuallyAppliedSum, 0)
       const proposal = proposeCreditApplication(
         availableCredits.filter((c) => !touched.has(c.id)),
         remaining,
-      );
+      )
 
-      const next: Record<string, number> = {};
+      const next: Record<string, number> = {}
       availableCredits.forEach((c) => {
-        next[c.id] = touched.has(c.id) ? (prev[c.id] ?? 0) : 0;
-      });
+        next[c.id] = touched.has(c.id) ? (prev[c.id] ?? 0) : 0
+      })
       proposal.forEach((p) => {
-        next[p.customerCreditId] = p.amount;
-      });
-      return next;
-    });
+        next[p.customerCreditId] = p.amount
+      })
+      return next
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [thirdPartyId, availableCreditsData, total]);
+  }, [thirdPartyId, availableCreditsData, total])
 
-  const balanceByCreditId = new Map(availableCredits.map((c) => [c.id, c.balance]));
+  const balanceByCreditId = new Map(availableCredits.map((c) => [c.id, c.balance]))
   // Lista final aplicada: cada monto recortado a su saldo, y la suma recortada al total.
   const selectedCredits: SelectedCredit[] = capCreditsToTotal(
     availableCredits
@@ -476,85 +476,84 @@ export default function POSCheckoutPage() {
       }))
       .filter((c) => c.amount > 0),
     total,
-  );
-  const creditsApplied = selectedCredits.reduce((sum, c) => sum + c.amount, 0);
-  const totalToPay = Math.max(total - creditsApplied, 0);
+  )
+  const creditsApplied = selectedCredits.reduce((sum, c) => sum + c.amount, 0)
+  const totalToPay = Math.max(total - creditsApplied, 0)
 
   function setCreditAmount(creditId: string, next: number) {
-    creditsTouchedRef.current.add(creditId);
+    creditsTouchedRef.current.add(creditId)
     setCreditAmounts((prev) => {
-      const balance = balanceByCreditId.get(creditId) ?? 0;
+      const balance = balanceByCreditId.get(creditId) ?? 0
       const othersSum = Object.entries(prev)
         .filter(([id]) => id !== creditId)
-        .reduce((sum, [, amt]) => sum + amt, 0);
-      return { ...prev, [creditId]: clampCreditAmount(next, balance, total, othersSum) };
-    });
+        .reduce((sum, [, amt]) => sum + amt, 0)
+      return { ...prev, [creditId]: clampCreditAmount(next, balance, total, othersSum) }
+    })
   }
 
   // Bloqueo de cupo: la venta a crédito no puede superar el disponible del cliente. Se evalúa
   // sobre el neto (total menos saldos a favor aplicados), que es lo que realmente entra a la
   // cuenta por cobrar. No se puede saltar; se resuelve subiendo el cupo desde la ficha del cliente.
   const creditExceeded =
-    isCredit && Boolean(creditData) && total - creditsApplied > creditData!.availableCredit;
+    isCredit && Boolean(creditData) && total - creditsApplied > creditData!.availableCredit
 
-  const missingItems: string[] = [];
-  if (!thirdPartyId) missingItems.push("Selecciona un cliente");
-  if (!sellerId) missingItems.push("Selecciona una vendedora");
-  if (!isCredit && !paymentMethod) missingItems.push("Selecciona una forma de pago");
-  if (!hasValidItems) missingItems.push("Agrega al menos un producto con cantidad válida");
+  const missingItems: string[] = []
+  if (!thirdPartyId) missingItems.push('Selecciona un cliente')
+  if (!sellerId) missingItems.push('Selecciona una vendedora')
+  if (!isCredit && !paymentMethod) missingItems.push('Selecciona una forma de pago')
+  if (!hasValidItems) missingItems.push('Agrega al menos un producto con cantidad válida')
   if (priceFloorViolations.length > 0)
-    missingItems.push("Corrige los precios por debajo del mínimo permitido");
+    missingItems.push('Corrige los precios por debajo del mínimo permitido')
   if (isCredit && thirdPartyId && isLoadingCredit)
-    missingItems.push("Cargando cupo de crédito del cliente...");
-  if (creditExceeded)
-    missingItems.push("La venta supera el cupo de crédito disponible del cliente");
+    missingItems.push('Cargando cupo de crédito del cliente...')
+  if (creditExceeded) missingItems.push('La venta supera el cupo de crédito disponible del cliente')
 
-  const canConfirm = missingItems.length === 0;
+  const canConfirm = missingItems.length === 0
 
   // ── mutaciones de guardado/confirmación ───────────────────────────────────
-  const [shortfalls, setShortfalls] = useState<StockShortfall[] | null>(null);
+  const [shortfalls, setShortfalls] = useState<StockShortfall[] | null>(null)
 
   const { mutateAsync: createMutateAsync, isPending: isCreating } = useMutation({
     mutationFn: createDocument,
-  });
+  })
   const { mutateAsync: updateMutateAsync, isPending: isUpdating } = useMutation({
     mutationFn: ({ docId, payload }: { docId: string; payload: UpdateDocumentPayload }) =>
       updateDocument(docId, payload),
-  });
+  })
   const { mutateAsync: confirmMutateAsync, isPending: isConfirming } = useMutation({
     mutationFn: ({ id, customerCredits }: { id: string; customerCredits: SelectedCredit[] }) =>
       confirmDocument(id, customerCredits.length ? { customerCredits } : undefined),
-  });
+  })
 
-  const isSubmitting = isCreating || isUpdating || isConfirming;
+  const isSubmitting = isCreating || isUpdating || isConfirming
 
   const invalidateAfterSale = (confirmed: Document) => {
-    queryClient.invalidateQueries({ queryKey: ["documents"] });
-    queryClient.invalidateQueries({ queryKey: ["products"] });
-    queryClient.invalidateQueries({ queryKey: ["products-search"] });
-    queryClient.invalidateQueries({ queryKey: ["product-by-code"] });
-    queryClient.invalidateQueries({ queryKey: ["products-search-pos"] });
-    queryClient.invalidateQueries({ queryKey: ["customer-credit"] });
-    queryClient.invalidateQueries({ queryKey: ["customer-available-credits"] });
+    queryClient.invalidateQueries({ queryKey: ['documents'] })
+    queryClient.invalidateQueries({ queryKey: ['products'] })
+    queryClient.invalidateQueries({ queryKey: ['products-search'] })
+    queryClient.invalidateQueries({ queryKey: ['product-by-code'] })
+    queryClient.invalidateQueries({ queryKey: ['products-search-pos'] })
+    queryClient.invalidateQueries({ queryKey: ['customer-credit'] })
+    queryClient.invalidateQueries({ queryKey: ['customer-available-credits'] })
     if (confirmed.sourceDocument) {
-      queryClient.invalidateQueries({ queryKey: ["document", confirmed.sourceDocument.id] });
+      queryClient.invalidateQueries({ queryKey: ['document', confirmed.sourceDocument.id] })
     }
-  };
+  }
 
   // Pasa un error de cupo excedido al panel de error dedicado; devuelve true si lo manejó.
   function handleCreditError(err: unknown): boolean {
-    const credit = parseCreditLimitError(err);
-    if (!credit) return false;
+    const credit = parseCreditLimitError(err)
+    if (!credit) return false
     setCreditError({
-      message: extractErrorMessage(err) ?? "Cupo de crédito insuficiente",
+      message: extractErrorMessage(err) ?? 'Cupo de crédito insuficiente',
       detail: credit,
-    });
-    return true;
+    })
+    return true
   }
 
   async function handleConfirm() {
-    if (!canConfirm) return;
-    setCreditError(null);
+    if (!canConfirm) return
+    setCreditError(null)
 
     const items = cartItems.map((i) => ({
       productId: i.productId,
@@ -563,7 +562,7 @@ export default function POSCheckoutPage() {
         i.unitPrice !== undefined && !Number.isNaN(Number(i.unitPrice))
           ? Number(i.unitPrice)
           : undefined,
-    }));
+    }))
     const payload: UpdateDocumentPayload = {
       date: TODAY,
       thirdPartyId,
@@ -571,12 +570,12 @@ export default function POSCheckoutPage() {
       // La venta a crédito no lleva forma de pago; la de contado la exige (ya validado arriba).
       paymentMethod: isCredit ? undefined : (paymentMethod as PaymentMethod),
       items,
-    };
+    }
 
-    let doc: Document;
+    let doc: Document
     try {
       if (draftId) {
-        doc = await updateMutateAsync({ docId: draftId, payload });
+        doc = await updateMutateAsync({ docId: draftId, payload })
       } else {
         // La venta a crédito nace con la cuenta por cobrar ya neteada por los saldos a favor,
         // así que el backend necesita conocerlos desde el create para validar el cupo sobre el
@@ -585,31 +584,31 @@ export default function POSCheckoutPage() {
           type: mode,
           ...payload,
           customerCredits: isCredit && selectedCredits.length ? selectedCredits : undefined,
-        });
-        setDraftId(doc.id);
-        setDraftNumber(doc.number);
+        })
+        setDraftId(doc.id)
+        setDraftNumber(doc.number)
       }
     } catch (err) {
-      if (handleCreditError(err)) return;
-      toast.error(extractErrorMessage(err) ?? "Error al guardar la venta");
-      return;
+      if (handleCreditError(err)) return
+      toast.error(extractErrorMessage(err) ?? 'Error al guardar la venta')
+      return
     }
 
     try {
-      const confirmed = await confirmMutateAsync({ id: doc.id, customerCredits: selectedCredits });
-      invalidateAfterSale(confirmed);
+      const confirmed = await confirmMutateAsync({ id: doc.id, customerCredits: selectedCredits })
+      invalidateAfterSale(confirmed)
       toast.success(
         `Venta ${docNumber(confirmed.type, confirmed.number)} confirmada. El inventario fue actualizado.`,
-      );
-      navigate(`/documents/${confirmed.id}`);
+      )
+      navigate(`/documents/${confirmed.id}`)
     } catch (err) {
-      const parsedShortfalls = parseStockShortfallError(err);
+      const parsedShortfalls = parseStockShortfallError(err)
       if (parsedShortfalls) {
-        setShortfalls(parsedShortfalls);
-        return;
+        setShortfalls(parsedShortfalls)
+        return
       }
-      if (handleCreditError(err)) return;
-      toast.error(extractErrorMessage(err) ?? "Error al confirmar la venta");
+      if (handleCreditError(err)) return
+      toast.error(extractErrorMessage(err) ?? 'Error al confirmar la venta')
     }
   }
 
@@ -619,18 +618,18 @@ export default function POSCheckoutPage() {
       <div className="flex items-center gap-4">
         <button
           type="button"
-          onClick={() => navigate("/documents")}
+          onClick={() => navigate('/documents')}
           className="p-2 rounded-xl text-content-faint hover:text-content hover:bg-surface-hover transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div
           className={cn(
-            "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
+            'w-12 h-12 rounded-xl flex items-center justify-center shrink-0',
             accent.iconBg,
           )}
         >
-          <accent.icon className={cn("w-6 h-6", accent.iconText)} />
+          <accent.icon className={cn('w-6 h-6', accent.iconText)} />
         </div>
         <div>
           <h1 className="text-2xl text-content">Nueva venta</h1>
@@ -638,8 +637,8 @@ export default function POSCheckoutPage() {
             {draftId && draftNumber !== null
               ? `Borrador ${docNumber(mode, draftNumber)} en curso`
               : isCredit
-                ? "Venta a crédito"
-                : "Venta de contado"}
+                ? 'Venta a crédito'
+                : 'Venta de contado'}
           </p>
         </div>
         {sourceDocument && (
@@ -656,7 +655,7 @@ export default function POSCheckoutPage() {
           {/* Datos de la venta */}
           <div
             className={cn(
-              "bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-5 border-l-4",
+              'bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-5 border-l-4',
               accent.border,
             )}
           >
@@ -666,7 +665,7 @@ export default function POSCheckoutPage() {
                 <SegmentedToggle
                   checked={isCredit}
                   onChange={(checked) => {
-                    if (!draftId) setMode(checked ? "COT" : "POS");
+                    if (!draftId) setMode(checked ? 'COT' : 'POS')
                   }}
                   uncheckedLabel="Contado"
                   checkedLabel="Crédito"
@@ -683,7 +682,7 @@ export default function POSCheckoutPage() {
                 <Combobox
                   value={thirdPartyId}
                   onChange={(id, option) => {
-                    void handleCustomerSelected(id, option.label);
+                    void handleCustomerSelected(id, option.label)
                   }}
                   options={tpDisplayOptions}
                   isLoading={isLoadingTp}
@@ -706,8 +705,8 @@ export default function POSCheckoutPage() {
                 <Combobox
                   value={sellerId}
                   onChange={(id, option) => {
-                    setSellerId(id);
-                    setSellerSelectedName(option.label);
+                    setSellerId(id)
+                    setSellerSelectedName(option.label)
                   }}
                   options={sellerDisplayOptions}
                   isLoading={isLoadingSeller}
@@ -774,10 +773,10 @@ export default function POSCheckoutPage() {
                       </p>
                       <p
                         className={cn(
-                          "text-sm mt-0.5 font-mono",
+                          'text-sm mt-0.5 font-mono',
                           creditData.availableCredit <= 0
-                            ? "text-red-600 dark:text-red-400"
-                            : "text-emerald-600 dark:text-emerald-400",
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-emerald-600 dark:text-emerald-400',
                         )}
                       >
                         {formatCOP(creditData.availableCredit)}
@@ -850,13 +849,13 @@ export default function POSCheckoutPage() {
               <ArrowRightLeft className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">
-                  {pendingPreventa.thirdParty?.name ?? "Este cliente"} tiene una{" "}
+                  {pendingPreventa.thirdParty?.name ?? 'Este cliente'} tiene una{' '}
                   {sourceKindNoun(pendingPreventa.type)} activa (
                   {docNumber(pendingPreventa.type, pendingPreventa.number)}) con productos
                   pendientes por convertir.
                 </p>
                 <p className="text-xs text-blue-600/80 dark:text-blue-400/70 mt-1 font-accent">
-                  Se creará una venta {isCredit ? "a crédito" : "nueva"} con los mismos ítems y
+                  Se creará una venta {isCredit ? 'a crédito' : 'nueva'} con los mismos ítems y
                   precios cotizados de esa {sourceKindNoun(pendingPreventa.type)}.
                   {fields.length > 0 &&
                     ` Esto reemplazará los ${fields.length} producto(s) ya agregados al carrito.`}
@@ -873,7 +872,7 @@ export default function POSCheckoutPage() {
                     disabled={isConverting || (!isCredit && !paymentMethod)}
                     title={
                       !isCredit && !paymentMethod
-                        ? "Selecciona una forma de pago primero"
+                        ? 'Selecciona una forma de pago primero'
                         : undefined
                     }
                     className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white rounded-lg gradient-action hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
@@ -956,8 +955,8 @@ export default function POSCheckoutPage() {
                   </thead>
                   <tbody className="divide-y divide-ui-divide">
                     {fields.map((field, index) => {
-                      const code = cartItems[index]?.productCode;
-                      const detail = code ? productDetailByCode.get(code) : undefined;
+                      const code = cartItems[index]?.productCode
+                      const detail = code ? productDetailByCode.get(code) : undefined
                       return (
                         <POSCartLine
                           key={field.id}
@@ -968,7 +967,7 @@ export default function POSCheckoutPage() {
                           minSalePrice={detail?.minSalePrice}
                           availableStock={detail?.availableStock}
                         />
-                      );
+                      )
                     })}
                   </tbody>
                 </table>
@@ -984,9 +983,9 @@ export default function POSCheckoutPage() {
               <p className="text-xs text-content-faint font-accent uppercase tracking-wider">
                 {creditsApplied > 0
                   ? isCredit
-                    ? "Total a crédito (neto)"
-                    : "Total a pagar en efectivo"
-                  : "Total a pagar"}
+                    ? 'Total a crédito (neto)'
+                    : 'Total a pagar en efectivo'
+                  : 'Total a pagar'}
               </p>
               <p className="text-4xl text-content mt-1 font-mono">{formatCOP(totalToPay)}</p>
               {creditsApplied > 0 && (
@@ -1002,8 +1001,8 @@ export default function POSCheckoutPage() {
                 </div>
               )}
               <p className="text-xs text-content-muted mt-2 font-accent">
-                {fields.length} producto{fields.length === 1 ? "" : "s"} · {totalUnits} unidad
-                {totalUnits === 1 ? "" : "es"}
+                {fields.length} producto{fields.length === 1 ? '' : 's'} · {totalUnits} unidad
+                {totalUnits === 1 ? '' : 'es'}
               </p>
             </div>
 
@@ -1021,7 +1020,7 @@ export default function POSCheckoutPage() {
             <button
               type="button"
               onClick={() => {
-                void handleConfirm();
+                void handleConfirm()
               }}
               disabled={!canConfirm || isSubmitting}
               className="w-full flex items-center justify-center gap-2 px-5 py-3 text-sm font-medium text-white rounded-xl gradient-action hover:opacity-90 transition-opacity disabled:opacity-50"
@@ -1031,7 +1030,7 @@ export default function POSCheckoutPage() {
             </button>
             <button
               type="button"
-              onClick={() => navigate("/documents")}
+              onClick={() => navigate('/documents')}
               className="w-full px-4 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors"
             >
               Cancelar
@@ -1044,5 +1043,5 @@ export default function POSCheckoutPage() {
         <POSStockShortfallDialog shortfalls={shortfalls} onClose={() => setShortfalls(null)} />
       )}
     </div>
-  );
+  )
 }

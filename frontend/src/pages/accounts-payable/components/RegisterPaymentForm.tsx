@@ -4,19 +4,19 @@ import {
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
-} from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
-import { z } from "zod";
-import { toast } from "sonner";
-import { X, Wallet } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { getFirstErrorMessage } from "@/lib/form-errors";
-import { ThousandsInput } from "@/components/shared";
-import { getSupplierCredits } from "@/services/accounts-payable.service";
-import { formatCOP, formatDate } from "@/pages/accounts-payable/accounts-payable.utils";
-import type { RegisterPayablePaymentPayload } from "@/types";
+} from 'react'
+import { useForm, useFieldArray, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery } from '@tanstack/react-query'
+import { z } from 'zod'
+import { toast } from 'sonner'
+import { X, Wallet } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { getFirstErrorMessage } from '@/lib/form-errors'
+import { ThousandsInput } from '@/components/shared'
+import { getSupplierCredits } from '@/services/accounts-payable.service'
+import { formatCOP, formatDate } from '@/pages/accounts-payable/accounts-payable.utils'
+import type { RegisterPayablePaymentPayload } from '@/types'
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -28,49 +28,49 @@ import type { RegisterPayablePaymentPayload } from "@/types";
 // (fila o monto vacío = "no aplica"), así la validación siempre suma números.
 const moneyAmount = z.preprocess(
   (v) => (v == null ? 0 : v),
-  z.number().min(0, "El monto no puede ser negativo"),
-);
+  z.number().min(0, 'El monto no puede ser negativo'),
+)
 
 const creditApplicationSchema = z.object({
   supplierCreditId: z.string(),
   // El saldo llega como texto desde la API; se pasa a número para poder validarlo.
   balance: z.coerce.number(),
   amount: moneyAmount,
-});
+})
 
 const baseSchema = z.object({
   // El efectivo ahora puede ser 0: un pago puede saldarse solo con notas crédito.
   amount: moneyAmount,
-  paymentDate: z.string().min(1, "La fecha es requerida"),
-  paymentMethod: z.string().min(1, "Selecciona un método de pago"),
+  paymentDate: z.string().min(1, 'La fecha es requerida'),
+  paymentMethod: z.string().min(1, 'Selecciona un método de pago'),
   bankDestination: z.string().optional(),
   reference: z.string().optional(),
   creditApplications: z.array(creditApplicationSchema),
-});
+})
 
-export type RegisterPaymentFormValues = z.infer<typeof baseSchema>;
+export type RegisterPaymentFormValues = z.infer<typeof baseSchema>
 
 const PAYMENT_METHODS = [
-  { value: "Efectivo", label: "Efectivo" },
-  { value: "Transferencia", label: "Transferencia" },
-  { value: "Cheque", label: "Cheque" },
-  { value: "Tarjeta", label: "Tarjeta" },
-  { value: "Otro", label: "Otro" },
-];
+  { value: 'Efectivo', label: 'Efectivo' },
+  { value: 'Transferencia', label: 'Transferencia' },
+  { value: 'Cheque', label: 'Cheque' },
+  { value: 'Tarjeta', label: 'Tarjeta' },
+  { value: 'Otro', label: 'Otro' },
+]
 
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
 interface RegisterPaymentFormProps {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (data: RegisterPayablePaymentPayload) => void;
-  isPending: boolean;
+  open: boolean
+  onClose: () => void
+  onSubmit: (data: RegisterPayablePaymentPayload) => void
+  isPending: boolean
   /** Saldo pendiente actual de la cuenta; sirve para validar que el pago no lo supere. */
-  pendingBalance: number;
+  pendingBalance: number
   /** Proveedor dueño de la cuenta; sirve para consultar sus notas crédito disponibles. */
-  supplierId: string;
+  supplierId: string
 }
 
 // ---------------------------------------------------------------------------
@@ -83,45 +83,45 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <label className="block text-sm font-medium text-content-secondary mb-1">{label}</label>
       {children}
     </div>
-  );
+  )
 }
 
 function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       className={cn(
-        "w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all",
+        'w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
         className,
       )}
       {...props}
     />
-  );
+  )
 }
 
 function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       className={cn(
-        "w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all",
+        'w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
         className,
       )}
       {...props}
     >
       {children}
     </select>
-  );
+  )
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Date().toISOString().slice(0, 10)
 
 const emptyDefaults = (): RegisterPaymentFormValues => ({
   amount: 0,
   paymentDate: today(),
-  paymentMethod: "",
-  bankDestination: "",
-  reference: "",
+  paymentMethod: '',
+  bankDestination: '',
+  reference: '',
   creditApplications: [],
-});
+})
 
 // ---------------------------------------------------------------------------
 // Component
@@ -136,85 +136,81 @@ export function RegisterPaymentForm({
   supplierId,
 }: RegisterPaymentFormProps) {
   const { data: credits, isLoading: isLoadingCredits } = useQuery({
-    queryKey: ["accounts-payable", "credits", supplierId],
+    queryKey: ['accounts-payable', 'credits', supplierId],
     queryFn: () => getSupplierCredits(supplierId),
     staleTime: 5 * 60 * 1000,
     enabled: open && Boolean(supplierId),
-  });
+  })
 
   // La validación revisa las dos partes del pago juntas (efectivo + créditos aplicados) contra
   // el saldo pendiente, y cada fila de crédito contra su propio saldo disponible.
   const schema = useMemo(
     () =>
       baseSchema.superRefine((data, ctx) => {
-        const creditsTotal = data.creditApplications.reduce((sum, c) => sum + c.amount, 0);
-        const total = data.amount + creditsTotal;
+        const creditsTotal = data.creditApplications.reduce((sum, c) => sum + c.amount, 0)
+        const total = data.amount + creditsTotal
 
         if (total <= 0) {
           ctx.addIssue({
-            code: "custom",
-            message: "Ingresa un monto en efectivo o aplica al menos una nota crédito",
-            path: ["amount"],
-          });
+            code: 'custom',
+            message: 'Ingresa un monto en efectivo o aplica al menos una nota crédito',
+            path: ['amount'],
+          })
         }
 
         if (total > pendingBalance) {
           ctx.addIssue({
-            code: "custom",
+            code: 'custom',
             message: `El monto no puede superar el saldo pendiente (${formatCOP(pendingBalance)})`,
-            path: ["amount"],
-          });
+            path: ['amount'],
+          })
         }
 
         data.creditApplications.forEach((c, index) => {
           if (c.amount > c.balance) {
             ctx.addIssue({
-              code: "custom",
+              code: 'custom',
               message: `No puede superar el saldo disponible (${formatCOP(c.balance)})`,
-              path: ["creditApplications", index, "amount"],
-            });
+              path: ['creditApplications', index, 'amount'],
+            })
           }
-        });
+        })
       }),
     [pendingBalance],
-  );
+  )
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    reset,
-    watch,
-    setValue,
-  } = useForm<RegisterPaymentFormValues>({
-    resolver: zodResolver(schema) as never,
-    defaultValues: emptyDefaults(),
-  });
+  const { register, control, handleSubmit, reset, watch, setValue } =
+    useForm<RegisterPaymentFormValues>({
+      resolver: zodResolver(schema) as never,
+      defaultValues: emptyDefaults(),
+    })
 
-  const { fields, replace } = useFieldArray({ control, name: "creditApplications" });
+  const { fields, replace } = useFieldArray({ control, name: 'creditApplications' })
 
   useEffect(() => {
     if (open) {
-      reset(emptyDefaults());
+      reset(emptyDefaults())
     }
-  }, [open, reset]);
+  }, [open, reset])
 
   // Llena las filas de crédito cuando la consulta responde; va aparte del reset de apertura
   // porque la consulta de créditos llega después de que el diálogo se abre.
   useEffect(() => {
     if (open && credits) {
-      replace(credits.map((c) => ({ supplierCreditId: c.id, balance: Number(c.balance), amount: 0 })));
+      replace(
+        credits.map((c) => ({ supplierCreditId: c.id, balance: Number(c.balance), amount: 0 })),
+      )
     }
-  }, [open, credits, replace]);
+  }, [open, credits, replace])
 
-  const watchedAmount = watch("amount");
-  const watchedCredits = watch("creditApplications");
-  const cashApplied = Number(watchedAmount) || 0;
-  const creditsApplied = watchedCredits.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-  const totalApplied = cashApplied + creditsApplied;
+  const watchedAmount = watch('amount')
+  const watchedCredits = watch('creditApplications')
+  const cashApplied = Number(watchedAmount) || 0
+  const creditsApplied = watchedCredits.reduce((sum, c) => sum + (Number(c.amount) || 0), 0)
+  const totalApplied = cashApplied + creditsApplied
 
   // Efectivo que falta para saldar la cuenta una vez descontadas las notas crédito ya aplicadas.
-  const cashRemainder = Math.max(0, pendingBalance - creditsApplied);
+  const cashRemainder = Math.max(0, pendingBalance - creditsApplied)
 
   // Para una fila de nota crédito, lo máximo que se puede aplicar es lo menor entre: el saldo
   // disponible de la nota y lo que falta para cubrir el pago con el resto del efectivo.
@@ -222,17 +218,17 @@ export function RegisterPaymentForm({
     const otherCredits = watchedCredits.reduce(
       (sum, c, i) => (i === index ? sum : sum + (Number(c.amount) || 0)),
       0,
-    );
-    const remaining = Math.max(0, pendingBalance - cashApplied - otherCredits);
-    return Math.min(watchedCredits[index]?.balance ?? 0, remaining);
-  };
+    )
+    const remaining = Math.max(0, pendingBalance - cashApplied - otherCredits)
+    return Math.min(watchedCredits[index]?.balance ?? 0, remaining)
+  }
 
-  if (!open) return null;
+  if (!open) return null
 
   const submitHandler = (data: RegisterPaymentFormValues) => {
     const creditApplications = data.creditApplications
       .filter((c) => c.amount > 0)
-      .map((c) => ({ supplierCreditId: c.supplierCreditId, amount: c.amount }));
+      .map((c) => ({ supplierCreditId: c.supplierCreditId, amount: c.amount }))
 
     onSubmit({
       amount: data.amount,
@@ -241,8 +237,8 @@ export function RegisterPaymentForm({
       bankDestination: data.bankDestination,
       reference: data.reference,
       ...(creditApplications.length > 0 ? { creditApplications } : {}),
-    });
-  };
+    })
+  }
 
   const creditsSection = isLoadingCredits ? (
     <div className="space-y-2">
@@ -266,7 +262,11 @@ export function RegisterPaymentForm({
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
-                onClick={() => setValue(`creditApplications.${index}.amount`, creditRowMax(index), { shouldValidate: true })}
+                onClick={() =>
+                  setValue(`creditApplications.${index}.amount`, creditRowMax(index), {
+                    shouldValidate: true,
+                  })
+                }
                 className="text-[11px] font-medium text-brand-secondary hover:underline disabled:opacity-40 disabled:no-underline"
                 disabled={creditRowMax(index) === 0}
               >
@@ -296,7 +296,7 @@ export function RegisterPaymentForm({
     <p className="text-content-faint text-xs font-accent py-1">
       Este proveedor no tiene notas crédito disponibles.
     </p>
-  );
+  )
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -322,9 +322,8 @@ export function RegisterPaymentForm({
 
         {/* Body + Footer */}
         <form
-          onSubmit={handleSubmit(
-            submitHandler as never,
-            (formErrors) => toast.error(getFirstErrorMessage(formErrors)),
+          onSubmit={handleSubmit(submitHandler as never, (formErrors) =>
+            toast.error(getFirstErrorMessage(formErrors)),
           )}
           noValidate
           className="flex flex-col overflow-hidden"
@@ -337,7 +336,7 @@ export function RegisterPaymentForm({
                 </label>
                 <button
                   type="button"
-                  onClick={() => setValue("amount", cashRemainder, { shouldValidate: true })}
+                  onClick={() => setValue('amount', cashRemainder, { shouldValidate: true })}
                   className="text-xs font-medium text-brand-secondary hover:underline disabled:opacity-40 disabled:no-underline"
                   disabled={cashRemainder === 0 || cashApplied === cashRemainder}
                 >
@@ -362,11 +361,11 @@ export function RegisterPaymentForm({
             </div>
 
             <Field label="Fecha de pago">
-              <Input {...register("paymentDate")} type="date" />
+              <Input {...register('paymentDate')} type="date" />
             </Field>
 
             <Field label="Método de pago">
-              <Select {...register("paymentMethod")} defaultValue="">
+              <Select {...register('paymentMethod')} defaultValue="">
                 <option value="" disabled>
                   Selecciona un método
                 </option>
@@ -380,7 +379,7 @@ export function RegisterPaymentForm({
 
             <Field label="Banco destino (opcional)">
               <Input
-                {...register("bankDestination")}
+                {...register('bankDestination')}
                 placeholder="Ej: Bancolombia"
                 autoComplete="off"
               />
@@ -388,7 +387,7 @@ export function RegisterPaymentForm({
 
             <Field label="Referencia (opcional)">
               <Input
-                {...register("reference")}
+                {...register('reference')}
                 placeholder="Ej: N° de comprobante"
                 autoComplete="off"
               />
@@ -407,8 +406,8 @@ export function RegisterPaymentForm({
               <span className="text-content-faint font-accent">Total a aplicar</span>
               <span
                 className={cn(
-                  "font-medium",
-                  totalApplied > pendingBalance ? "text-red-500" : "text-content-secondary",
+                  'font-medium',
+                  totalApplied > pendingBalance ? 'text-red-500' : 'text-content-secondary',
                 )}
               >
                 {formatCOP(totalApplied)} / {formatCOP(pendingBalance)}
@@ -430,11 +429,11 @@ export function RegisterPaymentForm({
               disabled={isPending}
               className="px-5 py-2 text-sm font-medium text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-50 gradient-action"
             >
-              {isPending ? "Guardando..." : "Registrar pago"}
+              {isPending ? 'Guardando...' : 'Registrar pago'}
             </button>
           </div>
         </form>
       </div>
     </div>
-  );
+  )
 }

@@ -1,10 +1,7 @@
 export type PersonType = 'natural' | 'juridica'
 export type DocumentType = 'CC' | 'NIT' | 'CE' | 'PAS' | 'TI' | 'RC'
 export type WithholdingAgentType =
-  | 'ninguno'
-  | 'gran_contribuyente'
-  | 'autorretenedor_renta'
-  | 'agente_retencion_iva'
+  'ninguno' | 'gran_contribuyente' | 'autorretenedor_renta' | 'agente_retencion_iva'
 export type TaxRegime = 'ordinario' | 'rst' | 'no_aplica'
 
 export interface Customer {

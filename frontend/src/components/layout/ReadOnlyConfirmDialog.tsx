@@ -7,7 +7,12 @@ interface ReadOnlyConfirmDialogProps {
   isPending: boolean
 }
 
-export function ReadOnlyConfirmDialog({ open, onConfirm, onCancel, isPending }: ReadOnlyConfirmDialogProps) {
+export function ReadOnlyConfirmDialog({
+  open,
+  onConfirm,
+  onCancel,
+  isPending,
+}: ReadOnlyConfirmDialogProps) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -20,8 +25,8 @@ export function ReadOnlyConfirmDialog({ open, onConfirm, onCancel, isPending }: 
           <div>
             <h3 className="font-semibold text-content">Activar modo de solo lectura</h3>
             <p className="text-sm text-content-muted mt-1">
-              Esto bloqueará todas las operaciones de escritura en la aplicación para todos los usuarios. Úsalo
-              únicamente durante el cierre contable de fin de mes.
+              Esto bloqueará todas las operaciones de escritura en la aplicación para todos los
+              usuarios. Úsalo únicamente durante el cierre contable de fin de mes.
             </p>
           </div>
         </div>

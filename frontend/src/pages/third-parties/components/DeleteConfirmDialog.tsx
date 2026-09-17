@@ -8,7 +8,12 @@ interface DeleteConfirmDialogProps {
   isPending: boolean
 }
 
-export function DeleteConfirmDialog({ thirdParty, onConfirm, onCancel, isPending }: DeleteConfirmDialogProps) {
+export function DeleteConfirmDialog({
+  thirdParty,
+  onConfirm,
+  onCancel,
+  isPending,
+}: DeleteConfirmDialogProps) {
   if (!thirdParty) return null
 
   return (
@@ -22,18 +27,24 @@ export function DeleteConfirmDialog({ thirdParty, onConfirm, onCancel, isPending
           <div>
             <h3 className="font-semibold text-content">Eliminar tercero</h3>
             <p className="text-sm text-content-muted mt-1">
-              ¿Estás seguro de eliminar a <span className="font-medium text-content-secondary">{thirdParty.name}</span>?
-              Esta acción lo marcará como inactivo.
+              ¿Estás seguro de eliminar a{' '}
+              <span className="font-medium text-content-secondary">{thirdParty.name}</span>? Esta
+              acción lo marcará como inactivo.
             </p>
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-6">
-          <button onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-content-secondary bg-surface border border-ui-border-medium rounded-lg hover:bg-surface-raised transition-colors">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm font-medium text-content-secondary bg-surface border border-ui-border-medium rounded-lg hover:bg-surface-raised transition-colors"
+          >
             Cancelar
           </button>
-          <button onClick={onConfirm} disabled={isPending}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50">
+          <button
+            onClick={onConfirm}
+            disabled={isPending}
+            className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+          >
             {isPending ? 'Eliminando...' : 'Sí, eliminar'}
           </button>
         </div>

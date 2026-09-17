@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -23,7 +23,7 @@ import {
   Clock,
   RotateCcw,
   Wallet,
-} from "lucide-react";
+} from 'lucide-react'
 
 import {
   getDocument,
@@ -32,92 +32,92 @@ import {
   deleteDocument,
   duplicateDocument,
   printDocument,
-} from "@/services/documents.service";
-import { usePermission } from "@/hooks/usePermission";
-import { cn, daysSince, formatDaysSince } from "@/lib/utils";
+} from '@/services/documents.service'
+import { usePermission } from '@/hooks/usePermission'
+import { cn, daysSince, formatDaysSince } from '@/lib/utils'
 import {
   DOC_TYPE_BADGE,
   DOC_TYPE_ACCENT,
   DOC_STATUS_BADGE,
   PV_CONVERSION_BADGE,
   DVV_REFUND_METHOD_OPTIONS,
-} from "./document.constants";
-import { ReleaseItemsDialog } from "./components/ReleaseItemsDialog";
-import { getPendingQuantity, hasPendingItems } from "./pos-checkout.utils";
+} from './document.constants'
+import { ReleaseItemsDialog } from './components/ReleaseItemsDialog'
+import { getPendingQuantity, hasPendingItems } from './pos-checkout.utils'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 const formatCOP = (v: number) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
+  new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
     minimumFractionDigits: 0,
-  }).format(v);
+  }).format(v)
 
 const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("es-CO", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+  new Date(iso).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
 
 // El backend ya manda el número con ceros a la izquierda; el relleno de acá es por si acaso.
 const fmtDocRef = (type: string, number: string | number) =>
-  `${type}-${String(number).padStart(6, "0")}`;
+  `${type}-${String(number).padStart(6, '0')}`
 
 // ─── label maps ──────────────────────────────────────────────────────────────
 
-const TYPE_LABELS = DOC_TYPE_BADGE;
-const STATUS_LABELS = DOC_STATUS_BADGE;
+const TYPE_LABELS = DOC_TYPE_BADGE
+const STATUS_LABELS = DOC_STATUS_BADGE
 
 const refundMethodLabelFor = (method: string) =>
-  DVV_REFUND_METHOD_OPTIONS.find((o) => o.value === method)?.label ?? method;
+  DVV_REFUND_METHOD_OPTIONS.find((o) => o.value === method)?.label ?? method
 
 // Estado de una nota de saldo a favor: solo 'available' | 'used' en el backend.
 const CREDIT_STATUS_BADGE: Record<string, { label: string; className: string }> = {
   available: {
-    label: "Disponible",
-    className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
+    label: 'Disponible',
+    className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400',
   },
   used: {
-    label: "Agotado",
-    className: "bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400",
+    label: 'Agotado',
+    className: 'bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400',
   },
-};
+}
 const creditStatusBadgeFor = (status: string) =>
   CREDIT_STATUS_BADGE[status] ?? {
     label: status,
-    className: "bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400",
-  };
+    className: 'bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400',
+  }
 
 // Cuando la petición pide un archivo (PDF), la respuesta de error también llega como archivo,
 // no como JSON, aunque el backend haya mandado un error normal. Hay que leerla como texto y
 // parsearla a mano para sacar el mensaje.
 async function extractPrintErrorMessage(err: unknown): Promise<string | undefined> {
-  const data = (err as { response?: { data?: unknown } })?.response?.data;
+  const data = (err as { response?: { data?: unknown } })?.response?.data
   if (data instanceof Blob) {
     try {
-      const parsed = JSON.parse(await data.text()) as { message?: string };
-      return parsed.message;
+      const parsed = JSON.parse(await data.text()) as { message?: string }
+      return parsed.message
     } catch {
-      return undefined;
+      return undefined
     }
   }
-  return (data as { message?: string } | undefined)?.message;
+  return (data as { message?: string } | undefined)?.message
 }
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
 
 interface ConfirmDialogProps {
-  open: boolean;
-  title: string;
-  description: string;
-  confirmLabel: string;
-  confirmClass: string;
-  isPending: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-  icon: React.ReactNode;
+  open: boolean
+  title: string
+  description: string
+  confirmLabel: string
+  confirmClass: string
+  isPending: boolean
+  onConfirm: () => void
+  onCancel: () => void
+  icon: React.ReactNode
 }
 
 function ConfirmDialog({
@@ -131,7 +131,7 @@ function ConfirmDialog({
   onCancel,
   icon,
 }: ConfirmDialogProps) {
-  if (!open) return null;
+  if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
@@ -157,7 +157,7 @@ function ConfirmDialog({
             onClick={onConfirm}
             disabled={isPending}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-opacity disabled:opacity-60",
+              'flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-opacity disabled:opacity-60',
               confirmClass,
             )}
           >
@@ -167,26 +167,26 @@ function ConfirmDialog({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // ─── detail page ─────────────────────────────────────────────────────────────
 
 export default function DocumentDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [voidOpen, setVoidOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [releaseOpen, setReleaseOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [voidOpen, setVoidOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [releaseOpen, setReleaseOpen] = useState(false)
 
-  const canReleasePV = usePermission("document.release.PV");
-  const canConvertPV = usePermission("document.convert.PV");
-  const canReleaseREM = usePermission("document.release.REM");
-  const canConvertREM = usePermission("document.convert.REM");
-  const canDuplicateCM = usePermission("document.create.CM");
+  const canReleasePV = usePermission('document.release.PV')
+  const canConvertPV = usePermission('document.convert.PV')
+  const canReleaseREM = usePermission('document.release.REM')
+  const canConvertREM = usePermission('document.convert.REM')
+  const canDuplicateCM = usePermission('document.create.CM')
 
   const {
     data: doc,
@@ -194,98 +194,98 @@ export default function DocumentDetailPage() {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ["document", id],
+    queryKey: ['document', id],
     queryFn: () => getDocument(id!),
     staleTime: 5 * 60 * 1000,
     enabled: Boolean(id),
-  });
+  })
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["documents"] });
-    queryClient.invalidateQueries({ queryKey: ["document", id] });
-    queryClient.invalidateQueries({ queryKey: ["products"] });
+    queryClient.invalidateQueries({ queryKey: ['documents'] })
+    queryClient.invalidateQueries({ queryKey: ['document', id] })
+    queryClient.invalidateQueries({ queryKey: ['products'] })
     // El buscador de productos usa una clave de caché aparte que "products" no alcanza; sin
     // esto, el costo promedio que se ve en la siguiente operación queda viejo.
-    queryClient.invalidateQueries({ queryKey: ["products-search"] });
+    queryClient.invalidateQueries({ queryKey: ['products-search'] })
     // Claves de caché propias del checkout de ventas: confirmar o anular una venta cambia el
     // stock disponible, y sin esto el checkout lo sigue mostrando viejo hasta recargar.
-    queryClient.invalidateQueries({ queryKey: ["product-by-code"] });
-    queryClient.invalidateQueries({ queryKey: ["products-search-pos"] });
+    queryClient.invalidateQueries({ queryKey: ['product-by-code'] })
+    queryClient.invalidateQueries({ queryKey: ['products-search-pos'] })
     // Una compra crea su cuenta por pagar y una devolución crea o elimina la nota crédito al confirmar o anular.
-    queryClient.invalidateQueries({ queryKey: ["accounts-payable"] });
+    queryClient.invalidateQueries({ queryKey: ['accounts-payable'] })
     // Confirmar o anular un traslado cambia el stock de los bultos; el detalle de la bodega
     // debe refrescarse, si no el form de un traslado nuevo sigue mostrando bultos ocupados o
     // libres que ya no lo están.
-    queryClient.invalidateQueries({ queryKey: ["warehouse-detail"] });
-  };
+    queryClient.invalidateQueries({ queryKey: ['warehouse-detail'] })
+  }
 
   const { mutate: doConfirm, isPending: isConfirming } = useMutation({
     mutationFn: () => confirmDocument(id!),
     onSuccess: () => {
-      invalidate();
-      setConfirmOpen(false);
-      toast.success("Operación confirmada. El inventario fue actualizado.");
+      invalidate()
+      setConfirmOpen(false)
+      toast.success('Operación confirmada. El inventario fue actualizado.')
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg ?? "Error al confirmar la operación");
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Error al confirmar la operación')
     },
-  });
+  })
 
   const { mutate: doVoid, isPending: isVoiding } = useMutation({
     mutationFn: () => voidDocument(id!),
     onSuccess: () => {
-      invalidate();
-      setVoidOpen(false);
-      toast.success("Operación anulada. Los movimientos de inventario fueron revertidos.");
+      invalidate()
+      setVoidOpen(false)
+      toast.success('Operación anulada. Los movimientos de inventario fueron revertidos.')
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg ?? "Error al anular la operación");
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Error al anular la operación')
     },
-  });
+  })
 
   const { mutate: doDelete, isPending: isDeleting } = useMutation({
     mutationFn: () => deleteDocument(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
-      toast.success("Operación eliminada correctamente");
-      navigate("/documents");
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      toast.success('Operación eliminada correctamente')
+      navigate('/documents')
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg ?? "Error al eliminar la operación");
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Error al eliminar la operación')
     },
-  });
+  })
 
   const { mutate: doDuplicate, isPending: isDuplicating } = useMutation({
     mutationFn: () => duplicateDocument(id!),
     onSuccess: (newDoc) => {
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
-      const newDocNumber = `${newDoc.type}-${String(newDoc.number).padStart(6, "0")}`;
-      toast.success(`Compra duplicada como ${newDocNumber}, editable como borrador.`);
-      navigate(`/documents/${newDoc.id}/edit`);
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      const newDocNumber = `${newDoc.type}-${String(newDoc.number).padStart(6, '0')}`
+      toast.success(`Compra duplicada como ${newDocNumber}, editable como borrador.`)
+      navigate(`/documents/${newDoc.id}/edit`)
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg ?? "Error al duplicar la operación");
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Error al duplicar la operación')
     },
-  });
+  })
 
   const { mutate: doPrint, isPending: isPrinting } = useMutation({
     mutationFn: () => printDocument(id!),
     onSuccess: (blob) => {
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
       // La pestaña nueva necesita el enlace del PDF mientras carga; se libera después de un
       // rato en vez de al instante.
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
     },
     onError: async (err: unknown) => {
-      const msg = await extractPrintErrorMessage(err);
-      toast.error(msg ?? "Error al generar el PDF");
+      const msg = await extractPrintErrorMessage(err)
+      toast.error(msg ?? 'Error al generar el PDF')
     },
-  });
+  })
 
   // ── loading / error states ────────────────────────────────────────────────
   if (isLoading) {
@@ -310,14 +310,14 @@ export default function DocumentDetailPage() {
           ))}
         </div>
       </div>
-    );
+    )
   }
 
   if (isError || !doc) {
     return (
       <div className="space-y-4">
         <button
-          onClick={() => navigate("/documents")}
+          onClick={() => navigate('/documents')}
           className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -334,93 +334,99 @@ export default function DocumentDetailPage() {
           </button>
         </div>
       </div>
-    );
+    )
   }
 
-  const docNumber = `${doc.type}-${String(doc.number).padStart(6, "0")}`;
-  const typeInfo = TYPE_LABELS[doc.type];
-  const accentInfo = DOC_TYPE_ACCENT[doc.type];
-  const statusInfo = STATUS_LABELS[doc.status];
-  const isDraft = doc.status === "draft";
-  const isConfirmed = doc.status === "confirmed";
-  const isVoided = doc.status === "voided";
+  const docNumber = `${doc.type}-${String(doc.number).padStart(6, '0')}`
+  const typeInfo = TYPE_LABELS[doc.type]
+  const accentInfo = DOC_TYPE_ACCENT[doc.type]
+  const statusInfo = STATUS_LABELS[doc.status]
+  const isDraft = doc.status === 'draft'
+  const isConfirmed = doc.status === 'confirmed'
+  const isVoided = doc.status === 'voided'
 
   // Las salidas por ajuste y los traslados no guardan costo ni subtotal en la línea: solo
   // usan el costo promedio del producto para el movimiento de inventario. Por eso, para esos
   // dos tipos, el costo y el subtotal se calculan en vivo desde el costo promedio del
   // producto, en vez de leer unos campos que siempre valen cero.
-  const usesAvgCostFallback = doc.type === "SAJ" || doc.type === "T";
+  const usesAvgCostFallback = doc.type === 'SAJ' || doc.type === 'T'
   // Preventas y remisiones comparten toda la mecánica de reserva y conversión: no guardan
   // costo (lo que importa es el precio de venta de la línea), tienen columnas Liberado y
   // Pendiente, panel "Liberar Stock", botón "Convertir a venta" y chip de conversión.
-  const isReservationType = doc.type === "PV" || doc.type === "REM";
-  const canRelease = doc.type === "PV" ? canReleasePV : doc.type === "REM" ? canReleaseREM : false;
-  const canConvert = doc.type === "PV" ? canConvertPV : doc.type === "REM" ? canConvertREM : false;
+  const isReservationType = doc.type === 'PV' || doc.type === 'REM'
+  const canRelease = doc.type === 'PV' ? canReleasePV : doc.type === 'REM' ? canReleaseREM : false
+  const canConvert = doc.type === 'PV' ? canConvertPV : doc.type === 'REM' ? canConvertREM : false
   // Bloque de estado de conversión que arma el backend; solo llega en preventas y remisiones, y aun así puede venir vacío.
-  const pvConversion = isReservationType ? doc.pv?.conversion : undefined;
+  const pvConversion = isReservationType ? doc.pv?.conversion : undefined
   const pvConvBadge =
-    pvConversion && pvConversion.status !== "none"
-      ? PV_CONVERSION_BADGE[pvConversion.status]
-      : null;
+    pvConversion && pvConversion.status !== 'none' ? PV_CONVERSION_BADGE[pvConversion.status] : null
   // Venta derivada todavía vigente. Mientras exista, el documento no se puede anular ni volver
   // a convertir: se ocultan esos botones y se ofrece un acceso directo a esa venta.
-  const pvActiveDerived = pvConversion?.documents.find((d) => d.status !== "voided");
+  const pvActiveDerived = pvConversion?.documents.find((d) => d.status !== 'voided')
   // Antigüedad solo mientras la reserva sigue abierta: confirmada y sin conversión en curso ni hecha.
   const pvAgeLabel =
-    isReservationType && isConfirmed && pvConversion?.status === "none"
+    isReservationType && isConfirmed && pvConversion?.status === 'none'
       ? formatDaysSince(daysSince(doc.createdAt))
-      : null;
+      : null
   // Tipos que se valoran al precio de venta, no al costo (misma lista que en el backend). En
   // estos, la línea guarda el precio de venta y el costo queda en cero.
   const isPriceBasedType =
-    doc.type === "PV" || doc.type === "REM" || doc.type === "POS" || doc.type === "COT" || doc.type === "DVV";
+    doc.type === 'PV' ||
+    doc.type === 'REM' ||
+    doc.type === 'POS' ||
+    doc.type === 'COT' ||
+    doc.type === 'DVV'
   const itemUnitCost = (item: (typeof doc.documentItems)[number]) =>
-    isPriceBasedType ? item.unitPrice : usesAvgCostFallback ? Number(item.product.avgCost) : item.unitCost;
+    isPriceBasedType
+      ? item.unitPrice
+      : usesAvgCostFallback
+        ? Number(item.product.avgCost)
+        : item.unitCost
   const itemSubtotal = (item: (typeof doc.documentItems)[number]) =>
     isPriceBasedType
       ? item.subtotal
       : usesAvgCostFallback
         ? item.quantity * Number(item.product.avgCost)
-        : item.subtotal;
+        : item.subtotal
 
   // El subtotal llega como texto aunque el tipo diga que es número. Sin convertirlo, a partir
   // de la segunda línea la suma concatena texto en vez de sumar. Bug real visto en una venta
   // de 2 líneas (con una sola coincidía de casualidad); afecta a cualquier documento con más
   // de una línea.
-  const itemsTotal = doc.documentItems.reduce((sum, item) => sum + Number(itemSubtotal(item)), 0);
+  const itemsTotal = doc.documentItems.reduce((sum, item) => sum + Number(itemSubtotal(item)), 0)
   // Nota de talla por línea: solo se muestra en traslados, donde un mismo producto puede
   // repartirse en varios bultos con tallas distintas.
-  const showObservaciones = doc.type === "T";
+  const showObservaciones = doc.type === 'T'
   // Las salidas por ajuste y los traslados muestran el costo promedio del producto (ver la
   // nota de arriba), nunca un costo tipeado por el usuario. Las compras, devoluciones y
   // entradas por ajuste sí manejan un costo real, por eso conservan la etiqueta simple.
   const costHeaderLabel = isPriceBasedType
-    ? "Precio unit."
+    ? 'Precio unit.'
     : usesAvgCostFallback
-      ? "Costo unit. (prom.)"
-      : "Costo unit.";
+      ? 'Costo unit. (prom.)'
+      : 'Costo unit.'
   const itemHeaders = showObservaciones
-    ? ["Código", "Descripción", "Cantidad", "Observaciones", costHeaderLabel, "Subtotal"]
+    ? ['Código', 'Descripción', 'Cantidad', 'Observaciones', costHeaderLabel, 'Subtotal']
     : isReservationType
-      ? ["Código", "Descripción", "Cantidad", "Liberado", "Pendiente", costHeaderLabel, "Subtotal"]
-      : ["Código", "Descripción", "Cantidad", costHeaderLabel, "Subtotal"];
+      ? ['Código', 'Descripción', 'Cantidad', 'Liberado', 'Pendiente', costHeaderLabel, 'Subtotal']
+      : ['Código', 'Descripción', 'Cantidad', costHeaderLabel, 'Subtotal']
   // Cuántas celdas vacías dejar en el pie de la tabla antes del "Total", para que quede
   // alineado bajo la columna de costo aunque haya columnas extra (Observaciones, o Liberado y Pendiente).
-  const footerSkipCols = showObservaciones ? 4 : isReservationType ? 5 : 3;
+  const footerSkipCols = showObservaciones ? 4 : isReservationType ? 5 : 3
 
   // Cuánto de itemsTotal se cubrió con saldo a favor del cliente. En el resto de tipos de
   // documento (y en POS/COT sin saldo aplicado) appliedCustomerCredits llega undefined/vacío,
   // así que creditsApplied queda en 0 y el tfoot no cambia.
   // Number(...) por el mismo motivo que itemsTotal arriba: amount puede llegar como string.
   const creditsApplied =
-    doc.appliedCustomerCredits?.reduce((sum, c) => sum + Number(c.amount), 0) ?? 0;
-  const netPaid = Math.max(itemsTotal - creditsApplied, 0);
+    doc.appliedCustomerCredits?.reduce((sum, c) => sum + Number(c.amount), 0) ?? 0
+  const netPaid = Math.max(itemsTotal - creditsApplied, 0)
 
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
       <button
-        onClick={() => navigate("/documents")}
+        onClick={() => navigate('/documents')}
         className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -440,7 +446,7 @@ export default function DocumentDetailPage() {
       {/* Header card — borde de acento izquierdo + ícono por tipo (misma paleta que DOC_TYPE_BADGE) */}
       <div
         className={cn(
-          "bg-surface rounded-2xl border border-ui-border shadow-sm p-6 border-l-4",
+          'bg-surface rounded-2xl border border-ui-border shadow-sm p-6 border-l-4',
           accentInfo.border,
         )}
       >
@@ -448,23 +454,23 @@ export default function DocumentDetailPage() {
           <div className="flex items-start gap-4">
             <div
               className={cn(
-                "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
+                'w-12 h-12 rounded-xl flex items-center justify-center shrink-0',
                 accentInfo.iconBg,
               )}
             >
-              <accentInfo.icon className={cn("w-6 h-6", accentInfo.iconText)} />
+              <accentInfo.icon className={cn('w-6 h-6', accentInfo.iconText)} />
             </div>
             <div>
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl text-content font-mono">{docNumber}</h1>
                 <span
-                  className={cn("px-2.5 py-1 rounded-full text-xs font-medium", typeInfo.className)}
+                  className={cn('px-2.5 py-1 rounded-full text-xs font-medium', typeInfo.className)}
                 >
                   {typeInfo.label}
                 </span>
                 <span
                   className={cn(
-                    "px-2.5 py-1 rounded-full text-xs font-medium",
+                    'px-2.5 py-1 rounded-full text-xs font-medium',
                     statusInfo.className,
                   )}
                 >
@@ -473,7 +479,7 @@ export default function DocumentDetailPage() {
                 {pvConvBadge && (
                   <span
                     className={cn(
-                      "inline-flex px-2.5 py-1 rounded-full text-xs font-medium",
+                      'inline-flex px-2.5 py-1 rounded-full text-xs font-medium',
                       pvConvBadge.className,
                     )}
                   >
@@ -489,7 +495,7 @@ export default function DocumentDetailPage() {
                   Confirmado por {doc.confirmedBy.name}
                 </p>
               )}
-              {doc.status === "voided" && doc.voidedBy && (
+              {doc.status === 'voided' && doc.voidedBy && (
                 <p className="text-content-muted text-sm font-accent">
                   Anulado por {doc.voidedBy.name}
                 </p>
@@ -535,7 +541,7 @@ export default function DocumentDetailPage() {
                 </button>
               </>
             )}
-            {doc.type === "CM" && canDuplicateCM && (
+            {doc.type === 'CM' && canDuplicateCM && (
               <button
                 onClick={() => doDuplicate()}
                 disabled={isDuplicating}
@@ -566,14 +572,14 @@ export default function DocumentDetailPage() {
                 type="button"
                 onClick={() =>
                   navigate(
-                    `/documents/pos/new?${doc.type === "REM" ? "fromREM" : "fromPV"}=${doc.id}`,
+                    `/documents/pos/new?${doc.type === 'REM' ? 'fromREM' : 'fromPV'}=${doc.id}`,
                   )
                 }
                 disabled={!hasPendingItems(doc)}
                 title={
                   hasPendingItems(doc)
                     ? undefined
-                    : "Este documento ya no tiene cantidad pendiente por convertir"
+                    : 'Este documento ya no tiene cantidad pendiente por convertir'
                 }
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
               >
@@ -593,7 +599,7 @@ export default function DocumentDetailPage() {
                 Ver venta {fmtDocRef(pvActiveDerived.type, pvActiveDerived.number)}
               </button>
             )}
-            {isConfirmed && (doc.type === "CM" || doc.type === "DVC") && (
+            {isConfirmed && (doc.type === 'CM' || doc.type === 'DVC') && (
               <button
                 onClick={() => doPrint()}
                 disabled={isPrinting}
@@ -653,11 +659,11 @@ export default function DocumentDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-content-faint font-accent">
-                  {doc.type === "CM" || doc.type === "DVC"
-                    ? "Proveedor"
-                    : doc.type === "PV" || doc.type === "REM" || doc.type === "DVV"
-                      ? "Cliente"
-                      : "Tercero"}
+                  {doc.type === 'CM' || doc.type === 'DVC'
+                    ? 'Proveedor'
+                    : doc.type === 'PV' || doc.type === 'REM' || doc.type === 'DVV'
+                      ? 'Cliente'
+                      : 'Tercero'}
                 </p>
                 <p className="text-sm text-content">{doc.thirdParty.name}</p>
               </div>
@@ -665,7 +671,7 @@ export default function DocumentDetailPage() {
           )}
 
           {/* Modalidad de devolución — solo devoluciones en venta */}
-          {doc.type === "DVV" && doc.refundMethod && (
+          {doc.type === 'DVV' && doc.refundMethod && (
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
                 <RotateCcw className="w-4 h-4 text-content-muted" />
@@ -691,7 +697,7 @@ export default function DocumentDetailPage() {
           )}
 
           {/* Warehouse(s) */}
-          {doc.type === "T" ? (
+          {doc.type === 'T' ? (
             <div className="flex items-start gap-3 col-span-2">
               <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
                 <ArrowRight className="w-4 h-4 text-content-muted" />
@@ -699,9 +705,9 @@ export default function DocumentDetailPage() {
               <div>
                 <p className="text-xs text-content-faint font-accent">Traslado</p>
                 <div className="flex items-center gap-2 text-sm text-content">
-                  <span>{doc.warehouse?.name ?? "—"}</span>
+                  <span>{doc.warehouse?.name ?? '—'}</span>
                   <ArrowRight className="w-3.5 h-3.5 text-content-faint" />
-                  <span>{doc.destWarehouse?.name ?? "—"}</span>
+                  <span>{doc.destWarehouse?.name ?? '—'}</span>
                   {doc.destBin && (
                     <span className="text-content-muted">
                       / {doc.destBin.zone.name} / {doc.destBin.name}
@@ -719,7 +725,7 @@ export default function DocumentDetailPage() {
                 <div>
                   <p className="text-xs text-content-faint font-accent">Bodega</p>
                   <p className="text-sm text-content">
-                    {doc.destWarehouse?.name ?? doc.warehouse?.name ?? "—"}
+                    {doc.destWarehouse?.name ?? doc.warehouse?.name ?? '—'}
                   </p>
                 </div>
               </div>
@@ -776,35 +782,35 @@ export default function DocumentDetailPage() {
                       <span className="truncate block">{item.product.description}</span>
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs">
-                      {item.quantity.toLocaleString("es-CO")}
+                      {item.quantity.toLocaleString('es-CO')}
                     </td>
                     {showObservaciones && (
                       <td className="px-5 py-3.5 text-content-muted text-xs max-w-[200px]">
-                        <span className="truncate block">{item.observaciones || "—"}</span>
+                        <span className="truncate block">{item.observaciones || '—'}</span>
                       </td>
                     )}
                     {isReservationType && (
                       <>
                         <td className="px-5 py-3.5 text-content-muted text-xs">
-                          {(item.releasedQuantity ?? 0).toLocaleString("es-CO")}
+                          {(item.releasedQuantity ?? 0).toLocaleString('es-CO')}
                         </td>
                         <td className="px-5 py-3.5 text-xs">
                           {(() => {
-                            const pending = getPendingQuantity(item);
+                            const pending = getPendingQuantity(item)
                             return (
-                              <span className={pending > 0 ? "text-content" : "text-content-faint"}>
-                                {pending.toLocaleString("es-CO")}
+                              <span className={pending > 0 ? 'text-content' : 'text-content-faint'}>
+                                {pending.toLocaleString('es-CO')}
                               </span>
-                            );
+                            )
                           })()}
                         </td>
                       </>
                     )}
                     <td className="px-5 py-3.5 text-content-muted text-xs">
-                      {itemUnitCost(item) > 0 ? formatCOP(itemUnitCost(item)) : "—"}
+                      {itemUnitCost(item) > 0 ? formatCOP(itemUnitCost(item)) : '—'}
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs">
-                      {itemSubtotal(item) > 0 ? formatCOP(itemSubtotal(item)) : "—"}
+                      {itemSubtotal(item) > 0 ? formatCOP(itemSubtotal(item)) : '—'}
                     </td>
                   </tr>
                 ))}
@@ -859,7 +865,7 @@ export default function DocumentDetailPage() {
 
       {/* Saldo a favor generado — solo devoluciones en venta con modalidad que deja saldo
           (nada en "devolución de dinero"). */}
-      {doc.type === "DVV" && doc.customerCredits && doc.customerCredits.length > 0 && (
+      {doc.type === 'DVV' && doc.customerCredits && doc.customerCredits.length > 0 && (
         <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-ui-divide">
             <h2 className="text-base text-content">Saldo a favor generado</h2>
@@ -869,7 +875,7 @@ export default function DocumentDetailPage() {
           </div>
           <div className="p-6 space-y-4">
             {doc.customerCredits.map((credit) => {
-              const creditBadge = creditStatusBadgeFor(credit.status);
+              const creditBadge = creditStatusBadgeFor(credit.status)
               return (
                 <div
                   key={credit.id}
@@ -891,7 +897,7 @@ export default function DocumentDetailPage() {
                     </div>
                     <span
                       className={cn(
-                        "px-2.5 py-1 rounded-full text-xs font-medium",
+                        'px-2.5 py-1 rounded-full text-xs font-medium',
                         creditBadge.className,
                       )}
                     >
@@ -915,14 +921,14 @@ export default function DocumentDetailPage() {
                     </div>
                   )}
                 </div>
-              );
+              )
             })}
           </div>
         </div>
       )}
 
       {/* Saldo a favor aplicado — ventas POS/COT que consumieron notas de saldo a favor. */}
-      {(doc.type === "POS" || doc.type === "COT") &&
+      {(doc.type === 'POS' || doc.type === 'COT') &&
         doc.appliedCustomerCredits &&
         doc.appliedCustomerCredits.length > 0 && (
           <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
@@ -956,7 +962,7 @@ export default function DocumentDetailPage() {
                     }
                     className="flex items-center gap-1.5 text-sm text-brand-secondary hover:underline"
                   >
-                    Origen{" "}
+                    Origen{' '}
                     {fmtDocRef(
                       applied.customerCredit.sourceDocument.type,
                       applied.customerCredit.sourceDocument.number,
@@ -1027,5 +1033,5 @@ export default function DocumentDetailPage() {
         <ReleaseItemsDialog open={releaseOpen} doc={doc} onClose={() => setReleaseOpen(false)} />
       )}
     </div>
-  );
+  )
 }

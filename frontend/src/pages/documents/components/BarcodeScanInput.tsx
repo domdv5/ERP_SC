@@ -53,7 +53,17 @@ interface BarcodeScanInputProps {
  */
 export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanInputProps>(
   function BarcodeScanInput(
-    { docType, append, getValues, setValue, onProductScanned, focusQuantityInput, supplierBrandIds, disabled, supplierName },
+    {
+      docType,
+      append,
+      getValues,
+      setValue,
+      onProductScanned,
+      focusQuantityInput,
+      supplierBrandIds,
+      disabled,
+      supplierName,
+    },
     ref,
   ) {
     const inputRef = useRef<HTMLInputElement>(null)
@@ -64,7 +74,9 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
     useImperativeHandle(ref, () => ({
       // Por si el proveedor se limpió a mitad de carga (al cambiar de tipo o de proveedor): no
       // dejar el foco en un input que ya no se puede usar.
-      focus: () => { if (!disabled) inputRef.current?.focus() },
+      focus: () => {
+        if (!disabled) inputRef.current?.focus()
+      },
     }))
 
     useEffect(() => {
@@ -105,7 +117,9 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
         // error real (proveedor equivocado en el documento, o producto equivocado escaneado).
         // No se agrega la fila, solo se avisa.
         if (supplierBrandIds !== undefined && !supplierBrandIds.includes(product.brandId)) {
-          toast.error(`${product.code} no pertenece a las marcas de ${supplierName ?? 'este proveedor'}`)
+          toast.error(
+            `${product.code} no pertenece a las marcas de ${supplierName ?? 'este proveedor'}`,
+          )
           inputRef.current?.focus()
           return
         }
@@ -125,12 +139,12 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
           const shouldPrefillPrice = docType === 'PV' || docType === 'POS' || docType === 'COT'
           const newIndex = currentItems.length
           append({
-            productId:     product.id,
-            productCode:   product.code,
-            productDesc:   product.description,
-            quantity:      1,
-            unitCost:      shouldPrefillCost ? avgCost : undefined,
-            unitPrice:     shouldPrefillPrice ? salePrice : undefined,
+            productId: product.id,
+            productCode: product.code,
+            productDesc: product.description,
+            quantity: 1,
+            unitCost: shouldPrefillCost ? avgCost : undefined,
+            unitPrice: shouldPrefillPrice ? salePrice : undefined,
             observaciones: undefined,
           })
           onProductScanned(product.id, avgCost, product.unitOfMeasure, product.availableStock)
@@ -158,8 +172,12 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
             ref={inputRef}
             type="text"
             defaultValue=""
-            onKeyDown={(e) => { void handleKeyDown(e) }}
-            placeholder={disabled ? 'Selecciona un proveedor primero' : 'Escanear código de barras...'}
+            onKeyDown={(e) => {
+              void handleKeyDown(e)
+            }}
+            placeholder={
+              disabled ? 'Selecciona un proveedor primero' : 'Escanear código de barras...'
+            }
             autoComplete="off"
             disabled={disabled}
             className={cn(

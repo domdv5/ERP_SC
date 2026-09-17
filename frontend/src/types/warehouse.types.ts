@@ -43,11 +43,21 @@ export interface UpdateWarehousePayload {
   active?: boolean
 }
 
-export interface CreateZonePayload { name: string }
-export interface UpdateZonePayload { name?: string; active?: boolean }
+export interface CreateZonePayload {
+  name: string
+}
+export interface UpdateZonePayload {
+  name?: string
+  active?: boolean
+}
 
-export interface CreateBinPayload { code: number }
-export interface UpdateBinPayload { code?: number; active?: boolean }
+export interface CreateBinPayload {
+  code: number
+}
+export interface UpdateBinPayload {
+  code?: number
+  active?: boolean
+}
 
 // Los endpoints de crear y editar zona/bulto devuelven la fila tal cual,
 // sin la relación anidada de bultos.

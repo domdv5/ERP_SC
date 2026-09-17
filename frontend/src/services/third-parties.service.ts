@@ -1,5 +1,10 @@
 import { api } from './api'
-import type { ApiResponse, ThirdParty, CreateThirdPartyPayload, UpdateThirdPartyPayload } from '@/types'
+import type {
+  ApiResponse,
+  ThirdParty,
+  CreateThirdPartyPayload,
+  UpdateThirdPartyPayload,
+} from '@/types'
 
 export interface ThirdPartyMeta {
   total: number
@@ -20,8 +25,13 @@ export interface GetThirdPartiesParams {
   isActive?: boolean
 }
 
-export async function getThirdParties(params?: GetThirdPartiesParams): Promise<{ items: ThirdParty[]; meta: ThirdPartyMeta }> {
-  const res = await api.get<ApiResponse<{ items: ThirdParty[]; meta: ThirdPartyMeta }>>('/third-parties', { params })
+export async function getThirdParties(
+  params?: GetThirdPartiesParams,
+): Promise<{ items: ThirdParty[]; meta: ThirdPartyMeta }> {
+  const res = await api.get<ApiResponse<{ items: ThirdParty[]; meta: ThirdPartyMeta }>>(
+    '/third-parties',
+    { params },
+  )
   return res.data.data
 }
 
@@ -30,12 +40,19 @@ export async function createThirdParty(payload: CreateThirdPartyPayload): Promis
   return res.data.data
 }
 
-export async function updateThirdParty(id: string, payload: UpdateThirdPartyPayload): Promise<ThirdParty> {
+export async function updateThirdParty(
+  id: string,
+  payload: UpdateThirdPartyPayload,
+): Promise<ThirdParty> {
   const res = await api.patch<ApiResponse<ThirdParty>>(`/third-parties/${id}`, payload)
   return res.data.data
 }
 
-export async function renameBrand(thirdPartyId: string, brandId: string, name: string): Promise<void> {
+export async function renameBrand(
+  thirdPartyId: string,
+  brandId: string,
+  name: string,
+): Promise<void> {
   await api.patch(`/third-parties/${thirdPartyId}/brands/${brandId}`, { name })
 }
 

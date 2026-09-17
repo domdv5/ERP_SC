@@ -17,9 +17,18 @@ export const formatDate = (iso: string | null) => {
 }
 
 export const STATUS_LABELS: Record<AccountsPayableStatus, { label: string; className: string }> = {
-  pending: { label: 'Pendiente', className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' },
-  partial: { label: 'Parcial', className: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' },
-  paid: { label: 'Pagado', className: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' },
+  pending: {
+    label: 'Pendiente',
+    className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
+  },
+  partial: {
+    label: 'Parcial',
+    className: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
+  },
+  paid: {
+    label: 'Pagado',
+    className: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
+  },
 }
 
 /** Mapa local de etiquetas: los tipos de documento que pueden originar una cuenta por pagar. */

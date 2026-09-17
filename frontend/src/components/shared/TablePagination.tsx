@@ -24,29 +24,56 @@ export function TablePagination({ page, totalPages, total, onPageChange }: Table
         Página {page} de {totalPages} &mdash; {total} registros
       </span>
       <div className="flex items-center gap-1">
-        <button onClick={() => onPageChange(1)} disabled={page === 1}
-          className="px-2 py-1 text-xs rounded-lg text-content-muted hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors">«</button>
-        <button onClick={() => onPageChange(page - 1)} disabled={page === 1}
-          className="px-2 py-1 text-xs rounded-lg text-content-muted hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors">‹</button>
+        <button
+          onClick={() => onPageChange(1)}
+          disabled={page === 1}
+          className="px-2 py-1 text-xs rounded-lg text-content-muted hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          «
+        </button>
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 1}
+          className="px-2 py-1 text-xs rounded-lg text-content-muted hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          ‹
+        </button>
 
         {pages.map((n, i) =>
           n === '...' ? (
-            <span key={`e-${i}`} className="px-2 py-1 text-xs text-content-faint">…</span>
+            <span key={`e-${i}`} className="px-2 py-1 text-xs text-content-faint">
+              …
+            </span>
           ) : (
-            <button key={n} onClick={() => onPageChange(n as number)}
+            <button
+              key={n}
+              onClick={() => onPageChange(n as number)}
               className={cn(
                 'px-2.5 py-1 text-xs rounded-lg font-medium transition-colors',
-                page === n ? 'text-white gradient-action' : 'text-content-muted hover:bg-surface-hover',
-              )}>
+                page === n
+                  ? 'text-white gradient-action'
+                  : 'text-content-muted hover:bg-surface-hover',
+              )}
+            >
               {n}
             </button>
-          )
+          ),
         )}
 
-        <button onClick={() => onPageChange(page + 1)} disabled={page === totalPages}
-          className="px-2 py-1 text-xs rounded-lg text-content-muted hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors">›</button>
-        <button onClick={() => onPageChange(totalPages)} disabled={page === totalPages}
-          className="px-2 py-1 text-xs rounded-lg text-content-muted hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors">»</button>
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page === totalPages}
+          className="px-2 py-1 text-xs rounded-lg text-content-muted hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          ›
+        </button>
+        <button
+          onClick={() => onPageChange(totalPages)}
+          disabled={page === totalPages}
+          className="px-2 py-1 text-xs rounded-lg text-content-muted hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          »
+        </button>
       </div>
     </div>
   )

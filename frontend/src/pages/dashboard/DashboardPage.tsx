@@ -1,4 +1,14 @@
-import { Package, Users, Warehouse, FileText, TrendingUp, TrendingDown, ArrowUpRight, Activity, Clock } from 'lucide-react'
+import {
+  Package,
+  Users,
+  Warehouse,
+  FileText,
+  TrendingUp,
+  TrendingDown,
+  ArrowUpRight,
+  Activity,
+  Clock,
+} from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
@@ -165,27 +175,31 @@ export default function DashboardPage() {
       {/* Financial zone — primary */}
       {financialCards.length > 0 ? (
         <div className={`grid grid-cols-1 gap-4 ${FINANCIAL_GRID_COLS[financialCards.length]}`}>
-          {financialCards.map(({ label, subtitle, icon: Icon, iconBg, iconColor, dotColor, path, context }) => (
-            <div
-              key={label}
-              onClick={() => navigate(path)}
-              className="bg-surface rounded-2xl p-6 border border-ui-border shadow-sm hover:shadow-md transition-all group cursor-pointer"
-            >
-              <div className="flex items-start justify-between mb-5">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}>
-                  <Icon className={`w-5 h-5 ${iconColor}`} />
+          {financialCards.map(
+            ({ label, subtitle, icon: Icon, iconBg, iconColor, dotColor, path, context }) => (
+              <div
+                key={label}
+                onClick={() => navigate(path)}
+                className="bg-surface rounded-2xl p-6 border border-ui-border shadow-sm hover:shadow-md transition-all group cursor-pointer"
+              >
+                <div className="flex items-start justify-between mb-5">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}
+                  >
+                    <Icon className={`w-5 h-5 ${iconColor}`} />
+                  </div>
+                  <ArrowUpRight className="w-4 h-4 text-content-faint group-hover:text-content-muted group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-content-faint group-hover:text-content-muted group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                <p className="text-3xl text-content mb-1">—</p>
+                <p className="text-sm font-medium text-content-secondary">{label}</p>
+                <p className="text-xs text-content-faint mt-0.5 font-accent">{subtitle}</p>
+                <div className="mt-4 pt-4 border-t border-ui-border flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                  <span className="text-xs text-content-faint">{context}</span>
+                </div>
               </div>
-              <p className="text-3xl text-content mb-1">—</p>
-              <p className="text-sm font-medium text-content-secondary">{label}</p>
-              <p className="text-xs text-content-faint mt-0.5 font-accent">{subtitle}</p>
-              <div className="mt-4 pt-4 border-t border-ui-border flex items-center gap-1.5">
-                <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-                <span className="text-xs text-content-faint">{context}</span>
-              </div>
-            </div>
-          ))}
+            ),
+          )}
         </div>
       ) : null}
 
@@ -197,7 +211,9 @@ export default function DashboardPage() {
             onClick={() => navigate(path)}
             className="bg-surface rounded-2xl p-4 border border-ui-border shadow-sm hover:shadow-md transition-all group cursor-pointer flex items-center gap-3"
           >
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}
+            >
               <Icon className={`w-4 h-4 ${iconColor}`} />
             </div>
             <div className="flex-1 min-w-0">
@@ -230,7 +246,9 @@ export default function DashboardPage() {
             <Activity className="w-5 h-5 text-white/50" />
           </div>
           <p className="text-content-muted text-sm">No hay actividad reciente</p>
-          <p className="text-content-faint text-xs mt-1 font-accent">Los movimientos aparecerán aquí</p>
+          <p className="text-content-faint text-xs mt-1 font-accent">
+            Los movimientos aparecerán aquí
+          </p>
         </div>
       </div>
     </div>

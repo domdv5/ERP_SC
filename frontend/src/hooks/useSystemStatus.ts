@@ -37,9 +37,7 @@ export function useSystemStatus() {
     if (!token) return
 
     const connect = () => {
-      sharedEventSource = new EventSource(
-        `${API_BASE_URL}/system/status/stream?token=${token}`,
-      )
+      sharedEventSource = new EventSource(`${API_BASE_URL}/system/status/stream?token=${token}`)
       sharedEventSource.onmessage = (event) => {
         // El backend, al servir el stream de eventos, toma el campo `data` del evento y lo
         // manda tal cual en la línea "data:" — sin el envoltorio estándar del resto de la API

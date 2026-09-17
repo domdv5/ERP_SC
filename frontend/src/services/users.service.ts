@@ -67,13 +67,13 @@ export interface UsersMeta {
 // ---------------------------------------------------------------------------
 
 export const ROLE_LABELS: Record<string, string> = {
-  admin:                       'Administrador',
-  purchasing:                  'Compras',
-  warehouse:                   'Bodega',
-  preventa:                    'Gestión de preventa',
-  billing:                     'Facturación',
-  accounts_admin:              'Admin. de Cuentas',
-  accounts_assistant:          'Asistente de Cuentas',
+  admin: 'Administrador',
+  purchasing: 'Compras',
+  warehouse: 'Bodega',
+  preventa: 'Gestión de preventa',
+  billing: 'Facturación',
+  accounts_admin: 'Admin. de Cuentas',
+  accounts_assistant: 'Asistente de Cuentas',
 }
 
 export function getRoleLabel(name: string): string {
@@ -84,7 +84,9 @@ export function getRoleLabel(name: string): string {
 // Service functions
 // ---------------------------------------------------------------------------
 
-export async function getUsers(params?: GetUsersParams): Promise<{ items: AppUser[]; meta: UsersMeta }> {
+export async function getUsers(
+  params?: GetUsersParams,
+): Promise<{ items: AppUser[]; meta: UsersMeta }> {
   const res = await api.get<ApiResponse<{ items: AppUser[]; meta: UsersMeta }>>('/auth', { params })
   return res.data.data
 }

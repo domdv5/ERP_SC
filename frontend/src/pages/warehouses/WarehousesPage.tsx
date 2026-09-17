@@ -4,9 +4,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import {
-  getWarehouses, getWarehouse,
-  createWarehouse, updateWarehouse,
-  createZone, updateZone, createBin, updateBin,
+  getWarehouses,
+  getWarehouse,
+  createWarehouse,
+  updateWarehouse,
+  createZone,
+  updateZone,
+  createBin,
+  updateBin,
 } from '@/services/warehouses.service'
 import { usePermission } from '@/hooks/usePermission'
 import { WarehouseForm } from './components/WarehouseForm'
@@ -20,12 +25,9 @@ import type { Warehouse as WarehouseType, Zone, Bin } from '@/types'
 import type { Selection } from './warehouse-tree.types'
 
 type ZoneModalState =
-  | { mode: 'create'; warehouseId: string }
-  | { mode: 'edit'; warehouseId: string; zone: Zone }
+  { mode: 'create'; warehouseId: string } | { mode: 'edit'; warehouseId: string; zone: Zone }
 
-type BinModalState =
-  | { mode: 'create'; zone: Zone }
-  | { mode: 'edit'; zone: Zone; bin: Bin }
+type BinModalState = { mode: 'create'; zone: Zone } | { mode: 'edit'; zone: Zone; bin: Bin }
 
 // El backend responde con `{ message }` plano en 400/404/409; mostramos ese texto en vez del genérico.
 function apiErrorMessage(err: unknown): string | undefined {
@@ -34,18 +36,18 @@ function apiErrorMessage(err: unknown): string | undefined {
 
 export default function WarehousesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const queryClient   = useQueryClient()
-  const canManage     = usePermission('warehouse.manage')
+  const queryClient = useQueryClient()
+  const canManage = usePermission('warehouse.manage')
 
   const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing]   = useState<WarehouseType | null>(null)
+  const [editing, setEditing] = useState<WarehouseType | null>(null)
 
   const [zoneModal, setZoneModal] = useState<ZoneModalState | null>(null)
-  const [binModal, setBinModal]   = useState<BinModalState | null>(null)
+  const [binModal, setBinModal] = useState<BinModalState | null>(null)
 
   const warehouseId = searchParams.get('id')
-  const zoneId       = searchParams.get('zone')
-  const binId        = searchParams.get('bin')
+  const zoneId = searchParams.get('zone')
+  const binId = searchParams.get('bin')
 
   const selection: Selection | null = warehouseId
     ? {
@@ -91,65 +93,118 @@ export default function WarehousesPage() {
   const binsEnabled = warehouseDetail?.type === 'warehouse'
 
   // ── Navigation ────────────────────────────────────────────────────────────
-  const handleSelect = useCallback((next: Selection | null) => {
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev)
-      if (!next) {
-        params.delete('id')
-        params.delete('zone')
-        params.delete('bin')
+  const handleSelect = useCallback(
+    (next: Selection | null) => {
+      setSearchParams((prev) => {
+        const params = new URLSearchParams(prev)
+        if (!next) {
+          params.delete('id')
+          params.delete('zone')
+          params.delete('bin')
+          return params
+        }
+        params.set('id', next.warehouseId)
+        if (next.zoneId) params.set('zone', next.zoneId)
+        else params.delete('zone')
+        if (next.binId) params.set('bin', next.binId)
+        else params.delete('bin')
         return params
-      }
-      params.set('id', next.warehouseId)
-      if (next.zoneId) params.set('zone', next.zoneId); else params.delete('zone')
-      if (next.binId) params.set('bin', next.binId); else params.delete('bin')
-      return params
-    })
-  }, [setSearchParams])
+      })
+    },
+    [setSearchParams],
+  )
 
   // ── Warehouse mutations ──────────────────────────────────────────────────
   const { mutate: create, isPending: isCreating } = useMutation({
     mutationFn: (payload: WarehouseFormValues) =>
       createWarehouse({ name: payload.name, type: payload.type }),
-    onSuccess: () => { invalidateList(); setFormOpen(false); toast.success('Bodega creada correctamente') },
-    onError:   () => toast.error('Error al crear la bodega'),
+    onSuccess: () => {
+      invalidateList()
+      setFormOpen(false)
+      toast.success('Bodega creada correctamente')
+    },
+    onError: () => toast.error('Error al crear la bodega'),
   })
 
   const { mutate: update, isPending: isUpdating } = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: WarehouseFormValues }) =>
       updateWarehouse(id, { name: payload.name, type: payload.type, active: payload.active }),
-    onSuccess: () => { invalidateList(); invalidateDetail(); setEditing(null); toast.success('Bodega actualizada correctamente') },
-    onError:   () => toast.error('Error al actualizar la bodega'),
+    onSuccess: () => {
+      invalidateList()
+      invalidateDetail()
+      setEditing(null)
+      toast.success('Bodega actualizada correctamente')
+    },
+    onError: () => toast.error('Error al actualizar la bodega'),
   })
 
   // ── Zone mutations ───────────────────────────────────────────────────────
   const { mutate: createZoneMutate, isPending: isCreatingZone } = useMutation({
     mutationFn: ({ warehouseId, payload }: { warehouseId: string; payload: ZoneFormValues }) =>
       createZone(warehouseId, { name: payload.name }),
-    onSuccess: () => { invalidateAllWarehouses(); setZoneModal(null); toast.success('Zona creada en todas las bodegas') },
-    onError:   (err) => toast.error(apiErrorMessage(err) ?? 'Error al crear la zona'),
+    onSuccess: () => {
+      invalidateAllWarehouses()
+      setZoneModal(null)
+      toast.success('Zona creada en todas las bodegas')
+    },
+    onError: (err) => toast.error(apiErrorMessage(err) ?? 'Error al crear la zona'),
   })
 
   const { mutate: updateZoneMutate, isPending: isUpdatingZone } = useMutation({
-    mutationFn: ({ warehouseId, zoneId, payload }: { warehouseId: string; zoneId: string; payload: ZoneFormValues }) =>
-      updateZone(warehouseId, zoneId, payload),
-    onSuccess: () => { invalidateAllWarehouses(); setZoneModal(null); toast.success('Zona actualizada correctamente') },
-    onError:   (err) => toast.error(apiErrorMessage(err) ?? 'Error al actualizar la zona'),
+    mutationFn: ({
+      warehouseId,
+      zoneId,
+      payload,
+    }: {
+      warehouseId: string
+      zoneId: string
+      payload: ZoneFormValues
+    }) => updateZone(warehouseId, zoneId, payload),
+    onSuccess: () => {
+      invalidateAllWarehouses()
+      setZoneModal(null)
+      toast.success('Zona actualizada correctamente')
+    },
+    onError: (err) => toast.error(apiErrorMessage(err) ?? 'Error al actualizar la zona'),
   })
 
   // ── Bin mutations ────────────────────────────────────────────────────────
   const { mutate: createBinMutate, isPending: isCreatingBin } = useMutation({
-    mutationFn: ({ warehouseId, zoneId, payload }: { warehouseId: string; zoneId: string; payload: BinFormValues }) =>
-      createBin(warehouseId, zoneId, { code: payload.code }),
-    onSuccess: () => { invalidateAllWarehouses(); setBinModal(null); toast.success('Bulto creado correctamente') },
-    onError:   (err) => toast.error(apiErrorMessage(err) ?? 'Error al crear el bulto'),
+    mutationFn: ({
+      warehouseId,
+      zoneId,
+      payload,
+    }: {
+      warehouseId: string
+      zoneId: string
+      payload: BinFormValues
+    }) => createBin(warehouseId, zoneId, { code: payload.code }),
+    onSuccess: () => {
+      invalidateAllWarehouses()
+      setBinModal(null)
+      toast.success('Bulto creado correctamente')
+    },
+    onError: (err) => toast.error(apiErrorMessage(err) ?? 'Error al crear el bulto'),
   })
 
   const { mutate: updateBinMutate, isPending: isUpdatingBin } = useMutation({
-    mutationFn: ({ warehouseId, zoneId, binId, payload }: { warehouseId: string; zoneId: string; binId: string; payload: BinFormValues }) =>
-      updateBin(warehouseId, zoneId, binId, payload),
-    onSuccess: () => { invalidateAllWarehouses(); setBinModal(null); toast.success('Bulto actualizado correctamente') },
-    onError:   (err) => toast.error(apiErrorMessage(err) ?? 'Error al actualizar el bulto'),
+    mutationFn: ({
+      warehouseId,
+      zoneId,
+      binId,
+      payload,
+    }: {
+      warehouseId: string
+      zoneId: string
+      binId: string
+      payload: BinFormValues
+    }) => updateBin(warehouseId, zoneId, binId, payload),
+    onSuccess: () => {
+      invalidateAllWarehouses()
+      setBinModal(null)
+      toast.success('Bulto actualizado correctamente')
+    },
+    onError: (err) => toast.error(apiErrorMessage(err) ?? 'Error al actualizar el bulto'),
   })
 
   return (
@@ -159,7 +214,9 @@ export default function WarehousesPage() {
         <div>
           <h1 className="text-2xl text-content">Bodegas</h1>
           <p className="text-sm text-content-muted font-accent mt-0.5">
-            {isLoading ? '...' : `${items.length} ${items.length === 1 ? 'ubicación' : 'ubicaciones'}`}
+            {isLoading
+              ? '...'
+              : `${items.length} ${items.length === 1 ? 'ubicación' : 'ubicaciones'}`}
           </p>
         </div>
         {canManage && (
@@ -183,11 +240,15 @@ export default function WarehousesPage() {
         canManage={canManage}
         binsEnabled={binsEnabled}
         onSelect={handleSelect}
-        onEditWarehouse={() => setEditing(items.find(w => w.id === warehouseId) ?? null)}
+        onEditWarehouse={() => setEditing(items.find((w) => w.id === warehouseId) ?? null)}
         onAddZone={() => warehouseId && setZoneModal({ mode: 'create', warehouseId })}
         onEditZone={(zone) => setZoneModal({ mode: 'edit', warehouseId: zone.warehouseId, zone })}
-        onAddBin={(zone) => { if (binsEnabled) setBinModal({ mode: 'create', zone }) }}
-        onEditBin={(bin, zone) => { if (binsEnabled) setBinModal({ mode: 'edit', zone, bin }) }}
+        onAddBin={(zone) => {
+          if (binsEnabled) setBinModal({ mode: 'create', zone })
+        }}
+        onEditBin={(bin, zone) => {
+          if (binsEnabled) setBinModal({ mode: 'edit', zone, bin })
+        }}
       />
 
       {/* Warehouse modals */}
@@ -214,7 +275,11 @@ export default function WarehousesPage() {
         onSubmit={(data) => {
           if (!zoneModal) return
           if (zoneModal.mode === 'edit') {
-            updateZoneMutate({ warehouseId: zoneModal.warehouseId, zoneId: zoneModal.zone.id, payload: data })
+            updateZoneMutate({
+              warehouseId: zoneModal.warehouseId,
+              zoneId: zoneModal.zone.id,
+              payload: data,
+            })
           } else {
             createZoneMutate({ warehouseId: zoneModal.warehouseId, payload: data })
           }

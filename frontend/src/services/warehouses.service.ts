@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { api } from './api'
 import type {
   ApiResponse,
   Warehouse,
@@ -11,49 +11,41 @@ import type {
   UpdateZonePayload,
   CreateBinPayload,
   UpdateBinPayload,
-} from "@/types";
+} from '@/types'
 
 export interface GetWarehousesParams {
-  active?: boolean;
+  active?: boolean
 }
 
 export async function getWarehouses(): Promise<Warehouse[]> {
-  const res = await api.get<ApiResponse<Warehouse[]>>("/warehouses");
-  return res.data.data;
+  const res = await api.get<ApiResponse<Warehouse[]>>('/warehouses')
+  return res.data.data
 }
 
 export async function getWarehouse(id: string): Promise<WarehouseDetail> {
-  const res = await api.get<ApiResponse<WarehouseDetail>>(`/warehouses/${id}`);
-  return res.data.data;
+  const res = await api.get<ApiResponse<WarehouseDetail>>(`/warehouses/${id}`)
+  return res.data.data
 }
 
-export async function createWarehouse(
-  payload: CreateWarehousePayload,
-): Promise<Warehouse> {
-  const res = await api.post<ApiResponse<Warehouse>>("/warehouses", payload);
-  return res.data.data;
+export async function createWarehouse(payload: CreateWarehousePayload): Promise<Warehouse> {
+  const res = await api.post<ApiResponse<Warehouse>>('/warehouses', payload)
+  return res.data.data
 }
 
 export async function updateWarehouse(
   id: string,
   payload: UpdateWarehousePayload,
 ): Promise<Warehouse> {
-  const res = await api.patch<ApiResponse<Warehouse>>(
-    `/warehouses/${id}`,
-    payload,
-  );
-  return res.data.data;
+  const res = await api.patch<ApiResponse<Warehouse>>(`/warehouses/${id}`, payload)
+  return res.data.data
 }
 
 export async function createZone(
   warehouseId: string,
   payload: CreateZonePayload,
 ): Promise<ZoneSummary> {
-  const res = await api.post<ApiResponse<ZoneSummary>>(
-    `/warehouses/${warehouseId}/zones`,
-    payload,
-  );
-  return res.data.data;
+  const res = await api.post<ApiResponse<ZoneSummary>>(`/warehouses/${warehouseId}/zones`, payload)
+  return res.data.data
 }
 
 export async function updateZone(
@@ -64,8 +56,8 @@ export async function updateZone(
   const res = await api.patch<ApiResponse<ZoneSummary>>(
     `/warehouses/${warehouseId}/zones/${zoneId}`,
     payload,
-  );
-  return res.data.data;
+  )
+  return res.data.data
 }
 
 export async function createBin(
@@ -76,8 +68,8 @@ export async function createBin(
   const res = await api.post<ApiResponse<Bin>>(
     `/warehouses/${warehouseId}/zones/${zoneId}/bins`,
     payload,
-  );
-  return res.data.data;
+  )
+  return res.data.data
 }
 
 export async function updateBin(
@@ -89,6 +81,6 @@ export async function updateBin(
   const res = await api.patch<ApiResponse<Bin>>(
     `/warehouses/${warehouseId}/zones/${zoneId}/bins/${binId}`,
     payload,
-  );
-  return res.data.data;
+  )
+  return res.data.data
 }

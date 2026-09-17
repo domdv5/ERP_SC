@@ -7,18 +7,18 @@ import {
   type ReactNode,
   type InputHTMLAttributes,
   type SelectHTMLAttributes,
-} from "react";
-import { useForm, useWatch, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { X } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { getFirstErrorMessage } from "@/lib/form-errors";
-import { CatalogComboboxField, ThousandsInput } from "@/components/shared";
-import { getBrands, getGenders, getCategories } from "@/services/products.service";
-import type { Product } from "@/types";
+} from 'react'
+import { useForm, useWatch, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { X } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
+import { getFirstErrorMessage } from '@/lib/form-errors'
+import { CatalogComboboxField, ThousandsInput } from '@/components/shared'
+import { getBrands, getGenders, getCategories } from '@/services/products.service'
+import type { Product } from '@/types'
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -26,41 +26,41 @@ import type { Product } from "@/types";
 
 const schema = z
   .object({
-    code: z.string().min(1, "Requerido").max(15, "Máximo 15 caracteres"),
-    legacyCode: z.string().max(15, "Máximo 15 caracteres").optional().or(z.literal("")),
-    description: z.string().min(1, "Requerido").max(300, "Máximo 300 caracteres"),
-    brandId: z.string().min(1, "Selecciona una marca"),
-    genderId: z.string().min(1, "Selecciona un género"),
-    categoryId: z.string().min(1, "Selecciona una categoría"),
+    code: z.string().min(1, 'Requerido').max(15, 'Máximo 15 caracteres'),
+    legacyCode: z.string().max(15, 'Máximo 15 caracteres').optional().or(z.literal('')),
+    description: z.string().min(1, 'Requerido').max(300, 'Máximo 300 caracteres'),
+    brandId: z.string().min(1, 'Selecciona una marca'),
+    genderId: z.string().min(1, 'Selecciona un género'),
+    categoryId: z.string().min(1, 'Selecciona una categoría'),
     // El input con separador de miles devuelve número o undefined (vacío). Sin forzar
     // conversión, el campo vacío da el mensaje "Requerido" en vez de convertirse en NaN.
     salePrice: z
-      .number({ error: "Requerido" })
-      .int("Debe ser un número entero")
-      .positive("Debe ser positivo"),
+      .number({ error: 'Requerido' })
+      .int('Debe ser un número entero')
+      .positive('Debe ser positivo'),
     minSalePrice: z
-      .number({ error: "Requerido" })
-      .int("Debe ser un número entero")
-      .min(0, "No puede ser negativo"),
-    unitOfMeasure: z.enum(["unidad", "docena"]),
+      .number({ error: 'Requerido' })
+      .int('Debe ser un número entero')
+      .min(0, 'No puede ser negativo'),
+    unitOfMeasure: z.enum(['unidad', 'docena']),
   })
   .refine((d) => d.minSalePrice == null || d.salePrice == null || d.minSalePrice <= d.salePrice, {
-    message: "El precio mínimo no puede superar el precio de venta",
-    path: ["minSalePrice"],
-  });
+    message: 'El precio mínimo no puede superar el precio de venta',
+    path: ['minSalePrice'],
+  })
 
-export type FormValues = z.infer<typeof schema>;
+export type FormValues = z.infer<typeof schema>
 
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
 interface ProductFormProps {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (data: FormValues) => void;
-  isPending: boolean;
-  defaultValues?: Product;
+  open: boolean
+  onClose: () => void
+  onSubmit: (data: FormValues) => void
+  isPending: boolean
+  defaultValues?: Product
 }
 
 // ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <label className="block text-sm font-medium text-content-secondary mb-1">{label}</label>
       {children}
     </div>
-  );
+  )
 }
 
 const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
@@ -84,26 +84,26 @@ const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>
     <input
       ref={ref}
       className={cn(
-        "w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all",
+        'w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
         className,
       )}
       {...props}
     />
-  );
-});
+  )
+})
 
 function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       className={cn(
-        "w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all disabled:opacity-60 disabled:cursor-not-allowed",
+        'w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all disabled:opacity-60 disabled:cursor-not-allowed',
         className,
       )}
       {...props}
     >
       {children}
     </select>
-  );
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -117,106 +117,106 @@ export function ProductForm({
   isPending,
   defaultValues,
 }: ProductFormProps) {
-  const isEdit = !!defaultValues;
+  const isEdit = !!defaultValues
 
-  const [suffix, setSuffix] = useState("");
+  const [suffix, setSuffix] = useState('')
   // Guarda el código original al abrir el form en modo edición; sirve para autocompletar el código anterior
-  const originalCodeRef = useRef("");
+  const originalCodeRef = useRef('')
 
   const { register, handleSubmit, reset, control, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
-      code: "",
-      legacyCode: "",
-      description: "",
-      brandId: "",
-      genderId: "",
-      categoryId: "",
+      code: '',
+      legacyCode: '',
+      description: '',
+      brandId: '',
+      genderId: '',
+      categoryId: '',
       // undefined = campo vacío (se ve el "0" de fondo); el input con miles lo maneja.
       salePrice: undefined,
       minSalePrice: undefined,
-      unitOfMeasure: "unidad",
+      unitOfMeasure: 'unidad',
     },
-  });
+  })
 
   useEffect(() => {
     if (open) {
-      originalCodeRef.current = defaultValues?.code ?? "";
+      originalCodeRef.current = defaultValues?.code ?? ''
       reset({
-        code: defaultValues?.code ?? "",
-        legacyCode: defaultValues?.legacyCode ?? "",
-        description: defaultValues?.description ?? "",
-        brandId: defaultValues?.brandId ?? "",
-        genderId: defaultValues?.genderId ?? "",
-        categoryId: defaultValues?.categoryId ?? "",
+        code: defaultValues?.code ?? '',
+        legacyCode: defaultValues?.legacyCode ?? '',
+        description: defaultValues?.description ?? '',
+        brandId: defaultValues?.brandId ?? '',
+        genderId: defaultValues?.genderId ?? '',
+        categoryId: defaultValues?.categoryId ?? '',
         // Vacío pasajero al crear; el schema igual exige el valor al enviar.
         salePrice: (defaultValues?.salePrice ?? undefined) as number,
         minSalePrice: (defaultValues?.minSalePrice ?? undefined) as number,
-        unitOfMeasure: defaultValues?.unitOfMeasure ?? "unidad",
-      });
-      setSuffix("");
+        unitOfMeasure: defaultValues?.unitOfMeasure ?? 'unidad',
+      })
+      setSuffix('')
     }
-  }, [open, defaultValues, reset]);
+  }, [open, defaultValues, reset])
 
   const { data: brands = [] } = useQuery({
-    queryKey: ["brands"],
+    queryKey: ['brands'],
     queryFn: getBrands,
     staleTime: Infinity,
-  });
+  })
   const { data: genders = [] } = useQuery({
-    queryKey: ["genders"],
+    queryKey: ['genders'],
     queryFn: getGenders,
     staleTime: Infinity,
-  });
+  })
   const { data: categories = [] } = useQuery({
-    queryKey: ["categories"],
+    queryKey: ['categories'],
     queryFn: getCategories,
     staleTime: Infinity,
-  });
+  })
 
-  const genderIdVal = useWatch({ control, name: "genderId" });
-  const brandIdVal = useWatch({ control, name: "brandId" });
-  const categoryIdVal = useWatch({ control, name: "categoryId" });
-  const salePriceVal = useWatch({ control, name: "salePrice" });
-  const legacyCodeVal = useWatch({ control, name: "legacyCode" });
+  const genderIdVal = useWatch({ control, name: 'genderId' })
+  const brandIdVal = useWatch({ control, name: 'brandId' })
+  const categoryIdVal = useWatch({ control, name: 'categoryId' })
+  const salePriceVal = useWatch({ control, name: 'salePrice' })
+  const legacyCodeVal = useWatch({ control, name: 'legacyCode' })
 
   const prefix = useMemo(() => {
-    const g = genders.find((x) => x.id === genderIdVal);
-    const b = brands.find((x) => x.id === brandIdVal);
-    const c = categories.find((x) => x.id === categoryIdVal);
-    if (!g || !b?.supplier || !c) return "";
-    return `${g.code}${String(b.supplier.internalNumber).padStart(3, "0")}${c.code}`;
-  }, [genderIdVal, brandIdVal, categoryIdVal, genders, brands, categories]);
+    const g = genders.find((x) => x.id === genderIdVal)
+    const b = brands.find((x) => x.id === brandIdVal)
+    const c = categories.find((x) => x.id === categoryIdVal)
+    if (!g || !b?.supplier || !c) return ''
+    return `${g.code}${String(b.supplier.internalNumber).padStart(3, '0')}${c.code}`
+  }, [genderIdVal, brandIdVal, categoryIdVal, genders, brands, categories])
 
   // Mantiene el campo `code` al día: en creación con cada cambio, en edición solo cuando se escribe el sufijo
   useEffect(() => {
     if (!isEdit) {
-      setValue("code", prefix + suffix.toUpperCase());
+      setValue('code', prefix + suffix.toUpperCase())
     } else if (suffix) {
       // Se escribió un sufijo nuevo: actualiza el código y guarda el original como código anterior
-      setValue("code", prefix + suffix.toUpperCase());
-      if (originalCodeRef.current) setValue("legacyCode", originalCodeRef.current);
+      setValue('code', prefix + suffix.toUpperCase())
+      if (originalCodeRef.current) setValue('legacyCode', originalCodeRef.current)
     } else {
       // Se borró el sufijo: vuelve al código original
-      setValue("code", originalCodeRef.current);
-      setValue("legacyCode", defaultValues?.legacyCode ?? "");
+      setValue('code', originalCodeRef.current)
+      setValue('legacyCode', defaultValues?.legacyCode ?? '')
     }
-  }, [prefix, suffix, isEdit, setValue, defaultValues?.legacyCode]);
+  }, [prefix, suffix, isEdit, setValue, defaultValues?.legacyCode])
 
   // El precio mínimo siempre es calculado (precio de venta menos 2%), nunca editable a mano —
   // por eso el campo va disabled. Se recalcula en vivo tanto al crear como al editar. Si el
   // precio de venta está vacío, el mínimo también queda vacío, nunca NaN.
   useEffect(() => {
-    const salePrice = Number(salePriceVal);
+    const salePrice = Number(salePriceVal)
     const next =
-      Number.isFinite(salePrice) && salePrice > 0 ? Math.round(salePrice * 0.98) : undefined;
-    setValue("minSalePrice", next as number);
-  }, [salePriceVal, setValue]);
+      Number.isFinite(salePrice) && salePrice > 0 ? Math.round(salePrice * 0.98) : undefined
+    setValue('minSalePrice', next as number)
+  }, [salePriceVal, setValue])
 
-  if (!open) return null;
+  if (!open) return null
 
-  const newCode = prefix + suffix.toUpperCase();
-  const codeChanged = isEdit && suffix !== "" && newCode !== originalCodeRef.current;
+  const newCode = prefix + suffix.toUpperCase()
+  const codeChanged = isEdit && suffix !== '' && newCode !== originalCodeRef.current
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -227,7 +227,7 @@ export function ProductForm({
         <div className="flex items-center justify-between px-6 py-4 border-b border-ui-border gradient-dark">
           <div>
             <h2 className="text-white font-semibold">
-              {isEdit ? "Editar producto" : "Nuevo producto"}
+              {isEdit ? 'Editar producto' : 'Nuevo producto'}
             </h2>
             <p className="text-white/50 text-xs mt-0.5 font-accent">
               Completa la información del producto
@@ -258,7 +258,7 @@ export function ProductForm({
               </p>
               <div className="space-y-4">
                 {/* Código + Código legado (solo en edición) */}
-                <div className={cn("grid gap-4", isEdit ? "grid-cols-2" : "grid-cols-1")}>
+                <div className={cn('grid gap-4', isEdit ? 'grid-cols-2' : 'grid-cols-1')}>
                   <Field label="Código">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
@@ -269,8 +269,8 @@ export function ProductForm({
                         {/* Sufijo editable */}
                         <Input
                           value={suffix}
-                          onChange={(e) => setSuffix(e.target.value.replace(/\D/g, ""))}
-                          placeholder={isEdit ? "Nuevo sufijo" : "045"}
+                          onChange={(e) => setSuffix(e.target.value.replace(/\D/g, ''))}
+                          placeholder={isEdit ? 'Nuevo sufijo' : '045'}
                           inputMode="numeric"
                           maxLength={4}
                           autoComplete="off"
@@ -280,7 +280,7 @@ export function ProductForm({
                       {/* Preview */}
                       {isEdit && !suffix && (
                         <p className="text-xs text-content-faint font-mono">
-                          Actual:{" "}
+                          Actual:{' '}
                           <span className="text-content-secondary">{originalCodeRef.current}</span>
                         </p>
                       )}
@@ -288,7 +288,7 @@ export function ProductForm({
                         <p className="text-xs font-mono text-content-faint">
                           {codeChanged && (
                             <span className="text-amber-500 dark:text-amber-400">
-                              Anterior: {originalCodeRef.current} &middot;{" "}
+                              Anterior: {originalCodeRef.current} &middot;{' '}
                             </span>
                           )}
                           Final: <span className="text-content-secondary">{newCode}</span>
@@ -309,7 +309,7 @@ export function ProductForm({
 
                 <Field label="Descripción">
                   <Input
-                    {...register("description")}
+                    {...register('description')}
                     placeholder="Nombre completo del producto"
                     autoComplete="off"
                   />
@@ -337,7 +337,7 @@ export function ProductForm({
                   disabled={isEdit}
                 />
                 <Field label="Género">
-                  <Select {...register("genderId")} disabled={isEdit}>
+                  <Select {...register('genderId')} disabled={isEdit}>
                     <option value="">Selecciona...</option>
                     {genders.map((g) => (
                       <option key={g.id} value={g.id}>
@@ -355,7 +355,7 @@ export function ProductForm({
                   disabled={isEdit}
                 />
                 <Field label="Unidad de medida">
-                  <Select {...register("unitOfMeasure")}>
+                  <Select {...register('unitOfMeasure')}>
                     <option value="unidad">Unidad</option>
                     <option value="docena">Docena</option>
                   </Select>
@@ -420,11 +420,11 @@ export function ProductForm({
               disabled={isPending}
               className="px-5 py-2 text-sm font-medium text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-50 gradient-action"
             >
-              {isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear producto"}
+              {isPending ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear producto'}
             </button>
           </div>
         </form>
       </div>
     </div>
-  );
+  )
 }

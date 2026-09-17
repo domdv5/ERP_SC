@@ -15,7 +15,14 @@ import type { AppUser, CreateUserPayload, UpdateUserPayload } from '@/services/u
 import { UserForm } from './components/UserForm'
 import type { UserFormValues } from './components/UserForm'
 import { DeleteUserDialog } from './components/DeleteUserDialog'
-import { StatsGrid, TableToolbar, TableSkeleton, EmptyState, ErrorState, TablePagination } from '@/components/shared'
+import {
+  StatsGrid,
+  TableToolbar,
+  TableSkeleton,
+  EmptyState,
+  ErrorState,
+  TablePagination,
+} from '@/components/shared'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 
@@ -56,11 +63,11 @@ export default function UsersPage() {
   const queryClient = useQueryClient()
   const canManage = usePermission('user.manage')
 
-  const [search, setSearch]     = useState('')
-  const [page, setPage]         = useState(1)
-  const [roleId, setRoleId]     = useState('')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [roleId, setRoleId] = useState('')
   const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing]   = useState<AppUser | null>(null)
+  const [editing, setEditing] = useState<AppUser | null>(null)
   const [deleting, setDeleting] = useState<AppUser | null>(null)
 
   const [debouncedSearch] = useDebounce(search, 400)
@@ -71,12 +78,13 @@ export default function UsersPage() {
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['users', debouncedSearch, roleId, page],
-    queryFn: () => getUsers({
-      page,
-      limit: 20,
-      search: debouncedSearch || undefined,
-      roleId: roleId || undefined,
-    }),
+    queryFn: () =>
+      getUsers({
+        page,
+        limit: 20,
+        search: debouncedSearch || undefined,
+        roleId: roleId || undefined,
+      }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   })
@@ -88,47 +96,77 @@ export default function UsersPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const items       = data?.items ?? []
-  const total       = data?.meta.total ?? 0
-  const totalPages  = data?.meta.totalPages ?? 1
+  const items = data?.items ?? []
+  const total = data?.meta.total ?? 0
+  const totalPages = data?.meta.totalPages ?? 1
   const activeCount = data?.meta.activeCount ?? 0
-  const adminCount  = data?.meta.adminCount ?? 0
+  const adminCount = data?.meta.adminCount ?? 0
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['users'] })
 
   const { mutate: create, isPending: isCreating } = useMutation({
     mutationFn: (payload: CreateUserPayload) => createUser(payload),
-    onSuccess: () => { invalidate(); setFormOpen(false); toast.success('Usuario creado correctamente') },
-    onError:   () => toast.error('Error al crear el usuario'),
+    onSuccess: () => {
+      invalidate()
+      setFormOpen(false)
+      toast.success('Usuario creado correctamente')
+    },
+    onError: () => toast.error('Error al crear el usuario'),
   })
 
   const { mutate: update, isPending: isUpdating } = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateUserPayload }) =>
       updateUser(id, payload),
-    onSuccess: () => { invalidate(); setEditing(null); toast.success('Usuario actualizado correctamente') },
-    onError:   () => toast.error('Error al actualizar el usuario'),
+    onSuccess: () => {
+      invalidate()
+      setEditing(null)
+      toast.success('Usuario actualizado correctamente')
+    },
+    onError: () => toast.error('Error al actualizar el usuario'),
   })
 
   const { mutate: remove, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteUser(id),
-    onSuccess: () => { invalidate(); setDeleting(null); toast.success('Usuario eliminado correctamente') },
-    onError:   () => toast.error('Error al eliminar el usuario'),
+    onSuccess: () => {
+      invalidate()
+      setDeleting(null)
+      toast.success('Usuario eliminado correctamente')
+    },
+    onError: () => toast.error('Error al eliminar el usuario'),
   })
 
   const statCards = [
-    { label: 'Total',    value: total,       icon: Users,       bg: 'bg-brand-primary/10',   fg: 'text-brand-primary dark:text-content' },
-    { label: 'Activos',  value: activeCount, icon: UserCheck,   bg: 'bg-brand-secondary/10', fg: 'text-brand-secondary' },
-    { label: 'Admins',   value: adminCount,  icon: ShieldCheck, bg: 'bg-blue-500/10',        fg: 'text-blue-500' },
+    {
+      label: 'Total',
+      value: total,
+      icon: Users,
+      bg: 'bg-brand-primary/10',
+      fg: 'text-brand-primary dark:text-content',
+    },
+    {
+      label: 'Activos',
+      value: activeCount,
+      icon: UserCheck,
+      bg: 'bg-brand-secondary/10',
+      fg: 'text-brand-secondary',
+    },
+    {
+      label: 'Admins',
+      value: adminCount,
+      icon: ShieldCheck,
+      bg: 'bg-blue-500/10',
+      fg: 'text-blue-500',
+    },
   ]
 
   // Arma el cuerpo de creación a partir de los valores del formulario
   const handleCreate = (data: UserFormValues) => {
     create({
-      name:     data.name,
+      name: data.name,
       username: data.username,
       password: (data as { password: string }).password,
-      roleIds:  data.roleIds,
-      active:   data.active ?? true,
+      roleIds: data.roleIds,
+      active: data.active ?? true,
     })
   }
 
@@ -136,10 +174,10 @@ export default function UsersPage() {
   const handleUpdate = (data: UserFormValues) => {
     if (!editing) return
     const payload: UpdateUserPayload = {
-      name:     data.name,
+      name: data.name,
       username: data.username,
-      roleIds:  data.roleIds,
-      active:   data.active,
+      roleIds: data.roleIds,
+      active: data.active,
     }
     const pw = (data as { password?: string }).password
     if (pw) payload.password = pw
@@ -152,7 +190,9 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl text-content">Usuarios</h1>
-          <p className="text-content-muted text-sm mt-0.5 font-accent">Gestión de accesos y roles del sistema</p>
+          <p className="text-content-muted text-sm mt-0.5 font-accent">
+            Gestión de accesos y roles del sistema
+          </p>
         </div>
         {canManage && (
           <button
@@ -195,13 +235,9 @@ export default function UsersPage() {
           </div>
         </div>
 
-        {isError && (
-          <ErrorState message="Error al cargar los usuarios" onRetry={refetch} />
-        )}
+        {isError && <ErrorState message="Error al cargar los usuarios" onRetry={refetch} />}
 
-        {isLoading && (
-          <TableSkeleton widths={['w-40', 'w-28', 'w-36', 'w-20']} />
-        )}
+        {isLoading && <TableSkeleton widths={['w-40', 'w-28', 'w-36', 'w-20']} />}
 
         {!isLoading && !isError && items.length === 0 && (
           <EmptyState
@@ -220,14 +256,16 @@ export default function UsersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Usuario', 'Nombre de usuario', 'Roles', 'Estado', 'Creado', 'Acciones'].map((h) => (
-                    <th
-                      key={h}
-                      className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
-                    >
-                      {h}
-                    </th>
-                  ))}
+                  {['Usuario', 'Nombre de usuario', 'Roles', 'Estado', 'Creado', 'Acciones'].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
+                      >
+                        {h}
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
@@ -235,7 +273,10 @@ export default function UsersPage() {
                   <tr
                     key={u.id}
                     onClick={canManage ? () => setEditing(u) : undefined}
-                    className={cn('hover:bg-surface-raised transition-colors group', canManage && 'cursor-pointer')}
+                    className={cn(
+                      'hover:bg-surface-raised transition-colors group',
+                      canManage && 'cursor-pointer',
+                    )}
                   >
                     {/* Name + avatar */}
                     <td className="px-5 py-3.5">
@@ -252,7 +293,9 @@ export default function UsersPage() {
 
                     {/* Roles */}
                     <td className="px-5 py-3.5 max-w-[220px]">
-                      <p className="text-xs text-content-muted truncate capitalize">{getRoleNames(u)}</p>
+                      <p className="text-xs text-content-muted truncate capitalize">
+                        {getRoleNames(u)}
+                      </p>
                     </td>
 
                     {/* Active badge */}
@@ -271,7 +314,9 @@ export default function UsersPage() {
 
                     {/* Created date */}
                     <td className="px-5 py-3.5">
-                      <p className="text-xs text-content-faint font-accent">{formatDate(u.createdAt)}</p>
+                      <p className="text-xs text-content-faint font-accent">
+                        {formatDate(u.createdAt)}
+                      </p>
                     </td>
 
                     {/* Actions */}
@@ -279,13 +324,19 @@ export default function UsersPage() {
                       {canManage && (
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={(e) => { e.stopPropagation(); setEditing(u) }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditing(u)
+                            }}
                             className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); setDeleting(u) }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDeleting(u)
+                            }}
                             className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

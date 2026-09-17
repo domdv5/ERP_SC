@@ -39,7 +39,10 @@ export function LocationsTable({ locations }: LocationsTableProps) {
         </thead>
         <tbody className="divide-y divide-ui-divide">
           {locations.map((loc) => (
-            <tr key={`${loc.warehouseId}-${loc.zoneName}-${loc.binCode}`} className="hover:bg-surface-raised transition-colors">
+            <tr
+              key={`${loc.warehouseId}-${loc.zoneName}-${loc.binCode}`}
+              className="hover:bg-surface-raised transition-colors"
+            >
               <td className="px-5 py-3.5 text-content">{loc.warehouseName}</td>
               <td className="px-5 py-3.5 text-content-muted text-xs">{loc.zoneName}</td>
               <td className="px-5 py-3.5 text-content-muted text-xs font-mono">#{loc.binCode}</td>

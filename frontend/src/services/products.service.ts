@@ -36,8 +36,12 @@ export interface CreateProductPayload {
   unitOfMeasure?: 'unidad' | 'docena'
 }
 
-export async function getProducts(params?: GetProductsParams): Promise<{ items: Product[]; meta: ProductMeta }> {
-  const res = await api.get<ApiResponse<{ items: Product[]; meta: ProductMeta }>>('/products', { params })
+export async function getProducts(
+  params?: GetProductsParams,
+): Promise<{ items: Product[]; meta: ProductMeta }> {
+  const res = await api.get<ApiResponse<{ items: Product[]; meta: ProductMeta }>>('/products', {
+    params,
+  })
   return res.data.data
 }
 
@@ -47,7 +51,9 @@ export async function getProductByCode(code: string): Promise<Product> {
 }
 
 export async function getProductLocationsByCode(code: string): Promise<ProductLocationsResult> {
-  const res = await api.get<ApiResponse<ProductLocationsResult>>(`/products/by-code/${encodeURIComponent(code)}/locations`)
+  const res = await api.get<ApiResponse<ProductLocationsResult>>(
+    `/products/by-code/${encodeURIComponent(code)}/locations`,
+  )
   return res.data.data
 }
 
@@ -71,7 +77,10 @@ export async function createProduct(payload: CreateProductPayload): Promise<Prod
   return res.data.data
 }
 
-export async function updateProduct(id: string, payload: Partial<CreateProductPayload>): Promise<Product> {
+export async function updateProduct(
+  id: string,
+  payload: Partial<CreateProductPayload>,
+): Promise<Product> {
   const res = await api.patch<ApiResponse<Product>>(`/products/${id}`, payload)
   return res.data.data
 }

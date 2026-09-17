@@ -58,7 +58,9 @@ export function POSStockShortfallDialog({ shortfalls, onClose }: POSStockShortfa
                   <tr key={s.productId}>
                     <td className="px-4 py-2.5 font-mono text-xs text-content">{s.code}</td>
                     <td className="px-4 py-2.5 text-right text-content-secondary">{s.available}</td>
-                    <td className="px-4 py-2.5 text-right text-red-500 font-medium">{s.requested}</td>
+                    <td className="px-4 py-2.5 text-right text-red-500 font-medium">
+                      {s.requested}
+                    </td>
                   </tr>
                 ))}
               </tbody>

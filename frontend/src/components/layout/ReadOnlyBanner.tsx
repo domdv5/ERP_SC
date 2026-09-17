@@ -1,19 +1,19 @@
-import { Lock } from "lucide-react";
-import type { SystemStatusActivatedBy } from "@/types";
+import { Lock } from 'lucide-react'
+import type { SystemStatusActivatedBy } from '@/types'
 
 interface ReadOnlyBannerProps {
-  activatedBy: SystemStatusActivatedBy | null;
-  activatedAt: string | null;
+  activatedBy: SystemStatusActivatedBy | null
+  activatedAt: string | null
 }
 
 const formatDateTime = (iso: string) =>
-  new Date(iso).toLocaleString("es-CO", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  new Date(iso).toLocaleString('es-CO', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 
 export function ReadOnlyBanner({ activatedBy, activatedAt }: ReadOnlyBannerProps) {
   return (
@@ -23,8 +23,8 @@ export function ReadOnlyBanner({ activatedBy, activatedAt }: ReadOnlyBannerProps
         Modo de solo lectura activo &mdash; cierre contable en curso.
         {activatedBy && <> Activado por {activatedBy.name}</>}
         {activatedAt && <> el {formatDateTime(activatedAt)}</>}
-        {(activatedBy || activatedAt) && "."}
+        {(activatedBy || activatedAt) && '.'}
       </p>
     </div>
-  );
+  )
 }

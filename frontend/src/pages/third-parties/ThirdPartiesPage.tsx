@@ -3,18 +3,45 @@ import { useDebounce } from 'use-debounce'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, RotateCcw, Users, Building2, User } from 'lucide-react'
-import { getThirdParties, createThirdParty, updateThirdParty, deleteThirdParty, reactivateThirdParty, renameBrand } from '@/services/third-parties.service'
+import {
+  getThirdParties,
+  createThirdParty,
+  updateThirdParty,
+  deleteThirdParty,
+  reactivateThirdParty,
+  renameBrand,
+} from '@/services/third-parties.service'
 import { usePermission } from '@/hooks/usePermission'
 import { ThirdPartyForm } from './components/ThirdPartyForm'
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
-import { StatsGrid, TableToolbar, TableSkeleton, EmptyState, ErrorState, TablePagination, SegmentedToggle } from '@/components/shared'
+import {
+  StatsGrid,
+  TableToolbar,
+  TableSkeleton,
+  EmptyState,
+  ErrorState,
+  TablePagination,
+  SegmentedToggle,
+} from '@/components/shared'
 import { cn } from '@/lib/utils'
 import type { ThirdParty } from '@/types'
 
 const ROLE_BADGES = [
-  { key: 'isCustomer', label: 'Cliente',   color: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' },
-  { key: 'isSupplier', label: 'Proveedor', color: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' },
-  { key: 'isSeller',   label: 'Vendedor',  color: 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' },
+  {
+    key: 'isCustomer',
+    label: 'Cliente',
+    color: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
+  },
+  {
+    key: 'isSupplier',
+    label: 'Proveedor',
+    color: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
+  },
+  {
+    key: 'isSeller',
+    label: 'Vendedor',
+    color: 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400',
+  },
 ]
 
 export default function ThirdPartiesPage() {
@@ -24,13 +51,13 @@ export default function ThirdPartiesPage() {
   const canUpdate = usePermission('thirdparty.update')
   const canDelete = usePermission('thirdparty.delete')
 
-  const [search, setSearch]   = useState('')
-  const [page, setPage]       = useState(1)
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const [showInactive, setShowInactive] = useState(false)
   const [roleFilter, setRoleFilter] = useState<'all' | 'customer' | 'supplier' | 'seller'>('all')
-  const [formOpen, setFormOpen]   = useState(false)
-  const [editing, setEditing]     = useState<ThirdParty | null>(null)
-  const [deleting, setDeleting]   = useState<ThirdParty | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<ThirdParty | null>(null)
+  const [deleting, setDeleting] = useState<ThirdParty | null>(null)
 
   const [debouncedSearch] = useDebounce(search, 400)
 
@@ -40,23 +67,24 @@ export default function ThirdPartiesPage() {
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['third-parties', debouncedSearch, page, showInactive, roleFilter],
-    queryFn: () => getThirdParties({
-      search: debouncedSearch || undefined,
-      page,
-      limit: 20,
-      isActive: showInactive ? false : undefined,
-      // Un rol por vez: el backend combina los flags con AND.
-      isCustomer: roleFilter === 'customer' ? true : undefined,
-      isSupplier: roleFilter === 'supplier' ? true : undefined,
-      isSeller: roleFilter === 'seller' ? true : undefined,
-    }),
+    queryFn: () =>
+      getThirdParties({
+        search: debouncedSearch || undefined,
+        page,
+        limit: 20,
+        isActive: showInactive ? false : undefined,
+        // Un rol por vez: el backend combina los flags con AND.
+        isCustomer: roleFilter === 'customer' ? true : undefined,
+        isSupplier: roleFilter === 'supplier' ? true : undefined,
+        isSeller: roleFilter === 'seller' ? true : undefined,
+      }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   })
 
-  const totalPages    = data?.meta.totalPages ?? 1
-  const items         = data?.items ?? []
-  const total         = data?.meta.total ?? 0
+  const totalPages = data?.meta.totalPages ?? 1
+  const items = data?.items ?? []
+  const total = data?.meta.total ?? 0
   const customerCount = data?.meta.customerCount ?? 0
   const supplierCount = data?.meta.supplierCount ?? 0
 
@@ -71,40 +99,83 @@ export default function ThirdPartiesPage() {
     mutationFn: createThirdParty,
     // Crear un proveedor puede generar marcas nuevas, igual que editarlo; hay que refrescar la
     // lista de marcas también acá.
-    onSuccess: () => { invalidate(); invalidateBrands(); setFormOpen(false); toast.success('Tercero creado correctamente') },
-    onError:   () => toast.error('Error al crear el tercero'),
+    onSuccess: () => {
+      invalidate()
+      invalidateBrands()
+      setFormOpen(false)
+      toast.success('Tercero creado correctamente')
+    },
+    onError: () => toast.error('Error al crear el tercero'),
   })
 
   const { mutate: update, isPending: isUpdating } = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateThirdParty>[1] }) =>
-      updateThirdParty(id, payload),
-    onSuccess: () => { invalidate(); invalidateBrands(); setEditing(null); toast.success('Tercero actualizado correctamente') },
-    onError:   () => toast.error('Error al actualizar el tercero'),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string
+      payload: Parameters<typeof updateThirdParty>[1]
+    }) => updateThirdParty(id, payload),
+    onSuccess: () => {
+      invalidate()
+      invalidateBrands()
+      setEditing(null)
+      toast.success('Tercero actualizado correctamente')
+    },
+    onError: () => toast.error('Error al actualizar el tercero'),
   })
 
   const { mutateAsync: rename } = useMutation({
     mutationFn: ({ brandId, name }: { brandId: string; name: string }) =>
       renameBrand(editing!.id, brandId, name),
-    onSuccess: () => { invalidate(); invalidateBrands() },
+    onSuccess: () => {
+      invalidate()
+      invalidateBrands()
+    },
     onError: () => toast.error('Error al renombrar la marca'),
   })
 
   const { mutate: remove, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteThirdParty(id),
-    onSuccess: () => { invalidate(); setDeleting(null); toast.success('Tercero eliminado correctamente') },
-    onError:   () => toast.error('Error al eliminar el tercero'),
+    onSuccess: () => {
+      invalidate()
+      setDeleting(null)
+      toast.success('Tercero eliminado correctamente')
+    },
+    onError: () => toast.error('Error al eliminar el tercero'),
   })
 
   const { mutate: reactivate, isPending: isReactivating } = useMutation({
     mutationFn: (id: string) => reactivateThirdParty(id),
-    onSuccess: () => { invalidate(); toast.success('Tercero reactivado correctamente') },
-    onError:   () => toast.error('Error al reactivar el tercero'),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Tercero reactivado correctamente')
+    },
+    onError: () => toast.error('Error al reactivar el tercero'),
   })
 
   const statCards = [
-    { label: 'Total',       value: total,          icon: Users,     bg: 'bg-brand-primary/10',   fg: 'text-brand-primary dark:text-content' },
-    { label: 'Clientes',    value: customerCount,  icon: User,      bg: 'bg-brand-secondary/10', fg: 'text-brand-secondary' },
-    { label: 'Proveedores', value: supplierCount,  icon: Building2, bg: 'bg-blue-500/10',        fg: 'text-blue-500' },
+    {
+      label: 'Total',
+      value: total,
+      icon: Users,
+      bg: 'bg-brand-primary/10',
+      fg: 'text-brand-primary dark:text-content',
+    },
+    {
+      label: 'Clientes',
+      value: customerCount,
+      icon: User,
+      bg: 'bg-brand-secondary/10',
+      fg: 'text-brand-secondary',
+    },
+    {
+      label: 'Proveedores',
+      value: supplierCount,
+      icon: Building2,
+      bg: 'bg-blue-500/10',
+      fg: 'text-blue-500',
+    },
   ]
 
   return (
@@ -113,7 +184,9 @@ export default function ThirdPartiesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl text-content">Terceros</h1>
-          <p className="text-content-muted text-sm mt-0.5 font-accent">Clientes, proveedores y vendedores</p>
+          <p className="text-content-muted text-sm mt-0.5 font-accent">
+            Clientes, proveedores y vendedores
+          </p>
         </div>
         {canCreate && (
           <button
@@ -151,7 +224,9 @@ export default function ThirdPartiesPage() {
           <div className="px-5 pb-4 flex gap-3">
             <select
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value as 'all' | 'customer' | 'supplier' | 'seller')}
+              onChange={(e) =>
+                setRoleFilter(e.target.value as 'all' | 'customer' | 'supplier' | 'seller')
+              }
               className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
             >
               <option value="all">Todos los roles</option>
@@ -162,19 +237,25 @@ export default function ThirdPartiesPage() {
           </div>
         </div>
 
-        {isError && (
-          <ErrorState message="Error al cargar los terceros" onRetry={refetch} />
-        )}
+        {isError && <ErrorState message="Error al cargar los terceros" onRetry={refetch} />}
 
-        {isLoading && (
-          <TableSkeleton widths={['w-40', 'w-28', 'w-16', 'w-24']} />
-        )}
+        {isLoading && <TableSkeleton widths={['w-40', 'w-28', 'w-16', 'w-24']} />}
 
         {!isLoading && !isError && items.length === 0 && (
           <EmptyState
             icon={Users}
-            title={debouncedSearch ? `Sin resultados para "${debouncedSearch}"` : roleFilter !== 'all' ? 'Sin resultados para este filtro' : 'No hay terceros registrados'}
-            description={debouncedSearch || roleFilter !== 'all' ? 'Prueba con otro término o filtro' : 'Crea el primero con el botón "Nuevo tercero"'}
+            title={
+              debouncedSearch
+                ? `Sin resultados para "${debouncedSearch}"`
+                : roleFilter !== 'all'
+                  ? 'Sin resultados para este filtro'
+                  : 'No hay terceros registrados'
+            }
+            description={
+              debouncedSearch || roleFilter !== 'all'
+                ? 'Prueba con otro término o filtro'
+                : 'Crea el primero con el botón "Nuevo tercero"'
+            }
           />
         )}
 
@@ -183,8 +264,19 @@ export default function ThirdPartiesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Nombre', 'Tipo', 'Tipo Doc.', 'N° Documento', 'Contacto', 'Roles', 'Acciones'].map((h) => (
-                    <th key={h} className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3">
+                  {[
+                    'Nombre',
+                    'Tipo',
+                    'Tipo Doc.',
+                    'N° Documento',
+                    'Contacto',
+                    'Roles',
+                    'Acciones',
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
+                    >
                       {h}
                     </th>
                   ))}
@@ -195,7 +287,10 @@ export default function ThirdPartiesPage() {
                   <tr
                     key={t.id}
                     onClick={canUpdate ? () => setEditing(t) : undefined}
-                    className={cn('hover:bg-surface-raised transition-colors group', canUpdate && 'cursor-pointer')}
+                    className={cn(
+                      'hover:bg-surface-raised transition-colors group',
+                      canUpdate && 'cursor-pointer',
+                    )}
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
@@ -209,33 +304,46 @@ export default function ThirdPartiesPage() {
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium',
-                        t.personType === 'natural'
-                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
-                          : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400'
-                      )}>
+                      <span
+                        className={cn(
+                          'px-2 py-0.5 rounded-full text-xs font-medium',
+                          t.personType === 'natural'
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+                            : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400',
+                        )}
+                      >
                         {t.personType === 'natural' ? 'Natural' : 'Jurídica'}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="font-mono text-xs font-medium text-content-muted">{t.documentType}</span>
+                      <span className="font-mono text-xs font-medium text-content-muted">
+                        {t.documentType}
+                      </span>
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs">{t.documentNumber}</td>
                     <td className="px-5 py-3.5 text-content-muted text-xs">{t.phone ?? '—'}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex gap-1 flex-wrap">
-                        {ROLE_BADGES.filter(({ key }) => t[key as keyof ThirdParty]).map(({ key, label, color }) => (
-                          <span key={key} className={cn('px-2 py-0.5 rounded-full text-xs font-medium', color)}>
-                            {label}
-                          </span>
-                        ))}
+                        {ROLE_BADGES.filter(({ key }) => t[key as keyof ThirdParty]).map(
+                          ({ key, label, color }) => (
+                            <span
+                              key={key}
+                              className={cn('px-2 py-0.5 rounded-full text-xs font-medium', color)}
+                            >
+                              {label}
+                            </span>
+                          ),
+                        )}
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         {canUpdate && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); setEditing(t) }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditing(t)
+                            }}
                             className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
                           >
                             <Pencil className="w-3.5 h-3.5" />
@@ -243,7 +351,10 @@ export default function ThirdPartiesPage() {
                         )}
                         {canDelete && !showInactive && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); setDeleting(t) }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDeleting(t)
+                            }}
                             className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -251,7 +362,10 @@ export default function ThirdPartiesPage() {
                         )}
                         {canDelete && showInactive && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); reactivate(t.id) }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              reactivate(t.id)
+                            }}
                             disabled={isReactivating}
                             className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors disabled:opacity-50"
                           >

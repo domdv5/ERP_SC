@@ -1,14 +1,14 @@
-import { useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
-import { toast } from "sonner";
-import { X, Unlock, Loader2 } from "lucide-react";
-import { releaseItems } from "@/services/documents.service";
-import { cn } from "@/lib/utils";
-import { getFirstErrorMessage } from "@/lib/form-errors";
-import type { Document, ReleaseItemsPayload } from "@/types/document.types";
+import { useEffect } from 'react'
+import { useForm, useFieldArray } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { z } from 'zod'
+import { toast } from 'sonner'
+import { X, Unlock, Loader2 } from 'lucide-react'
+import { releaseItems } from '@/services/documents.service'
+import { cn } from '@/lib/utils'
+import { getFirstErrorMessage } from '@/lib/form-errors'
+import type { Document, ReleaseItemsPayload } from '@/types/document.types'
 
 // ─── schema ──────────────────────────────────────────────────────────────────
 
@@ -18,119 +18,113 @@ const releaseRowSchema = z.object({
   pending: z.number(),
   checked: z.boolean(),
   quantity: z.coerce.number(),
-});
+})
 
 const baseSchema = z.object({
   items: z.array(releaseRowSchema),
-  notes: z.string().max(500, "Máximo 500 caracteres").optional(),
-});
+  notes: z.string().max(500, 'Máximo 500 caracteres').optional(),
+})
 
 // La validación por fila se hace a nivel de formulario (no en el schema de cada fila) porque
 // cada fila necesita comparar su cantidad contra su propio pendiente, igual que en el
 // formulario de pagos cada nota crédito se compara contra su saldo disponible.
 const releaseSchema = baseSchema.superRefine((data, ctx) => {
-  const anyChecked = data.items.some((item) => item.checked);
+  const anyChecked = data.items.some((item) => item.checked)
   if (!anyChecked) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Selecciona al menos un ítem para liberar",
-      path: ["items"],
-    });
+      message: 'Selecciona al menos un ítem para liberar',
+      path: ['items'],
+    })
   }
   data.items.forEach((item, index) => {
-    if (!item.checked) return;
+    if (!item.checked) return
     if (item.quantity <= 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "La cantidad debe ser mayor a 0",
-        path: ["items", index, "quantity"],
-      });
+        message: 'La cantidad debe ser mayor a 0',
+        path: ['items', index, 'quantity'],
+      })
     } else if (item.quantity > item.pending) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `La cantidad no puede superar la cantidad pendiente (${item.pending})`,
-        path: ["items", index, "quantity"],
-      });
+        path: ['items', index, 'quantity'],
+      })
     }
-  });
-});
+  })
+})
 
-type ReleaseFormValues = z.infer<typeof baseSchema>;
+type ReleaseFormValues = z.infer<typeof baseSchema>
 
-const emptyDefaults = (): ReleaseFormValues => ({ items: [], notes: "" });
+const emptyDefaults = (): ReleaseFormValues => ({ items: [], notes: '' })
 
 // ─── props ───────────────────────────────────────────────────────────────────
 
 interface ReleaseItemsDialogProps {
-  open: boolean;
+  open: boolean
   // Se llama `doc` (no `document`) a propósito, para no tapar el `document` global del navegador
   // dentro del componente.
-  doc: Document;
-  onClose: () => void;
+  doc: Document
+  onClose: () => void
 }
 
 export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogProps) {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    reset,
-    watch,
-  } = useForm<ReleaseFormValues>({
+  const { register, control, handleSubmit, reset, watch } = useForm<ReleaseFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(releaseSchema) as any,
     defaultValues: emptyDefaults(),
-  });
+  })
 
-  const { fields, replace } = useFieldArray({ control, name: "items" });
+  const { fields, replace } = useFieldArray({ control, name: 'items' })
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) return
     replace(
       doc.documentItems.map((item) => {
-        const pending = item.quantity - (item.releasedQuantity ?? 0);
+        const pending = item.quantity - (item.releasedQuantity ?? 0)
         return {
           documentItemId: item.id,
           productLabel: `${item.product.code} — ${item.product.description}`,
           pending,
           checked: false,
           quantity: pending,
-        };
+        }
       }),
-    );
-    reset(undefined, { keepValues: true });
-  }, [open, doc, replace, reset]);
+    )
+    reset(undefined, { keepValues: true })
+  }, [open, doc, replace, reset])
 
   const { mutate: doRelease, isPending } = useMutation({
     mutationFn: (payload: ReleaseItemsPayload) => releaseItems(doc.id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
-      queryClient.invalidateQueries({ queryKey: ["document", doc.id] });
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      queryClient.invalidateQueries({ queryKey: ['document', doc.id] })
+      queryClient.invalidateQueries({ queryKey: ['products'] })
       // El buscador de productos usa una clave de caché aparte que "products" no alcanza; sin
       // esto, el disponible que se ve en la siguiente operación queda viejo.
-      queryClient.invalidateQueries({ queryKey: ["products-search"] });
-      toast.success("Stock liberado correctamente");
-      onClose();
+      queryClient.invalidateQueries({ queryKey: ['products-search'] })
+      toast.success('Stock liberado correctamente')
+      onClose()
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg ?? "Error al liberar stock. Intenta nuevamente o contacta al administrador.");
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Error al liberar stock. Intenta nuevamente o contacta al administrador.')
     },
-  });
+  })
 
-  if (!open) return null;
+  if (!open) return null
 
-  const watchedItems = watch("items");
+  const watchedItems = watch('items')
 
   const submitHandler = (data: ReleaseFormValues) => {
     const items = data.items
       .filter((item) => item.checked)
-      .map((item) => ({ documentItemId: item.documentItemId, quantity: item.quantity }));
-    doRelease({ items, notes: data.notes || undefined });
-  };
+      .map((item) => ({ documentItemId: item.documentItemId, quantity: item.quantity }))
+    doRelease({ items, notes: data.notes || undefined })
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -162,25 +156,24 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
         {/* Body + Footer */}
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <form
-          onSubmit={handleSubmit(
-            submitHandler as any,
-            (formErrors) => toast.error(getFirstErrorMessage(formErrors)),
+          onSubmit={handleSubmit(submitHandler as any, (formErrors) =>
+            toast.error(getFirstErrorMessage(formErrors)),
           )}
           noValidate
           className="flex flex-col overflow-hidden"
         >
           <div className="px-6 py-5 space-y-3 overflow-y-auto">
             {fields.map((field, index) => {
-              const item = doc.documentItems[index];
-              const pending = field.pending;
-              const isDisabled = pending <= 0;
+              const item = doc.documentItems[index]
+              const pending = field.pending
+              const isDisabled = pending <= 0
 
               return (
                 <div
                   key={field.id}
                   className={cn(
-                    "p-3 rounded-lg border border-ui-border-medium bg-surface-raised",
-                    isDisabled && "opacity-60",
+                    'p-3 rounded-lg border border-ui-border-medium bg-surface-raised',
+                    isDisabled && 'opacity-60',
                   )}
                 >
                   <div className="flex items-start gap-3">
@@ -195,9 +188,9 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
                         {field.productLabel}
                       </p>
                       <p className="text-content-faint text-xs mt-0.5 font-accent">
-                        Reservado: {item.quantity.toLocaleString("es-CO")} &middot; Liberado:{" "}
-                        {(item.releasedQuantity ?? 0).toLocaleString("es-CO")} &middot; Pendiente:{" "}
-                        {pending.toLocaleString("es-CO")}
+                        Reservado: {item.quantity.toLocaleString('es-CO')} &middot; Liberado:{' '}
+                        {(item.releasedQuantity ?? 0).toLocaleString('es-CO')} &middot; Pendiente:{' '}
+                        {pending.toLocaleString('es-CO')}
                       </p>
                       {isDisabled ? (
                         <p className="text-xs text-content-faint mt-1.5">Liberado completamente</p>
@@ -214,10 +207,10 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
                             disabled={!watchedItems?.[index]?.checked}
                             {...register(`items.${index}.quantity`)}
                             className={cn(
-                              "w-24 px-2.5 py-1.5 text-sm rounded-lg border bg-surface text-content",
-                              "focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all",
-                              "disabled:opacity-50 disabled:cursor-not-allowed",
-                              "border-ui-border-medium",
+                              'w-24 px-2.5 py-1.5 text-sm rounded-lg border bg-surface text-content',
+                              'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
+                              'disabled:opacity-50 disabled:cursor-not-allowed',
+                              'border-ui-border-medium',
                             )}
                           />
                         </div>
@@ -225,7 +218,7 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
                     </div>
                   </div>
                 </div>
-              );
+              )
             })}
 
             <div>
@@ -234,7 +227,7 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
               </label>
               <textarea
                 rows={2}
-                {...register("notes")}
+                {...register('notes')}
                 placeholder="Observaciones de la liberación..."
                 className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all resize-none"
               />
@@ -262,5 +255,5 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
         </form>
       </div>
     </div>
-  );
+  )
 }

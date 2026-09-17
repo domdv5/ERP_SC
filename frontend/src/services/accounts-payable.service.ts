@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { api } from './api'
 import type {
   ApiResponse,
   AccountsPayable,
@@ -7,29 +7,29 @@ import type {
   GetAccountsPayableParams,
   RegisterPayablePaymentPayload,
   SupplierCredit,
-} from "@/types";
+} from '@/types'
 
 export async function getAccountsPayable(
   params?: GetAccountsPayableParams,
 ): Promise<{ items: AccountsPayable[]; meta: AccountsPayableMeta }> {
   const res = await api.get<ApiResponse<{ items: AccountsPayable[]; meta: AccountsPayableMeta }>>(
-    "/accounts-payable",
+    '/accounts-payable',
     { params },
-  );
-  return res.data.data;
+  )
+  return res.data.data
 }
 
 export async function getAccountPayable(id: string): Promise<AccountsPayableDetail> {
-  const res = await api.get<ApiResponse<AccountsPayableDetail>>(`/accounts-payable/${id}`);
-  return res.data.data;
+  const res = await api.get<ApiResponse<AccountsPayableDetail>>(`/accounts-payable/${id}`)
+  return res.data.data
 }
 
 /** Notas crédito de proveedor con saldo disponible para aplicar a mano a un pago. */
 export async function getSupplierCredits(supplierId: string): Promise<SupplierCredit[]> {
-  const res = await api.get<ApiResponse<SupplierCredit[]>>("/accounts-payable/credits", {
+  const res = await api.get<ApiResponse<SupplierCredit[]>>('/accounts-payable/credits', {
     params: { supplierId },
-  });
-  return res.data.data;
+  })
+  return res.data.data
 }
 
 export async function registerPayablePayment(
@@ -39,6 +39,6 @@ export async function registerPayablePayment(
   const res = await api.post<ApiResponse<AccountsPayableDetail>>(
     `/accounts-payable/${id}/payments`,
     payload,
-  );
-  return res.data.data;
+  )
+  return res.data.data
 }

@@ -59,12 +59,19 @@ export const navGroups: NavGroup[] = [
         permission: 'warehouse.manage',
         component: 'warehouses-accordion',
       },
-      { to: '/stock-lookup', label: 'Ubicación de stock', icon: MapPinned, permission: 'inventory.manage' },
+      {
+        to: '/stock-lookup',
+        label: 'Ubicación de stock',
+        icon: MapPinned,
+        permission: 'inventory.manage',
+      },
     ],
   },
   {
     label: 'Operaciones',
-    items: [{ to: '/documents', label: 'Operaciones', icon: FileText, permission: 'document.read' }],
+    items: [
+      { to: '/documents', label: 'Operaciones', icon: FileText, permission: 'document.read' },
+    ],
   },
   {
     label: 'Ventas',
@@ -76,14 +83,29 @@ export const navGroups: NavGroup[] = [
         permission: ['document.create.POS', 'document.create.COT'],
       },
       { to: REM_NEW_PATH, label: 'Nueva remisión', icon: Truck, permission: 'document.create.REM' },
-      { to: DVV_NEW_PATH, label: 'Nueva devolución', icon: RotateCcw, permission: 'document.create.DVV' },
+      {
+        to: DVV_NEW_PATH,
+        label: 'Nueva devolución',
+        icon: RotateCcw,
+        permission: 'document.create.DVV',
+      },
     ],
   },
   {
     label: 'Finanzas',
     items: [
-      { to: '/accounts-receivable', label: 'Cuentas × Cobrar', icon: TrendingUp, permission: 'ar.read' },
-      { to: '/accounts-payable', label: 'Cuentas × Pagar', icon: TrendingDown, permission: 'ap.read' },
+      {
+        to: '/accounts-receivable',
+        label: 'Cuentas × Cobrar',
+        icon: TrendingUp,
+        permission: 'ar.read',
+      },
+      {
+        to: '/accounts-payable',
+        label: 'Cuentas × Pagar',
+        icon: TrendingDown,
+        permission: 'ap.read',
+      },
     ],
   },
   {

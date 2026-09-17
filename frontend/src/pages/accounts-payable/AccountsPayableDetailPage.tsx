@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import {
   ArrowLeft,
   Wallet,
@@ -11,22 +11,22 @@ import {
   Landmark,
   Hash,
   Plus,
-} from "lucide-react";
-import { getAccountPayable, registerPayablePayment } from "@/services/accounts-payable.service";
-import { usePermission } from "@/hooks/usePermission";
-import { cn } from "@/lib/utils";
-import { StatusBadge } from "./components/StatusBadge";
-import { RegisterPaymentForm } from "./components/RegisterPaymentForm";
-import { formatCOP, formatDate, DOCUMENT_TYPE_LABELS, docNumber } from "./accounts-payable.utils";
-import type { RegisterPayablePaymentPayload } from "@/types";
+} from 'lucide-react'
+import { getAccountPayable, registerPayablePayment } from '@/services/accounts-payable.service'
+import { usePermission } from '@/hooks/usePermission'
+import { cn } from '@/lib/utils'
+import { StatusBadge } from './components/StatusBadge'
+import { RegisterPaymentForm } from './components/RegisterPaymentForm'
+import { formatCOP, formatDate, DOCUMENT_TYPE_LABELS, docNumber } from './accounts-payable.utils'
+import type { RegisterPayablePaymentPayload } from '@/types'
 
 export default function AccountsPayableDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
-  const canManage = usePermission("ap.manage");
-  const [paymentFormOpen, setPaymentFormOpen] = useState(false);
+  const canManage = usePermission('ap.manage')
+  const [paymentFormOpen, setPaymentFormOpen] = useState(false)
 
   const {
     data: account,
@@ -34,11 +34,11 @@ export default function AccountsPayableDetailPage() {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ["accounts-payable", id],
+    queryKey: ['accounts-payable', id],
     queryFn: () => getAccountPayable(id!),
     staleTime: 5 * 60 * 1000,
     enabled: Boolean(id),
-  });
+  })
 
   const { mutate: registerPayment, isPending: isRegistering } = useMutation({
     mutationFn: (payload: RegisterPayablePaymentPayload) => registerPayablePayment(id!, payload),
@@ -46,17 +46,17 @@ export default function AccountsPayableDetailPage() {
       // Invalidar el prefijo ["accounts-payable"] ya alcanzaría a las claves de créditos y de
       // detalle por coincidencia parcial; se listan una por una igual para que quede claro qué
       // se está refrescando tras aplicar un pago con crédito.
-      queryClient.invalidateQueries({ queryKey: ["accounts-payable"] });
-      queryClient.invalidateQueries({ queryKey: ["accounts-payable", id] });
-      queryClient.invalidateQueries({ queryKey: ["accounts-payable", "credits"] });
-      setPaymentFormOpen(false);
-      toast.success("Pago registrado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['accounts-payable'] })
+      queryClient.invalidateQueries({ queryKey: ['accounts-payable', id] })
+      queryClient.invalidateQueries({ queryKey: ['accounts-payable', 'credits'] })
+      setPaymentFormOpen(false)
+      toast.success('Pago registrado correctamente')
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg ?? "Error al registrar el pago");
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Error al registrar el pago')
     },
-  });
+  })
 
   // ── loading / error states ────────────────────────────────────────────────
   if (isLoading) {
@@ -81,14 +81,14 @@ export default function AccountsPayableDetailPage() {
           ))}
         </div>
       </div>
-    );
+    )
   }
 
   if (isError || !account) {
     return (
       <div className="space-y-4">
         <button
-          onClick={() => navigate("/accounts-payable")}
+          onClick={() => navigate('/accounts-payable')}
           className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -105,33 +105,33 @@ export default function AccountsPayableDetailPage() {
           </button>
         </div>
       </div>
-    );
+    )
   }
 
-  const creditApplications = account.creditApplications ?? [];
+  const creditApplications = account.creditApplications ?? []
   // El saldo pendiente tiene que descontar tanto los pagos en efectivo como las notas crédito
   // ya aplicadas; si se omiten las notas crédito, se subestima cuánto falta por pagar.
   const paidAmount =
     account.payablePayments.reduce((sum, payment) => sum + payment.amount, 0) +
-    creditApplications.reduce((sum, application) => sum + application.amount, 0);
-  const pendingBalance = account.totalAmount - paidAmount;
+    creditApplications.reduce((sum, application) => sum + application.amount, 0)
+  const pendingBalance = account.totalAmount - paidAmount
 
   type SettlementRow = {
-    id: string;
-    date: string;
-    amount: number;
-    kind: "cash" | "credit";
-    paymentMethod: string | null;
-    bankDestination: string | null;
-    reference: string | null;
-  };
+    id: string
+    date: string
+    amount: number
+    kind: 'cash' | 'credit'
+    paymentMethod: string | null
+    bankDestination: string | null
+    reference: string | null
+  }
 
   const settlementRows: SettlementRow[] = [
     ...account.payablePayments.map((payment) => ({
       id: payment.id,
       date: payment.paymentDate,
       amount: payment.amount,
-      kind: "cash" as const,
+      kind: 'cash' as const,
       paymentMethod: payment.paymentMethod,
       bankDestination: payment.bankDestination,
       reference: payment.reference,
@@ -140,18 +140,18 @@ export default function AccountsPayableDetailPage() {
       id: application.id,
       date: application.appliedAt,
       amount: application.amount,
-      kind: "credit" as const,
+      kind: 'credit' as const,
       paymentMethod: null,
       bankDestination: null,
       reference: null,
     })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
       <button
-        onClick={() => navigate("/accounts-payable")}
+        onClick={() => navigate('/accounts-payable')}
         className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -163,7 +163,7 @@ export default function AccountsPayableDetailPage() {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
-              {account.supplier.thirdParty.name[0]?.toUpperCase() ?? "?"}
+              {account.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
             </div>
             <div>
               <div className="flex items-center gap-3 flex-wrap">
@@ -171,7 +171,7 @@ export default function AccountsPayableDetailPage() {
                 <StatusBadge status={account.status} />
               </div>
               <p className="text-content-muted text-sm mt-1 font-accent">
-                Documento {docNumber(account.document.type, account.document.number)} &middot;{" "}
+                Documento {docNumber(account.document.type, account.document.number)} &middot;{' '}
                 {DOCUMENT_TYPE_LABELS[account.document.type] ?? account.document.type}
               </p>
             </div>
@@ -208,8 +208,8 @@ export default function AccountsPayableDetailPage() {
               <p className="text-xs text-content-faint">Saldo pendiente</p>
               <p
                 className={cn(
-                  "text-sm font-medium",
-                  pendingBalance > 0 ? "text-content" : "text-brand-secondary",
+                  'text-sm font-medium',
+                  pendingBalance > 0 ? 'text-content' : 'text-brand-secondary',
                 )}
               >
                 {formatCOP(pendingBalance)}
@@ -246,8 +246,8 @@ export default function AccountsPayableDetailPage() {
         <div className="px-6 py-4 border-b border-ui-border">
           <h2 className="text-content font-semibold">Historial de pagos</h2>
           <p className="text-content-muted text-xs mt-0.5 font-accent">
-            {settlementRows.length}{" "}
-            {settlementRows.length === 1 ? "movimiento registrado" : "movimientos registrados"}
+            {settlementRows.length}{' '}
+            {settlementRows.length === 1 ? 'movimiento registrado' : 'movimientos registrados'}
           </p>
         </div>
 
@@ -256,11 +256,13 @@ export default function AccountsPayableDetailPage() {
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 gradient-dark">
               <CreditCard className="w-7 h-7 text-white/60" />
             </div>
-            <p className="text-content-muted text-sm font-medium">Aún no hay movimientos registrados</p>
+            <p className="text-content-muted text-sm font-medium">
+              Aún no hay movimientos registrados
+            </p>
             <p className="text-content-faint text-xs mt-1 font-accent">
               {canManage
                 ? 'Usa el botón "Registrar pago" para añadir el primero'
-                : "Los pagos y aplicaciones de crédito aparecerán aquí una vez se registren"}
+                : 'Los pagos y aplicaciones de crédito aparecerán aquí una vez se registren'}
             </p>
           </div>
         ) : (
@@ -268,7 +270,7 @@ export default function AccountsPayableDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {["Fecha", "Monto", "Método", "Banco destino", "Referencia"].map((h) => (
+                  {['Fecha', 'Monto', 'Método', 'Banco destino', 'Referencia'].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -280,7 +282,10 @@ export default function AccountsPayableDetailPage() {
               </thead>
               <tbody className="divide-y divide-ui-divide">
                 {settlementRows.map((row) => (
-                  <tr key={`${row.kind}-${row.id}`} className="hover:bg-surface-raised transition-colors">
+                  <tr
+                    key={`${row.kind}-${row.id}`}
+                    className="hover:bg-surface-raised transition-colors"
+                  >
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
                       {formatDate(row.date)}
                     </td>
@@ -288,7 +293,7 @@ export default function AccountsPayableDetailPage() {
                       {formatCOP(row.amount)}
                     </td>
                     <td className="px-5 py-3.5">
-                      {row.kind === "credit" ? (
+                      {row.kind === 'credit' ? (
                         <span className="px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
                           Nota crédito aplicada
                         </span>
@@ -300,7 +305,7 @@ export default function AccountsPayableDetailPage() {
                       )}
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs">
-                      {row.bankDestination ?? "—"}
+                      {row.bankDestination ?? '—'}
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs">
                       {row.reference ? (
@@ -309,7 +314,7 @@ export default function AccountsPayableDetailPage() {
                           {row.reference}
                         </span>
                       ) : (
-                        "—"
+                        '—'
                       )}
                     </td>
                   </tr>
@@ -330,5 +335,5 @@ export default function AccountsPayableDetailPage() {
         supplierId={account.supplier.id}
       />
     </div>
-  );
+  )
 }

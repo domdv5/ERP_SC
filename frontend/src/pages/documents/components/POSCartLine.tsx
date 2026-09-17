@@ -4,7 +4,11 @@ import { HintText } from '@/components/shared'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 
 const formatCOP = (v: number) =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v)
+  new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+  }).format(v)
 
 interface POSCartLineProps {
   index: number
@@ -24,7 +28,14 @@ interface POSCartLineProps {
 // de los otros documentos): aquel tiene columnas que cambian según el tipo de documento y no
 // encajan con la venta, y acá el producto siempre llega ya resuelto (por escaneo o búsqueda),
 // nunca se elige desde un buscador dentro de la fila.
-export function POSCartLine({ index, register, watch, onRemove, minSalePrice, availableStock }: POSCartLineProps) {
+export function POSCartLine({
+  index,
+  register,
+  watch,
+  onRemove,
+  minSalePrice,
+  availableStock,
+}: POSCartLineProps) {
   const productCode = watch(`items.${index}.productCode`)
   const productDesc = watch(`items.${index}.productDesc`)
   const quantity = Number(watch(`items.${index}.quantity`) ?? 0)

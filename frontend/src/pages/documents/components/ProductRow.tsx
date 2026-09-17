@@ -3,7 +3,12 @@ import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { Trash2, Copy } from 'lucide-react'
 import { toast } from 'sonner'
-import type { UseFormRegister, UseFormSetValue, UseFormWatch, UseFormGetValues } from 'react-hook-form'
+import type {
+  UseFormRegister,
+  UseFormSetValue,
+  UseFormWatch,
+  UseFormGetValues,
+} from 'react-hook-form'
 import { Combobox, HintText } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { getProducts } from '@/services/products.service'
@@ -12,7 +17,11 @@ import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 
 const formatCOP = (v: number) =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v)
+  new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+  }).format(v)
 
 interface ProductRowProps {
   index: number
@@ -48,11 +57,27 @@ interface ProductRowProps {
   supplierBrandIds?: string[]
 }
 
-export function ProductRow({ index, docType, onRemove, register, setValue, watch, getValues, initialAvgCost, initialUnitOfMeasure, initialAvailableStock, quantityInputRef, onQuantityConfirmed, supplierBrandIds }: ProductRowProps) {
+export function ProductRow({
+  index,
+  docType,
+  onRemove,
+  register,
+  setValue,
+  watch,
+  getValues,
+  initialAvgCost,
+  initialUnitOfMeasure,
+  initialAvailableStock,
+  quantityInputRef,
+  onQuantityConfirmed,
+  supplierBrandIds,
+}: ProductRowProps) {
   const [productSearch, setProductSearch] = useState('')
   const [debouncedProductSearch] = useDebounce(productSearch, 400)
   // Costo promedio del producto al momento de elegirlo, solo para comparar contra lo digitado.
-  const [selectedAvgCost, setSelectedAvgCost] = useState<number | null>(() => initialAvgCost ?? null)
+  const [selectedAvgCost, setSelectedAvgCost] = useState<number | null>(
+    () => initialAvgCost ?? null,
+  )
   // Unidad de medida del producto elegido, solo informativa (se muestra como dato junto a la
   // cantidad en traslados). Nunca entra en ningún cálculo de cantidad, costo o stock.
   const [selectedUnitOfMeasure, setSelectedUnitOfMeasure] = useState<'unidad' | 'docena' | null>(
@@ -67,16 +92,18 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   // Stock por bodega del producto elegido (solo traslados), para calcular el disponible en la
   // bodega origen. No se prellena desde las props iniciales porque, a diferencia del costo
   // promedio o el disponible, el escaneo hoy no trae este detalle por bodega.
-  const [selectedStockByWarehouse, setSelectedStockByWarehouse] = useState<StockByWarehouse[] | null>(null)
+  const [selectedStockByWarehouse, setSelectedStockByWarehouse] = useState<
+    StockByWarehouse[] | null
+  >(null)
 
-  const productId   = watch(`items.${index}.productId`)
+  const productId = watch(`items.${index}.productId`)
   const productCode = watch(`items.${index}.productCode`)
   const productDesc = watch(`items.${index}.productDesc`)
-  const quantity    = watch(`items.${index}.quantity`) ?? 0
-  const unitCost    = watch(`items.${index}.unitCost`) ?? 0
-  const unitPrice   = watch(`items.${index}.unitPrice`) ?? 0
+  const quantity = watch(`items.${index}.quantity`) ?? 0
+  const unitCost = watch(`items.${index}.unitCost`) ?? 0
+  const unitPrice = watch(`items.${index}.unitPrice`) ?? 0
 
-  const subtotal    = Number(quantity) * Number(unitCost)
+  const subtotal = Number(quantity) * Number(unitCost)
   // Nota de talla por línea: solo en traslados. Permite registrar un mismo producto repartido
   // en varios bultos, cada uno con una talla distinta.
   const showObservaciones = docType === 'T'
@@ -85,7 +112,7 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   // sin filtrar.
   const needsSupplier = docType === 'CM' || docType === 'DVC'
   const noSupplierYet = needsSupplier && !watch('thirdPartyId')
-  const showCost    = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
+  const showCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
   // Las salidas por ajuste y los traslados nunca dejan digitar el costo: en la salida por
   // ajuste el backend siempre usa el costo promedio del producto; el traslado no tiene costo
   // real, solo muestra el promedio como referencia para que el subtotal de la fila tenga sentido.
@@ -109,9 +136,11 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   // aviso temprano.
   const showTransferAvailability = docType === 'T'
   const sourceWarehouseId = watch('warehouseId')
-  const availableInSourceWarehouse = showTransferAvailability && sourceWarehouseId
-    ? (selectedStockByWarehouse?.find((s) => s.warehouseId === sourceWarehouseId)?.quantity ?? null)
-    : null
+  const availableInSourceWarehouse =
+    showTransferAvailability && sourceWarehouseId
+      ? (selectedStockByWarehouse?.find((s) => s.warehouseId === sourceWarehouseId)?.quantity ??
+        null)
+      : null
 
   // En preventas y remisiones el disponible ya viene con las reservas descontadas y puede ser
   // negativo. En traslados no existe "reservado": el disponible es el stock crudo de la bodega
@@ -119,9 +148,13 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
   // aviso con su propia fuente. El backend igual rechaza al confirmar si de verdad no alcanza;
   // esto es solo un aviso temprano.
   const showPvAvailableWarning =
-    showSaleAvailability && selectedAvailableStock !== null && Number(quantity) > selectedAvailableStock
+    showSaleAvailability &&
+    selectedAvailableStock !== null &&
+    Number(quantity) > selectedAvailableStock
   const showTransferAvailableWarning =
-    showTransferAvailability && availableInSourceWarehouse !== null && Number(quantity) > availableInSourceWarehouse
+    showTransferAvailability &&
+    availableInSourceWarehouse !== null &&
+    Number(quantity) > availableInSourceWarehouse
   const showAvailableStockWarning = showPvAvailableWarning || showTransferAvailableWarning
 
   // Los avisos secundarios de la fila van en una fila aparte para que ningún texto extra
@@ -170,9 +203,10 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
         : `Costo prom: ${formatCOP(Number(p.avgCost))}`,
   }))
 
-  const displayOptions: ComboboxOption[] = productId && !hasSearch
-    ? [{ id: productId, label: `${productCode} — ${productDesc}` }]
-    : productOptions
+  const displayOptions: ComboboxOption[] =
+    productId && !hasSearch
+      ? [{ id: productId, label: `${productCode} — ${productDesc}` }]
+      : productOptions
 
   const handleCopyAvgCost = async () => {
     if (selectedAvgCost === null) return
@@ -199,7 +233,12 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
               // producto de una marca equivocada si igual llegó a las opciones (p. ej. por caché
               // vieja). Solo aplica en compras y devoluciones: el padre puede pasar la lista de
               // marcas sin filtrar por tipo, y decidir si usarla es responsabilidad de esta fila.
-              if (needsSupplier && supplierBrandIds !== undefined && product && !supplierBrandIds.includes(product.brandId)) {
+              if (
+                needsSupplier &&
+                supplierBrandIds !== undefined &&
+                product &&
+                !supplierBrandIds.includes(product.brandId)
+              ) {
                 toast.error(`${product.code} no pertenece a las marcas del proveedor seleccionado`)
                 return
               }
@@ -207,7 +246,9 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
               // Se excluye la fila actual: si ya tiene este producto (p. ej. al reabrir su
               // buscador sin cambiar nada), no debe detectarse a sí misma como duplicado.
               const currentItems = getValues('items')
-              const existingIndex = currentItems.findIndex((item, i) => item.productId === id && i !== index)
+              const existingIndex = currentItems.findIndex(
+                (item, i) => item.productId === id && i !== index,
+              )
 
               if (existingIndex >= 0) {
                 // El producto ya está en otra fila: se suma la cantidad ahí en vez de dejar dos
@@ -237,7 +278,9 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
             options={displayOptions}
             isLoading={isLoadingProducts}
             disabled={noSupplierYet}
-            placeholder={noSupplierYet ? 'Selecciona un proveedor primero' : 'Selecciona un producto...'}
+            placeholder={
+              noSupplierYet ? 'Selecciona un proveedor primero' : 'Selecciona un producto...'
+            }
             searchValue={productSearch}
             onSearchChange={setProductSearch}
           />
@@ -249,7 +292,9 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
         {/* Cantidad */}
         <td className="px-3 py-2 w-28">
           {(() => {
-            const { ref: quantityRegisterRef, ...quantityRegisterRest } = register(`items.${index}.quantity`)
+            const { ref: quantityRegisterRef, ...quantityRegisterRest } = register(
+              `items.${index}.quantity`,
+            )
             return (
               <input
                 type="number"
@@ -375,9 +420,7 @@ export function ProductRow({ index, docType, onRemove, register, setValue, watch
             )}
           </td>
           <td className="px-3 pt-0 pb-2 w-28">
-            {showUnitOfMeasureHint && (
-              <HintText variant="neutral">Se maneja por docena</HintText>
-            )}
+            {showUnitOfMeasureHint && <HintText variant="neutral">Se maneja por docena</HintText>}
           </td>
           {showObservaciones && <td className="px-3 pt-0 pb-2 w-40" />}
           {(showCost || showCostReadonly || showPrice) && <td className="px-3 pt-0 pb-2 w-36" />}

@@ -24,7 +24,10 @@ export function AppLayout() {
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
         {systemStatus?.readOnlyMode && (
-          <ReadOnlyBanner activatedBy={systemStatus.activatedBy} activatedAt={systemStatus.activatedAt} />
+          <ReadOnlyBanner
+            activatedBy={systemStatus.activatedBy}
+            activatedAt={systemStatus.activatedAt}
+          />
         )}
         <main className="flex-1 overflow-y-auto p-6">
           <Outlet />

@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { useDebounce } from "use-debounce";
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Package, BarChart2, CheckCircle2, Plus, Pencil, Trash2, RotateCcw } from "lucide-react";
+import { useEffect, useState } from 'react'
+import { useDebounce } from 'use-debounce'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { Package, BarChart2, CheckCircle2, Plus, Pencil, Trash2, RotateCcw } from 'lucide-react'
 import {
   getProducts,
   getBrands,
@@ -10,12 +10,12 @@ import {
   updateProduct,
   deleteProduct,
   reactivateProduct,
-} from "@/services/products.service";
-import type { CreateProductPayload } from "@/services/products.service";
-import { usePermission } from "@/hooks/usePermission";
-import { ProductForm } from "./components/ProductForm";
-import type { FormValues } from "./components/ProductForm";
-import { DeleteProductDialog } from "./components/DeleteProductDialog";
+} from '@/services/products.service'
+import type { CreateProductPayload } from '@/services/products.service'
+import { usePermission } from '@/hooks/usePermission'
+import { ProductForm } from './components/ProductForm'
+import type { FormValues } from './components/ProductForm'
+import { DeleteProductDialog } from './components/DeleteProductDialog'
 import {
   StatsGrid,
   TableToolbar,
@@ -24,43 +24,43 @@ import {
   ErrorState,
   TablePagination,
   SegmentedToggle,
-} from "@/components/shared";
-import type { Product } from "@/types";
+} from '@/components/shared'
+import type { Product } from '@/types'
 
 const formatCOP = (value: number) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
+  new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
     minimumFractionDigits: 0,
-  }).format(value);
+  }).format(value)
 
 // Las dos únicas bodegas que crea el seed son "Almacén" (tienda) y "Bodega" (bodega física).
 const getStockQuantity = (product: Product, warehouseName: string) =>
-  product.stockByWarehouse.find((s) => s.warehouseName === warehouseName)?.quantity ?? 0;
+  product.stockByWarehouse.find((s) => s.warehouseName === warehouseName)?.quantity ?? 0
 
 export default function ProductsPage() {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
-  const canCreate = usePermission("product.create");
-  const canUpdate = usePermission("product.update");
-  const canDelete = usePermission("product.delete");
+  const canCreate = usePermission('product.create')
+  const canUpdate = usePermission('product.update')
+  const canDelete = usePermission('product.delete')
 
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [showInactive, setShowInactive] = useState(false);
-  const [brandId, setBrandId] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Product | null>(null);
-  const [deleting, setDeleting] = useState<Product | null>(null);
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [showInactive, setShowInactive] = useState(false)
+  const [brandId, setBrandId] = useState('')
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<Product | null>(null)
+  const [deleting, setDeleting] = useState<Product | null>(null)
 
-  const [debouncedSearch] = useDebounce(search, 400);
+  const [debouncedSearch] = useDebounce(search, 400)
 
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, showInactive, brandId]);
+    setPage(1)
+  }, [debouncedSearch, showInactive, brandId])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["products", debouncedSearch, page, showInactive, brandId],
+    queryKey: ['products', debouncedSearch, page, showInactive, brandId],
     queryFn: () =>
       getProducts({
         search: debouncedSearch || undefined,
@@ -71,90 +71,90 @@ export default function ProductsPage() {
       }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
-  });
+  })
 
   // Misma clave que ProductForm para compartir la caché de marcas.
   const { data: brands = [] } = useQuery({
-    queryKey: ["brands"],
+    queryKey: ['brands'],
     queryFn: getBrands,
     staleTime: 5 * 60 * 1000,
-  });
+  })
 
-  const totalPages = data?.meta.totalPages ?? 1;
-  const items = data?.items ?? [];
-  const total = data?.meta.total ?? 0;
-  const activeCount = data?.meta.activeCount ?? 0;
-  const inStockCount = data?.meta.inStockCount ?? 0;
+  const totalPages = data?.meta.totalPages ?? 1
+  const items = data?.items ?? []
+  const total = data?.meta.total ?? 0
+  const activeCount = data?.meta.activeCount ?? 0
+  const inStockCount = data?.meta.inStockCount ?? 0
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["products"] });
+    queryClient.invalidateQueries({ queryKey: ['products'] })
     // Clave de caché aparte, la del buscador de productos en documentos; "products" no la alcanza.
-    queryClient.invalidateQueries({ queryKey: ["products-search"] });
-  };
+    queryClient.invalidateQueries({ queryKey: ['products-search'] })
+  }
 
   const { mutate: create, isPending: isCreating } = useMutation({
     mutationFn: (payload: CreateProductPayload) => createProduct(payload),
     onSuccess: () => {
-      invalidate();
-      setFormOpen(false);
-      toast.success("Producto creado correctamente");
+      invalidate()
+      setFormOpen(false)
+      toast.success('Producto creado correctamente')
     },
-    onError: () => toast.error("Error al crear el producto"),
-  });
+    onError: () => toast.error('Error al crear el producto'),
+  })
 
   const { mutate: update, isPending: isUpdating } = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateProductPayload> }) =>
       updateProduct(id, payload),
     onSuccess: () => {
-      invalidate();
-      setEditing(null);
-      toast.success("Producto actualizado correctamente");
+      invalidate()
+      setEditing(null)
+      toast.success('Producto actualizado correctamente')
     },
-    onError: () => toast.error("Error al actualizar el producto"),
-  });
+    onError: () => toast.error('Error al actualizar el producto'),
+  })
 
   const { mutate: remove, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteProduct(id),
     onSuccess: () => {
-      invalidate();
-      setDeleting(null);
-      toast.success("Producto eliminado correctamente");
+      invalidate()
+      setDeleting(null)
+      toast.success('Producto eliminado correctamente')
     },
-    onError: () => toast.error("Error al eliminar el producto"),
-  });
+    onError: () => toast.error('Error al eliminar el producto'),
+  })
 
   const { mutate: reactivate, isPending: isReactivating } = useMutation({
     mutationFn: (id: string) => reactivateProduct(id),
     onSuccess: () => {
-      invalidate();
-      toast.success("Producto reactivado correctamente");
+      invalidate()
+      toast.success('Producto reactivado correctamente')
     },
-    onError: () => toast.error("Error al reactivar el producto"),
-  });
+    onError: () => toast.error('Error al reactivar el producto'),
+  })
 
   const statCards = [
     {
-      label: "Total",
+      label: 'Total',
       value: total,
       icon: Package,
-      bg: "bg-brand-primary/10",
-      fg: "text-brand-primary dark:text-content",
+      bg: 'bg-brand-primary/10',
+      fg: 'text-brand-primary dark:text-content',
     },
     {
-      label: "Activos",
+      label: 'Activos',
       value: activeCount,
       icon: CheckCircle2,
-      bg: "bg-brand-secondary/10",
-      fg: "text-brand-secondary",
+      bg: 'bg-brand-secondary/10',
+      fg: 'text-brand-secondary',
     },
     {
-      label: "Con stock",
+      label: 'Con stock',
       value: inStockCount,
       icon: BarChart2,
-      bg: "bg-blue-500/10",
-      fg: "text-blue-500",
+      bg: 'bg-blue-500/10',
+      fg: 'text-blue-500',
     },
-  ];
+  ]
 
   return (
     <div className="space-y-6">
@@ -215,7 +215,7 @@ export default function ProductsPage() {
 
         {isError && <ErrorState message="Error al cargar los productos" onRetry={refetch} />}
 
-        {isLoading && <TableSkeleton widths={["w-32", "w-48", "w-20", "w-16"]} />}
+        {isLoading && <TableSkeleton widths={['w-32', 'w-48', 'w-20', 'w-16']} />}
 
         {!isLoading && !isError && items.length === 0 && (
           <EmptyState
@@ -224,12 +224,12 @@ export default function ProductsPage() {
               debouncedSearch
                 ? `Sin resultados para "${debouncedSearch}"`
                 : brandId
-                  ? "Sin resultados para esta marca"
-                  : "No hay productos registrados"
+                  ? 'Sin resultados para esta marca'
+                  : 'No hay productos registrados'
             }
             description={
               debouncedSearch || brandId
-                ? "Prueba con otro término o filtro"
+                ? 'Prueba con otro término o filtro'
                 : 'Crea el primero con el botón "Nuevo producto"'
             }
           />
@@ -241,20 +241,20 @@ export default function ProductsPage() {
               <thead>
                 <tr className="border-b border-ui-border">
                   {[
-                    { label: "Código", align: "text-left" },
-                    { label: "Descripción", align: "text-left" },
-                    { label: "Marca", align: "text-left" },
-                    { label: "Género", align: "text-left" },
-                    { label: "Categoría", align: "text-left" },
-                    { label: "Precio Venta", align: "text-right" },
-                    { label: "Almacén", align: "text-right" },
-                    { label: "Bodega", align: "text-right" },
-                    { label: "PREVENTA", align: "text-right" },
-                    { label: "EN REMISIÓN", align: "text-right" },
-                    { label: "Disponible", align: "text-right" },
-                    { label: "Últ. Costo", align: "text-right" },
-                    { label: "Costo Prom.", align: "text-right" },
-                    { label: "Acciones", align: "text-left" },
+                    { label: 'Código', align: 'text-left' },
+                    { label: 'Descripción', align: 'text-left' },
+                    { label: 'Marca', align: 'text-left' },
+                    { label: 'Género', align: 'text-left' },
+                    { label: 'Categoría', align: 'text-left' },
+                    { label: 'Precio Venta', align: 'text-right' },
+                    { label: 'Almacén', align: 'text-right' },
+                    { label: 'Bodega', align: 'text-right' },
+                    { label: 'PREVENTA', align: 'text-right' },
+                    { label: 'EN REMISIÓN', align: 'text-right' },
+                    { label: 'Disponible', align: 'text-right' },
+                    { label: 'Últ. Costo', align: 'text-right' },
+                    { label: 'Costo Prom.', align: 'text-right' },
+                    { label: 'Acciones', align: 'text-left' },
                   ].map((h) => (
                     <th
                       key={h.label}
@@ -270,7 +270,7 @@ export default function ProductsPage() {
                   <tr
                     key={p.id}
                     onClick={canUpdate ? () => setEditing(p) : undefined}
-                    className={`hover:bg-surface-raised transition-colors group${canUpdate ? " cursor-pointer" : ""}`}
+                    className={`hover:bg-surface-raised transition-colors group${canUpdate ? ' cursor-pointer' : ''}`}
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
@@ -295,20 +295,22 @@ export default function ProductsPage() {
                       {formatCOP(p.salePrice)}
                     </td>
                     <td className="px-5 py-3.5 text-right text-content-muted text-xs">
-                      {getStockQuantity(p, "Almacén").toLocaleString("es-CO")}
+                      {getStockQuantity(p, 'Almacén').toLocaleString('es-CO')}
                     </td>
                     <td className="px-5 py-3.5 text-right text-content-muted text-xs">
-                      {getStockQuantity(p, "Bodega").toLocaleString("es-CO")}
+                      {getStockQuantity(p, 'Bodega').toLocaleString('es-CO')}
                     </td>
                     <td className="px-5 py-3.5 text-right text-content-muted text-xs">
-                      {p.reservedQuantity.toLocaleString("es-CO")}
+                      {p.reservedQuantity.toLocaleString('es-CO')}
                     </td>
                     <td className="px-5 py-3.5 text-right text-content-muted text-xs">
-                      {p.remisionQuantity.toLocaleString("es-CO")}
+                      {p.remisionQuantity.toLocaleString('es-CO')}
                     </td>
                     <td className="px-5 py-3.5 text-right text-xs font-medium">
-                      <span className={p.availableStock < 0 ? "text-red-500" : "text-content-muted"}>
-                        {p.availableStock.toLocaleString("es-CO")}
+                      <span
+                        className={p.availableStock < 0 ? 'text-red-500' : 'text-content-muted'}
+                      >
+                        {p.availableStock.toLocaleString('es-CO')}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right text-content-muted text-xs">
@@ -322,8 +324,8 @@ export default function ProductsPage() {
                         {canUpdate && (
                           <button
                             onClick={(e) => {
-                              e.stopPropagation();
-                              setEditing(p);
+                              e.stopPropagation()
+                              setEditing(p)
                             }}
                             className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
                           >
@@ -333,8 +335,8 @@ export default function ProductsPage() {
                         {canDelete && !showInactive && (
                           <button
                             onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleting(p);
+                              e.stopPropagation()
+                              setDeleting(p)
                             }}
                             className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
                           >
@@ -344,8 +346,8 @@ export default function ProductsPage() {
                         {canDelete && showInactive && (
                           <button
                             onClick={(e) => {
-                              e.stopPropagation();
-                              reactivate(p.id);
+                              e.stopPropagation()
+                              reactivate(p.id)
                             }}
                             disabled={isReactivating}
                             className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors disabled:opacity-50"
@@ -395,5 +397,5 @@ export default function ProductsPage() {
         isPending={isDeleting}
       />
     </div>
-  );
+  )
 }

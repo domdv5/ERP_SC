@@ -4,7 +4,11 @@ import { ThousandsInput } from '@/components/shared'
 import type { AvailableCustomerCredit } from '@/types/document.types'
 
 const formatCOP = (v: number) =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v)
+  new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+  }).format(v)
 
 const docNumber = (type: string, number: number) => `${type}-${String(number).padStart(6, '0')}`
 
