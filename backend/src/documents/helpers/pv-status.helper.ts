@@ -37,8 +37,14 @@ export function buildPvStatus(doc: PvStatusInput): PvStatus | null {
   const active = doc.derivedDocuments.filter(
     (d) => d.status !== DocumentStatus.voided,
   );
-  const hasConfirmed = active.some((d) => d.status === DocumentStatus.confirmed);
-  const status = hasConfirmed ? 'converted' : active.length ? 'pending' : 'none';
+  const hasConfirmed = active.some(
+    (d) => d.status === DocumentStatus.confirmed,
+  );
+  const status = hasConfirmed
+    ? 'converted'
+    : active.length
+      ? 'pending'
+      : 'none';
 
   return {
     conversion: { status, documents: doc.derivedDocuments },

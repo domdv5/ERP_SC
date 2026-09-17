@@ -44,8 +44,15 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
     }
 
     if (destBinId) {
-      const incomingProductId = this.assertSingleProductPerDestBin(createDocumentDto.items);
-      await this.assertDestBinValid(this.prisma, destBinId, destWarehouseId, incomingProductId);
+      const incomingProductId = this.assertSingleProductPerDestBin(
+        createDocumentDto.items,
+      );
+      await this.assertDestBinValid(
+        this.prisma,
+        destBinId,
+        destWarehouseId,
+        incomingProductId,
+      );
     }
 
     const sourceWarehouse = await this.prisma.warehouse.findUnique({
@@ -106,13 +113,20 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
     }
 
     if (destBinId) {
-      const incomingProductId = this.assertSingleProductPerDestBin(document.documentItems);
+      const incomingProductId = this.assertSingleProductPerDestBin(
+        document.documentItems,
+      );
 
       // Bloquea el bulto (no su stock, que puede no existir aún) para poner en fila
       // las confirmaciones a la vez sobre el mismo bulto destino: sin esto, dos
       // traslados podrían verlo libre al mismo tiempo y mezclarle productos distintos.
       await tx.$queryRaw`SELECT id FROM bin WHERE id = ${destBinId}::uuid FOR UPDATE`;
-      await this.assertDestBinValid(tx, destBinId, destWarehouseId, incomingProductId);
+      await this.assertDestBinValid(
+        tx,
+        destBinId,
+        destWarehouseId,
+        incomingProductId,
+      );
     }
 
     if (sourceBinId) {
@@ -222,7 +236,9 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
    * producto (el bulto destino es del documento, no de cada línea). Devuelve ese
    * producto para que quien llama lo compare contra lo que ya ocupa el bulto.
    */
-  private assertSingleProductPerDestBin(items: { productId: string }[]): string {
+  private assertSingleProductPerDestBin(
+    items: { productId: string }[],
+  ): string {
     const productIds = new Set(items.map((item) => item.productId));
 
     if (productIds.size > 1) {

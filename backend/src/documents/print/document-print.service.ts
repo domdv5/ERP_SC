@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { DocumentsService } from '@/documents/documents.service';
 import { DocumentPrintRegistry } from './strategies/document-print.registry';
 import { PdfGeneratorService } from './pdf-generator.service';
@@ -23,16 +27,24 @@ export class DocumentPrintService {
 
     let buffer: Buffer;
     try {
-      buffer = await this.pdfGenerator.generate(strategy.buildDefinition(document));
+      buffer = await this.pdfGenerator.generate(
+        strategy.buildDefinition(document),
+      );
     } catch (err) {
       // El detalle del error de la librería de PDF nunca debe llegar al cliente:
       // solo se registra internamente y la respuesta HTTP lleva un mensaje genérico.
-      this.logger.error(`Error generando PDF del documento ${id}`, err as Error);
+      this.logger.error(
+        `Error generando PDF del documento ${id}`,
+        err as Error,
+      );
       throw new InternalServerErrorException(
         'No se pudo generar el PDF del documento',
       );
     }
 
-    return { buffer, filename: `${strategy.documentLabel}-${document.number}.pdf` };
+    return {
+      buffer,
+      filename: `${strategy.documentLabel}-${document.number}.pdf`,
+    };
   }
 }

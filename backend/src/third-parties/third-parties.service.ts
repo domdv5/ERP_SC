@@ -85,7 +85,10 @@ export class ThirdPartiesService {
       );
     }
 
-    if (thirdPartyData.personType === 'juridica' && thirdPartyData.documentType !== 'NIT') {
+    if (
+      thirdPartyData.personType === 'juridica' &&
+      thirdPartyData.documentType !== 'NIT'
+    ) {
       throw new BadRequestException(
         'Una persona jurídica debe usar NIT como tipo de documento.',
       );
@@ -221,7 +224,12 @@ export class ThirdPartiesService {
         isCustomer !== undefined ||
         isSupplier !== undefined ||
         updateThirdPartyDto.isSeller !== undefined;
-      if (rolesTouched && !updated.isCustomer && !updated.isSupplier && !updated.isSeller) {
+      if (
+        rolesTouched &&
+        !updated.isCustomer &&
+        !updated.isSupplier &&
+        !updated.isSeller
+      ) {
         throw new BadRequestException(
           'El tercero debe tener al menos un rol: cliente, proveedor o vendedor.',
         );

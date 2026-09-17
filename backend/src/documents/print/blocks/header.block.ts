@@ -69,7 +69,11 @@ export function buildHeader(
               fontSize: 8,
               alignment: 'right',
             },
-            { text: thirdParty?.address ?? '', fontSize: 8, alignment: 'right' },
+            {
+              text: thirdParty?.address ?? '',
+              fontSize: 8,
+              alignment: 'right',
+            },
             { text: thirdParty?.phone ?? '', fontSize: 8, alignment: 'right' },
           ],
         },

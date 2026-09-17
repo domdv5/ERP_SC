@@ -48,7 +48,9 @@ export class ZonesService {
   async update(updateZoneDto: UpdateZoneDto, zoneId: string) {
     const { name, active } = updateZoneDto;
 
-    const current = await this.prisma.zone.findUnique({ where: { id: zoneId } });
+    const current = await this.prisma.zone.findUnique({
+      where: { id: zoneId },
+    });
     if (!current) {
       throw new NotFoundException('Zona no encontrada');
     }
