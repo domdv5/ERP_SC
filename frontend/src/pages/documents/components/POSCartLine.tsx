@@ -1,14 +1,8 @@
 import { Trash2 } from 'lucide-react'
 import type { UseFormRegister, UseFormWatch } from 'react-hook-form'
 import { HintText } from '@/components/shared'
+import { formatCOP } from '@/lib/format'
 import type { FormValues } from '@/pages/documents/document-form.schema'
-
-const formatCOP = (v: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  }).format(v)
 
 interface POSCartLineProps {
   index: number

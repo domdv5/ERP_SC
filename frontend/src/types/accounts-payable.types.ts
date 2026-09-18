@@ -4,7 +4,8 @@ export type AccountsPayableStatus = 'pending' | 'partial' | 'paid'
 
 export interface AccountsPayableSupplier {
   id: string
-  thirdPartyId: string
+  internalNumber: number
+  discountNotes: string | null
   thirdParty: {
     id: string
     name: string
@@ -14,58 +15,70 @@ export interface AccountsPayableSupplier {
 export interface AccountsPayableDocument {
   id: string
   type: DocumentType
-  number: number
+  // El backend ya lo manda con ceros a la izquierda (ej. "000009"); pasa por docNumber() igual.
+  number: string
   date: string
 }
 
-export interface PayablePayment {
-  id: string
-  accountPayableId: string
-  amount: number
-  paymentDate: string
-  paymentMethod: string
-  bankDestination: string | null
-  reference: string | null
-  createdAt: string
-}
-
+// Los campos Decimal de Prisma (totalAmount, paidAmount, creditApplied, balance) llegan como
+// string en el JSON — se tipan `string` a propósito (no `number`) para que TypeScript avise si
+// algún consumidor los usa sin pasarlos por Number() primero, en vez de mentir que ya son number.
 export interface AccountsPayable {
   id: string
   supplierId: string
   documentId: string
-  totalAmount: number
+  totalAmount: string
   dueDate: string | null
   status: AccountsPayableStatus
   createdAt: string
   updatedAt: string
   supplier: AccountsPayableSupplier
   document: AccountsPayableDocument
+  // Dinero + saldo a favor ya aplicados, y lo que falta (= totalAmount − paidAmount).
+  paidAmount: string
+  creditApplied: string
+  balance: string
 }
 
-/** Saldo a favor de un proveedor (originado por una devolución) que se puede aplicar a mano a cualquiera de sus cuentas por pagar. */
+/** Saldo a favor de un proveedor (originado por una devolución) que se reparte entre sus CxP al pagar un Egreso. */
 export interface SupplierCredit {
   id: string
   supplierId: string
-  amount: number
-  balance: number
+  amount: string
+  balance: string
   sourceDocumentId: string | null
   status: 'available' | 'used'
   createdAt: string
+  sourceDocument?: AccountsPayableDocument
 }
 
-/** Registro de auditoría de una aplicación de crédito contra una cuenta por pagar específica. */
-export interface SupplierCreditApplication {
-  id: string
-  supplierCreditId: string
-  accountPayableId: string
-  amount: number
-  appliedAt: string
-}
+// Una fila del historial de pagos de una CxP, discriminada por `source`. `nota_credito_historica`
+// es el historial previo al rework de Egresos (un pago viejo con notas crédito aplicadas a mano).
+export type AccountsPayableHistoryEntry =
+  | {
+      source: 'egreso'
+      date: string
+      amount: string
+      creditAmount: string
+      egreso: { id: string; number: string; date: string }
+    }
+  | {
+      source: 'pago_historico'
+      date: string
+      amount: string
+      paymentMethod: string
+      bankDestination: string | null
+      reference: string | null
+    }
+  | {
+      source: 'nota_credito_historica'
+      date: string
+      amount: string
+      supplierCredit: { id: string; amount: string; balance: string }
+    }
 
 export interface AccountsPayableDetail extends AccountsPayable {
-  payablePayments: PayablePayment[]
-  // Opcional porque el backend puede no incluirlo todavía en todas las respuestas; si falta, el detalle muestra "sin aplicaciones".
-  creditApplications?: SupplierCreditApplication[]
+  history: AccountsPayableHistoryEntry[]
 }
 
 export interface AccountsPayableMeta {
@@ -83,16 +96,30 @@ export interface GetAccountsPayableParams {
   search?: string
 }
 
-export interface CreditApplicationPayload {
-  supplierCreditId: string
-  amount: number
+export interface SupplierStatementTotals {
+  totalDebt: string
+  totalPaid: string
+  totalBalance: string
+  availableCredit: string
 }
 
-export interface RegisterPayablePaymentPayload {
-  amount: number
-  paymentDate?: string
-  paymentMethod: string
-  bankDestination?: string
-  reference?: string
-  creditApplications?: CreditApplicationPayload[]
+export interface SupplierCreditApplicationWithEgreso {
+  id: string
+  supplierCreditId: string
+  accountPayableId: string
+  egresoId: string | null
+  amount: string
+  appliedAt: string
+  egreso: { id: string; number: string; date: string } | null
+}
+
+export interface SupplierCreditWithApplications extends SupplierCredit {
+  applications: SupplierCreditApplicationWithEgreso[]
+}
+
+export interface SupplierStatement {
+  supplier: { id: string; name: string }
+  totals: SupplierStatementTotals
+  payables: AccountsPayable[]
+  credits: SupplierCreditWithApplications[]
 }

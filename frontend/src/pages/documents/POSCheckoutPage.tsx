@@ -26,25 +26,27 @@ import {
 } from '@/services/documents.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import { getProducts, getProductByCode } from '@/services/products.service'
-import { Combobox, SegmentedToggle } from '@/components/shared'
+import { Combobox, SegmentedToggle, CreditsPanel } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
+import { formatCOP, docNumber } from '@/lib/format'
+import {
+  proposeCreditApplication,
+  clampCreditAmount,
+  capCreditsToTotal,
+} from '@/lib/credit-application'
 import { DOC_TYPE_ACCENT } from './document.constants'
 import type { FormValues } from './document-form.schema'
 import { BarcodeScanInput } from './components/BarcodeScanInput'
 import { POSCartLine } from './components/POSCartLine'
 import { POSStockShortfallDialog } from './components/POSStockShortfallDialog'
-import { CustomerCreditsPanel } from './components/CustomerCreditsPanel'
 import {
   hasPendingItems,
   findActivePendingPreventa,
   findPriceFloorViolations,
   parseStockShortfallError,
   parseCreditLimitError,
-  proposeCreditApplication,
-  clampCreditAmount,
-  capCreditsToTotal,
   type StockShortfall,
   type SelectedCredit,
 } from './pos-checkout.utils'
@@ -64,15 +66,6 @@ import type { ThirdParty } from '@/types/third-party.types'
 type SaleMode = Extract<DocumentType, 'POS' | 'COT'>
 
 // ─── constants ───────────────────────────────────────────────────────────────
-
-const formatCOP = (v: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  }).format(v)
-
-const docNumber = (type: string, number: number) => `${type}-${String(number).padStart(6, '0')}`
 
 // Sustantivo del documento de origen para el aviso de conversión: preventa o remisión.
 const sourceKindNoun = (type: DocumentType) => (type === 'REM' ? 'remisión' : 'preventa')
@@ -459,7 +452,7 @@ export default function POSCheckoutPage() {
         next[c.id] = touched.has(c.id) ? (prev[c.id] ?? 0) : 0
       })
       proposal.forEach((p) => {
-        next[p.customerCreditId] = p.amount
+        next[p.id] = p.amount
       })
       return next
     })
@@ -471,12 +464,12 @@ export default function POSCheckoutPage() {
   const selectedCredits: SelectedCredit[] = capCreditsToTotal(
     availableCredits
       .map((c) => ({
-        customerCreditId: c.id,
+        id: c.id,
         amount: Math.max(0, Math.min(creditAmounts[c.id] ?? 0, c.balance)),
       }))
       .filter((c) => c.amount > 0),
     total,
-  )
+  ).map((c) => ({ customerCreditId: c.id, amount: c.amount }))
   const creditsApplied = selectedCredits.reduce((sum, c) => sum + c.amount, 0)
   const totalToPay = Math.max(total - creditsApplied, 0)
 
@@ -834,8 +827,13 @@ export default function POSCheckoutPage() {
             )}
 
             {/* Saldo a favor del cliente aplicable a esta venta. */}
-            <CustomerCreditsPanel
-              availableCredits={availableCredits}
+            <CreditsPanel
+              title="Saldo a favor del cliente"
+              credits={availableCredits.map((c) => ({
+                id: c.id,
+                balance: c.balance,
+                label: docNumber(c.sourceDocument.type, c.sourceDocument.number),
+              }))}
               creditAmounts={creditAmounts}
               setCreditAmount={setCreditAmount}
               creditsApplied={creditsApplied}

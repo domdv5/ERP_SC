@@ -18,8 +18,8 @@ export interface ApplyCustomerCreditsParams {
 }
 
 /**
- * Aplica uno o más saldos a favor del cliente contra una venta. Espeja
- * AccountsPayableService.registerPayment: agrupa por crédito, bloquea las filas
+ * Aplica uno o más saldos a favor del cliente contra una venta. Mismo patrón que
+ * el reparto de saldo a favor de EgresosService.create: agrupa por crédito, bloquea las filas
  * en orden por id (SELECT ... FOR UPDATE) para no pisarse con otra venta
  * concurrente, valida en centavos y descuenta el balance. El backend solo impone
  * el techo (cada aplicación <= balance del crédito, y la suma <= total de la venta);

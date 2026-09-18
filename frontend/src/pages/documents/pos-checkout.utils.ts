@@ -81,56 +81,12 @@ export function parseStockShortfallError(err: unknown): StockShortfall[] | null 
 
 // ─── saldos a favor del cliente aplicados a una venta ────────────────────────
 
+// El cálculo de propuesta/tope/recorte es genérico y vive en @/lib/credit-application (lo
+// comparte con el formulario de Egresos, que hace lo mismo con saldos a favor de proveedor).
+// Acá solo queda el nombre de campo (`customerCreditId`) que espera el payload de venta.
 export interface SelectedCredit {
   customerCreditId: string
   amount: number
-}
-
-// Propuesta por defecto para aplicar saldos a favor a una venta: recorre los saldos en el
-// orden recibido (el backend ya los ordena del más antiguo al más nuevo) y asigna a cada uno
-// el menor entre su saldo y lo que todavía falta para cubrir el total. Se detiene al cubrirlo.
-export function proposeCreditApplication(
-  credits: { id: string; balance: number }[],
-  total: number,
-): SelectedCredit[] {
-  let remaining = Math.max(total, 0)
-  const result: SelectedCredit[] = []
-  for (const credit of credits) {
-    if (remaining <= 0) break
-    const amount = Math.min(credit.balance, remaining)
-    if (amount <= 0) continue
-    result.push({ customerCreditId: credit.id, amount })
-    remaining -= amount
-  }
-  return result
-}
-
-// Tope para un cambio manual del monto de un saldo a favor: no puede ser negativo, ni pasar
-// de su propio saldo, ni hacer que la suma de todos los saldos aplicados supere el total.
-export function clampCreditAmount(
-  next: number,
-  creditBalance: number,
-  total: number,
-  othersSum: number,
-): number {
-  if (Number.isNaN(next) || next < 0) return 0
-  const ceiling = Math.min(creditBalance, Math.max(total - othersSum, 0))
-  return Math.min(next, ceiling)
-}
-
-// Recorte final de la lista de saldos aplicados para que su suma nunca supere el total (por
-// si el carrito bajó de monto después de fijar los montos). Recorta desde el último.
-export function capCreditsToTotal(credits: SelectedCredit[], total: number): SelectedCredit[] {
-  let budget = Math.max(total, 0)
-  const result: SelectedCredit[] = []
-  for (const credit of credits) {
-    if (budget <= 0) break
-    const amount = Math.min(credit.amount, budget)
-    if (amount <= 0) continue
-    result.push({ ...credit, amount })
-    budget -= amount
-  }
-  return result
 }
 
 // ─── 400 de cupo de crédito excedido (crear/confirmar/convertir COT) ──────────

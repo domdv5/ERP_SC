@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { Combobox } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
+import { formatCOP } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { formSchema, type FormValues } from './document-form.schema'
 import {
@@ -29,13 +30,6 @@ import type { Warehouse, WarehouseDetail } from '@/types/warehouse.types'
 import type { ThirdParty } from '@/types/third-party.types'
 
 // ─── constants ───────────────────────────────────────────────────────────────
-
-const formatCOP = (v: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  }).format(v)
 
 const DOC_TYPE_OPTIONS = DOC_TYPE_SELECT_OPTIONS
 
