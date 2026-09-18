@@ -22,7 +22,13 @@ const AccountsPayableListPage = lazy(
 const AccountsPayableDetailPage = lazy(
   () => import('@/pages/accounts-payable/AccountsPayableDetailPage'),
 )
+const AccountsPayableSupplierStatementPage = lazy(
+  () => import('@/pages/accounts-payable/AccountsPayableSupplierStatementPage'),
+)
 const StockLookupPage = lazy(() => import('@/pages/stock-lookup/StockLookupPage'))
+const EgresosListPage = lazy(() => import('@/pages/egresos/EgresosListPage'))
+const EgresoDetailPage = lazy(() => import('@/pages/egresos/EgresoDetailPage'))
+const EgresoNewPage = lazy(() => import('@/pages/egresos/EgresoNewPage'))
 
 // Fallback de Suspense con delay de 200ms antes de mostrar el loader de
 // pantalla completa. Los chunks lazy que ya están en caché del navegador o
@@ -194,6 +200,46 @@ export const router = createBrowserRouter([
           <Lazy>
             <PermissionGuard permission="ap.read">
               <AccountsPayableDetailPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'accounts-payable/suppliers/:supplierId',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="ap.read">
+              <AccountsPayableSupplierStatementPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'egresos',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="egreso.read">
+              <EgresosListPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'egresos/new',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="egreso.create">
+              <EgresoNewPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'egresos/:id',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="egreso.read">
+              <EgresoDetailPage />
             </PermissionGuard>
           </Lazy>
         ),

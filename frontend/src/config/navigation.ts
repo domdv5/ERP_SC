@@ -10,6 +10,7 @@ import {
   RotateCcw,
   TrendingUp,
   TrendingDown,
+  Landmark,
   ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
@@ -90,6 +91,10 @@ export const navGroups: NavGroup[] = [
         permission: 'document.create.DVV',
       },
     ],
+  },
+  {
+    label: 'Tesorería',
+    items: [{ to: '/egresos', label: 'Egresos', icon: Landmark, permission: 'egreso.read' }],
   },
   {
     label: 'Finanzas',

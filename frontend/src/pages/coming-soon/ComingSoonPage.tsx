@@ -6,7 +6,6 @@ const labels: Record<string, string> = {
   '/warehouses': 'Bodegas',
   '/documents': 'Documentos',
   '/accounts-receivable': 'Cuentas por Cobrar',
-  '/accounts-payable': 'Cuentas por Pagar',
 }
 
 export default function ComingSoonPage() {

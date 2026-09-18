@@ -35,6 +35,7 @@ import {
 } from '@/services/documents.service'
 import { usePermission } from '@/hooks/usePermission'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
+import { formatCOP, docNumber } from '@/lib/format'
 import {
   DOC_TYPE_BADGE,
   DOC_TYPE_ACCENT,
@@ -47,23 +48,12 @@ import { getPendingQuantity, hasPendingItems } from './pos-checkout.utils'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-const formatCOP = (v: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  }).format(v)
-
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('es-CO', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
   })
-
-// El backend ya manda el número con ceros a la izquierda; el relleno de acá es por si acaso.
-const fmtDocRef = (type: string, number: string | number) =>
-  `${type}-${String(number).padStart(6, '0')}`
 
 // ─── label maps ──────────────────────────────────────────────────────────────
 
@@ -337,7 +327,7 @@ export default function DocumentDetailPage() {
     )
   }
 
-  const docNumber = `${doc.type}-${String(doc.number).padStart(6, '0')}`
+  const docRef = docNumber(doc.type, doc.number)
   const typeInfo = TYPE_LABELS[doc.type]
   const accentInfo = DOC_TYPE_ACCENT[doc.type]
   const statusInfo = STATUS_LABELS[doc.status]
@@ -462,7 +452,7 @@ export default function DocumentDetailPage() {
             </div>
             <div>
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl text-content font-mono">{docNumber}</h1>
+                <h1 className="text-2xl text-content font-mono">{docRef}</h1>
                 <span
                   className={cn('px-2.5 py-1 rounded-full text-xs font-medium', typeInfo.className)}
                 >
@@ -596,7 +586,7 @@ export default function DocumentDetailPage() {
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors"
               >
                 <ShoppingCart className="w-4 h-4" />
-                Ver venta {fmtDocRef(pvActiveDerived.type, pvActiveDerived.number)}
+                Ver venta {docNumber(pvActiveDerived.type, pvActiveDerived.number)}
               </button>
             )}
             {isConfirmed && (doc.type === 'CM' || doc.type === 'DVC') && (
@@ -963,7 +953,7 @@ export default function DocumentDetailPage() {
                     className="flex items-center gap-1.5 text-sm text-brand-secondary hover:underline"
                   >
                     Origen{' '}
-                    {fmtDocRef(
+                    {docNumber(
                       applied.customerCredit.sourceDocument.type,
                       applied.customerCredit.sourceDocument.number,
                     )}
@@ -981,7 +971,7 @@ export default function DocumentDetailPage() {
       <ConfirmDialog
         open={confirmOpen}
         title="Confirmar operación"
-        description={`Al confirmar ${docNumber}, se ejecutarán los movimientos de inventario correspondientes. Esta acción no se puede deshacer directamente (solo anulando la operación después).`}
+        description={`Al confirmar ${docRef}, se ejecutarán los movimientos de inventario correspondientes. Esta acción no se puede deshacer directamente (solo anulando la operación después).`}
         confirmLabel="Confirmar operación"
         confirmClass="gradient-action"
         isPending={isConfirming}
@@ -998,7 +988,7 @@ export default function DocumentDetailPage() {
       <ConfirmDialog
         open={voidOpen}
         title="Anular operación"
-        description={`Al anular ${docNumber}, todos los movimientos de inventario generados por esta operación serán revertidos. Esta acción afecta el stock y no se puede deshacer.`}
+        description={`Al anular ${docRef}, todos los movimientos de inventario generados por esta operación serán revertidos. Esta acción afecta el stock y no se puede deshacer.`}
         confirmLabel="Anular operación"
         confirmClass="bg-red-600 hover:bg-red-700"
         isPending={isVoiding}
@@ -1015,7 +1005,7 @@ export default function DocumentDetailPage() {
       <ConfirmDialog
         open={deleteOpen}
         title="Eliminar operación"
-        description={`¿Estás seguro de eliminar el borrador ${docNumber}? Esta acción no se puede deshacer.`}
+        description={`¿Estás seguro de eliminar el borrador ${docRef}? Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar borrador"
         confirmClass="bg-red-600 hover:bg-red-700"
         isPending={isDeleting}

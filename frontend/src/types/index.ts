@@ -46,13 +46,33 @@ export type {
   AccountsPayableSupplier,
   AccountsPayableDocument,
   AccountsPayableMeta,
-  PayablePayment,
+  AccountsPayableHistoryEntry,
   SupplierCredit,
-  SupplierCreditApplication,
+  SupplierCreditWithApplications,
+  SupplierCreditApplicationWithEgreso,
+  SupplierStatement,
+  SupplierStatementTotals,
   GetAccountsPayableParams,
-  RegisterPayablePaymentPayload,
-  CreditApplicationPayload,
 } from './accounts-payable.types'
+export type {
+  EgresoPaymentMethod,
+  EgresoListItem,
+  Egreso,
+  EgresoPaymentLine,
+  EgresoAllocation,
+  EgresoAllocationAccountPayable,
+  EgresoCreditApplication,
+  EgresoMeta,
+  GetEgresosParams,
+  EgresoOpenItems,
+  EgresoOpenPayable,
+  EgresoOpenCredit,
+  CreateEgresoPayload,
+  CreateEgresoPayablePayload,
+  CreateEgresoCreditPayload,
+  CreateEgresoPaymentPayload,
+} from './egreso.types'
+export { EGRESO_PAYMENT_METHOD_LABELS } from './egreso.types'
 export type { SystemStatus, SystemStatusActivatedBy } from './system.types'
 
 export interface ApiResponse<T> {
