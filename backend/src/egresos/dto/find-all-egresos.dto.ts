@@ -1,5 +1,5 @@
 import {
-  IsEnum,
+  IsDateString,
   IsInt,
   IsOptional,
   IsString,
@@ -8,9 +8,8 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { AccountsPayableStatus } from '@prisma/client';
 
-export class FindAllAccountsPayableDto {
+export class FindAllEgresosDto {
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -25,14 +24,19 @@ export class FindAllAccountsPayableDto {
   limit?: number = 20;
 
   @IsOptional()
-  @IsEnum(AccountsPayableStatus)
-  status?: AccountsPayableStatus;
-
-  @IsOptional()
   @IsUUID()
   supplierId?: string;
 
   @IsOptional()
+  @IsDateString()
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateTo?: string;
+
+  // Busca por el consecutivo (ya viene con ceros a la izquierda, sin prefijo "EG-").
+  @IsOptional()
   @IsString()
-  search?: string;
+  number?: string;
 }

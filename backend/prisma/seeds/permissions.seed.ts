@@ -53,6 +53,11 @@ export async function seedPermissions(prisma: PrismaClient) {
       { code: 'ap.read', module: 'accounts' },
       { code: 'ap.manage', module: 'accounts' },
 
+      // Egresos (tesorería) — reemplaza a ap.manage para registrar pagos; ap.manage
+      // queda sembrado sin uso (ver backend/CLAUDE.md)
+      { code: 'egreso.read', module: 'accounts' },
+      { code: 'egreso.create', module: 'accounts' },
+
       // Caja
       { code: 'cash.create', module: 'cash' },
       { code: 'cash.read', module: 'cash' },

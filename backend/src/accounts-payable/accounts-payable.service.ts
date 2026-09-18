@@ -1,29 +1,55 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   FindAllAccountsPayableDto,
   FindAvailableCreditsDto,
-  RegisterPayablePaymentDto,
 } from './dto/index';
+
+const LIST_INCLUDE = {
+  supplier: { include: { thirdParty: { select: { id: true, name: true } } } },
+  document: { select: { id: true, type: true, number: true, date: true } },
+  // Solo el monto: alcanza para sumar creditApplied sin traer el objeto completo.
+  creditApplications: { select: { amount: true } },
+} satisfies Prisma.AccountsPayableInclude;
 
 const DETAIL_INCLUDE = {
   supplier: { include: { thirdParty: { select: { id: true, name: true } } } },
   document: { select: { id: true, type: true, number: true, date: true } },
   payablePayments: { orderBy: { paymentDate: 'desc' } },
   creditApplications: {
-    include: { supplierCredit: true },
+    include: {
+      supplierCredit: { select: { id: true, amount: true, balance: true } },
+    },
     orderBy: { appliedAt: 'desc' },
+  },
+  egresoAllocations: {
+    include: { egreso: { select: { id: true, number: true, date: true } } },
   },
 } satisfies Prisma.AccountsPayableInclude;
 
-/** Convierte a centavos enteros para comparar montos sin errores de coma flotante. */
-function toCents(amount: number | Prisma.Decimal) {
-  return Math.round(Number(amount) * 100);
+type ListRow = Prisma.AccountsPayableGetPayload<{
+  include: typeof LIST_INCLUDE;
+}>;
+type DetailRow = Prisma.AccountsPayableGetPayload<{
+  include: typeof DETAIL_INCLUDE;
+}>;
+
+/** Reparte los campos derivados (abonado, aplicado en nota crédito, saldo) sobre una fila con sus creditApplications ya cargadas. */
+function withDerivedFields<
+  T extends Pick<ListRow, 'totalAmount' | 'paidAmount' | 'creditApplications'>,
+>(row: T) {
+  const { creditApplications, ...rest } = row;
+  const creditApplied = creditApplications.reduce(
+    (sum, application) => sum.plus(application.amount),
+    new Prisma.Decimal(0),
+  );
+
+  return {
+    ...rest,
+    creditApplied,
+    balance: row.totalAmount.minus(row.paidAmount),
+  };
 }
 
 @Injectable()
@@ -50,17 +76,10 @@ export class AccountsPayableService {
       }),
     };
 
-    const [items, total] = await this.prisma.$transaction([
+    const [rawItems, total] = await this.prisma.$transaction([
       this.prisma.accountsPayable.findMany({
         where,
-        include: {
-          supplier: {
-            include: { thirdParty: { select: { id: true, name: true } } },
-          },
-          document: {
-            select: { id: true, type: true, number: true, date: true },
-          },
-        },
+        include: LIST_INCLUDE,
         skip,
         take: limit,
         orderBy: { dueDate: { sort: 'asc', nulls: 'last' } },
@@ -69,7 +88,7 @@ export class AccountsPayableService {
     ]);
 
     return {
-      items,
+      items: rawItems.map(withDerivedFields),
       meta: {
         total,
         page,
@@ -89,175 +108,88 @@ export class AccountsPayableService {
       throw new NotFoundException('Cuenta por pagar no encontrada');
     }
 
-    return accountPayable;
+    // payablePayments/egresoAllocations/creditApplications ya quedan resumidos
+    // en `history` — no se devuelven crudos para no duplicar la misma info.
+    const { payablePayments, egresoAllocations, creditApplications, ...rest } =
+      accountPayable;
+    const creditApplied = creditApplications.reduce(
+      (sum, application) => sum.plus(application.amount),
+      new Prisma.Decimal(0),
+    );
+
+    return {
+      ...rest,
+      creditApplied,
+      balance: accountPayable.totalAmount.minus(accountPayable.paidAmount),
+      history: buildHistory(accountPayable),
+    };
   }
 
-  async registerPayment(
-    id: string,
-    registerPayablePaymentDto: RegisterPayablePaymentDto,
-  ) {
-    const {
-      amount,
-      paymentDate,
-      paymentMethod,
-      bankDestination,
-      reference,
-      creditApplications = [],
-    } = registerPayablePaymentDto;
+  /**
+   * Estado de cuenta completo de un proveedor: todas sus CxP (no solo las
+   * abiertas) y todos sus saldos a favor (disponibles y usados), con totales.
+   */
+  async statement(supplierId: string) {
+    const supplier = await this.prisma.supplier.findUnique({
+      where: { id: supplierId },
+      include: { thirdParty: { select: { id: true, name: true } } },
+    });
 
-    return this.prisma.$transaction(
-      async (tx) => {
-        // Bloquea la fila hasta terminar la transacción: pone en fila los pagos que
-        // llegan a la vez para que no se validen los dos contra el mismo saldo y se pague de más.
-        await tx.$queryRaw`SELECT id FROM "accounts_payable" WHERE id = ${id} FOR UPDATE`;
+    if (!supplier) {
+      throw new NotFoundException('Proveedor no encontrado');
+    }
 
-        const accountPayable = await tx.accountsPayable.findUnique({
-          where: { id },
-          include: { payablePayments: true, creditApplications: true },
-        });
-
-        if (!accountPayable) {
-          throw new NotFoundException('Cuenta por pagar no encontrada');
-        }
-
-        const amountCents = toCents(amount);
-
-        // Agrupa por crédito para validar el total pedido: si el mismo crédito
-        // aparece dos veces, validar cada línea por separado dejaría pasar una
-        // sobre-aplicación que solo se ve al sumarlas.
-        const requestedCentsByCreditId = new Map<string, number>();
-        for (const application of creditApplications) {
-          const previous =
-            requestedCentsByCreditId.get(application.supplierCreditId) ?? 0;
-          requestedCentsByCreditId.set(
-            application.supplierCreditId,
-            previous + toCents(application.amount),
-          );
-        }
-        const applicationsCents = [...requestedCentsByCreditId.values()].reduce(
-          (sum, cents) => sum + cents,
-          0,
-        );
-        const settledCents = amountCents + applicationsCents;
-
-        if (settledCents <= 0) {
-          throw new BadRequestException(
-            'El pago debe incluir efectivo o al menos una aplicación de nota crédito mayor a cero',
-          );
-        }
-
-        let credits: {
-          id: string;
-          balance: Prisma.Decimal;
-          supplierId: string;
-        }[] = [];
-
-        if (requestedCentsByCreditId.size > 0) {
-          const creditIds = [...requestedCentsByCreditId.keys()];
-
-          // Bloquea primero la cuenta por pagar y luego los créditos ordenados por
-          // id, siempre en el mismo orden, para no trabarse con otra transacción en paralelo.
-          await tx.$queryRaw`SELECT id FROM "supplier_credit" WHERE id = ANY(${creditIds}::uuid[]) ORDER BY id FOR UPDATE`;
-
-          credits = await tx.supplierCredit.findMany({
-            where: { id: { in: creditIds } },
-          });
-
-          if (credits.length !== creditIds.length) {
-            throw new BadRequestException(
-              'Alguna nota crédito citada no existe',
-            );
-          }
-
-          for (const credit of credits) {
-            if (credit.supplierId !== accountPayable.supplierId) {
-              throw new BadRequestException(
-                'La nota crédito no pertenece al proveedor de esta cuenta por pagar',
-              );
-            }
-
-            const requestedCents = requestedCentsByCreditId.get(credit.id)!;
-            if (requestedCents > toCents(credit.balance)) {
-              throw new BadRequestException(
-                `El monto aplicado de la nota crédito excede su saldo disponible: ${Number(credit.balance).toFixed(2)}`,
-              );
-            }
-          }
-        }
-
-        // El total pagado ahora suma dos cosas: los pagos en efectivo y el saldo
-        // cubierto con notas crédito (sin movimiento de caja).
-        const paidSoFarCents =
-          accountPayable.payablePayments.reduce(
-            (sum, payment) => sum + toCents(payment.amount),
-            0,
-          ) +
-          accountPayable.creditApplications.reduce(
-            (sum, application) => sum + toCents(application.amount),
-            0,
-          );
-        const totalCents = toCents(accountPayable.totalAmount);
-
-        if (paidSoFarCents + settledCents > totalCents) {
-          const availableCents = totalCents - paidSoFarCents;
-          throw new BadRequestException(
-            `El pago excede el saldo pendiente. Saldo disponible: ${(availableCents / 100).toFixed(2)}`,
-          );
-        }
-
-        if (amountCents > 0) {
-          await tx.payablePayment.create({
-            data: {
-              accountPayableId: id,
-              amount,
-              paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-              paymentMethod,
-              bankDestination,
-              reference,
+    const [rawPayables, rawCredits] = await Promise.all([
+      this.prisma.accountsPayable.findMany({
+        where: { supplierId },
+        include: LIST_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.supplierCredit.findMany({
+        where: { supplierId },
+        include: {
+          sourceDocument: {
+            select: { id: true, type: true, number: true, date: true },
+          },
+          applications: {
+            include: {
+              egreso: { select: { id: true, number: true, date: true } },
             },
-          });
-        }
+            orderBy: { appliedAt: 'desc' },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
 
-        for (const application of creditApplications) {
-          await tx.supplierCreditApplication.create({
-            data: {
-              supplierCreditId: application.supplierCreditId,
-              accountPayableId: id,
-              amount: application.amount,
-            },
-          });
-        }
+    const payables = rawPayables.map(withDerivedFields);
 
-        for (const credit of credits) {
-          const requestedCents = requestedCentsByCreditId.get(credit.id)!;
-          const newBalanceCents = toCents(credit.balance) - requestedCents;
-
-          await tx.supplierCredit.update({
-            where: { id: credit.id },
-            data: {
-              balance: newBalanceCents / 100,
-              status: newBalanceCents <= 0 ? 'used' : 'available',
-            },
-          });
-        }
-
-        // Recalcula el estado a partir del total saldado (efectivo + crédito) tras este movimiento.
-        const newPaidCents = paidSoFarCents + settledCents;
-        const status =
-          newPaidCents >= totalCents
-            ? 'paid'
-            : newPaidCents > 0
-              ? 'partial'
-              : 'pending';
-
-        return tx.accountsPayable.update({
-          where: { id },
-          data: { status },
-          include: DETAIL_INCLUDE,
-        });
-      },
-      { timeout: 30000 },
+    const totalDebt = payables.reduce(
+      (sum, payable) => sum.plus(payable.totalAmount),
+      new Prisma.Decimal(0),
     );
+    const totalPaid = payables.reduce(
+      (sum, payable) => sum.plus(payable.paidAmount),
+      new Prisma.Decimal(0),
+    );
+    const availableCredit = rawCredits
+      .filter((credit) => credit.status === 'available')
+      .reduce((sum, credit) => sum.plus(credit.balance), new Prisma.Decimal(0));
+
+    return {
+      supplier: {
+        id: supplier.thirdParty.id,
+        name: supplier.thirdParty.name,
+      },
+      totals: {
+        totalDebt,
+        totalPaid,
+        totalBalance: totalDebt.minus(totalPaid),
+        availableCredit,
+      },
+      payables,
+      credits: rawCredits,
+    };
   }
 
   /** Créditos de proveedor con saldo disponible para aplicar contra un pago. */
@@ -269,4 +201,45 @@ export class AccountsPayableService {
       orderBy: { createdAt: 'asc' },
     });
   }
+}
+
+/**
+ * Historial unificado de abonos de una CxP, combinando tres fuentes que nunca
+ * se solapan: egresos (módulo nuevo), pagos históricos (PayablePayment, ya no
+ * se crean filas nuevas) y aplicaciones de saldo a favor sin egreso (las hacía
+ * el viejo POST /accounts-payable/:id/payments, eliminado). Las aplicaciones
+ * CON egreso ya aparecen dentro de su egreso — se excluyen aquí para no duplicar.
+ */
+function buildHistory(accountPayable: DetailRow) {
+  const fromEgresos = accountPayable.egresoAllocations.map((allocation) => ({
+    source: 'egreso' as const,
+    date: allocation.egreso.date,
+    amount: allocation.amount,
+    creditAmount: allocation.creditAmount,
+    egreso: allocation.egreso,
+  }));
+
+  const fromHistoricPayments = accountPayable.payablePayments.map(
+    (payment) => ({
+      source: 'pago_historico' as const,
+      date: payment.paymentDate,
+      amount: payment.amount,
+      paymentMethod: payment.paymentMethod,
+      bankDestination: payment.bankDestination,
+      reference: payment.reference,
+    }),
+  );
+
+  const fromHistoricCredits = accountPayable.creditApplications
+    .filter((application) => application.egresoId === null)
+    .map((application) => ({
+      source: 'nota_credito_historica' as const,
+      date: application.appliedAt,
+      amount: application.amount,
+      supplierCredit: application.supplierCredit,
+    }));
+
+  return [...fromEgresos, ...fromHistoricPayments, ...fromHistoricCredits].sort(
+    (a, b) => b.date.getTime() - a.date.getTime(),
+  );
 }

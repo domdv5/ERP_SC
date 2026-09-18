@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import { DocumentStatus, DocumentType, MovementType } from '@/common/enums';
 import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
+import { SequenceService } from '@/common/sequence/sequence.service';
 import {
   ConfirmDocumentDto,
   ConvertDocumentDto,
@@ -145,6 +146,7 @@ export class DocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly effectsRegistry: DocumentEffectsRegistry,
+    private readonly sequenceService: SequenceService,
   ) {}
 
   /**
@@ -562,7 +564,11 @@ export class DocumentsService {
           include: { documentItem: { select: { unitCost: true } } },
         },
         accountsPayable: {
-          include: { payablePayments: true, creditApplications: true },
+          include: {
+            payablePayments: true,
+            creditApplications: true,
+            egresoAllocations: true,
+          },
         },
         accountsReceivable: { include: { receivablePayments: true } },
         supplierCredits: { include: { applications: true } },
@@ -601,7 +607,8 @@ export class DocumentsService {
     const hasPayments = document.accountsPayable.some(
       (payable) =>
         payable.payablePayments.length > 0 ||
-        payable.creditApplications.length > 0,
+        payable.creditApplications.length > 0 ||
+        payable.egresoAllocations.length > 0,
     );
 
     if (hasPayments) {
@@ -891,6 +898,66 @@ export class DocumentsService {
               userId: user.sub,
             },
           });
+        }
+
+        // Re-chequeo dentro de la transacción: entre el chequeo de arriba (hecho
+        // antes de abrir esta transacción) y este punto, un egreso concurrente
+        // pudo haber pagado esta CxP o aplicado esta nota crédito. Se bloquean las
+        // filas con FOR UPDATE en el mismo orden global que usa EgresosService
+        // (accounts_payable -> accounts_receivable -> supplier_credit) para no
+        // cruzarse con esa transacción, y se repite la validación — así se
+        // devuelve el 409 en español de siempre en vez del P2003 crudo que
+        // tiraría el deleteMany si el chequeo de afuera ya quedó desactualizado.
+        await tx.$queryRaw`SELECT id FROM "accounts_payable" WHERE document_id = ${id}::uuid FOR UPDATE`;
+        await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE document_id = ${id}::uuid FOR UPDATE`;
+        await tx.$queryRaw`SELECT id FROM "supplier_credit" WHERE source_document_id = ${id}::uuid FOR UPDATE`;
+
+        const [freshPayables, freshReceivables] = await Promise.all([
+          tx.accountsPayable.findMany({
+            where: { documentId: id },
+            include: {
+              payablePayments: true,
+              creditApplications: true,
+              egresoAllocations: true,
+            },
+          }),
+          tx.accountsReceivable.findMany({
+            where: { documentId: id },
+            include: { receivablePayments: true },
+          }),
+        ]);
+
+        const stillHasPayablePayments = freshPayables.some(
+          (payable) =>
+            payable.payablePayments.length > 0 ||
+            payable.creditApplications.length > 0 ||
+            payable.egresoAllocations.length > 0,
+        );
+        if (stillHasPayablePayments) {
+          throw new ConflictException(
+            'No se puede anular: la cuenta por pagar ya tiene pagos registrados',
+          );
+        }
+
+        const stillHasReceivablePayments = freshReceivables.some(
+          (receivable) => receivable.receivablePayments.length > 0,
+        );
+        if (stillHasReceivablePayments) {
+          throw new ConflictException(
+            'No se puede anular: la cuenta por cobrar ya tiene pagos registrados',
+          );
+        }
+
+        if (document.supplierCredits.length > 0) {
+          const freshCredit = await tx.supplierCredit.findUnique({
+            where: { sourceDocumentId: id },
+            include: { applications: true },
+          });
+          if (freshCredit && freshCredit.applications.length > 0) {
+            throw new ConflictException(
+              'No se puede anular: la nota crédito generada por este documento ya fue aplicada a un pago',
+            );
+          }
         }
 
         await tx.accountsPayable.deleteMany({ where: { documentId: id } });
@@ -1268,12 +1335,10 @@ export class DocumentsService {
   }
 
   private async nextNumber(tx: Prisma.TransactionClient, type: DocumentType) {
-    // Se rellena con ceros a 6 dígitos para que ordenar como texto dé el orden correcto.
-    const previous = await tx.document.findFirst({
-      where: { type },
-      orderBy: { number: 'desc' },
-    });
-
-    return String(parseInt(previous?.number ?? '0', 10) + 1).padStart(6, '0');
+    // Delegado a SequenceService (tabla sequence, consecutivo atómico con FOR UPDATE
+    // implícito vía ON CONFLICT): antes calculaba MAX(number)+1 sin lock, lo que
+    // repetía número bajo dos creaciones concurrentes del mismo tipo. Contrato sin
+    // cambios: sigue devolviendo el string con ceros a 6 dígitos.
+    return this.sequenceService.next(tx, type);
   }
 }

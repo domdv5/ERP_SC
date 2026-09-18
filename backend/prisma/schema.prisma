@@ -134,6 +134,7 @@ model Supplier {
   brands          Brand[]
   accountsPayable AccountsPayable[]
   supplierCredits SupplierCredit[]
+  egresos         Egreso[]
 
   @@map("suppliers")
 }
@@ -439,6 +440,7 @@ model User {
   reservationReleases      ReservationRelease[]
   systemConfigsActivated   SystemConfig[]       @relation("SystemConfigActivatedBy")
   systemConfigsDeactivated SystemConfig[]       @relation("SystemConfigDeactivatedBy")
+  egresos                  Egreso[]
 
   @@map("user")
 }
@@ -637,17 +639,22 @@ model ReservationRelease {
 
 // ─── Accounts receivable ─────────────────────────────────────────────────────
 
+enum AccountsReceivableStatus {
+  pending
+  partial
+  paid
+}
+
 model AccountsReceivable {
-  id          String    @id @default(uuid(7)) @db.Uuid
-  clientId    String    @map("client_id") @db.Uuid
-  sellerId    String    @map("seller_id") @db.Uuid
-  documentId  String    @map("document_id") @db.Uuid
-  totalAmount Decimal   @map("total_amount") @db.Decimal(16, 2)
-  dueDate     DateTime? @map("due_date") @db.Date
-  /// pending | partial | paid
-  status      String    @default("pending") @db.VarChar(10)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  id          String                   @id @default(uuid(7)) @db.Uuid
+  clientId    String                   @map("client_id") @db.Uuid
+  sellerId    String                   @map("seller_id") @db.Uuid
+  documentId  String                   @map("document_id") @db.Uuid
+  totalAmount Decimal                  @map("total_amount") @db.Decimal(16, 2)
+  dueDate     DateTime?                @map("due_date") @db.Date
+  status      AccountsReceivableStatus @default(pending)
+  createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
 
   client   Customer   @relation(fields: [clientId], references: [id])
   seller   ThirdParty @relation("SellerAR", fields: [sellerId], references: [id])
@@ -655,6 +662,10 @@ model AccountsReceivable {
 
   receivablePayments ReceivablePayment[]
 
+  @@index([clientId, status])
+  @@index([sellerId])
+  @@index([documentId])
+  @@index([dueDate])
   @@map("accounts_receivable")
 }
 
@@ -669,27 +680,46 @@ model ReceivablePayment {
 
   accountReceivable AccountsReceivable @relation(fields: [accountReceivableId], references: [id])
 
+  @@index([accountReceivableId])
   @@map("receivable_payments")
 }
 
 // ─── Accounts payable ────────────────────────────────────────────────────────
 
+enum AccountsPayableStatus {
+  pending
+  partial
+  paid
+}
+
 model AccountsPayable {
-  id          String    @id @default(uuid(7)) @db.Uuid
-  supplierId  String    @map("supplier_id") @db.Uuid
-  documentId  String    @map("document_id") @db.Uuid
-  totalAmount Decimal   @map("total_amount") @db.Decimal(16, 2)
-  dueDate     DateTime? @map("due_date") @db.Date
-  /// pending | partial | paid
-  status      String    @default("pending") @db.VarChar(10)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  id          String                @id @default(uuid(7)) @db.Uuid
+  supplierId  String                @map("supplier_id") @db.Uuid
+  documentId  String                @map("document_id") @db.Uuid
+  totalAmount Decimal               @map("total_amount") @db.Decimal(16, 2)
+  /// Abonado acumulado (efectivo + saldo a favor). Caché de la suma de los abonos,
+  /// para filtrar y ordenar por saldo pendiente sin agregar en cada consulta.
+  /// Reforzado por los CHECK "accounts_payable_paid_amount_range_chk" y
+  /// "accounts_payable_status_paid_chk" (definidos a mano: Prisma no declara CHECKs).
+  paidAmount  Decimal               @default(0) @map("paid_amount") @db.Decimal(16, 2)
+  dueDate     DateTime?             @map("due_date") @db.Date
+  status      AccountsPayableStatus @default(pending)
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime              @updatedAt @map("updated_at") @db.Timestamptz
 
   supplier           Supplier                    @relation(fields: [supplierId], references: [id])
   document           Document                    @relation(fields: [documentId], references: [id])
   payablePayments    PayablePayment[]
   creditApplications SupplierCreditApplication[]
+  egresoAllocations  EgresoAllocation[]
 
+  // Pantalla de egreso: CxP abiertas de un proveedor. Prisma no indexa FKs en PostgreSQL.
+  @@index([supplierId, status])
+  // void() de un documento hace deleteMany({ where: { documentId } }).
+  @@index([documentId])
+  // Listado global ordenado por vencimiento; en PostgreSQL un índice ASC ya es
+  // NULLS LAST, que es justo el orderBy del service.
+  @@index([dueDate])
   @@map("accounts_payable")
 }
 
@@ -705,6 +735,8 @@ model PayablePayment {
 
   accountPayable AccountsPayable @relation(fields: [accountPayableId], references: [id])
 
+  // Histórico de abonos en el detalle de la CxP. Sin esto es seq scan.
+  @@index([accountPayableId])
   @@map("payable_payments")
 }
 
@@ -717,7 +749,9 @@ model SupplierCredit {
   // AccountsPayable negativa que este modelo reemplaza) porque es un saldo a favor.
   amount           Decimal  @db.Decimal(16, 2)
   // Saldo sin aplicar. Invariante de negocio: 0 <= balance <= amount (nunca negativo
-  // ni mayor que amount); cuando llega a 0, status pasa a 'used'.
+  // ni mayor que amount); cuando llega a 0, status pasa a 'used'. Reforzado a nivel DB
+  // por el CHECK "supplier_credit_balance_range_chk" (definido a mano en la migración
+  // — Prisma no declara CHECKs), mismo patrón que CustomerCredit.balance.
   balance          Decimal  @db.Decimal(16, 2)
   sourceDocumentId String?  @map("source_document_id") @db.Uuid
   /// available | used
@@ -728,7 +762,11 @@ model SupplierCredit {
   sourceDocument Document?                   @relation("DvcSupplierCredit", fields: [sourceDocumentId], references: [id])
   applications   SupplierCreditApplication[]
 
-  @@index([supplierId, status])
+  // Incluye createdAt para que "créditos disponibles de un proveedor" (WHERE
+  // supplierId + status, ORDER BY createdAt) salga ordenada sin nodo Sort.
+  @@index([supplierId, status, createdAt])
+  // Una DVC genera exactamente un crédito: bloquea duplicados por doble confirm o retry.
+  @@unique([sourceDocumentId])
   @@map("supplier_credit")
 }
 
@@ -736,6 +774,9 @@ model SupplierCreditApplication {
   id               String   @id @default(uuid(7)) @db.Uuid
   supplierCreditId String   @map("supplier_credit_id") @db.Uuid
   accountPayableId String   @map("account_payable_id") @db.Uuid
+  /// Egreso que aplicó este crédito. Nullable: las aplicaciones anteriores al módulo
+  /// de egresos (las hacía POST /accounts-payable/:id/payments, eliminado) no tienen egreso.
+  egresoId         String?  @map("egreso_id") @db.Uuid
   // Monto aplicado en este movimiento, en positivo (parte del balance del crédito
   // que se descuenta contra esta cuenta por pagar).
   amount           Decimal  @db.Decimal(16, 2)
@@ -743,9 +784,15 @@ model SupplierCreditApplication {
 
   supplierCredit SupplierCredit  @relation(fields: [supplierCreditId], references: [id])
   accountPayable AccountsPayable @relation(fields: [accountPayableId], references: [id])
+  /// Restrict explícito: el default de Prisma para una FK nullable es SET NULL, que
+  /// dejaría la aplicación huérfana si alguna vez se borra un egreso.
+  egreso         Egreso?         @relation(fields: [egresoId], references: [id], onDelete: Restrict)
 
   @@index([accountPayableId])
   @@index([supplierCreditId])
+  // Un mismo crédito no se aplica dos veces a la misma cuenta dentro de un egreso. En
+  // PostgreSQL varios NULL conviven, así que las filas viejas (sin egreso) no chocan.
+  @@unique([egresoId, accountPayableId, supplierCreditId])
   @@map("supplier_credit_application")
 }
 
@@ -804,6 +851,108 @@ model CustomerCreditApplication {
   // el lookup "¿este crédito ya tiene aplicaciones?" al anular la DVV.
   @@unique([customerCreditId, saleDocumentId])
   @@map("customer_credit_application")
+}
+
+// ─── Consecutivos ─────────────────────────────────────────────────────────────
+
+/// Consecutivo atómico por tipo de documento. A propósito NO es un SEQUENCE nativo
+/// de PostgreSQL: ese no se revierte en un rollback y dejaría huecos. El número se
+/// toma con INSERT ... ON CONFLICT DO UPDATE ... RETURNING dentro de la misma
+/// transacción que crea el documento — el UPDATE bloquea la fila hasta el COMMIT,
+/// así dos creaciones del mismo tipo se serializan y el número se deshace si la
+/// transacción falla. Requiere aislamiento READ COMMITTED (el default de Prisma):
+/// con Serializable o RepeatableRead el ON CONFLICT lanza error de serialización
+/// en vez de esperar la fila. Ver SequenceService (common/sequence/).
+model Sequence {
+  key       String @id @db.VarChar(30)
+  lastValue Int    @default(0) @map("last_value")
+
+  @@map("sequence")
+}
+
+// ─── Egreso (documento de tesorería) ─────────────────────────────────────────
+
+/// Origen de la plata con que se paga. "almacén" vs "oficina" distingue de qué caja
+/// o cuenta sale — el sistema no lleva saldos de caja, es solo clasificación.
+enum EgresoPaymentMethod {
+  efectivo_almacen
+  consignacion_almacen
+  cheque
+  efectivo_oficina
+  consignacion_oficina
+}
+
+/// Paga una o varias cuentas por pagar de UN mismo proveedor en un solo movimiento,
+/// con una o varias formas de pago y, si hay, saldos a favor del proveedor.
+/// No se anula ni se edita: si sale mal se registra el contrario a mano.
+/// Se muestra como "EG-<number>".
+model Egreso {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  /// Consecutivo propio (clave "EGRESO" en Sequence), con ceros a la izquierda a 6
+  /// dígitos igual que Document.number, para que ordenar como texto dé el orden real.
+  number     String   @unique @db.VarChar(30)
+  /// Sin @default a propósito: la fija el service. Un default now() sobre una columna
+  /// DATE se resuelve con el huso de la base, no el de Colombia — un egreso de las
+  /// 7pm caería en el día siguiente. Mismo criterio que Document.date.
+  date       DateTime @db.Date
+  supplierId String   @map("supplier_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  /// total = cashTotal + creditTotal (lo garantiza un CHECK) y también la suma de
+  /// EgresoAllocation.amount (eso ningún CHECK lo puede ver: lo valida el service
+  /// en centavos dentro de la transacción).
+  total       Decimal @db.Decimal(16, 2)
+  cashTotal   Decimal @map("cash_total") @db.Decimal(16, 2)
+  creditTotal Decimal @map("credit_total") @db.Decimal(16, 2)
+  notes       String? @db.VarChar(500)
+  /// Clave que manda el cliente para que un reintento de red no pague dos veces.
+  idempotencyKey String   @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  supplier           Supplier                    @relation(fields: [supplierId], references: [id])
+  user               User                        @relation(fields: [userId], references: [id])
+  payments           EgresoPayment[]
+  allocations        EgresoAllocation[]
+  creditApplications SupplierCreditApplication[]
+
+  @@index([date])
+  @@index([supplierId, date])
+  @@index([userId])
+  @@map("egreso")
+}
+
+model EgresoPayment {
+  id        String              @id @default(uuid(7)) @db.Uuid
+  egresoId  String              @map("egreso_id") @db.Uuid
+  method    EgresoPaymentMethod
+  amount    Decimal             @db.Decimal(16, 2)
+  /// Número de cheque o de consignación. Obligatorio para `cheque` — lo valida el service.
+  reference String?             @db.VarChar(100)
+  bank      String?             @db.VarChar(100)
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  egreso Egreso @relation(fields: [egresoId], references: [id])
+
+  @@index([egresoId])
+  @@map("egreso_payment")
+}
+
+model EgresoAllocation {
+  id               String  @id @default(uuid(7)) @db.Uuid
+  egresoId         String  @map("egreso_id") @db.Uuid
+  accountPayableId String  @map("account_payable_id") @db.Uuid
+  /// Total abonado a esta cuenta por pagar en este egreso (efectivo + saldo a favor).
+  amount           Decimal @db.Decimal(16, 2)
+  /// Parte de `amount` cubierta con saldo a favor. Es el total de las
+  /// SupplierCreditApplication de este egreso contra esta cuenta; se guarda aparte
+  /// para que el detalle de la CxP lo lea sin join. CHECK: 0 <= creditAmount <= amount.
+  creditAmount     Decimal @default(0) @map("credit_amount") @db.Decimal(16, 2)
+
+  egreso         Egreso          @relation(fields: [egresoId], references: [id])
+  accountPayable AccountsPayable @relation(fields: [accountPayableId], references: [id])
+
+  @@unique([egresoId, accountPayableId])
+  @@index([accountPayableId])
+  @@map("egreso_allocation")
 }
 
 // ─── Configuración del sistema ────────────────────────────────────────────────
