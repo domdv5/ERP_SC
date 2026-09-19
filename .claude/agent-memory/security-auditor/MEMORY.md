@@ -1,0 +1,1 @@
+- [dbhub apunta a la base viva](reference_dbhub_live_db.md) — mcp__dbhub__execute_sql lee la misma erp_db del backend en :3000; ideal para verificar invariantes tras probar con curl

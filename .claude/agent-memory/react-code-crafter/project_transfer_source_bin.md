@@ -1,0 +1,16 @@
+---
+name: project-transfer-source-bin
+description: Transfer (T) document form now has a source-bin selector mirroring the dest-bin cascade, added 2026-07-21
+metadata:
+  type: project
+---
+
+`DocumentFormPage.tsx`'s transfer (`T`) form has a source-side zone+bin cascade that mirrors the pre-existing dest-side one, added 2026-07-21 after the backend added `sourceBinId` end-to-end (accepts it on create/update, requires it when the source warehouse is `type: 'warehouse'`, decrements that bin's `BinStock` on confirm, reverses it on void).
+
+**Key asymmetry vs. the dest-bin selector** (don't copy the dest filter blindly): dest-bin options filter to `!bin.occupied` (an empty bin, since you're moving stock INTO it). Source-bin options filter to bins that already hold stock of a product currently in the form's `items` array — `bin.binStocks.some((bs) => bs.quantity > 0 && itemProductIds.has(bs.productId))`, where `itemProductIds` comes from `watch('items')`. This requires `Bin.binStocks: { productId, quantity }[]` (new field from `GET /warehouses/:id`) — see `[[project_warehouses_module]]` for the rest of the `Bin` shape (`code` not `name`, no delete endpoint).
+
+**Pattern replicated exactly, twice**: warehouse-detail query (keyed `['warehouse-detail', warehouseId]`), reset-on-warehouse-change effect, `xRequiresBin` (true only when that warehouse's `type === 'warehouse'`), `xZones` derived from the detail query, `selectedXZoneId` local state + reset effect, `currentXBinId` via `watch`, and the `xBins` computed IIFE that also retains a stale-but-selected bin so editing an existing draft doesn't silently drop its bin choice. Same computed-in-render style used for both sides (no `useMemo`) — matches the file's existing pattern, not a memoized rerender-optimal one; the file already re-renders per-keystroke elsewhere (`watch()` in the totals `tfoot`), so this isn't a regression, just consistency with what's already there.
+
+**Zod schema deliberately asymmetric with itself**: `destBinId` had no `superRefine` requiring it (backend enforces); `sourceBinId` was added the same way — no new zod validation, even though it's arguably "more required" now that the backend rejects a missing one for `type: 'warehouse'` sources. Don't add the validation without checking with the user first — the existing asymmetry was intentional per the task spec, not an oversight.
+
+**2026-08-10 update — single-product-per-bulto guardrail (frontend-only, backend authoritative elsewhere)**: `destBins`' `available` filter in `DocumentFormPage.tsx` is no longer plain `!bin.occupied` — an occupied bin now also qualifies if `bin.binStocks.every((bs) => itemProductIds.has(bs.productId))` (i.e. everything already in the bin matches a product already on the current document — "stacking" the same product, not mixing). Paired with a new `formSchema.superRefine` check in `document-form.schema.ts`: if `destBinId` is set and `data.items` reference 2+ distinct `productId`s, it adds a `destBinId` issue ("Un traslado a bulto solo puede contener un único producto"). Both are UX guardrails only — the backend (worked on in parallel) is the authoritative validator for the "one product per bulto" business rule. Deliberately NOT implemented: no inline block in `ProductRow.tsx`/`BarcodeScanInput.tsx` at select/scan time — user explicitly deferred that to a future iteration.

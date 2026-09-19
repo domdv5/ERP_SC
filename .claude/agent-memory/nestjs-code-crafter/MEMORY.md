@@ -1,0 +1,12 @@
+- [BinStock invariant + TransferEffectStrategy](project_binstock_invariant_transfer_strategy.md) — origin/dest bin symmetry, void() reversal must also revert BinStock when binId set
+- [DocumentsService.create() manual field wiring gap](project_documents_create_manual_field_destructuring_gap.md) — new Document scalar fields must be added to create()'s destructuring AND data object; update() spreads automatically
+- [PV reservation self-count + action permissions](project_pv_reservation_self_count_and_action_permissions.md) — exclude current document from confirm()-time self-referential aggregates; assertDocumentPermission now takes an action param
+- [InventoryModule + RBAC seed gotcha](project_inventory_module_and_rbac_seed_gotcha.md) — new GET /inventory/:productId/location; role-permissions.seed.ts silently skips codes missing from permissions.seed.ts
+- [SystemConfig read-only mode](project_system_config_read_only_mode.md) — 3rd APP_GUARD, @BypassReadOnly(), system.manage perm, SSE + ResponseFormatInterceptor interaction explained
+- [TODO(human) checkpoint leaves no compile error](feedback_todo_human_checkpoint_no_compile_error.md) — inferred return type swallows missing-return errors; report actual tsc result, don't fabricate
+- [by-code/:code/locations endpoint](project_by_code_locations_endpoint.md) — near-duplicate of GET /inventory/:productId/location; check both if either changes
+- [CM/DVC supplier-brand hard block](project_cm_dvc_supplier_brand_hard_block.md) — assertItemsMatchSupplierBrands in validateCreate+confirm; supplierId filter on products.findAll
+- [PDF printing module (CM/DVC)](project_pdf_printing_module.md) — pdfmake 0.3.x API differs from PdfPrinter-class tutorials; default-import gotcha, font access policy, nest-cli assets outDir, UTC vs Bogota date formatting
+- [POS + PV→POS conversion feature](project_pos_pv_conversion_feature.md) — consumeForConversion implemented; POS confirm() shortfall ConflictException shape for frontend
+- [REM document type backend](project_rem_document_type_backend.md) — AbstractReservationStrategy extracted (PV+REM share it, DVV next); RESERVATION_TYPES; remisionQuantity; pv block key kept; frontend pending
+- [RBAC by-role rewrite 2026-09-09](project_rbac_by_role_rewrite_2026_09_09.md) — basket_management→preventa (updateMany-before-createMany rename), new inventory.manage perm, GET /documents silently scoped by document.create.{TYPE}

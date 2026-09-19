@@ -41,9 +41,10 @@ coverage/
 .temp
 .tmp
 
-# Claude Code internals
-.claude/
-.agents/
+# Claude Code internals (config local personal, no de proyecto)
+.claude/settings.local.json
+.claude/skills/canvas-design/
+.agents/skills/canvas-design/
 .interface-design/
 skills-lock.json
 .mcp.json

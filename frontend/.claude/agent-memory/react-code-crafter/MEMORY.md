@@ -1,0 +1,4 @@
+- [Documents ProductRow/DocumentFormPage column sync](documents_producttable_column_sync.md) — docType-conditional table columns must be kept in sync across both files
+- [Clipboard copy icon button pattern](clipboard_copy_icon_button_pattern.md) — Copy icon, green hover, raw-value copy + toast, from ProductRow SAJ cost cell
+- [Quantity input debounced auto-advance](quantity_input_debounced_auto_advance.md) — 600ms inactivity debounce returns focus to scanner without Enter/click; ref+setTimeout pattern chained onto RHF handlers
+- [SegmentedToggle shared component](segmented_toggle_shared_component.md) — Activos/Inactivos pill toggle, extracted from ProductsPage+ThirdPartiesPage duplication, in @/components/shared barrel

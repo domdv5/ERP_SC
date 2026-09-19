@@ -1,0 +1,2 @@
+- [Audit scripts pattern](project_audit_scripts_pattern.md) — read-only .mjs scripts in backend/scripts/, PrismaPg adapter, wired as pnpm audit:* scripts, not run in build/CI
+- [Documents strategies duck-typed helpers](project_documents_strategies_duck_typed_helpers.md) — validateCreate (DTO, pre-tx) and confirm (DocumentWithItems, in-tx) share private validators via structural typing, no casts

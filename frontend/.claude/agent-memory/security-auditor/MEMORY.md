@@ -1,0 +1,1 @@
+- [Decimal como string (bug recurrente)](project_decimal_as_string_recurring_bug.md) — los Decimal de Prisma llegan como string pero los tipos dicen number; primer barrido en cualquier diff de dinero
