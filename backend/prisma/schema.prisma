@@ -342,7 +342,9 @@ model InventoryMovement {
   user         User?         @relation(fields: [userId], references: [id])
 
   @@index([productId])
+  @@index([productId, createdAt])
   @@index([warehouseId])
+  @@index([documentId])
   @@index([createdAt])
   @@index([movementType])
   @@map("inventory_movements")

@@ -1,0 +1,60 @@
+schema: spec-driven
+
+context: |
+  Monorepo, no root package.json, no pnpm workspace (independent lockfiles per project).
+  Backend: NestJS 11 + Prisma 7 (Postgres via @prisma/adapter-pg) + Jest 30, TypeScript.
+  Frontend: React 19 + Vite 8 + TanStack Query + Zustand + Tailwind 4, TypeScript. No automated test runner.
+  RBAC (JWT-embedded permissions), response format {success,data}, BinStock/Inventory invariant.
+  Manual Prisma migration workaround required (see backend/CLAUDE.md) — never run migrate:dev/reset in CI-like flow.
+
+strict_tdd: false
+
+testing:
+  projects:
+    - path: backend
+      stack: NestJS 11 + Prisma 7 + TypeScript
+      test_command: "pnpm test"
+      watch_command: "pnpm test:watch"
+      coverage_command: "pnpm test:cov"
+      e2e_command: "pnpm test:e2e"
+      framework: Jest 30 (ts-jest)
+      lint_command: "pnpm lint"
+      format_command: "pnpm format"
+    - path: frontend
+      stack: React 19 + Vite 8 + TypeScript
+      test_command: null
+      framework: none (no vitest/jest/testing-library configured)
+      e2e_note: "playwright devDependency present but used only for ad-hoc headed manual verification scripts (see frontend/CLAUDE.md 'Testing frontend changes'), not an automated suite/CI runner"
+      lint_command: "pnpm lint"
+      build_command: "tsc && vite build"
+
+rules:
+  proposal:
+    - Flag any touch to AuthModule/JWT contract, Prisma migrations, main.ts global bootstrap wiring, RBAC seed data, or the BinStock/Inventory invariant as requiring explicit user confirmation before implementation (root CLAUDE.md Safety Rules)
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Business rules and non-obvious behavior must be documented in backend/CLAUDE.md or frontend/CLAUDE.md as part of the same change, not after
+  design:
+    - Document architecture decisions with rationale
+    - Prefer Strategy pattern for new DocumentType effects (mirrors DocumentEffectsRegistry)
+  tasks:
+    - Group by phase (backend, frontend), use hierarchical numbering
+    - Keep tasks completable in one session
+    - Backend and frontend tasks are independent verification units (no shared test command)
+  apply:
+    guidelines:
+      - Follow existing code patterns (see backend/CLAUDE.md and frontend/CLAUDE.md Conventions)
+      - Comments: 1 line max, plain neutral Spanish, only for non-obvious business rules (root CLAUDE.md Code Documentation Conventions)
+      - Backend imports: "@/" only when crossing up a directory; same/sub-directory imports stay relative
+      - Frontend: never hardcode gray/hex colors — use semantic dark-mode tokens
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: "cd backend && pnpm test"
+    build_command: "cd backend && pnpm build && cd ../frontend && pnpm build"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
+    - Verify backend/CLAUDE.md or frontend/CLAUDE.md was updated if the change introduced an architecture decision, business rule, new endpoint, or non-obvious behavior
