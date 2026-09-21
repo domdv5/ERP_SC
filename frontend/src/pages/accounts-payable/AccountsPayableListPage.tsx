@@ -12,8 +12,9 @@ import {
   ErrorState,
   TablePagination,
 } from '@/components/shared'
+import { formatCOP, docNumber } from '@/lib/format'
 import { StatusBadge } from './components/StatusBadge'
-import { formatCOP, formatDate, DOCUMENT_TYPE_LABELS, docNumber } from './accounts-payable.utils'
+import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-payable.utils'
 import type { AccountsPayableStatus } from '@/types'
 
 const ALL_STATUSES: { value: AccountsPayableStatus | ''; label: string }[] = [
@@ -161,7 +162,16 @@ export default function AccountsPayableListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Proveedor', 'Documento', 'Monto total', 'Vencimiento', 'Estado'].map((h) => (
+                  {[
+                    'Proveedor',
+                    'Documento',
+                    'Monto total',
+                    'Pagado',
+                    'Saldo a favor aplicado',
+                    'Saldo',
+                    'Vencimiento',
+                    'Estado',
+                  ].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -183,9 +193,15 @@ export default function AccountsPayableListPage() {
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
                           {account.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
                         </div>
-                        <p className="font-medium text-content">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/accounts-payable/suppliers/${account.supplier.id}`)
+                          }}
+                          className="font-medium text-brand-secondary hover:underline text-left"
+                        >
                           {account.supplier.thirdParty.name}
-                        </p>
+                        </button>
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
@@ -199,7 +215,16 @@ export default function AccountsPayableListPage() {
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
-                      {formatCOP(account.totalAmount)}
+                      {formatCOP(Number(account.totalAmount))}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                      {formatCOP(Number(account.paidAmount))}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                      {formatCOP(Number(account.creditApplied))}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                      {formatCOP(Number(account.balance))}
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
                       {formatDate(account.dueDate)}

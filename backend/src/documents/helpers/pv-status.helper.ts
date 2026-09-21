@@ -22,15 +22,7 @@ export interface PvStatus {
   };
 }
 
-/**
- * Estado de conversión de una preventa o remisión, calculado en vivo a partir de
- * sus documentos derivados (no se guarda), para que también funcione en el
- * listado, que no trae las líneas.
- * "converted": tiene al menos una venta derivada confirmada.
- * "pending": tiene alguna venta derivada sin anular, pero ninguna confirmada.
- * "none": no tiene derivadas o están todas anuladas.
- * Devuelve null para el resto de tipos.
- */
+/** Estado de conversión de una PV/REM, calculado en vivo de sus derivados: converted (hay una confirmada), pending (hay alguna sin anular), none. */
 export function buildPvStatus(doc: PvStatusInput): PvStatus | null {
   if (!CONVERTIBLE_TYPES.includes(doc.type)) return null;
 

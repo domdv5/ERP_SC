@@ -13,9 +13,7 @@ import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import type { Warehouse } from '@/types'
 
-// ---------------------------------------------------------------------------
-// Schema
-// ---------------------------------------------------------------------------
+// ─── Schema ─────────────────────────────────────────────────────────────
 
 const schema = z.object({
   name: z.string().min(1, 'El nombre es requerido').max(100, 'Máximo 100 caracteres'),
@@ -25,9 +23,7 @@ const schema = z.object({
 
 export type WarehouseFormValues = z.infer<typeof schema>
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
+// ─── Props ──────────────────────────────────────────────────────────────
 
 interface WarehouseFormProps {
   open: boolean
@@ -37,9 +33,7 @@ interface WarehouseFormProps {
   defaultValues?: Warehouse
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
+// ─── Internal helpers ───────────────────────────────────────────────────
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -76,9 +70,7 @@ function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSele
   )
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// ─── Component ──────────────────────────────────────────────────────────
 
 export function WarehouseForm({
   open,

@@ -12,16 +12,10 @@ import type {
 import { Combobox, HintText } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { getProducts } from '@/services/products.service'
+import { formatCOP } from '@/lib/format'
 import type { Product, StockByWarehouse } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
-
-const formatCOP = (v: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  }).format(v)
 
 interface ProductRowProps {
   index: number
@@ -31,29 +25,17 @@ interface ProductRowProps {
   setValue: UseFormSetValue<FormValues>
   watch: UseFormWatch<FormValues>
   getValues: UseFormGetValues<FormValues>
-  // Costo promedio ya conocido al crear la fila (p. ej. por escaneo), para que el aviso de
-  // desviación en entradas por ajuste y la celda de solo lectura en salidas por ajuste no
-  // queden vacíos solo porque la fila no se creó desde el buscador de esta misma fila.
+  // Ya conocido al crear la fila (p. ej. por escaneo), para no dejar vacíos el aviso de desviación y la celda readonly.
   initialAvgCost?: number
-  // Unidad de medida ya conocida al crear la fila (p. ej. por escaneo). Mismo motivo que el
-  // costo promedio inicial: la fila no siempre pasa por su propio buscador, que es donde
-  // normalmente se resolvería el producto y se llenaría este dato.
+  // Ya conocido al crear la fila (p. ej. por escaneo); no siempre pasa por su propio buscador.
   initialUnitOfMeasure?: 'unidad' | 'docena'
-  // Stock disponible (total menos lo reservado) ya conocido al crear la fila (p. ej. por
-  // escaneo). Mismo patrón que el costo promedio inicial; en preventas y remisiones alimenta
-  // el dato de disponible y el aviso de "cantidad mayor al disponible" bajo el input de cantidad.
+  // Ya conocido al crear la fila (p. ej. por escaneo); alimenta el aviso de "cantidad mayor al disponible".
   initialAvailableStock?: number
-  // Registra o quita el input de cantidad de esta fila en la lista de referencias que mantiene
-  // el formulario, necesaria para el ciclo de foco escanear → cantidad → escanear. Es opcional
-  // porque la fila funciona igual sin este flujo.
+  // Referencia al input de cantidad para el ciclo de foco escanear → cantidad → escanear; opcional, la fila funciona igual sin esto.
   quantityInputRef?: (el: HTMLInputElement | null) => void
-  // Devuelve el foco al input de escaneo cuando el operario confirma la cantidad de esta fila
-  // con Enter. Siempre: cualquier Enter en cantidad vuelve al escáner, se haya creado la fila
-  // por escaneo o a mano.
+  // Devuelve el foco al escáner al confirmar cantidad con Enter, se haya creado la fila por escaneo o a mano.
   onQuantityConfirmed?: () => void
-  // Marcas del proveedor elegido en el documento (solo compras y devoluciones): el buscador de
-  // producto solo trae productos de esas marcas. Viene sin valor cuando el tipo de documento no
-  // usa este filtro; la fila decide internamente si lo aplica.
+  // Marcas del proveedor elegido (solo compras/devoluciones); sin valor cuando el tipo no usa este filtro.
   supplierBrandIds?: string[]
 }
 
@@ -78,20 +60,15 @@ export function ProductRow({
   const [selectedAvgCost, setSelectedAvgCost] = useState<number | null>(
     () => initialAvgCost ?? null,
   )
-  // Unidad de medida del producto elegido, solo informativa (se muestra como dato junto a la
-  // cantidad en traslados). Nunca entra en ningún cálculo de cantidad, costo o stock.
+  // Solo informativa (traslados); nunca entra en ningún cálculo de cantidad, costo o stock.
   const [selectedUnitOfMeasure, setSelectedUnitOfMeasure] = useState<'unidad' | 'docena' | null>(
     () => initialUnitOfMeasure ?? null,
   )
-  // Stock disponible del producto al momento de elegirlo (preventas y remisiones); puede ser
-  // negativo si ya está sobre-reservado. Solo informativo: el backend rechaza al confirmar si
-  // de verdad no alcanza; esto es solo un aviso temprano.
+  // Puede ser negativo si ya está sobre-reservado; es solo aviso temprano, el backend valida de verdad al confirmar.
   const [selectedAvailableStock, setSelectedAvailableStock] = useState<number | null>(
     () => initialAvailableStock ?? null,
   )
-  // Stock por bodega del producto elegido (solo traslados), para calcular el disponible en la
-  // bodega origen. No se prellena desde las props iniciales porque, a diferencia del costo
-  // promedio o el disponible, el escaneo hoy no trae este detalle por bodega.
+  // No se prellena desde props iniciales: el escaneo no trae este detalle por bodega.
   const [selectedStockByWarehouse, setSelectedStockByWarehouse] = useState<
     StockByWarehouse[] | null
   >(null)
@@ -104,36 +81,24 @@ export function ProductRow({
   const unitPrice = watch(`items.${index}.unitPrice`) ?? 0
 
   const subtotal = Number(quantity) * Number(unitCost)
-  // Nota de talla por línea: solo en traslados. Permite registrar un mismo producto repartido
-  // en varios bultos, cada uno con una talla distinta.
+  // Solo en traslados: mismo producto repartido en varios bultos, cada uno con talla distinta.
   const showObservaciones = docType === 'T'
-  // En compras y devoluciones el buscador de producto se limita a las marcas del proveedor
-  // elegido. Mientras no haya proveedor, el buscador queda deshabilitado en vez de mostrarse
-  // sin filtrar.
+  // Sin proveedor elegido el buscador queda deshabilitado, no se muestra sin filtrar.
   const needsSupplier = docType === 'CM' || docType === 'DVC'
   const noSupplierYet = needsSupplier && !watch('thirdPartyId')
   const showCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
-  // Las salidas por ajuste y los traslados nunca dejan digitar el costo: en la salida por
-  // ajuste el backend siempre usa el costo promedio del producto; el traslado no tiene costo
-  // real, solo muestra el promedio como referencia para que el subtotal de la fila tenga sentido.
+  // SAJ/T nunca dejan digitar costo: SAJ usa siempre el costo promedio, T solo lo muestra de referencia.
   const showCostReadonly = docType === 'SAJ' || docType === 'T'
-  // Ni la salida por ajuste ni el traslado llenan el costo de la línea (no hay input ni
-  // autocompletado), así que el subtotal basado en ese campo daría siempre 0: se calcula aparte
-  // con el costo promedio del producto elegido.
+  // SAJ/T no llenan el costo de línea, así que el subtotal se calcula aparte con el costo promedio.
   const readonlySubtotal = selectedAvgCost !== null ? Number(quantity) * selectedAvgCost : null
 
-  // Preventas, remisiones y devoluciones en venta no llevan costo (son venta, no compra): el
-  // campo editable es el precio de venta, prellenado con el del producto pero ajustable.
+  // PV/REM/DVV no llevan costo (son venta): el campo editable es el precio de venta.
   const showPrice = docType === 'PV' || docType === 'REM' || docType === 'DVV'
   const priceSubtotal = Number(quantity) * Number(unitPrice)
-  // El aviso de disponible solo aplica a la venta que saca stock (PV/REM). En la devolución en
-  // venta el stock entra, así que ese dato solo confundiría.
+  // Solo aplica a PV/REM (sacan stock); en DVV el stock entra, así que el dato confundiría.
   const showSaleAvailability = showPrice && docType !== 'DVV'
 
-  // Traslados: bodega origen elegida en el formulario. Se usa para mostrar el disponible en esa
-  // bodega, no el del bulto concreto: el disponible por bulto cambia según cuál elijas, y el
-  // backend ya valida a nivel de bulto al confirmar. Mostrar el total de la bodega alcanza como
-  // aviso temprano.
+  // Disponible de la bodega origen, no del bulto concreto (el backend valida a nivel de bulto al confirmar).
   const showTransferAvailability = docType === 'T'
   const sourceWarehouseId = watch('warehouseId')
   const availableInSourceWarehouse =
@@ -142,11 +107,7 @@ export function ProductRow({
         null)
       : null
 
-  // En preventas y remisiones el disponible ya viene con las reservas descontadas y puede ser
-  // negativo. En traslados no existe "reservado": el disponible es el stock crudo de la bodega
-  // origen. Son fuentes distintas y no deben mezclarse: cada bloque de abajo calcula su propio
-  // aviso con su propia fuente. El backend igual rechaza al confirmar si de verdad no alcanza;
-  // esto es solo un aviso temprano.
+  // PV/REM: disponible ya neteado de reservas, puede ser negativo. Traslados: stock crudo de la bodega origen. Fuentes distintas, no mezclar.
   const showPvAvailableWarning =
     showSaleAvailability &&
     selectedAvailableStock !== null &&
@@ -157,9 +118,7 @@ export function ProductRow({
     Number(quantity) > availableInSourceWarehouse
   const showAvailableStockWarning = showPvAvailableWarning || showTransferAvailableWarning
 
-  // Los avisos secundarios de la fila van en una fila aparte para que ningún texto extra
-  // empuje hacia abajo los inputs de la fila principal, que deben quedar siempre alineados
-  // entre columnas sin importar cuántos avisos apliquen.
+  // Avisos secundarios en fila aparte para no empujar los inputs de la fila principal fuera de columna.
   const showUnitOfMeasureHint = docType === 'T' && selectedUnitOfMeasure === 'docena'
   const showPvAvailableHint =
     showSaleAvailability && selectedAvailableStock !== null && !showPvAvailableWarning
@@ -169,9 +128,7 @@ export function ProductRow({
   const hasSecondaryRow =
     showUnitOfMeasureHint || showAvailableStockHint || showAvailableStockWarning
 
-  // Solo sirve para elegir QUÉ número mostrar en los avisos de disponibilidad de la fila. Los
-  // casos de venta y de traslado nunca se dan a la vez, así que no hay ambigüedad; cada aviso
-  // se calcula por separado arriba, con su propia fuente.
+  // Elige qué número mostrar en el aviso de disponibilidad; venta y traslado nunca se dan a la vez.
   const displayAvailableStock = showPrice ? selectedAvailableStock : availableInSourceWarehouse
 
   const hasSearch = debouncedProductSearch.length >= 1
@@ -193,9 +150,7 @@ export function ProductRow({
   const productOptions: ComboboxOption[] = (productData?.items ?? []).map((p: Product) => ({
     id: p.id,
     label: `${p.code} — ${p.description}`,
-    // Preventas y remisiones muestran el disponible del producto ya con las reservas
-    // descontadas; los traslados, el disponible en la bodega origen elegida; el resto de tipos
-    // muestra el costo promedio.
+    // PV/REM: disponible ya neteado; traslados: disponible en la bodega origen; resto: costo promedio.
     sublabel: showPrice
       ? `Disponible: ${p.availableStock}`
       : showTransferAvailability && sourceWarehouseId
@@ -229,10 +184,7 @@ export function ProductRow({
             onChange={(id) => {
               const product = productData?.items.find((p: Product) => p.id === id)
 
-              // Chequeo extra: el backend ya filtra por proveedor, pero esto evita agregar un
-              // producto de una marca equivocada si igual llegó a las opciones (p. ej. por caché
-              // vieja). Solo aplica en compras y devoluciones: el padre puede pasar la lista de
-              // marcas sin filtrar por tipo, y decidir si usarla es responsabilidad de esta fila.
+              // Chequeo extra por si llegó a las opciones un producto de marca equivocada (p. ej. caché vieja).
               if (
                 needsSupplier &&
                 supplierBrandIds !== undefined &&
@@ -243,16 +195,14 @@ export function ProductRow({
                 return
               }
 
-              // Se excluye la fila actual: si ya tiene este producto (p. ej. al reabrir su
-              // buscador sin cambiar nada), no debe detectarse a sí misma como duplicado.
+              // Se excluye la fila actual para no detectarse a sí misma como duplicado.
               const currentItems = getValues('items')
               const existingIndex = currentItems.findIndex(
                 (item, i) => item.productId === id && i !== index,
               )
 
               if (existingIndex >= 0) {
-                // El producto ya está en otra fila: se suma la cantidad ahí en vez de dejar dos
-                // filas con el mismo producto (eso causaba un bug en el costo promedio).
+                // Se suma la cantidad en la fila existente en vez de duplicar (dejaba un bug en el costo promedio).
                 const currentRowQty = Number(currentItems[index].quantity) || 0
                 const existingQty = Number(currentItems[existingIndex].quantity) || 0
                 setValue(`items.${existingIndex}.quantity`, existingQty + currentRowQty)

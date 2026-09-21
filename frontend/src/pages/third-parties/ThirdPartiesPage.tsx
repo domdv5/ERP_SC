@@ -90,9 +90,7 @@ export default function ThirdPartiesPage() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['third-parties'] })
 
-  // El form de productos cachea la lista de marcas indefinidamente e incluye el número interno
-  // y el nombre del proveedor y la marca; hay que refrescarla cuando esos datos cambian, si no
-  // el código de producto se sigue armando con el valor viejo.
+  // Refresca la caché de marcas del form de productos, si no el código de producto se arma con el nombre/número viejo.
   const invalidateBrands = () => queryClient.invalidateQueries({ queryKey: ['brands'] })
 
   const { mutate: create, isPending: isCreating } = useMutation({

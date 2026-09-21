@@ -18,9 +18,7 @@ import { getProducts } from '@/services/products.service'
 import { getWarehouses } from '@/services/warehouses.service'
 import { getDocuments } from '@/services/documents.service'
 
-// Clases literales para que Tailwind las detecte (no se puede interpolar el número en el string).
-// La zona operativa siempre muestra "Productos", así que en la práctica hay de 2 a 4 tarjetas;
-// se incluye el caso 1 por defensa si algún rol pierde todos los demás permisos.
+// Clases literales para que Tailwind las detecte (no se puede interpolar el número); caso 1 es defensa por si un rol pierde todos los permisos.
 const OPERATIONAL_GRID_COLS: Record<number, string> = {
   1: 'xl:grid-cols-2',
   2: 'xl:grid-cols-2',

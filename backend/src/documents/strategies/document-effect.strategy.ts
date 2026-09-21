@@ -10,10 +10,7 @@ export type DocumentWithItems = Prisma.DocumentGetPayload<{
   };
 }>;
 
-/**
- * Datos extra que el service pasa a confirm() según el body del endpoint.
- * Hoy solo lo usan las ventas POS/COT para aplicar saldos a favor del cliente.
- */
+/** Datos extra que el service pasa a confirm() según el body del endpoint (solo lo usan POS/COT, para saldos a favor). */
 export type ConfirmContext = {
   appliedCustomerCredits?: { customerCreditId: string; amount: number }[];
 };
@@ -23,17 +20,10 @@ export interface DocumentEffectStrategy {
   /** Tipo de documento que maneja esta estrategia. */
   readonly type: DocumentType;
 
-  /**
-   * Validaciones específicas del tipo al crear el borrador
-   * (proveedor requerido, bodegas distintas, etc.).
-   */
+  /** Validaciones específicas del tipo al crear el borrador. */
   validateCreate?(createDocumentDto: CreateDocumentDto): Promise<void> | void;
 
-  /**
-   * Efectos al confirmar: movimientos kardex, inventario, cuentas.
-   * Corre dentro del $transaction del service. `context` es opcional: los tipos
-   * que no lo necesitan lo ignoran.
-   */
+  /** Efectos al confirmar (kardex, inventario, cuentas), dentro del $transaction del service. */
   confirm(
     tx: Prisma.TransactionClient,
     document: DocumentWithItems,
@@ -44,10 +34,7 @@ export interface DocumentEffectStrategy {
 
 /** Contrato aparte para los tipos con reserva lógica de stock (preventas y remisiones): evita obligar a implementar la liberación en tipos que no reservan (compras, traslados...). */
 export interface ReservationEffectStrategy extends DocumentEffectStrategy {
-  /**
-   * Libera (parcial o totalmente) la reserva pendiente de una o más líneas
-   * del documento. Corre dentro del $transaction que abre el service.
-   */
+  /** Libera (parcial o totalmente) la reserva pendiente de una o más líneas del documento. */
   releaseItems(
     tx: Prisma.TransactionClient,
     document: DocumentWithItems,
@@ -56,10 +43,7 @@ export interface ReservationEffectStrategy extends DocumentEffectStrategy {
     notes?: string,
   ): Promise<void>;
 
-  /**
-   * Descuenta de la reserva lo que la venta consumió al confirmarse, cuando esa
-   * venta nació de convertir este documento.
-   */
+  /** Descuenta de la reserva lo que consumió la venta nacida de convertir este documento. */
   consumeForConversion(
     tx: Prisma.TransactionClient,
     sourceDocument: DocumentWithItems,

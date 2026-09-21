@@ -8,9 +8,7 @@ import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import type { Zone } from '@/types'
 
-// ---------------------------------------------------------------------------
-// Schema
-// ---------------------------------------------------------------------------
+// ─── Schema ─────────────────────────────────────────────────────────────
 
 const schema = z.object({
   name: z.string().min(1, 'El nombre es requerido').max(100, 'Máximo 100 caracteres'),
@@ -19,9 +17,7 @@ const schema = z.object({
 
 export type ZoneFormValues = z.infer<typeof schema>
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
+// ─── Props ──────────────────────────────────────────────────────────────
 
 interface ZoneFormProps {
   open: boolean
@@ -31,9 +27,7 @@ interface ZoneFormProps {
   defaultValues?: Zone
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
+// ─── Internal helpers ───────────────────────────────────────────────────
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -56,9 +50,7 @@ function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// ─── Component ──────────────────────────────────────────────────────────
 
 export function ZoneForm({ open, onClose, onSubmit, isPending, defaultValues }: ZoneFormProps) {
   const isEdit = !!defaultValues

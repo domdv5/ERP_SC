@@ -96,10 +96,7 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
       tx.warehouse.findUnique({ where: { id: destWarehouseId } }),
     ]);
 
-    // Vuelve a comprobar que el bulto sea obligatorio (no solo que pertenezca a la
-    // bodega): al editar un borrador se puede borrar el bulto de origen o destino
-    // sin pasar por la validación de creación, lo que antes dejaba confirmar sin
-    // bulto contra una bodega que sí lleva bultos y descuadraba el inventario.
+    // Revalida que el bulto sea obligatorio: editar un borrador puede quitarlo sin pasar por la validación de creación.
     if (sourceWarehouse?.type === 'warehouse' && !sourceBinId) {
       throw new BadRequestException(
         'Los traslados desde bodega requieren un bulto origen',
@@ -117,9 +114,7 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
         document.documentItems,
       );
 
-      // Bloquea el bulto (no su stock, que puede no existir aún) para poner en fila
-      // las confirmaciones a la vez sobre el mismo bulto destino: sin esto, dos
-      // traslados podrían verlo libre al mismo tiempo y mezclarle productos distintos.
+      // Bloquea el bulto destino (no su stock) para serializar confirmaciones concurrentes; sin esto dos traslados podrían mezclarle productos.
       await tx.$queryRaw`SELECT id FROM bin WHERE id = ${destBinId}::uuid FOR UPDATE`;
       await this.assertDestBinValid(
         tx,
@@ -171,12 +166,7 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
     }
   }
 
-  /**
-   * Verifica que el bulto destino exista, pertenezca a la bodega destino y no esté
-   * ocupado por otro producto. Se usa al crear y al confirmar; el bloqueo que la
-   * hace segura contra carreras lo pone quien llama a confirmar, porque la
-   * validación de creación no corre dentro de una transacción.
-   */
+  /** Verifica que el bulto destino exista, sea de la bodega destino y no esté ocupado por otro producto. */
   private async assertDestBinValid(
     client: PrismaOrTx,
     destBinId: string,
@@ -194,9 +184,7 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
       );
     }
 
-    // Un bulto es un contenedor físico de UN producto a la vez: acepta más del
-    // mismo, pero no otro distinto mientras conserve stock. Antes esta regla solo
-    // vivía en el filtro de la interfaz, sin control en el servidor.
+    // Un bulto acepta más del mismo producto, pero no otro distinto mientras conserve stock.
     const conflictingBinStock = await client.binStock.findFirst({
       where: {
         binId: destBinId,
@@ -231,11 +219,7 @@ export class TransferEffectStrategy extends BaseEffectStrategy {
     }
   }
 
-  /**
-   * Si el traslado tiene bulto destino, todos los ítems deben ser del mismo
-   * producto (el bulto destino es del documento, no de cada línea). Devuelve ese
-   * producto para que quien llama lo compare contra lo que ya ocupa el bulto.
-   */
+  /** Si hay bulto destino, todos los ítems deben ser del mismo producto (el bulto es del documento, no de cada línea). */
   private assertSingleProductPerDestBin(
     items: { productId: string }[],
   ): string {

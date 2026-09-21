@@ -26,13 +26,7 @@ import {
   SegmentedToggle,
 } from '@/components/shared'
 import type { Product } from '@/types'
-
-const formatCOP = (value: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  }).format(value)
+import { formatCOP } from '@/lib/format'
 
 // Las dos únicas bodegas que crea el seed son "Almacén" (tienda) y "Bodega" (bodega física).
 const getStockQuantity = (product: Product, warehouseName: string) =>

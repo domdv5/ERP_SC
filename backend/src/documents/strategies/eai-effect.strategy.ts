@@ -49,9 +49,7 @@ export class EaiEffectStrategy extends BaseEffectStrategy {
   ) {
     const warehouseId = this.requireWarehouse(document);
 
-    // Vuelve a validar lo mismo que al crear: editar un borrador reemplaza los ítems
-    // sin pasar por esa validación, así que confirmar es el único punto que ve el
-    // estado final antes de aplicar los efectos (mismo motivo que en los traslados).
+    // Revalida lo mismo que al crear: editar un borrador reemplaza ítems sin pasar por esa validación (mismo motivo que en traslados).
     if (document.documentItems.some((item) => Number(item.unitCost) <= 0)) {
       throw new BadRequestException(
         'El costo unitario debe ser un valor mayor a cero',

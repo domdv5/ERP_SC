@@ -74,11 +74,7 @@ export class PosEffectStrategy extends BaseEffectStrategy {
   ) {
     const warehouseId = this.requireWarehouse(document);
 
-    // Se vuelve a validar acá porque editar un borrador no re-corre las validaciones
-    // de creación. Si esta venta viene de convertir una preventa, la reserva de esa
-    // preventa sigue activa (se descuenta recién al confirmar), así que hay que
-    // excluirla: si no, una preventa 100% reservada siempre daría un faltante falso
-    // contra sí misma.
+    // Revalida acá porque editar un borrador no re-corre create; si viene de convertir una preventa, excluye su propia reserva o da un faltante falso.
     const shortfalls = await this.assertBatchAvailability(
       tx,
       warehouseId,

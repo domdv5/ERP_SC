@@ -1,5 +1,5 @@
 import {
-  IsIn,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -8,6 +8,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { AccountsPayableStatus } from '@prisma/client';
 
 export class FindAllAccountsPayableDto {
   @IsOptional()
@@ -24,8 +25,8 @@ export class FindAllAccountsPayableDto {
   limit?: number = 20;
 
   @IsOptional()
-  @IsIn(['pending', 'partial', 'paid'])
-  status?: 'pending' | 'partial' | 'paid';
+  @IsEnum(AccountsPayableStatus)
+  status?: AccountsPayableStatus;
 
   @IsOptional()
   @IsUUID()

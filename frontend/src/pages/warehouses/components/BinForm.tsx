@@ -8,9 +8,7 @@ import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import type { Bin, Zone } from '@/types'
 
-// ---------------------------------------------------------------------------
-// Schema
-// ---------------------------------------------------------------------------
+// ─── Schema ─────────────────────────────────────────────────────────────
 
 const schema = z.object({
   code: z.coerce.number().int('Debe ser un número entero').positive('Debe ser un número positivo'),
@@ -19,9 +17,7 @@ const schema = z.object({
 
 export type BinFormValues = z.infer<typeof schema>
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
+// ─── Props ──────────────────────────────────────────────────────────────
 
 interface BinFormProps {
   open: boolean
@@ -33,9 +29,7 @@ interface BinFormProps {
   defaultValues?: Bin
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
+// ─── Internal helpers ───────────────────────────────────────────────────
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -58,9 +52,7 @@ function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// ─── Component ──────────────────────────────────────────────────────────
 
 export function BinForm({ open, onClose, onSubmit, isPending, zone, defaultValues }: BinFormProps) {
   const isEdit = !!defaultValues

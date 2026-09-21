@@ -5,23 +5,12 @@ import { getSystemStatus } from '@/services/system.service'
 import { useAuthStore } from '@/stores/auth.store'
 import type { SystemStatus } from '@/types'
 
-// Contador de referencias a nivel de módulo: tanto el layout como el header usan este hook,
-// pero solo debe haber UNA conexión de eventos en vivo por sesión. El primero en montarse la
-// abre; el último en desmontarse la cierra.
+// Singleton a nivel de módulo: una sola conexión SSE para toda la sesión aunque varios componentes usen el hook
 let activeSubscribers = 0
 let sharedEventSource: EventSource | null = null
-// Vive a nivel de módulo (no dentro del efecto) por la misma razón que sharedEventSource:
-// solo el suscriptor "fundador" ejecuta connect() y programa este timeout; si viviera en
-// el closure de ese efecto, desmontar justo ese componente cancelaría el reintento aunque
-// otro suscriptor (Header/AppLayout) siga montado y dependa de la reconexión.
 let retryTimeout: ReturnType<typeof setTimeout> | null = null
 
-/**
- * Estado del modo de solo lectura (cierre contable). El fetch inicial trae el
- * snapshot; a partir de ahí el SSE mantiene la caché fresca en tiempo real
- * para todos los usuarios conectados (incluyendo quien activó el toggle),
- * por eso `staleTime: Infinity` — nunca se refetch por tiempo, solo por SSE.
- */
+// staleTime: Infinity porque la caché se actualiza solo por SSE, nunca por refetch
 export function useSystemStatus() {
   const token = useAuthStore((s) => s.token)
   const queryClient = useQueryClient()
@@ -39,21 +28,12 @@ export function useSystemStatus() {
     const connect = () => {
       sharedEventSource = new EventSource(`${API_BASE_URL}/system/status/stream?token=${token}`)
       sharedEventSource.onmessage = (event) => {
-        // El backend, al servir el stream de eventos, toma el campo `data` del evento y lo
-        // manda tal cual en la línea "data:" — sin el envoltorio estándar del resto de la API
-        // (verificado contra el stream real).
+        // Sin el envoltorio estándar de la API: el backend manda `data` tal cual en la línea "data:"
         const parsed = JSON.parse(event.data) as { data: SystemStatus }
         queryClient.setQueryData(['system-status'], parsed.data)
       }
       sharedEventSource.onerror = () => {
-        // Un rechazo de socket puro (backend caído, sin nada escuchando en el puerto) SÍ
-        // dispara la reconexión automática nativa de EventSource (readyState vuelve a
-        // CONNECTING) — verificado empíricamente matando el backend en dev. Pero si en
-        // algún punto llega una respuesta HTTP real que no es un stream SSE válido (status
-        // distinto de 200, o Content-Type incorrecto — típico si hay un reverse proxy/LB
-        // delante que devuelve una página de error mientras el backend reinicia), la spec
-        // obliga al navegador a cerrar la conexión de forma PERMANENTE (readyState CLOSED)
-        // sin reintentar solo. Este handler es la red de seguridad para ese segundo caso.
+        // EventSource reintenta solo salvo que el navegador cierre en CLOSED (respuesta HTTP no-SSE) — ese caso lo reintentamos a mano
         if (sharedEventSource?.readyState === EventSource.CLOSED) {
           sharedEventSource.close()
           sharedEventSource = null

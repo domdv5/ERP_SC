@@ -1,9 +1,7 @@
 import { forwardRef, useLayoutEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
-// Muestra el número con separador de miles ('.') solo como presentación; el valor que emite es
-// siempre el número sin formato (o vacío si el campo queda vacío). Se extrajo del que había en
-// el form de productos para reusarlo (p. ej. el límite de crédito en la ficha de tercero).
+// Separador de miles solo de presentación; el valor emitido siempre es el número sin formato (o vacío).
 const formatThousands = (value: number): string => new Intl.NumberFormat('es-CO').format(value)
 
 interface ThousandsInputProps {

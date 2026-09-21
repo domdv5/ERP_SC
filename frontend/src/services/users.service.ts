@@ -1,9 +1,7 @@
 import { api } from './api'
 import type { ApiResponse } from '@/types'
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+// ─── Types ──────────────────────────────────────────────────────────────
 
 export interface UserRole {
   id: string
@@ -62,9 +60,7 @@ export interface UsersMeta {
   adminCount: number
 }
 
-// ---------------------------------------------------------------------------
-// Role display names
-// ---------------------------------------------------------------------------
+// ─── Role display names ─────────────────────────────────────────────────
 
 export const ROLE_LABELS: Record<string, string> = {
   admin: 'Administrador',
@@ -80,9 +76,7 @@ export function getRoleLabel(name: string): string {
   return ROLE_LABELS[name] ?? name.replace(/_/g, ' ')
 }
 
-// ---------------------------------------------------------------------------
-// Service functions
-// ---------------------------------------------------------------------------
+// ─── Service functions ──────────────────────────────────────────────────
 
 export async function getUsers(
   params?: GetUsersParams,

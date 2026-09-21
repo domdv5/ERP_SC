@@ -15,9 +15,7 @@ export class SystemConfigService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
-    // El seed ya crea la fila única, pero se recrea defensivamente aquí por si
-    // el seed nunca corrió en este entorno — SystemConfig siempre debe existir
-    // para que getStatus() pueda leer del caché en memoria sin golpear la DB.
+    // Se recrea defensivamente por si el seed nunca corrió: SystemConfig siempre debe existir.
     let config = await this.prisma.systemConfig.findFirst({
       include: { activatedBy: { select: { id: true, name: true } } },
     });
@@ -46,13 +44,7 @@ export class SystemConfigService implements OnModuleInit {
     };
   }
 
-  // Lee el caché en memoria — nunca golpea la DB. El guard global la llama en
-  // cada request de escritura, así que debe ser síncrona y barata.
-  // Asume un único proceso backend: si se corre con más de una instancia
-  // (cluster/réplicas), cada una tendría su propio caché desincronizado y el
-  // toggle de solo lectura solo aplicaría en la instancia que lo recibió.
-  // No hay despliegue multi-instancia hoy — si eso cambia, esto necesita
-  // pub/sub o polling a la DB antes de confiar en el guard.
+  // Caché en memoria, síncrono y barato (el guard lo llama en cada write). Asume un único proceso — sin pub/sub, no sirve en cluster/réplicas.
   getStatus(): SystemStatus {
     return this.statusSubject.getValue();
   }

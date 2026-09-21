@@ -13,12 +13,7 @@ function formatDate(date: Date | string): string {
   }).format(new Date(date));
 }
 
-/**
- * pdfmake reevalúa header/footer en cada página, por eso se devuelven como
- * función en vez de Content estático (necesario si el documento pagina).
- * Omite "Ciudad"/"Vence" del tercero a propósito: ThirdParty no tiene ciudad
- * y el dominio no modela plazo de crédito (confirmado con el usuario).
- */
+/** Se devuelve como función porque pdfmake reevalúa header/footer en cada página. Omite "Ciudad"/"Vence" a propósito: el dominio no los modela. */
 export function buildHeader(
   document: DocumentForPrint,
   title: string,

@@ -82,13 +82,7 @@ export async function applyBinStockChange(
   }
 }
 
-/**
- * Valida stock suficiente para la salida. En bodegas `store` delega en
- * la validación de disponibilidad (descuenta las reservas de preventa y bloquea
- * la fila); si no, una salida, devolución o traslado podría sacar stock ya
- * comprometido con una preventa. En las bodegas físicas no aplica: las preventas
- * no reservan ahí, así que compara el stock crudo.
- */
+/** Valida stock suficiente para la salida: en bodegas `store` descuenta las reservas de preventa; en las físicas compara el stock crudo. */
 export async function assertSufficientStock(
   tx: Prisma.TransactionClient,
   item: DocumentWithItems['documentItems'][number],
@@ -148,8 +142,7 @@ export async function assertSufficientBinStock(
   }
 }
 
-/** Stock total del producto sumando todas las bodegas. Lo usan el recálculo del
- * costo promedio y su reversa, que reparten sobre este mismo total. */
+/** Stock total del producto sumando todas las bodegas (usado por el recálculo del costo promedio y su reversa). */
 async function getGlobalStock(tx: Prisma.TransactionClient, productId: string) {
   const aggregate = await tx.inventory.aggregate({
     _sum: { quantity: true },
@@ -174,12 +167,7 @@ export async function computeNewAvgCost(
   return (globalStock * currentAvgCost + quantity * unitCost) / denominator;
 }
 
-/**
- * Deshace un recálculo del costo promedio (la operación inversa). Solo da el valor
- * exacto si no hubo consumo de stock entre la compra original y esta reversa; por
- * eso quien la llama (la anulación de documentos) debe verificar antes que ese
- * movimiento sea el más reciente del producto.
- */
+/** Deshace un recálculo del costo promedio; solo es exacto si no hubo consumo de stock desde la compra original — el llamador debe verificarlo antes. */
 export async function computeReversedAvgCost(
   tx: Prisma.TransactionClient,
   productId: string,
@@ -195,12 +183,7 @@ export async function computeReversedAvgCost(
   return (globalStock * currentAvgCost - quantity * unitCost) / denominator;
 }
 
-/**
- * Calcula el nuevo "último costo" del producto tras anular una compra (`undefined`
- * si no hay que tocarlo). Solo las compras escriben el último costo, así que la
- * búsqueda nunca mira ajustes de inventario. Si ya hay una compra viva más reciente,
- * no se toca; si no, busca la compra viva inmediatamente anterior (o 0 si no hay).
- */
+/** Nuevo "último costo" tras anular una compra (`undefined` si no hay que tocarlo); busca la compra viva anterior más reciente, o 0. */
 export async function resolveLastCostAfterVoidingCm(
   tx: Prisma.TransactionClient,
   productId: string,

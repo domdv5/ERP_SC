@@ -16,12 +16,7 @@ export interface CustomerCreditSummary {
   availableCredit: number;
 }
 
-/**
- * Cupo de crédito del cliente. `usedCredit` = saldo pendiente de sus cuentas por
- * cobrar abiertas (`total − Σ pagos`), sumado en centavos sobre las CxC en
- * `pending`/`partial`. `Customer.creditLimit` null ⇒ cupo 0: un cliente sin
- * línea de crédito no puede comprar a crédito.
- */
+/** Cupo de crédito del cliente: `usedCredit` es el saldo pendiente de sus CxC abiertas; `creditLimit` null ⇒ cupo 0. */
 export async function getCustomerCreditSummary(
   client: PrismaOrTx,
   customerId: string,
@@ -59,12 +54,7 @@ export async function getCustomerCreditSummary(
   };
 }
 
-/**
- * Bloqueo duro: si `requestedTotal` supera el cupo disponible, lanza 400 con el
- * detalle del cupo. `credit` viaja al lado de `message` en la respuesta (igual que
- * los faltantes en el error de stock). No se puede saltar desde la venta; se
- * resuelve subiendo el cupo del cliente desde su ficha.
- */
+/** Bloqueo duro: si `requestedTotal` supera el cupo disponible, lanza 400 con el detalle del cupo (`credit` viaja junto a `message`). */
 export async function assertCreditWithinLimit(
   client: PrismaOrTx,
   customerId: string,

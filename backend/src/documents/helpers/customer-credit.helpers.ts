@@ -17,14 +17,7 @@ export interface ApplyCustomerCreditsParams {
   appliedCustomerCredits: { customerCreditId: string; amount: number }[];
 }
 
-/**
- * Aplica uno o más saldos a favor del cliente contra una venta. Espeja
- * AccountsPayableService.registerPayment: agrupa por crédito, bloquea las filas
- * en orden por id (SELECT ... FOR UPDATE) para no pisarse con otra venta
- * concurrente, valida en centavos y descuenta el balance. El backend solo impone
- * el techo (cada aplicación <= balance del crédito, y la suma <= total de la venta);
- * cuánto aplicar lo decide el frontend.
- */
+/** Aplica saldos a favor del cliente contra una venta: bloquea los créditos en orden por id (FOR UPDATE) y descuenta el balance en centavos. */
 export async function applyCustomerCredits(
   tx: Prisma.TransactionClient,
   params: ApplyCustomerCreditsParams,
@@ -65,9 +58,7 @@ export async function applyCustomerCredits(
 
   const creditIds = [...requestedCentsByCreditId.keys()];
 
-  // Bloqueo ordenado por id, siempre en el mismo orden, para no trabarse con
-  // otra transacción en paralelo. Orden global del flujo de venta:
-  // customers -> customer_credit -> accounts_receivable.
+  // Bloqueo ordenado por id (orden global: customers -> customer_credit -> accounts_receivable) para no trabarse con otra transacción.
   await tx.$queryRaw`SELECT id FROM "customer_credit" WHERE id = ANY(${creditIds}::uuid[]) ORDER BY id FOR UPDATE`;
 
   const credits = await tx.customerCredit.findMany({
@@ -123,12 +114,7 @@ export async function applyCustomerCredits(
   }
 }
 
-/**
- * Deshace las aplicaciones de saldo a favor hechas al confirmar una venta que
- * ahora se anula: restaura el balance de cada crédito, lo vuelve a 'available' y
- * borra las filas de aplicación. Suma en centavos y bloquea los créditos en
- * orden por id, igual que applyCustomerCredits.
- */
+/** Deshace las aplicaciones de saldo a favor al anular una venta: restaura balance/status de cada crédito y borra las filas de aplicación. */
 export async function revertCustomerCreditApplications(
   tx: Prisma.TransactionClient,
   saleDocumentId: string,

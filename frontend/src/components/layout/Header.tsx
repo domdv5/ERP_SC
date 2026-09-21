@@ -28,11 +28,7 @@ export function Header() {
 
   const toggleReadOnlyMutation = useMutation({
     mutationFn: setReadOnlyMode,
-    // Actualizamos la caché localmente de una vez (setQueryData) porque si el SSE
-    // de quien hizo el click está desconectado/reconectando en ese momento, su propia
-    // UI (candado, banner) nunca reflejaría el cambio que él mismo acaba de aplicar.
-    // El SSE sigue siendo necesario: es lo que empuja el nuevo estado a los DEMÁS
-    // clientes conectados.
+    // setQueryData local porque el SSE propio puede estar reconectando; el SSE sigue siendo lo que avisa a los DEMÁS clientes.
     onSuccess: (status) => {
       queryClient.setQueryData(['system-status'], status)
       if (status.readOnlyMode) {
@@ -89,11 +85,7 @@ export function Header() {
     document.documentElement.style.setProperty('--theme-toggle-y', `${e.clientY}px`)
 
     documentWithViewTransition.startViewTransition(() => {
-      // flushSync obliga a React a aplicar el cambio de tema de forma síncrona
-      // (y con él, la clase .dark en <html> vía el useEffect de AppLayout) antes
-      // de que el navegador tome la "foto" del nuevo estado para la transición.
-      // Sin esto, la captura ocurriría con el tema viejo y el wipe animaría
-      // hacia un frame idéntico al anterior.
+      // flushSync fuerza la clase .dark antes de que el navegador capture el snapshot de la transición; sin esto, el wipe anima sobre el tema viejo.
       flushSync(() => toggleTheme())
     })
   }

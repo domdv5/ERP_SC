@@ -18,11 +18,7 @@ export class AppliedCustomerCreditDto {
   amount!: number;
 }
 
-/**
- * Body opcional de POST /documents/:id/confirm. Solo lo usan las ventas POS/COT
- * para aplicar saldos a favor del cliente; sin body la confirmación se comporta
- * igual que siempre.
- */
+/** Body opcional de POST /documents/:id/confirm, solo lo usan POS/COT para aplicar saldos a favor del cliente. */
 export class ConfirmDocumentDto {
   @IsOptional()
   @IsArray()

@@ -7,13 +7,7 @@ import type { DocumentWithItems } from './document-effect.strategy';
 
 const VALID_REFUND_METHODS = new Set<string>(Object.values(DvvRefundMethod));
 
-/**
- * Devolución en venta: homólogo de la devolución en compra pero del lado cliente.
- * Al confirmar entra inventario real (MovementType.return, +cantidad) valorado al
- * costo promedio vivo del producto SIN recalcularlo, y —salvo modalidad
- * devolucion_dinero— genera un saldo a favor del cliente por el total. Se valora
- * a unitPrice (lo que el cliente pagó), a diferencia de la DVC que usa unitCost.
- */
+/** Devolución en venta: entra inventario real a costo promedio vivo (sin recalcularlo) y, salvo `devolucion_dinero`, genera saldo a favor del cliente. */
 @Injectable()
 export class DvvEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.DVV;
@@ -71,16 +65,12 @@ export class DvvEffectStrategy extends BaseEffectStrategy {
       });
     }
 
-    // devolucion_dinero es la excepción: el reembolso de efectivo es manual, no
-    // deja saldo a favor. saldo_a_favor y cambio_producto sí lo generan (efecto
-    // idéntico; se separan solo para reportería).
+    // devolucion_dinero no genera saldo a favor (reembolso manual); saldo_a_favor y cambio_producto sí, con efecto idéntico (se separan solo para reportería).
     if (document.refundMethod === DvvRefundMethod.devolucion_dinero) {
       return;
     }
 
-    // Redondeado a pesos enteros: el sistema maneja pesos sin centavos, así que
-    // el saldo no debe nacer con decimales que nunca se podrían aplicar. Se
-    // acepta una diferencia de hasta ~1 peso con el total del documento.
+    // Redondeado a pesos enteros (hasta ~1 peso de diferencia con el total): un saldo con decimales nunca se podría aplicar.
     const amount = Math.round(Number(document.total));
     await tx.customerCredit.create({
       data: {

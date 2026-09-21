@@ -23,34 +23,17 @@ interface BarcodeScanInputProps {
     unitOfMeasure: 'unidad' | 'docena',
     availableStock: number,
   ) => void
-  // Lleva el foco al input de cantidad de la fila afectada (nueva o sumada) tras un
-  // escaneo correcto (ciclo escanear → cantidad → escanear).
+  // Foco a la fila afectada (nueva o sumada) tras un escaneo correcto
   focusQuantityInput: (index: number) => void
-  // Marcas del proveedor elegido en el documento (solo compras y devoluciones): si se escanea
-  // un producto de otra marca, se bloquea (no es solo un aviso). Viene sin valor cuando el
-  // tipo de documento no usa este filtro.
+  // Marcas del proveedor elegido (solo compras/devoluciones); otra marca bloquea el escaneo, no solo avisa
   supplierBrandIds?: string[]
-  // true mientras haga falta un proveedor y todavía no se eligió: deshabilita el input por
-  // completo (no tiene sentido escanear sin saber contra qué proveedor validar).
   disabled?: boolean
-  // Nombre del proveedor elegido, solo para el mensaje de bloqueo por marca.
+  // Solo para el mensaje de bloqueo por marca
   supplierName?: string
 }
 
-/**
- * Input dedicado y siempre enfocado para trabajar con lector de código de barras. El lector
- * escribe el código en lo que tenga el foco y manda Enter; este input se mantiene enfocado y,
- * al recibir Enter, busca el producto por código exacto y suma cantidad a una fila existente o
- * agrega una nueva. Convive con el flujo manual de "Agregar ítem", no lo reemplaza.
- *
- * No reutiliza el `Combobox` compartido a propósito: ese componente no funciona con teclado
- * (no hay Enter para seleccionar ni navegación con flechas), todo se elige con el mouse, y eso
- * es incompatible con un lector, que solo puede "teclear" texto y Enter.
- *
- * Expone un método `focus` porque el formulario necesita poder devolver el foco acá desde
- * afuera (p. ej. tras confirmar la cantidad en una fila); el efecto de montaje solo cubre el
- * foco inicial.
- */
+// Input siempre enfocado para lector de código de barras: Enter busca por código exacto y suma cantidad o agrega fila
+// No reusa el Combobox compartido porque ese solo funciona con mouse, incompatible con un lector
 export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanInputProps>(
   function BarcodeScanInput(
     {
@@ -67,13 +50,10 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
     ref,
   ) {
     const inputRef = useRef<HTMLInputElement>(null)
-    // Evita procesar un segundo Enter mientras la búsqueda del primero sigue en curso (doble
-    // disparo del lector o Enter mantenido); sin esto podría duplicarse el mismo ítem.
+    // Evita duplicar el ítem si el lector dispara un segundo Enter mientras el primero sigue en curso
     const isProcessingRef = useRef(false)
 
     useImperativeHandle(ref, () => ({
-      // Por si el proveedor se limpió a mitad de carga (al cambiar de tipo o de proveedor): no
-      // dejar el foco en un input que ya no se puede usar.
       focus: () => {
         if (!disabled) inputRef.current?.focus()
       },
@@ -113,9 +93,7 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
           throw error
         }
 
-        // Bloqueo total: un producto de una marca que no es del proveedor elegido siempre es un
-        // error real (proveedor equivocado en el documento, o producto equivocado escaneado).
-        // No se agrega la fila, solo se avisa.
+        // Bloqueo total, no solo aviso: marca distinta del proveedor elegido es siempre un error real
         if (supplierBrandIds !== undefined && !supplierBrandIds.includes(product.brandId)) {
           toast.error(
             `${product.code} no pertenece a las marcas de ${supplierName ?? 'este proveedor'}`,

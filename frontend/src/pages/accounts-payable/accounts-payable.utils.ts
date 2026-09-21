@@ -1,12 +1,5 @@
 import type { AccountsPayableStatus, DocumentType } from '@/types'
 
-export const formatCOP = (value: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  }).format(value)
-
 export const formatDate = (iso: string | null) => {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('es-CO', {
@@ -39,6 +32,3 @@ export const DOCUMENT_TYPE_LABELS: Partial<Record<DocumentType, string>> = {
   SAJ: 'Salida Ajuste',
   T: 'Traslado',
 }
-
-export const docNumber = (type: string, number: number) =>
-  `${type}-${String(number).padStart(6, '0')}`

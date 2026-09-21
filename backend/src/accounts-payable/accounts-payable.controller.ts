@@ -1,9 +1,8 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { AccountsPayableService } from './accounts-payable.service';
 import {
   FindAllAccountsPayableDto,
   FindAvailableCreditsDto,
-  RegisterPayablePaymentDto,
 } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 
@@ -31,21 +30,16 @@ export class AccountsPayableController {
     );
   }
 
+  // Mismo motivo de orden que "credits" arriba: "suppliers" no debe caer en :id.
+  @Get('suppliers/:supplierId/statement')
+  @Permissions('ap.read')
+  statement(@Param('supplierId') supplierId: string) {
+    return this.accountsPayableService.statement(supplierId);
+  }
+
   @Get(':id')
   @Permissions('ap.read')
   findOne(@Param('id') id: string) {
     return this.accountsPayableService.findOne(id);
-  }
-
-  @Post(':id/payments')
-  @Permissions('ap.manage')
-  registerPayment(
-    @Param('id') id: string,
-    @Body() registerPayablePaymentDto: RegisterPayablePaymentDto,
-  ) {
-    return this.accountsPayableService.registerPayment(
-      id,
-      registerPayablePaymentDto,
-    );
   }
 }

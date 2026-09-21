@@ -24,9 +24,7 @@ export class ZonesService {
         );
       }
 
-      // Una zona es un concepto logístico transversal: se replica a TODAS las
-      // bodegas activas. skipDuplicates empareja en silencio (idempotente) las
-      // bodegas donde ese nombre de zona ya existía.
+      // Una zona es transversal: se replica a todas las bodegas activas (skipDuplicates la hace idempotente).
       const activeWarehouses = await tx.warehouse.findMany({
         where: { active: true },
         select: { id: true },
@@ -68,9 +66,7 @@ export class ZonesService {
       });
     }
 
-    // El rename se propaga a las zonas gemelas de las otras bodegas (match por
-    // nombre anterior). Si otra bodega ya tiene una zona con el nombre nuevo,
-    // el @@unique dispara P2002 y el filtro global lo traduce a 409.
+    // El rename se propaga a las zonas gemelas de las otras bodegas; si el nombre nuevo ya existe ahí, P2002 → 409.
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.zone.update({
         where: { id: zoneId },

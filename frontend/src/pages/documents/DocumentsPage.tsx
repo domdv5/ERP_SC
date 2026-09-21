@@ -14,22 +14,16 @@ import {
   TablePagination,
 } from '@/components/shared'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
+import { formatCOP, docNumber } from '@/lib/format'
 import {
   DOC_TYPE_SELECT_OPTIONS,
   DOC_TYPE_BADGE,
   DOC_STATUS_BADGE,
   PV_CONVERSION_BADGE,
 } from './document.constants'
-import type { DocumentListItem, DocumentType, DocumentStatus } from '@/types/document.types'
+import type { DocumentType, DocumentStatus } from '@/types/document.types'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-
-const formatCOP = (value: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  }).format(value)
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('es-CO', {
@@ -131,8 +125,6 @@ export default function DocumentsPage() {
       fg: 'text-amber-500',
     },
   ]
-
-  const docNumber = (doc: DocumentListItem) => `${doc.type}-${String(doc.number).padStart(6, '0')}`
 
   return (
     <div className="space-y-6">
@@ -265,7 +257,7 @@ export default function DocumentsPage() {
                             <FileText className="w-4 h-4 text-white/70" />
                           </div>
                           <span className="font-mono text-xs font-medium text-content">
-                            {docNumber(doc)}
+                            {docNumber(doc.type, doc.number)}
                           </span>
                         </div>
                       </td>

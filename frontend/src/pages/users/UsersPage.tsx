@@ -26,9 +26,7 @@ import {
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+// ─── Helpers ────────────────────────────────────────────────────────────
 
 function getRoleNames(user: AppUser): string {
   return user.userRoles.map((ur) => getRoleLabel(ur.role.name)).join(', ') || '—'
@@ -55,9 +53,7 @@ function UserAvatar({ name }: { name: string }) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
+// ─── Page ───────────────────────────────────────────────────────────────
 
 export default function UsersPage() {
   const queryClient = useQueryClient()

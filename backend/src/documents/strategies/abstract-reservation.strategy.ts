@@ -12,15 +12,7 @@ import type {
   ReservationEffectStrategy,
 } from './document-effect.strategy';
 
-/**
- * Base común de los tipos que reservan stock de forma lógica (preventa y
- * remisión): apartan inventario para un cliente y un vendedor sin mover el
- * inventario físico. Al confirmar solo se valida que haya disponible (stock
- * menos lo ya reservado). La reserva es el documento confirmado en sí; no hay
- * una tabla aparte de reservas, así que no existe un segundo total que pueda
- * quedar descuadrado del inventario. Cada subclase solo indica su `type` y su
- * `entityNoun` (el sustantivo con artículo que usan los mensajes: "la preventa").
- */
+/** Base común de PV/REM: reservan stock sin mover inventario físico; la reserva es el documento confirmado, no hay tabla aparte. */
 @Injectable()
 export abstract class AbstractReservationStrategy
   extends BaseEffectStrategy
@@ -66,9 +58,7 @@ export abstract class AbstractReservationStrategy
   ) {
     const warehouseId = this.requireWarehouse(document);
 
-    // Valida todas las líneas de una y bloqueando las filas de inventario: dos
-    // confirmaciones a la vez del mismo producto quedan en fila una tras otra.
-    // Se corta en el primer faltante para conservar el mensaje de error de siempre.
+    // Bloquea las filas de inventario al validar: dos confirmaciones del mismo producto a la vez quedan en fila.
     const shortfalls = await this.assertBatchAvailability(
       tx,
       warehouseId,

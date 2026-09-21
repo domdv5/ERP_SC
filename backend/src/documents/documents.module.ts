@@ -24,9 +24,7 @@ import {
 } from './print/index';
 
 @Module({
-  // ThrottlerModule solo se importa acá (no en AppModule): el rate limit
-  // debe quedar scoped únicamente a GET /documents/:id/print, sin afectar
-  // el resto de la API.
+  // Solo acá (no en AppModule): el rate limit queda scoped a GET /documents/:id/print.
   imports: [
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 6 }]),
   ],

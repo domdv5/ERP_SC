@@ -385,11 +385,7 @@ export function DetailPanel({
                   description="Crea el primer bulto para asignar ubicaciones de stock"
                 />
               ) : (
-                // A diferencia del selector de bulto destino en el formulario de traslados
-                // (DocumentFormPage.tsx), este panel administrativo lista TODOS los bultos de
-                // la zona sin filtrar por `occupied` — aquí el objetivo es gestionar la
-                // ubicación en sí (editarla, ver su estado), no elegir un bulto libre para
-                // recibir stock nuevo.
+                // A diferencia del selector de traslados, este panel lista TODOS los bultos sin filtrar por `occupied`: acá se gestiona la ubicación, no se elige un bulto libre.
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {zone.bins.map((bin) => (
                     <BinCard

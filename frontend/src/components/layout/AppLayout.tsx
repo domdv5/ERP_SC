@@ -11,10 +11,7 @@ export function AppLayout() {
   const { data: systemStatus } = useSystemStatus()
 
   useEffect(() => {
-    // Debe aplicarse de forma síncrona respecto al cambio de `theme`: el toggle
-    // de tema en Header.tsx envuelve la actualización de estado en flushSync
-    // precisamente para que esta clase .dark ya esté puesta antes de que
-    // startViewTransition capture el snapshot del nuevo estado.
+    // Debe aplicarse síncrono: Header.tsx usa flushSync para que .dark ya esté puesta cuando startViewTransition capture el snapshot.
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
 

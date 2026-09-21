@@ -4,11 +4,7 @@ import type { DocumentPrintStrategy } from './document-print.strategy';
 import { CmPrintStrategy } from './cm-print.strategy';
 import { DvcPrintStrategy } from './dvc-print.strategy';
 
-/**
- * Guarda una estrategia de impresión por cada tipo de documento, igual que el
- * registro de efectos. Un tipo sin estrategia registrada es, por definición, uno
- * que todavía no se puede imprimir.
- */
+/** Guarda una estrategia de impresión por tipo de documento; uno sin estrategia registrada simplemente no se puede imprimir. */
 @Injectable()
 export class DocumentPrintRegistry {
   private readonly strategies = new Map<DocumentType, DocumentPrintStrategy>();
