@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: erp_sc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: erp_user
+      POSTGRES_PASSWORD: andres25
+      POSTGRES_DB: erp_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - erp_sc_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  erp_sc_postgres_data:
