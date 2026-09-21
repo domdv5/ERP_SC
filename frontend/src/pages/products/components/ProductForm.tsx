@@ -20,9 +20,7 @@ import { CatalogComboboxField, ThousandsInput } from '@/components/shared'
 import { getBrands, getGenders, getCategories } from '@/services/products.service'
 import type { Product } from '@/types'
 
-// ---------------------------------------------------------------------------
-// Schema
-// ---------------------------------------------------------------------------
+// ─── Schema ─────────────────────────────────────────────────────────────
 
 const schema = z
   .object({
@@ -51,9 +49,7 @@ const schema = z
 
 export type FormValues = z.infer<typeof schema>
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
+// ─── Props ──────────────────────────────────────────────────────────────
 
 interface ProductFormProps {
   open: boolean
@@ -63,9 +59,7 @@ interface ProductFormProps {
   defaultValues?: Product
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
+// ─── Internal helpers ───────────────────────────────────────────────────
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -106,9 +100,7 @@ function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSele
   )
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// ─── Component ──────────────────────────────────────────────────────────
 
 export function ProductForm({
   open,
@@ -203,9 +195,7 @@ export function ProductForm({
     }
   }, [prefix, suffix, isEdit, setValue, defaultValues?.legacyCode])
 
-  // El precio mínimo siempre es calculado (precio de venta menos 2%), nunca editable a mano —
-  // por eso el campo va disabled. Se recalcula en vivo tanto al crear como al editar. Si el
-  // precio de venta está vacío, el mínimo también queda vacío, nunca NaN.
+  // Precio mínimo = precio de venta − 2%, siempre calculado (campo disabled); vacío si el precio de venta está vacío, nunca NaN.
   useEffect(() => {
     const salePrice = Number(salePriceVal)
     const next =

@@ -81,9 +81,7 @@ export default function WarehousesPage() {
     if (warehouseId) queryClient.invalidateQueries({ queryKey: ['warehouses', warehouseId] })
   }
 
-  // Crear o renombrar una zona la replica el backend a TODAS las bodegas activas, así que
-  // refrescar la clave raíz alcanza la lista y el detalle de cada bodega. `warehouse-detail`
-  // es la clave que usa el form de traslados para su cascada zona/bulto.
+  // Zona replicada a TODAS las bodegas por el backend; se invalida también `warehouse-detail` (cascada zona/bulto del form de traslados).
   const invalidateAllWarehouses = () => {
     queryClient.invalidateQueries({ queryKey: ['warehouses'] })
     queryClient.invalidateQueries({ queryKey: ['warehouse-detail'] })

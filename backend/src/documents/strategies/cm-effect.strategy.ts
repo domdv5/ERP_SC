@@ -83,10 +83,7 @@ export class CmEffectStrategy extends BaseEffectStrategy {
       });
     }
 
-    // Redondeado a pesos enteros: el sistema maneja pesos sin centavos (los montos
-    // se muestran y se pagan enteros), así que la cuenta por pagar no debe nacer con
-    // un saldo con decimales que "Registrar pago" nunca podría saldar. El total del
-    // documento se deja exacto; se acepta una diferencia de hasta ~1 peso.
+    // Redondeado a pesos enteros (el sistema no maneja centavos); se acepta hasta ~1 peso de diferencia con el total del documento.
     await tx.accountsPayable.create({
       data: {
         supplierId: supplier.id,

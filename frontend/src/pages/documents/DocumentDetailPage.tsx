@@ -80,9 +80,7 @@ const creditStatusBadgeFor = (status: string) =>
     className: 'bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400',
   }
 
-// Cuando la petición pide un archivo (PDF), la respuesta de error también llega como archivo,
-// no como JSON, aunque el backend haya mandado un error normal. Hay que leerla como texto y
-// parsearla a mano para sacar el mensaje.
+// Con responseType file, un error también llega como archivo (no JSON); hay que leerlo como texto y parsearlo a mano.
 async function extractPrintErrorMessage(err: unknown): Promise<string | undefined> {
   const data = (err as { response?: { data?: unknown } })?.response?.data
   if (data instanceof Blob) {
@@ -203,9 +201,7 @@ export default function DocumentDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['products-search-pos'] })
     // Una compra crea su cuenta por pagar y una devolución crea o elimina la nota crédito al confirmar o anular.
     queryClient.invalidateQueries({ queryKey: ['accounts-payable'] })
-    // Confirmar o anular un traslado cambia el stock de los bultos; el detalle de la bodega
-    // debe refrescarse, si no el form de un traslado nuevo sigue mostrando bultos ocupados o
-    // libres que ya no lo están.
+    // Refresca el detalle de bodega: confirmar/anular un traslado cambia el stock de los bultos.
     queryClient.invalidateQueries({ queryKey: ['warehouse-detail'] })
   }
 
@@ -335,14 +331,9 @@ export default function DocumentDetailPage() {
   const isConfirmed = doc.status === 'confirmed'
   const isVoided = doc.status === 'voided'
 
-  // Las salidas por ajuste y los traslados no guardan costo ni subtotal en la línea: solo
-  // usan el costo promedio del producto para el movimiento de inventario. Por eso, para esos
-  // dos tipos, el costo y el subtotal se calculan en vivo desde el costo promedio del
-  // producto, en vez de leer unos campos que siempre valen cero.
+  // SAJ/T no guardan costo/subtotal en la línea; se calculan en vivo desde el costo promedio del producto.
   const usesAvgCostFallback = doc.type === 'SAJ' || doc.type === 'T'
-  // Preventas y remisiones comparten toda la mecánica de reserva y conversión: no guardan
-  // costo (lo que importa es el precio de venta de la línea), tienen columnas Liberado y
-  // Pendiente, panel "Liberar Stock", botón "Convertir a venta" y chip de conversión.
+  // PV/REM comparten mecánica de reserva/conversión: columnas Liberado/Pendiente, panel "Liberar Stock", chip de conversión.
   const isReservationType = doc.type === 'PV' || doc.type === 'REM'
   const canRelease = doc.type === 'PV' ? canReleasePV : doc.type === 'REM' ? canReleaseREM : false
   const canConvert = doc.type === 'PV' ? canConvertPV : doc.type === 'REM' ? canConvertREM : false
@@ -379,17 +370,11 @@ export default function DocumentDetailPage() {
         ? item.quantity * Number(item.product.avgCost)
         : item.subtotal
 
-  // El subtotal llega como texto aunque el tipo diga que es número. Sin convertirlo, a partir
-  // de la segunda línea la suma concatena texto en vez de sumar. Bug real visto en una venta
-  // de 2 líneas (con una sola coincidía de casualidad); afecta a cualquier documento con más
-  // de una línea.
+  // El subtotal llega como texto; sin Number(), desde la 2ª línea la suma concatena en vez de sumar.
   const itemsTotal = doc.documentItems.reduce((sum, item) => sum + Number(itemSubtotal(item)), 0)
-  // Nota de talla por línea: solo se muestra en traslados, donde un mismo producto puede
-  // repartirse en varios bultos con tallas distintas.
+  // Nota de talla por línea: solo traslados, donde un mismo producto se reparte en varios bultos.
   const showObservaciones = doc.type === 'T'
-  // Las salidas por ajuste y los traslados muestran el costo promedio del producto (ver la
-  // nota de arriba), nunca un costo tipeado por el usuario. Las compras, devoluciones y
-  // entradas por ajuste sí manejan un costo real, por eso conservan la etiqueta simple.
+  // SAJ/T muestran el costo promedio, nunca uno tipeado por el usuario (ver usesAvgCostFallback arriba).
   const costHeaderLabel = isPriceBasedType
     ? 'Precio unit.'
     : usesAvgCostFallback
@@ -404,10 +389,7 @@ export default function DocumentDetailPage() {
   // alineado bajo la columna de costo aunque haya columnas extra (Observaciones, o Liberado y Pendiente).
   const footerSkipCols = showObservaciones ? 4 : isReservationType ? 5 : 3
 
-  // Cuánto de itemsTotal se cubrió con saldo a favor del cliente. En el resto de tipos de
-  // documento (y en POS/COT sin saldo aplicado) appliedCustomerCredits llega undefined/vacío,
-  // así que creditsApplied queda en 0 y el tfoot no cambia.
-  // Number(...) por el mismo motivo que itemsTotal arriba: amount puede llegar como string.
+  // Cuánto de itemsTotal se cubrió con saldo a favor; sin saldo aplicado, appliedCustomerCredits llega vacío y queda en 0.
   const creditsApplied =
     doc.appliedCustomerCredits?.reduce((sum, c) => sum + Number(c.amount), 0) ?? 0
   const netPaid = Math.max(itemsTotal - creditsApplied, 0)
@@ -555,9 +537,7 @@ export default function DocumentDetailPage() {
               </button>
             )}
             {isConfirmed && isReservationType && canConvert && !pvActiveDerived && (
-              // La conversión real ocurre en el checkout de ventas, que se abre precargado con
-              // este documento. Se deshabilita solo si ya no queda cantidad pendiente (todo
-              // liberado o ya convertido).
+              // La conversión real ocurre en el checkout, precargado con este documento; se deshabilita sin cantidad pendiente.
               <button
                 type="button"
                 onClick={() =>

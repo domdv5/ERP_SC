@@ -68,11 +68,7 @@ export class DvcEffectStrategy extends BaseEffectStrategy {
       });
     }
 
-    // Nota crédito de proveedor: un saldo a favor que se puede aplicar a mano
-    // contra cualquier cuenta por pagar pendiente de este proveedor.
-    // Redondeado a pesos enteros: el sistema maneja pesos sin centavos, así que no
-    // debe nacer con un saldo con decimales. El total del documento se deja exacto;
-    // se acepta una diferencia de hasta ~1 peso.
+    // Nota crédito de proveedor, aplicable a mano contra cualquier CxP pendiente; redondeada a pesos enteros (hasta ~1 peso de diferencia con el total).
     const amount = Math.round(Number(document.total));
     await tx.supplierCredit.create({
       data: {

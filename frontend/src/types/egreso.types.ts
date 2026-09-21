@@ -20,9 +20,7 @@ export const EGRESO_PAYMENT_METHOD_LABELS: Record<EgresoPaymentMethod, string> =
   consignacion_oficina: 'Consignación oficina',
 }
 
-// Campos Decimal de Prisma (total, cashTotal, creditTotal, amount, totalAmount, paidAmount,
-// creditAmount, balance) tipados `string` a propósito — llegan como string en el JSON del
-// backend; TypeScript debe avisar si algún consumidor los usa sin pasarlos por Number() primero.
+// Campos Decimal de Prisma tipados `string` a propósito: llegan como string del backend
 export interface EgresoListItem {
   id: string
   number: string
@@ -44,8 +42,7 @@ export interface EgresoPaymentLine {
   createdAt: string
 }
 
-// CxP tal como viaja anidada dentro de una asignación de Egreso: no trae `supplier` (el egreso
-// ya es de un solo proveedor) ni `creditApplied`/`balance` (eso vive a nivel de CxP, no acá).
+// Sin `supplier` (el egreso ya es de un proveedor) ni `creditApplied`/`balance` (eso vive a nivel de CxP)
 export interface EgresoAllocationAccountPayable {
   id: string
   supplierId: string
@@ -124,9 +121,7 @@ export interface GetEgresosParams {
   number?: string
 }
 
-// CxP abierta de un proveedor, tal como la devuelve GET /egresos/suppliers/:id/open-items — ya
-// trae `balance` calculado, ordenadas por createdAt asc (el mismo orden en que el backend
-// reparte el saldo a favor).
+// Ya trae `balance` calculado, ordenadas createdAt asc (mismo orden del reparto FIFO del backend)
 export interface EgresoOpenPayable {
   id: string
   supplierId: string

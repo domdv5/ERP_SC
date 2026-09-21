@@ -20,14 +20,16 @@ If a change requires touching any of the above, state clearly what and why, and 
 
 ## Code Documentation Conventions
 
-Document the **why**, never the **what** — well-named identifiers already say what code does; a comment earns its place only when the reader can't derive it from the code itself.
+Un comentario es **1 línea**, en español, y solo existe si sin él el lector no entendería qué hacer. Nada de explicar el código — eso ya lo dicen los nombres.
 
-- **Document**: non-obvious business rules/invariants, design decisions with real trade-offs, workarounds for a specific bug/limitation, concurrency/locking rationale, non-obvious algorithms or formats (e.g. zero-padding for lexicographic order), anything that would genuinely surprise a future reader.
-- **Don't document**: trivial CRUD, simple getters/destructuring, self-explanatory conditionals, anything a competent reader infers instantly from names/types.
-- **Style**: short inline `//` comments in **Spanish** (matches existing comments across the codebase) for business-logic explanations; JSDoc only on exported functions/classes whose behavior isn't obvious from the signature — never on trivial ones. No multi-paragraph comment blocks.
-- **Length**: aim for 1-3 lines even for a real invariant — compress, never omit the why. Cut tutorial-style exposition, redundant examples, and meta-references ("antes de este cambio", "previamente esto era..."); keep only the rule/invariant itself. E.g. instead of a 6-line block walking through *why* a single `UPDATE ... ON CONFLICT` avoids a race condition, state the guarantee directly: `/** Suma delta en un solo UPDATE/ON CONFLICT (no read-then-write): el statement bloquea la fila, evitando que confirmaciones concurrentes se pisen. */`.
-- **Before adding a comment**, check the surrounding code for one that already explains the same thing — don't duplicate.
-- This is a comment-only concern — never justifies changing logic, renaming, or refactoring as a side effect of "documenting."
+- **Comentar**: solo lo que un lector competente NO puede deducir del código — una regla de negocio, un invariante, un workaround puntual a un bug específico. La pregunta es "¿qué necesita saber el que lee esto para no romperlo?", no "¿cómo le explico todo el contexto?".
+- **No comentar**: CRUD, getters, destructuring, condicionales obvios, nada que se infiera de nombres/tipos. Ante la duda, no comentar — default es cero comentarios, no default es documentar todo.
+- **Largo máximo: 1 línea.** Si de verdad no entra, 2 — nunca más, nunca un bloque. Prohibido: explicar el mecanismo paso a paso, justificar por qué NO se usó otro enfoque, ejemplos, o referencias a "antes"/"previamente". Se dice la regla, no la clase sobre la regla.
+- Ejemplo real (modelo `Sequence`, consecutivo por documento):
+  - ❌ un bloque `///` de 7 líneas explicando qué es un `SEQUENCE` de Postgres, por qué no se usó, aislamiento de transacciones, etc.
+  - ✅ `// Consecutivo atómico: INSERT...ON CONFLICT bloquea la fila hasta el COMMIT, sin huecos`
+- Antes de agregar un comentario, revisar si ya hay uno cerca diciendo lo mismo — no duplicar.
+- Esto es solo sobre comentarios — nunca justifica cambiar lógica, renombrar, o refactorizar de paso.
 
 ## Documentation Maintenance
 

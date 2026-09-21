@@ -192,12 +192,7 @@ export class ThirdPartiesService {
                 },
               }
             : undefined,
-          // internalNumber es obligatorio para crear un Supplier nuevo, así que
-          // solo se puede hacer upsert (create-o-update) cuando viene en el
-          // payload. Si el PATCH manda únicamente discountNotes (sin tocar
-          // internalNumber), se usa un update plano en vez de upsert — asume
-          // que el Supplier ya existe; si no existe, Prisma lanza P2025 y lo
-          // traduce el PrismaExceptionFilter global.
+          // upsert solo si viene internalNumber (obligatorio para crear); si el PATCH solo toca discountNotes, es un update plano.
           supplier: isSupplier
             ? internalNumber !== undefined
               ? {
@@ -213,13 +208,7 @@ export class ThirdPartiesService {
         },
       });
 
-      // isCustomer/isSupplier/isSeller pueden venir omitidos en el payload
-      // (PartialType no los fuerza a false), así que la validación corre sobre
-      // el estado ya mergeado por Prisma, no sobre el DTO recibido. Pero solo
-      // se exige el invariante si el PATCH tocó alguno de esos campos — así un
-      // registro legacy que ya lo incumplía no bloquea ediciones de campos no
-      // relacionados (ej. actualizar el teléfono), solo bloquea intentos de
-      // dejarlo sin roles.
+      // Valida sobre el estado ya mergeado, pero solo si el PATCH tocó isCustomer/isSupplier/isSeller — no bloquea legacy sin roles en ediciones no relacionadas.
       const rolesTouched =
         isCustomer !== undefined ||
         isSupplier !== undefined ||
@@ -249,9 +238,7 @@ export class ThirdPartiesService {
       }
 
       if (isSupplier && brands !== undefined) {
-        // El frontend solo envía brands nuevos (no los ya existentes en
-        // brandIds), pero skipDuplicates igual protege contra el nombre
-        // duplicado — los brands nunca se eliminan, solo se agregan o renombran.
+        // Los brands nunca se eliminan, solo se agregan o renombran; skipDuplicates protege contra nombre duplicado.
         await tx.brand.createMany({
           data: brands.map((name) => ({ name, supplierId: id })),
           skipDuplicates: true,

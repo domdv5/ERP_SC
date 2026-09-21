@@ -12,16 +12,11 @@ interface POSCartLineProps {
   // Precio mínimo actual del producto (piso del 2%). Lo resuelve la pantalla de checkout al
   // entrar el código al carrito. Viene sin valor mientras ese dato todavía no llegó.
   minSalePrice?: number
-  // Disponible del producto (stock total menos lo reservado), el mismo dato que en el listado
-  // de productos, resuelto junto con el precio mínimo. Solo informativo: el backend rechaza al
-  // confirmar si de verdad no alcanza; esto es solo un aviso temprano.
+  // Disponible ya neteado; solo informativo, es un aviso temprano y el backend rechaza al confirmar si de verdad no alcanza.
   availableStock?: number
 }
 
-// Fila de carrito del checkout de ventas, a propósito con su propio componente (no reutiliza el
-// de los otros documentos): aquel tiene columnas que cambian según el tipo de documento y no
-// encajan con la venta, y acá el producto siempre llega ya resuelto (por escaneo o búsqueda),
-// nunca se elige desde un buscador dentro de la fila.
+// Componente propio, no reutiliza ProductRow: acá el producto siempre llega resuelto (escaneo/búsqueda), nunca se elige desde la fila.
 export function POSCartLine({
   index,
   register,

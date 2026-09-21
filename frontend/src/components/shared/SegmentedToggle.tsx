@@ -7,10 +7,7 @@ interface SegmentedToggleProps {
   checkedLabel: string
 }
 
-/**
- * Toggle de dos opciones tipo "pill" (ej. Activos / Inactivos).
- * `checked` controla cuál de las dos opciones está seleccionada.
- */
+// Toggle de dos opciones tipo "pill" (ej. Activos / Inactivos)
 export function SegmentedToggle({
   checked,
   onChange,

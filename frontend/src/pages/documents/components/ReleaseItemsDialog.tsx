@@ -25,9 +25,7 @@ const baseSchema = z.object({
   notes: z.string().max(500, 'Máximo 500 caracteres').optional(),
 })
 
-// La validación por fila se hace a nivel de formulario (no en el schema de cada fila) porque
-// cada fila necesita comparar su cantidad contra su propio pendiente, igual que en el
-// formulario de pagos cada nota crédito se compara contra su saldo disponible.
+// Validación por fila a nivel de formulario (no en el schema de cada fila): cada fila compara su cantidad contra su propio pendiente.
 const releaseSchema = baseSchema.superRefine((data, ctx) => {
   const anyChecked = data.items.some((item) => item.checked)
   if (!anyChecked) {

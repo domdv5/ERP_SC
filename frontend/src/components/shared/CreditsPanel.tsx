@@ -20,10 +20,7 @@ interface CreditsPanelProps {
   totalAvailable: number
 }
 
-// Saldo a favor (de cliente o de proveedor) aplicable a un documento. Propone aplicar el
-// máximo posible (los saldos más antiguos primero, resuelto por quien llama) y deja bajar cada
-// monto; la validación real la hace siempre el backend. Compartido entre el checkout de
-// ventas (saldo a favor del cliente) y el formulario de Egresos (saldo a favor del proveedor).
+// Panel de saldo a favor, compartido entre checkout de ventas y Egresos; propone el máximo (más antiguos primero) y deja ajustar cada monto.
 export function CreditsPanel({
   title,
   credits,

@@ -1,21 +1,13 @@
-// Cálculos de negocio del formulario de Egresos. Puramente informativos: el backend vuelve a
-// calcular todo esto en la transacción real (ver `EgresosService`); acá solo se muestra al
-// usuario una vista previa consistente antes de enviar.
+// Vista previa informativa; el backend recalcula todo esto de verdad en la transacción real
 
 export interface PayableAllocationPreview {
   accountPayableId: string
-  // Abono total que el usuario propone para esa CxP.
   amount: number
-  // Parte de `amount` que este reparto cubre con saldo a favor.
   creditAmount: number
-  // Parte de `amount` que queda por cubrir con dinero (formas de pago).
   cashAmount: number
 }
 
-// Vista previa del reparto FIFO del saldo a favor entre las CxP seleccionadas: el backend
-// reparte el saldo a favor total aplicado empezando por la CxP más antigua (mismo orden en que
-// llegan de `GET /egresos/suppliers/:id/open-items`, createdAt asc). Cada CxP se cubre primero
-// con saldo a favor hasta agotar el pool o el abono de esa fila; el resto queda a dinero.
+// Reparto FIFO: cubre cada CxP con saldo a favor primero, en el mismo orden (createdAt asc) que open-items
 export function previewCreditAllocation(
   selectedPayables: { accountPayableId: string; amount: number }[],
   totalCreditsApplied: number,
@@ -33,9 +25,7 @@ export function previewCreditAllocation(
   })
 }
 
-// Dinero a pagar = total de abonos − saldo a favor aplicado. Nunca negativo: si el saldo a
-// favor alcanza a cubrir todo, el excedente simplemente no se aplica (se valida aparte que el
-// saldo a favor aplicado nunca supere el total de abonos).
+// Nunca negativo: si el saldo a favor cubre todo, el excedente no se aplica (se valida aparte)
 export function computeDineroAPagar(totalAbonos: number, totalCreditsApplied: number): number {
   return Math.max(totalAbonos - totalCreditsApplied, 0)
 }

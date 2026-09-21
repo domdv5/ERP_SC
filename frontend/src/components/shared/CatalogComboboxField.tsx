@@ -11,12 +11,7 @@ interface CatalogComboboxFieldProps<T extends FieldValues> {
   disabled?: boolean
 }
 
-/**
- * Combobox con búsqueda client-side para un campo de react-hook-form respaldado por un
- * catálogo pequeño ya cargado en memoria (marca, categoría, género, etc.) — envuelve
- * Controller + Combobox (modo no controlado) + el label, para no repetir este mismo
- * bloque en cada formulario que necesite este patrón.
- */
+// Envuelve Controller + Combobox (modo no controlado) + label para catálogos chicos ya en memoria
 export function CatalogComboboxField<T extends FieldValues>({
   control,
   name,

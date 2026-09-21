@@ -108,9 +108,7 @@ const DETAIL_INCLUDE = {
   },
 } satisfies Prisma.DocumentInclude;
 
-// Datos recortados para el PDF: solo lo que muestra la impresión de compras y
-// devoluciones. No trae el costo promedio del producto a propósito: el PDF usa
-// el costo real de cada línea, y mezclarlo con el promedio actual daría cifras mal.
+// Recortado para el PDF: no trae avgCost a propósito, mezclarlo con el costo real de cada línea daría cifras mal.
 const PRINT_INCLUDE = {
   documentItems: {
     include: {
@@ -149,11 +147,7 @@ export class DocumentsService {
     private readonly sequenceService: SequenceService,
   ) {}
 
-  /**
-   * Tipos de documento que el rol puede ver en el listado. Se derivan de los
-   * permisos document.create.{TIPO} del usuario — no existe un document.read.{TIPO}
-   * aparte. El gate grueso sigue siendo @Permissions('document.read').
-   */
+  /** Tipos de documento visibles en el listado: se derivan de los permisos document.create.{TIPO} del usuario. */
   private visibleDocumentTypes(permissions: string[]): DocumentType[] {
     const prefix = 'document.create.';
     const valid = new Set<string>(Object.values(DocumentType));
@@ -187,10 +181,7 @@ export class DocumentsService {
         ? [type]
         : undefined;
     const allowedTypes = this.visibleDocumentTypes(user.permissions);
-    // Si el cliente pide tipos, se intersecan con los visibles del rol; si no
-    // pide nada, se limita a los visibles. Intersección vacía deja la lista
-    // vacía, nunca un 403: pedir un tipo fuera del alcance del rol simplemente
-    // devuelve la lista filtrada en silencio.
+    // Tipos pedidos se intersecan con los visibles del rol; fuera de alcance da lista vacía, nunca 403.
     const effectiveTypes = requestedTypes
       ? requestedTypes.filter((t) => allowedTypes.includes(t))
       : allowedTypes;
@@ -286,11 +277,7 @@ export class DocumentsService {
     return getCustomerCreditSummary(this.prisma, customerId);
   }
 
-  /**
-   * Saldos a favor del cliente con balance disponible, para aplicar al momento de
-   * una venta (POS/COT). Distinto del cupo de crédito: acá es dinero a favor del
-   * cliente, no su línea de crédito.
-   */
+  /** Saldos a favor del cliente disponibles para aplicar en una venta (distinto del cupo de crédito). */
   async listAvailableCustomerCredits(customerId: string) {
     const credits = await this.prisma.customerCredit.findMany({
       where: { customerId, status: 'available', balance: { gt: 0 } },
@@ -547,11 +534,7 @@ export class DocumentsService {
     return this.findOne(id);
   }
 
-  /**
-   * Anular es genérico para todos los tipos: revierte los movimientos de
-   * inventario registrados y borra las cuentas por pagar y por cobrar del
-   * documento. Si algún tipo futuro necesita una reversa propia, se agrega ahí.
-   */
+  /** Anular es genérico para todos los tipos: revierte los movimientos de inventario y borra las CxP/CxC del documento. */
   async void(id: string, user: JwtPayload) {
     const document = await this.prisma.document.findUnique({
       where: { id },
@@ -589,9 +572,7 @@ export class DocumentsService {
       );
     }
 
-    // Una preventa o remisión ya convertida en venta no se puede anular: la venta
-    // derivada quedaría consumiendo una reserva que la anulación ya liberó.
-    // Primero hay que anular esa venta.
+    // No se puede anular una preventa/remisión ya convertida: la venta derivada seguiría consumiendo la reserva liberada.
     if (
       RESERVATION_TYPES.includes(document.type) &&
       document.derivedDocuments.some((d) => d.status !== DocumentStatus.voided)
@@ -601,9 +582,7 @@ export class DocumentsService {
       );
     }
 
-    // Un pago puede saldarse 100% con nota crédito y no dejar fila de pago.
-    // Si no se miran también las notas crédito aplicadas, ese caso no frena la
-    // anulación y más abajo revienta con un error crudo de base de datos.
+    // Un pago saldado 100% con nota crédito no deja fila de pago propia; hay que chequear también las notas crédito aplicadas.
     const hasPayments = document.accountsPayable.some(
       (payable) =>
         payable.payablePayments.length > 0 ||
@@ -666,14 +645,10 @@ export class DocumentsService {
           );
         }
 
-        // En preventas y remisiones, anular libera toda la reserva de una vez.
-        // Ese caso no dejaba rastro; este bloque anota la liberación igual que
-        // cuando se libera manualmente.
+        // Anular una preventa/remisión libera toda la reserva de una vez; se anota igual que una liberación manual.
         const strategy = this.effectsRegistry.get(document.type);
         if (isReservationStrategy(strategy)) {
-          // Se vuelven a leer las líneas dentro de la transacción: si alguien
-          // liberó reservas justo antes, el dato de afuera estaría viejo y este
-          // bloque liberaría de más.
+          // Relee las líneas dentro de la transacción: el dato de afuera podría estar viejo si alguien liberó justo antes.
           const freshItems = await tx.documentItem.findMany({
             where: { documentId: id },
             select: {
@@ -704,9 +679,7 @@ export class DocumentsService {
           }
         }
 
-        // Si nació de convertir una preventa o remisión, hay que devolverle las
-        // unidades marcadas como convertidas; si no, quedarían así para siempre y
-        // esa reserva nunca volvería a estar disponible.
+        // Si nació de una conversión, devuelve las unidades convertidas al origen o esa reserva nunca vuelve a estar disponible.
         if (document.sourceDocumentId) {
           const source = await tx.document.findUnique({
             where: { id: document.sourceDocumentId },
@@ -736,12 +709,7 @@ export class DocumentsService {
           }
         }
 
-        // El costo promedio solo se revierte en compras y ajustes de entrada
-        // (los únicos que lo recalculan al confirmar) y solo si el movimiento a
-        // anular es el último del producto.
-        // Se cachea por producto: un documento con varias líneas del mismo
-        // producto repetiría la misma consulta. Es seguro cachear porque la
-        // consulta excluye el documento que se está anulando.
+        // El costo solo se revierte en CM/EAI, y solo si el movimiento a anular es el último del producto (cacheado por producto, excluye este documento).
         const recentConsumptionCache = new Map<
           string,
           Awaited<ReturnType<typeof tx.inventoryMovement.findFirst>>
@@ -759,12 +727,7 @@ export class DocumentsService {
               Number(movement.documentItem?.unitCost ?? 0) > 0);
 
           if (isCostAffecting) {
-            // Las líneas del mismo documento se excluyen del chequeo comparando
-            // la fecha de creación (no el id, para no depender del orden del
-            // bucle). Solo cuenta el consumo real (salidas): un traslado no,
-            // porque su neto es cero; una anulación tampoco, porque revertir una
-            // compra o ajuste previo no es consumo. Sin esto, anular dos compras
-            // seguidas del mismo producto fallaba sin motivo.
+            // Excluye líneas del mismo documento por fecha de creación; solo cuenta consumo real (no traslados ni anulaciones).
             let mostRecentOther = recentConsumptionCache.get(
               movement.productId,
             );
@@ -829,9 +792,7 @@ export class DocumentsService {
             });
           }
 
-          // Si al revertir se quita stock (se deshace una entrada) en la tienda,
-          // hay que frenar la anulación cuando pisaría una reserva de preventa.
-          // Las reversiones que devuelven stock nunca pisan una reserva.
+          // Si revertir quita stock de la tienda, hay que frenar si pisaría una reserva de preventa/remisión.
           if (quantity > 0) {
             let warehouseType = warehouseTypeCache.get(movement.warehouseId);
 
@@ -900,14 +861,7 @@ export class DocumentsService {
           });
         }
 
-        // Re-chequeo dentro de la transacción: entre el chequeo de arriba (hecho
-        // antes de abrir esta transacción) y este punto, un egreso concurrente
-        // pudo haber pagado esta CxP o aplicado esta nota crédito. Se bloquean las
-        // filas con FOR UPDATE en el mismo orden global que usa EgresosService
-        // (accounts_payable -> accounts_receivable -> supplier_credit) para no
-        // cruzarse con esa transacción, y se repite la validación — así se
-        // devuelve el 409 en español de siempre en vez del P2003 crudo que
-        // tiraría el deleteMany si el chequeo de afuera ya quedó desactualizado.
+        // Re-chequeo con FOR UPDATE (mismo orden que EgresosService) por si un egreso concurrente pagó esto entre el chequeo de arriba y acá.
         await tx.$queryRaw`SELECT id FROM "accounts_payable" WHERE document_id = ${id}::uuid FOR UPDATE`;
         await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE document_id = ${id}::uuid FOR UPDATE`;
         await tx.$queryRaw`SELECT id FROM "supplier_credit" WHERE source_document_id = ${id}::uuid FOR UPDATE`;
@@ -1065,11 +1019,7 @@ export class DocumentsService {
     return this.withPvStatus(document);
   }
 
-  /**
-   * Convierte una preventa o remisión confirmada en una venta real (de contado o
-   * a crédito). Solo toma las líneas con reserva pendiente; el descuento real de
-   * la reserva ocurre al confirmar la venta derivada, no acá.
-   */
+  /** Convierte una preventa o remisión confirmada en una venta real; el descuento de la reserva ocurre al confirmar la derivada, no acá. */
   async convert(sourceId: string, dto: ConvertDocumentDto, user: JwtPayload) {
     const source = await this.prisma.document.findUnique({
       where: { id: sourceId },
@@ -1106,9 +1056,7 @@ export class DocumentsService {
       );
     }
 
-    // Por ahora solo se permite conversión total: cada preventa o remisión tiene
-    // como mucho una venta derivada activa. Sin esto, una segunda conversión deja
-    // un borrador que nunca se podrá confirmar.
+    // Solo conversión total: una segunda conversión sin este guard dejaría un borrador que nunca se puede confirmar.
     if (
       source.derivedDocuments.some((d) => d.status !== DocumentStatus.voided)
     ) {
@@ -1147,10 +1095,7 @@ export class DocumentsService {
       })),
     };
 
-    // Igual que al duplicar: revalida antes de crear el borrador, corriendo las
-    // reglas del tipo destino. Así la venta a crédito verifica el cupo del cliente
-    // en el momento de convertir. Si el precio mínimo subió desde que se creó la
-    // preventa, la conversión puede rechazarse; es lo esperado.
+    // Revalida contra las reglas del tipo destino (p. ej. cupo de crédito); si el piso de precio subió, puede rechazarse — es lo esperado.
     const targetStrategy = this.effectsRegistry.get(dto.targetType);
     await targetStrategy.validateCreate?.(validateCreateDto);
 
@@ -1228,10 +1173,7 @@ export class DocumentsService {
     });
   }
 
-  /**
-   * Libera, total o parcialmente, la reserva pendiente de una o más líneas de un
-   * documento confirmado. Solo aplica a preventas y remisiones; para otros tipos falla.
-   */
+  /** Libera, total o parcialmente, la reserva pendiente de un documento confirmado (solo preventas y remisiones). */
   async releaseItems(
     id: string,
     releaseItemsDto: ReleaseItemsDto,
@@ -1274,19 +1216,13 @@ export class DocumentsService {
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
-  // Agrega el bloque con el estado de conversión. La clave se sigue llamando `pv`
-  // por historia (para no romper el frontend), aunque hoy también aplica a las
-  // remisiones. Va vacío para el resto de tipos. Se calcula en cada lectura, no
-  // se guarda. Se quitan los documentos derivados de la respuesta: son la fuente
-  // de ese bloque y repetirlos sería dato duplicado en cada fila.
+  /** Agrega el bloque `pv` (nombre histórico, incluye REM) con el estado de conversión; se calcula en cada lectura, no se guarda. */
   private withPvStatus<T extends PvStatusInput>(doc: T) {
     const { derivedDocuments: _derivedDocuments, ...rest } = doc;
     return { ...rest, pv: buildPvStatus(doc) };
   }
 
-  // El parámetro `action` elige el permiso: el de crear cubre el ciclo normal
-  // (crear, editar, confirmar, anular, eliminar); liberar una reserva tiene
-  // permiso propio porque puede recaer en otro rol.
+  // `action` elige el permiso: crear cubre todo el ciclo normal, liberar reserva tiene permiso propio (puede ser otro rol).
   private assertDocumentPermission(
     user: JwtPayload,
     type: DocumentType,
@@ -1305,13 +1241,7 @@ export class DocumentsService {
     }
   }
 
-  /**
-   * Preventas, remisiones, ventas y devoluciones en venta se valoran al precio de
-   * venta; el resto de los documentos, al costo. Tener la lista en un Set evita
-   * repartir condicionales por todo el código cuando se agregue otro tipo valorado
-   * a precio. La DVV usa unitPrice (lo que el cliente pagó), a diferencia de la DVC
-   * que usa unitCost.
-   */
+  /** Documentos valorados al precio de venta (el resto se valora al costo); DVV usa unitPrice a diferencia de DVC. */
   private static readonly PRICE_BASED_TYPES = new Set<DocumentType>([
     DocumentType.PV,
     DocumentType.REM,
@@ -1335,10 +1265,7 @@ export class DocumentsService {
   }
 
   private async nextNumber(tx: Prisma.TransactionClient, type: DocumentType) {
-    // Delegado a SequenceService (tabla sequence, consecutivo atómico con FOR UPDATE
-    // implícito vía ON CONFLICT): antes calculaba MAX(number)+1 sin lock, lo que
-    // repetía número bajo dos creaciones concurrentes del mismo tipo. Contrato sin
-    // cambios: sigue devolviendo el string con ceros a 6 dígitos.
+    // Antes calculaba MAX(number)+1 sin lock (repetía número bajo concurrencia); ahora delega en SequenceService.
     return this.sequenceService.next(tx, type);
   }
 }

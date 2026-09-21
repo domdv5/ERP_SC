@@ -11,12 +11,7 @@ export const RESERVATION_TYPES: DocumentType[] = [
   DocumentType.REM,
 ];
 
-/**
- * Cuánto hay reservado hoy por producto: suma de las líneas de preventas y
- * remisiones confirmadas, restando lo ya liberado y lo ya convertido en venta.
- * No distingue bodega: la reserva es sobre el stock total. Devuelve 0 (nunca
- * indefinido) para los productos sin reservas.
- */
+/** Cuánto hay reservado hoy por producto (PV+REM confirmadas, menos lo liberado/convertido); 0 si no hay reservas. */
 export async function getReservedByProduct(
   prisma: PrismaOrTx,
   productIds: string[],
@@ -64,14 +59,7 @@ export interface AvailabilityShortfall {
   requestedQty: number;
 }
 
-/**
- * Verifica que un producto tenga disponible (stock menos reservas) antes de
- * reservarlo o de quitarle stock (anular una compra o ajuste, una salida o un
- * traslado). Cada llamador arma su mensaje con `buildMessage`. Bloquea la fila
- * de inventario antes de leerla: sin ese bloqueo, dos operaciones a la vez
- * leerían el mismo disponible y podrían reservar de más. Por eso exige correr
- * dentro de una transacción.
- */
+/** Verifica disponible (stock menos reservas) bloqueando la fila de inventario antes de leerla — exige correr dentro de una transacción. */
 export async function assertAvailableForReservation(
   tx: Prisma.TransactionClient,
   productId: string,

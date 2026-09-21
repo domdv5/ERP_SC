@@ -1,33 +1,20 @@
 import path from 'path';
 import { Injectable } from '@nestjs/common';
-// Import default (no `import * as`): un namespace import envuelve cada
-// propiedad en un getter sin setter — pdfMake.setFonts(...) fallaría porque
-// `this` quedaría atado a ese wrapper, no al singleton CJS real.
+// Import default, no `import * as`: un namespace import envolvería pdfMake.setFonts en un getter sin setter y rompería el `this` del singleton CJS.
 import pdfMake from 'pdfmake';
 import type { TDocumentDefinitions } from 'pdfmake/interfaces';
 import { PDF_FONTS } from './pdf-fonts.config';
 
-// pdfmake >=0.3 pasa hasta la carga de fuentes por setLocalAccessPolicy —
-// negar todo el acceso local rompía hasta los .ttf propios. Solo se permite
-// leer dentro de esta carpeta de fuentes.
+// pdfmake >=0.3 exige setLocalAccessPolicy incluso para sus propias fuentes; solo se permite leer esta carpeta.
 const FONTS_DIR = path.join(__dirname, 'fonts');
 
-/**
- * Wrapper puro de pdfmake (TDocumentDefinitions → Buffer). Sin conocimiento de
- * dominio: nunca debe importar nada de documents.service.ts ni de las
- * strategies de impresión.
- *
- * pdfmake >=0.3 reemplazó la clase PdfPrinter (instancia por request) por un
- * módulo singleton: setFonts() registra las fuentes una sola vez y
- * createPdf()/getBuffer() ya devuelven Promise<Buffer> directo.
- */
+/** Wrapper puro de pdfmake (TDocumentDefinitions → Buffer), sin conocimiento de dominio.
+ * pdfmake >=0.3 usa un módulo singleton (setFonts + createPdf().getBuffer()), no la clase PdfPrinter de versiones viejas. */
 @Injectable()
 export class PdfGeneratorService {
   constructor() {
     pdfMake.setFonts(PDF_FONTS);
-    // El logo se embebe como SVG inline, nunca por URL — se niega todo acceso
-    // remoto. Local solo permite la carpeta de fuentes registrada arriba, para
-    // que una futura definición maliciosa no pueda leer archivos del servidor.
+    // Logo siempre SVG inline, nunca URL: se niega todo acceso remoto y local se limita a la carpeta de fuentes.
     pdfMake.setLocalAccessPolicy((filePath) => filePath.startsWith(FONTS_DIR));
     pdfMake.setUrlAccessPolicy(() => false);
   }

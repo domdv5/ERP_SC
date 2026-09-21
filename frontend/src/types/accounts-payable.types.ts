@@ -20,9 +20,7 @@ export interface AccountsPayableDocument {
   date: string
 }
 
-// Los campos Decimal de Prisma (totalAmount, paidAmount, creditApplied, balance) llegan como
-// string en el JSON — se tipan `string` a propósito (no `number`) para que TypeScript avise si
-// algún consumidor los usa sin pasarlos por Number() primero, en vez de mentir que ya son number.
+// Decimal de Prisma llega como string en el JSON; se tipa `string` a propósito para no mentir que ya es number.
 export interface AccountsPayable {
   id: string
   supplierId: string
@@ -52,8 +50,7 @@ export interface SupplierCredit {
   sourceDocument?: AccountsPayableDocument
 }
 
-// Una fila del historial de pagos de una CxP, discriminada por `source`. `nota_credito_historica`
-// es el historial previo al rework de Egresos (un pago viejo con notas crédito aplicadas a mano).
+// Fila del historial de pagos de una CxP, discriminada por `source`; `nota_credito_historica` son pagos con notas crédito aplicadas a mano.
 export type AccountsPayableHistoryEntry =
   | {
       source: 'egreso'

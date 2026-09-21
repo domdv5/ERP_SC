@@ -26,9 +26,7 @@ export class ProductsService {
     } = findAllProductsDto;
     const skip = (page - 1) * limit;
 
-    // Si viene el proveedor, manda sobre la marca: se buscan las marcas activas
-    // de ese proveedor y se filtra por ellas. Si no tiene marcas activas, la
-    // lista vacía ya devuelve cero resultados sin necesidad de un caso aparte.
+    // supplierId manda sobre brandId: filtra por las marcas activas de ese proveedor.
     const brandFilter = supplierId
       ? {
           brandId: {
@@ -86,11 +84,7 @@ export class ProductsService {
         }),
       ]);
 
-    // Va fuera de la transacción principal a propósito: necesita los ids de la
-    // página ya resuelta y no requiere correr en la misma transacción (solo son
-    // lecturas, no cambian el inventario).
-    // Preventas y remisiones se cuentan por separado para mostrarlas en columnas
-    // distintas ("Reservado" y "En remisión"), aunque las dos descuentan del disponible.
+    // Fuera de la transacción principal: necesita los ids de la página ya resuelta. PV y REM se cuentan aparte para columnas distintas.
     const productIds = items.map((item) => item.id);
     const [reservedByProduct, remisionByProduct] = await Promise.all([
       getReservedByProduct(this.prisma, productIds, {
@@ -213,9 +207,7 @@ export class ProductsService {
       return acc + item.quantity;
     }, 0);
 
-    // El stock por bulto solo se llena con traslados; las compras entran a la
-    // bodega sin bulto. Por eso el total en bultos puede ser menor que el total
-    // de la bodega: no es "sin stock", es "stock sin bulto asignado".
+    // Solo los traslados llenan el stock por bulto; el total en bultos puede ser menor al de la bodega (stock sin bulto asignado, no sin stock).
     return {
       product: {
         id,

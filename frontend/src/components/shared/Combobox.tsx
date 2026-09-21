@@ -22,17 +22,8 @@ interface ComboboxProps {
   error?: string | boolean
 }
 
-/**
- * Dropdown buscable reutilizable. El menú se renderiza con createPortal en
- * document.body (posicionado con getBoundingClientRect + fixed) para que
- * nunca quede recortado por un contenedor padre con overflow:hidden/auto
- * (tablas, modales, paneles con scroll).
- *
- * Limitación conocida: no tiene soporte de teclado (sin Enter para
- * seleccionar, sin navegación con flechas) — toda selección es con mouse.
- * Por eso el flujo de escaneo de código de barras en documentos usa
- * BarcodeScanInput como input dedicado en vez de reutilizar este componente.
- */
+// Menú con createPortal a document.body para no quedar recortado por overflow:hidden del padre
+// Sin soporte de teclado (solo mouse) — por eso el escaneo de código de barras usa BarcodeScanInput aparte
 export function Combobox({
   value,
   onChange,

@@ -128,9 +128,7 @@ export class AuthService {
   async remove(id: string) {
     await this.prisma.user.findFirstOrThrow({ where: { id } });
 
-    // El schema no borra los roles en cascada y todo usuario tiene al menos uno,
-    // así que hay que quitarlos primero. La transacción hace ambos pasos atómicos:
-    // si el borrado del usuario falla por otra llave foránea, los roles vuelven.
+    // Sin cascade en el schema: hay que borrar roles antes que el usuario, ambos pasos atómicos en la misma transacción.
     try {
       await this.prisma.$transaction([
         this.prisma.userRole.deleteMany({ where: { userId: id } }),

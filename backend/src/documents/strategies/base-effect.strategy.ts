@@ -13,11 +13,7 @@ import {
 } from '@/documents/helpers/stock.helpers';
 import { getReservedByProduct } from '@/documents/helpers/reservation.helpers';
 
-/**
- * Base de las estrategias de efectos: concentra la lógica compartida
- * (mover stock + registrar kardex, validar proveedor, exigir bodega)
- * para que cada estrategia solo describa lo propio de su tipo.
- */
+/** Base de las estrategias de efectos: concentra la lógica compartida para que cada una solo describa lo propio de su tipo. */
 @Injectable()
 export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
   abstract readonly type: DocumentType;
@@ -109,13 +105,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     }
   }
 
-  /**
-   * Valida el disponible (stock menos reservas) de todos los ítems en una sola consulta
-   * que bloquea las filas, evitando muchas consultas sueltas y que dos confirmaciones a la
-   * vez lean el mismo disponible antes de escribir. Junta los faltantes y los devuelve en
-   * vez de lanzar: cada llamador arma su mensaje (la preventa corta en el primero, la venta
-   * de contado los reporta todos juntos).
-   */
+  /** Valida el disponible de todos los ítems en una sola consulta que bloquea las filas; devuelve los faltantes en vez de lanzar, cada llamador arma su mensaje. */
   protected async assertBatchAvailability(
     tx: Prisma.TransactionClient,
     warehouseId: string,

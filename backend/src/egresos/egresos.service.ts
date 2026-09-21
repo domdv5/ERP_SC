@@ -51,13 +51,7 @@ type ExistingEgresoForIdempotency = {
   allocations: { accountPayableId: string; amount: Prisma.Decimal }[];
 };
 
-/**
- * Compara el body de un reintento contra el egreso que ya quedó guardado bajo la
- * misma idempotencyKey. La comparación de `payables` es exacta (par CxP+monto,
- * agrupado igual que en createInTransaction); `credits`/`payments` solo comparan
- * el total, porque su reparto interno (qué crédito cubrió qué CxP) es una
- * decisión del service, no algo que el cliente repita igual en cada request.
- */
+/** Compara el reintento contra el egreso ya guardado con la misma idempotencyKey: payables exacto, credits/payments solo por total (el reparto interno lo decide el service). */
 function requestMatchesExisting(
   dto: CreateEgresoDto,
   existing: ExistingEgresoForIdempotency,
@@ -110,24 +104,7 @@ export class EgresosService {
     private readonly sequenceService: SequenceService,
   ) {}
 
-  /**
-   * Crea un egreso: paga una o varias CxP de un proveedor en un solo movimiento,
-   * con una o varias formas de pago y, si hay, saldos a favor. Reglas de negocio
-   * (ver plans/egresos-y-rework-cuentas-por-pagar.md):
-   *
-   * 1. El tercero debe ser proveedor.
-   * 2. Al menos una CxP (garantizado por @ArrayMinSize(1) en el DTO).
-   * 3. Todas las CxP deben ser de ese proveedor y no estar `paid`.
-   * 4. Cada abono > 0 y <= saldo pendiente de su CxP.
-   * 5. Los saldos a favor deben ser del proveedor, cada monto <= su saldo disponible.
-   * 6. Cuadre exacto: Σ abonos === Σ saldos a favor usados + Σ formas de pago.
-   * 7. El saldo a favor se reparte solo entre las CxP elegidas, empezando por la más
-   *    antigua (createdAt asc); lo que sobra de cada CxP se cubre con dinero.
-   * 8. Recalcula paidAmount/status de cada CxP y balance/status de cada saldo a favor.
-   * 9. Idempotencia por idempotencyKey: un reintento devuelve el egreso ya creado.
-   * 10. Montos en pesos enteros, validados en centavos (mismo criterio que
-   *     accounts-payable.service.ts::registerPayment, que este endpoint reemplaza).
-   */
+  /** Paga una o varias CxP de un proveedor: cuadre exacto (Σ abonos = Σ saldos a favor + Σ formas de pago), saldo a favor repartido FIFO por antigüedad, idempotente por idempotencyKey. */
   async create(dto: CreateEgresoDto, user: JwtPayload) {
     // Corto circuito rápido antes de la transacción pesada: la mayoría de los
     // reintentos (doble clic) llegan bien después de que el primero ya terminó.
@@ -219,9 +196,7 @@ export class EgresosService {
       }
     }
 
-    // Agrupa por CxP: si el mismo id aparece dos veces en el body, sumar antes de
-    // validar evita que dos abonos parciales colados se cuelen por separado del
-    // límite real (mismo motivo que requestedCentsByCreditId en registerPayment).
+    // Agrupa por CxP: si el mismo id se repite en el body, suma antes de validar contra el límite.
     const requestedCentsByPayableId = new Map<string, number>();
     for (const line of dto.payables) {
       const previous =
@@ -269,9 +244,7 @@ export class EgresosService {
       const creditIds = [...requestedCentsByCreditId.keys()].sort();
       await tx.$queryRaw`SELECT id FROM "supplier_credit" WHERE id = ANY(${creditIds}::uuid[]) ORDER BY id FOR UPDATE`;
 
-      // orderBy explícito para que el reparto FIFO de más abajo (creditQueue)
-      // consuma primero el saldo a favor más antiguo, como dice su comentario —
-      // sin esto, findMany no garantiza ningún orden en particular.
+      // orderBy explícito: findMany no garantiza orden, y el reparto FIFO de abajo necesita el más antiguo primero.
       credits = await tx.supplierCredit.findMany({
         where: { id: { in: creditIds } },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
@@ -323,14 +296,7 @@ export class EgresosService {
       0,
     );
 
-    // Cuadre con tolerancia de redondeo (hasta 1 peso): algunas CxP legadas (de
-    // antes de este módulo) tienen saldo con centavos, pero el abono se teclea en
-    // pesos enteros (ThousandsInput del frontend) — el usuario no puede escribir
-    // los centavos exactos para cerrar ese remanente. Mismo criterio de "hasta ~1
-    // peso de diferencia" que ya usan CmEffectStrategy/DvcEffectStrategy al
-    // redondear totalAmount/amount a pesos enteros. Las CxP creadas desde este
-    // módulo en adelante nacen sin centavos (Math.round en confirm()), así que
-    // esto solo puede pasar contra saldo legado.
+    // Tolerancia de hasta 1 peso: CxP legadas con centavos, pero el abono se teclea en pesos enteros.
     const settledCents = creditsTotalCents + paymentsTotalCents;
     if (Math.abs(payablesTotalCents - settledCents) > 100) {
       throw new BadRequestException(
@@ -338,10 +304,7 @@ export class EgresosService {
       );
     }
 
-    // Fecha: por defecto hoy en huso Colombia (America/Bogota), nunca futura. Con
-    // toISOString() (UTC) un egreso de las 7pm caía en el día siguiente — mismo
-    // motivo documentado para Egreso.date en schema.prisma. Se compara como fecha
-    // simple (YYYY-MM-DD), sin horas, contra ese mismo huso.
+    // Hoy en huso Bogotá, no UTC: con toISOString() un egreso nocturno caía en el día siguiente.
     const todayStr = new Date().toLocaleDateString('sv-SE', {
       timeZone: 'America/Bogota',
     });
@@ -353,13 +316,7 @@ export class EgresosService {
     // Número tomado como último bloqueo, después de accounts_payable y supplier_credit.
     const number = await this.sequenceService.next(tx, 'EGRESO');
 
-    // total = lo efectivamente cubierto (crédito + dinero), no la suma cruda de
-    // abonos: así coincide exacto con cashTotal+creditTotal por construcción y
-    // nunca choca con el CHECK "egreso_totals_chk" (total = cash_total +
-    // credit_total), incluso cuando la tolerancia de arriba absorbió hasta 1 peso
-    // de diferencia contra payablesTotalCents. El abono real a cada CxP no cambia:
-    // EgresoAllocation.amount/AccountsPayable.paidAmount siguen usando el monto
-    // exacto que se tecleó para esa CxP (más abajo), no este total.
+    // total = settledCents (no la suma cruda) para que siempre cuadre con el CHECK total=cash_total+credit_total.
     const egreso = await tx.egreso.create({
       data: {
         number,
@@ -386,11 +343,7 @@ export class EgresosService {
       });
     }
 
-    // Reparto del saldo a favor entre las CxP elegidas, empezando por la más
-    // antigua (payables ya viene ordenado por createdAt asc). Dentro de cada CxP,
-    // consume los créditos citados en el orden en que llegaron hasta agotar lo que
-    // necesita esa CxP o el crédito, lo que pase primero — el remanente de un
-    // crédito pasa a la siguiente CxP de la cola.
+    // Reparto FIFO: cada CxP (de la más antigua a la más nueva) consume créditos hasta agotar lo que necesita o el crédito.
     const creditQueue = credits.map((credit) => ({
       id: credit.id,
       remainingCents: requestedCentsByCreditId.get(credit.id)!,

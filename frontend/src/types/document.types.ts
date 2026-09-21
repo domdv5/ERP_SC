@@ -1,17 +1,11 @@
-// POS = venta de contado, COT = venta a crédito. Ambas comparten la pantalla de checkout
-// (POSCheckoutPage con toggle Contado/Crédito); COT además valida el cupo del cliente y
-// genera una cuenta por cobrar al confirmar.
-// REM = remisión: documento transitorio "gemelo de PV" — reserva lógica de stock (sin
-// movimiento físico), convertible a POS/COT, con liberación parcial. En el frontend se
-// trata casi idéntico a PV (mismo form genérico, mismas columnas de reserva).
+// POS = venta de contado, COT = venta a crédito (valida cupo y genera CxC al confirmar).
+// REM = remisión, gemela de PV: reserva lógica de stock, convertible a POS/COT.
 export type DocumentType = 'CM' | 'DVC' | 'EAI' | 'SAJ' | 'T' | 'PV' | 'POS' | 'COT' | 'REM' | 'DVV'
 export type DocumentStatus = 'draft' | 'confirmed' | 'voided'
 export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia'
 // Motivo del ajuste — obligatorio solo para documentos EAI (Entrada por Ajuste de Inventario).
 export type EaiAdjustmentReason = 'negativo' | 'inventario_general' | 'traspaso_costo' | 'otro'
-// Modalidad de una devolución en venta (DVV), obligatoria al crearla. "Saldo a favor" y
-// "cambio de producto" generan una nota de saldo a favor del cliente; "devolución de dinero"
-// solo revierte el inventario y no deja saldo.
+// saldo_a_favor/cambio_producto generan nota de saldo a favor; devolucion_dinero solo revierte inventario.
 export type DvvRefundMethod = 'saldo_a_favor' | 'cambio_producto' | 'devolucion_dinero'
 
 export interface DocumentWarehouse {
@@ -22,10 +16,7 @@ export interface DocumentWarehouse {
 export interface DocumentThirdParty {
   id: string
   name: string
-  // Solo viene cuando el tercero es proveedor: sus marcas activas. En compras y devoluciones
-  // se usan para limitar el buscador y el escaneo de productos a esas marcas.
-  // discountNotes: condiciones de descuento en texto libre, se muestran como aviso solo en
-  // compras. Nunca se calcula nada, es solo lectura.
+  // Solo si es proveedor: marcas activas (limitan buscador/escaneo en compras) y discountNotes (aviso de solo lectura).
   supplier?: { brands: { id: string; name: string }[]; discountNotes?: string | null } | null
 }
 
@@ -60,12 +51,7 @@ export interface PvDerivedDocRef {
   status: DocumentStatus
 }
 
-// Bloque que arma el backend, presente en preventas y remisiones (null en el resto):
-// - converted: tiene al menos una venta derivada confirmada.
-// - pending: tiene alguna venta derivada sin anular, pero ninguna confirmada.
-// - none: no tiene derivadas o están todas anuladas.
-// `documents` trae TODAS las derivadas, anuladas incluidas; el front filtra según el estado.
-// La clave se sigue llamando `pv` por historia.
+// Solo en PV/REM. converted = hay derivada confirmada; pending = hay derivada sin anular; none = ninguna o todas anuladas. `documents` trae todas, anuladas incluidas.
 export interface PvStatus {
   conversion: {
     status: PvConversionStatus
@@ -126,9 +112,7 @@ export interface Document extends DocumentListItem {
   sourceDocument: DocumentSourceRef | null
   confirmedBy: DocumentUser | null
   voidedBy: DocumentUser | null
-  // Solo en el detalle, no en el listado. updatedBy: quién editó el borrador por última vez
-  // (null si nunca se editó). convertedBy / convertedAt: quién y cuándo convirtió el documento
-  // en una venta (solo preventas y remisiones; null si no se convirtió).
+  // Solo en el detalle: updatedBy = último editor del borrador; convertedBy/convertedAt = quién y cuándo convirtió (solo PV/REM).
   updatedBy?: DocumentUser | null
   convertedBy?: DocumentUser | null
   convertedAt?: string | null
@@ -232,8 +216,7 @@ export interface CreateDocumentPayload {
   sourceBinId?: string
   destWarehouseId?: string
   destBinId?: string
-  // Solo en entradas por ajuste: el motivo. La explicación libre es obligatoria solo cuando el
-  // motivo es "otro".
+  // Solo en entradas por ajuste; la explicación libre es obligatoria solo si el motivo es "otro".
   adjustmentReason?: EaiAdjustmentReason
   // Se manda null explícito (no undefined) cuando el motivo deja de ser "otro": así la clave
   // viaja en el JSON y el backend borra el texto viejo en vez de dejarlo guardado.
@@ -241,21 +224,16 @@ export interface CreateDocumentPayload {
   notes?: string
   // Solo en ventas de contado, donde es obligatorio (lo valida el backend; en el tipo queda opcional).
   paymentMethod?: PaymentMethod
-  // Solo en devoluciones en venta (DVV): obligatorio. Define si la devolución deja saldo a
-  // favor, es para cambio de producto, o se devuelve en dinero.
+  // Solo DVV, obligatorio: define si deja saldo a favor, es cambio de producto, o devuelve dinero.
   refundMethod?: DvvRefundMethod
-  // Saldos a favor del cliente que se aplican a esta venta. Solo lo usa la creación de ventas
-  // a crédito (COT): el backend netea la cuenta por cobrar y valida el cupo sobre el neto. No
-  // se persiste como tal; el POS los aplica recién al confirmar.
+  // Solo en creación COT: backend netea la CxC y valida cupo sobre el neto (POS los aplica recién al confirmar).
   customerCredits?: { customerCreditId: string; amount: number }[]
   items: CreateDocumentItemPayload[]
 }
 
 export type UpdateDocumentPayload = Omit<CreateDocumentPayload, 'type'>
 
-// Cuerpo opcional de POST /documents/:id/confirm. Solo lo usan las ventas POS/COT para
-// aplicar saldos a favor del cliente al confirmar. Sin cuerpo, el confirm se comporta igual
-// que siempre.
+// Body opcional de confirm, solo POS/COT: aplica saldos a favor del cliente al confirmar.
 export interface ConfirmDocumentPayload {
   customerCredits?: { customerCreditId: string; amount: number }[]
 }

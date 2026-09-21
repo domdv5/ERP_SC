@@ -30,10 +30,7 @@ function isDvvNewActive(pathname: string, search: string) {
   return pathname === '/documents/new' && new URLSearchParams(search).get('type') === 'DVV'
 }
 
-// "/documents/pos/new" y "/documents/new?type=REM" también empiezan con "/documents", así
-// que NavLink, por defecto, marcaría "Operaciones" como activo estando en el checkout de
-// venta o en el form de remisión. Forzar coincidencia exacta tampoco sirve: rompería el
-// resaltado en "/documents/new" y "/documents/:id". Se excluyen esas dos rutas a mano.
+// Excluye checkout POS y remisión: ambas empiezan con "/documents" y marcarían "Operaciones" activo por error.
 function isDocumentsActive(pathname: string, search: string) {
   return (
     pathname.startsWith('/documents') &&
@@ -79,9 +76,7 @@ function WarehousesSidebarItem() {
         <div className="ml-3 mt-0.5 mb-1 border-l border-ui-border-medium dark:border-white/10 pl-2 space-y-0.5">
           {warehouses.map((w) => {
             const WIcon = w.type === 'store' ? Store : Warehouse
-            // Link (no NavLink) + isActive manual: NavLink calcula isActive
-            // ignorando los query params, así que con rutas del tipo
-            // /warehouses?id=X marcaría todos los sub-items como activos a la vez.
+            // Link + isActive manual: NavLink ignora query params y marcaría todos los sub-items activos a la vez.
             const isItemActive = currentId === w.id
             return (
               <Link
@@ -105,9 +100,7 @@ function WarehousesSidebarItem() {
   )
 }
 
-// El cálculo de "activo" para "/documents" y "Nueva remisión" no puede delegarse a
-// NavLink (uno coincide de más por prefijo, el otro ignora el "?type=REM"), así que
-// esas dos rutas usan las funciones de arriba en vez del isActive automático.
+// "/documents" y "Nueva remisión" no pueden delegar a NavLink (coincide de más por prefijo / ignora "?type=REM").
 function navLinkClassFor(item: NavItem, pathname: string, search: string) {
   if (item.to === '/documents') {
     return () => getNavLinkClass(isDocumentsActive(pathname, search))

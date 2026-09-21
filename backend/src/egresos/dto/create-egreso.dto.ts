@@ -18,14 +18,7 @@ import {
 import { Type } from 'class-transformer';
 import { EgresoPaymentMethod } from '@prisma/client';
 
-/**
- * Valida `reference` como texto opcional de máximo 100 caracteres, pero
- * obligatorio (no vacío) cuando `method === 'cheque'`. No se puede armar con
- * @IsOptional()/@ValidateIf() porque ambos descartan TODOS los validadores del
- * campo cuando su condición es falsa — con @IsOptional, un cheque sin `reference`
- * (undefined) nunca llegaría a validarse como "requerido". Un solo validador
- * custom evita el atajo.
- */
+/** Valida `reference`: opcional salvo si `method === 'cheque'` — @IsOptional()/@ValidateIf() no sirven porque ambos descartan el validador entero cuando la condición da falso. */
 function IsValidChequeReference(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({
@@ -113,9 +106,7 @@ export class CreateEgresoDto {
   @MaxLength(500)
   notes?: string;
 
-  // La genera el frontend (crypto.randomUUID()) al abrir el formulario y la reenvía
-  // igual en un reintento; el service devuelve el egreso ya creado en vez de duplicarlo
-  // solo si el resto del body coincide (ver EgresosService.create).
+  // La genera el frontend al abrir el formulario; un reintento con la misma clave no duplica si el resto del body coincide (ver EgresosService.create).
   @IsUUID()
   idempotencyKey!: string;
 

@@ -50,9 +50,7 @@ export interface Product {
   reservedQuantity: number
   // Cantidad reservada por remisiones confirmadas, ya restadas las liberaciones y conversiones.
   remisionQuantity: number
-  // Stock total menos lo reservado por preventas y remisiones (ya calculado por el backend).
-  // Puede ser negativo si una salida por ajuste saca mercancía ya reservada: es esperado, no
-  // un bug, y se muestra en rojo.
+  // Stock ya neteado de reservas; negativo es válido (ajuste de salida sobre stock reservado) y se pinta en rojo.
   availableStock: number
 }
 

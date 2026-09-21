@@ -10,12 +10,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-// react-hook-form anida errores en objetos y arrays (ej. errors.items[2].quantity.message
-// para un array de ítems de documento) — se recorre recursivamente hasta encontrar el
-// primer .message string, sin asumir una forma fija del árbol. Se tipa con `unknown` en
-// el recorrido interno porque el árbol mezcla FieldError, arrays y objetos anidados sin
-// una forma común expresable sin `any`; la firma pública (getFirstErrorMessage) sigue
-// tipada con FieldErrors.
+// Recorre el árbol recursivamente porque react-hook-form anida errores en arrays (ej. errors.items[2].quantity.message)
 function findFirstMessage(node: unknown): string | undefined {
   if (!isRecord(node)) return undefined
 
@@ -32,12 +27,7 @@ function findFirstMessage(node: unknown): string | undefined {
   return undefined
 }
 
-/**
- * Devuelve el primer mensaje de error encontrado en el árbol de FieldErrors de
- * react-hook-form (incluye errores anidados en arrays de ítems). Pensado para
- * mostrarse en un único toast (`toast.error`) en el callback `onInvalid` de
- * `handleSubmit`, en vez de renderizar cada error inline junto a su campo.
- */
+// Para mostrar en un único toast.error desde onInvalid, en vez de un error inline por campo
 export function getFirstErrorMessage(errors: FieldErrors): string {
   return findFirstMessage(errors) ?? FALLBACK_MESSAGE
 }

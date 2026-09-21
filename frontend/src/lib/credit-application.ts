@@ -1,7 +1,4 @@
-// Cálculo de reparto de saldos a favor (créditos), compartido entre el checkout POS/COT
-// (saldos a favor de cliente) y el formulario de Egresos (saldos a favor de proveedor). Trabaja
-// sobre un `id` genérico; cada llamador lo mapea al nombre de campo que espera su propio
-// payload (`customerCreditId` / `supplierCreditId`).
+// Reparto de saldos a favor, compartido entre checkout POS/COT y Egresos; genérico sobre `id`, cada llamador mapea al campo de su payload.
 
 export interface CreditBalance {
   id: string
@@ -13,9 +10,7 @@ export interface AppliedCredit {
   amount: number
 }
 
-// Propuesta por defecto para aplicar saldos a favor a un total: recorre los saldos en el orden
-// recibido (se espera del más antiguo al más nuevo) y asigna a cada uno el menor entre su saldo
-// y lo que todavía falta para cubrir el total. Se detiene al cubrirlo.
+// Recorre los saldos en el orden recibido (más antiguo primero) asignando el mínimo entre saldo y lo que falta, hasta cubrir el total.
 export function proposeCreditApplication(credits: CreditBalance[], total: number): AppliedCredit[] {
   let remaining = Math.max(total, 0)
   const result: AppliedCredit[] = []

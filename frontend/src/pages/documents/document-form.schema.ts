@@ -15,9 +15,7 @@ export const itemSchema = z.object({
 
 export const formSchema = z
   .object({
-    // Los tipos de venta ('POS'/'COT') se incluyen solo para que el tipo del documento existente
-    // encaje al reabrir en modo edición. El form nunca los ofrece como opción y redirige fuera si
-    // detecta un borrador de venta: esos se editan solo desde el checkout.
+    // POS/COT solo para que el tipo encaje al reabrir en edición; el form redirige al checkout si detecta un borrador de venta.
     type: z.enum(['CM', 'DVC', 'EAI', 'SAJ', 'T', 'PV', 'REM', 'DVV', 'POS', 'COT'] as const),
     date: z.string().min(1, 'La fecha es requerida'),
     thirdPartyId: z.string().optional(),

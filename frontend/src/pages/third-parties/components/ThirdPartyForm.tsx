@@ -254,9 +254,7 @@ export function ThirdPartyForm({
   const firstName = watch('firstName')
   const lastName = watch('lastName')
 
-  // El nombre completo de persona natural siempre es calculado (nombre + apellido); no tiene
-  // campo visible en el form, se manda solo internamente. Se recalcula en vivo tanto al crear
-  // como al editar.
+  // name = nombre + apellido, siempre calculado; sin campo visible, se manda solo internamente.
   useEffect(() => {
     if (personType !== 'natural') return
     setValue('name', `${firstName ?? ''} ${lastName ?? ''}`.trim())
@@ -288,10 +286,7 @@ export function ThirdPartyForm({
     setEditingValue(brand)
   }
 
-  // Solo se crean al enviar las marcas que todavía no existen (no están en brandIds). Las
-  // marcas renombradas ya viven en brandIds con su nombre nuevo, así que no se recrean.
-  // Se manda undefined (no []) cuando no hay marcas nuevas, para que el backend se salte
-  // ese bloque: un arreglo vacío haría fallar la validación de "no vacío".
+  // Solo se crean marcas que no están en brandIds (las renombradas ya viven ahí). undefined, no [], o el backend falla su validación de "no vacío".
   const submitForm = (data: FormValues) => {
     const derivedName = `${data.firstName ?? ''} ${data.lastName ?? ''}`.trim()
     const finalName =

@@ -30,10 +30,7 @@ const EgresosListPage = lazy(() => import('@/pages/egresos/EgresosListPage'))
 const EgresoDetailPage = lazy(() => import('@/pages/egresos/EgresoDetailPage'))
 const EgresoNewPage = lazy(() => import('@/pages/egresos/EgresoNewPage'))
 
-// Fallback de Suspense con delay de 200ms antes de mostrar el loader de
-// pantalla completa. Los chunks lazy que ya están en caché del navegador o
-// que cargan rápido en dev nunca llegan a los 200ms, así que la navegación
-// se siente instantánea en vez de parpadear el spinner en cada click.
+// Delay de 200ms antes del loader de pantalla completa: un chunk ya cacheado no llega a mostrarlo, evita el parpadeo en cada click.
 function DelayedPageLoader() {
   const [show, setShow] = useState(false)
 
@@ -51,10 +48,7 @@ function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<DelayedPageLoader />}>{children}</Suspense>
 }
 
-// La ruta /documents/new es la misma para todos los tipos que llegan por enlace directo
-// (?type=REM, ?type=DVV). Sin este key, ir de una remisión a una devolución no remonta el
-// formulario y la pantalla se queda con el tipo anterior. El key fuerza un formulario limpio
-// por cada tipo.
+// key por tipo: /documents/new es la misma ruta para REM/DVV, sin esto no remonta y queda con el tipo anterior.
 function NewDocumentForm() {
   const [searchParams] = useSearchParams()
   return <DocumentFormPage key={searchParams.get('type') ?? 'default'} />

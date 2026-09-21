@@ -29,9 +29,7 @@ export class FindAllDocumentsDto {
   @IsEnum(DocumentType)
   type?: DocumentType;
 
-  // Lista de tipos separados por coma (ej. "CM,DVC"). Llega como texto por la URL
-  // y el service la parte por comas. Es el filtro de varios tipos; el campo `type`
-  // de arriba filtra por uno solo.
+  // Lista de tipos separados por coma (ej. "CM,DVC"); `type` de arriba filtra por uno solo.
   @IsOptional()
   @IsString()
   types?: string;

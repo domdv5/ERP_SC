@@ -52,9 +52,7 @@ export default function DocumentFormPage() {
   const userPermissions = useAuthStore((s) => s.user?.permissions ?? [])
   const canCreateType = (t: string) => userPermissions.includes(`document.create.${t}`)
 
-  // Tipos que NO salen en el desplegable "Tipo de operación": las ventas tienen su propia
-  // pantalla de checkout; la remisión y la devolución en venta se crean solo desde su enlace
-  // del menú, con el tipo ya fijado, para que no parezcan "una operación de inventario más".
+  // Fuera del desplegable: ventas tienen su propio checkout; REM/DVV se crean solo desde su enlace del menú, tipo ya fijado.
   const availableTypes = DOC_TYPE_OPTIONS.filter(
     (opt) =>
       opt.value !== 'POS' &&
@@ -103,19 +101,12 @@ export default function DocumentFormPage() {
   const [debouncedSellerSearch] = useDebounce(sellerSearch, 400)
   const [sellerSelectedName, setSellerSelectedName] = useState('')
 
-  // Costo promedio, unidad de medida y disponible de cada producto, tal como estaban al
-  // agregarlo por escaneo. Sirve para que la fila muestre esos datos aunque el producto no se
-  // haya elegido desde su propio buscador. El disponible es opcional: al reabrir un borrador
-  // para editar no hay un valor guardado equivalente (y mostrar el "actual" engañaría, porque
-  // esas líneas ya están reservando stock), así que queda vacío hasta que el buscador de la
-  // fila lo resuelva.
+  // Datos del producto al momento de escanearlo; availableStock queda vacío al reabrir un borrador (mostrar el "actual" engañaría, ya está reservando).
   const [scannedProductInfo, setScannedProductInfo] = useState<
     Record<string, { avgCost: number; unitOfMeasure: 'unidad' | 'docena'; availableStock?: number }>
   >({})
 
-  // Ciclo de foco del lector de código de barras: escanear → cantidad → escanear. La lista de
-  // referencias a los inputs cambia con cada fila que se agrega o quita, así que va en useRef,
-  // no en useState: modificarla nunca debe provocar un re-render.
+  // useRef, no useState: la lista de referencias del ciclo escanear → cantidad → escanear no debe provocar re-render.
   const quantityInputRefs = useRef<Map<number, HTMLInputElement>>(new Map())
   const barcodeInputRef = useRef<{ focus: () => void }>(null)
   const [pendingQuantityFocusIndex, setPendingQuantityFocusIndex] = useState<number | null>(null)
@@ -133,11 +124,7 @@ export default function DocumentFormPage() {
 
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'items' })
 
-  // React garantiza que las referencias del árbol ya están conectadas antes de correr los
-  // efectos de ese mismo render, así que este efecto siempre encuentra el input de cantidad
-  // montado. Se incluye `fields` en las dependencias: si el índice pendiente se fija en el
-  // mismo momento en que se agrega la fila, el efecto se vuelve a evaluar cuando la fila
-  // aparece de verdad en pantalla.
+  // `fields` en las dependencias: si el índice pendiente se fija junto con la fila nueva, el efecto se re-evalúa cuando ya está montada.
   useEffect(() => {
     if (pendingQuantityFocusIndex === null) return
     quantityInputRefs.current.get(pendingQuantityFocusIndex)?.focus()
@@ -169,9 +156,7 @@ export default function DocumentFormPage() {
       navigate(`/documents/${existingDoc.id}`)
       return
     }
-    // Un borrador de venta (creado desde el checkout y todavía sin confirmar) no se edita en
-    // este form genérico: acá no hay selección de cliente, vendedora, forma de pago ni cupo,
-    // ni columna de precio para esos tipos. Se retoma desde el checkout, no acá.
+    // Un borrador de venta no se edita acá (sin cliente/vendedora/forma de pago/cupo en este form genérico); se retoma desde el checkout.
     if (existingDoc.type === 'POS' || existingDoc.type === 'COT') {
       toast.error('Las ventas se editan desde el checkout, no desde este formulario')
       navigate(`/documents/${existingDoc.id}`)
@@ -288,10 +273,7 @@ export default function DocumentFormPage() {
     setValue('destBinId', undefined)
   }, [destWarehouseId, setValue])
 
-  // Origen y destino no pueden ser la misma bodega. El selector de destino ya oculta la
-  // opción igual al origen, pero si el usuario cambia el origen DESPUÉS de elegir destino,
-  // el destino queda apuntando a algo que ya no se ve y arrastraría una cascada zona/bulto
-  // fantasma. Al limpiarlo, los efectos de arriba encadenan el reinicio de bulto y zona.
+  // Si el origen cambia DESPUÉS de elegir destino, el destino queda apuntando a una opción oculta y arrastra zona/bulto fantasma; se limpia.
   useEffect(() => {
     if (destWarehouseId && destWarehouseId === warehouseId) {
       setValue('destWarehouseId', undefined)
@@ -343,9 +325,7 @@ export default function DocumentFormPage() {
       bin.binStocks.some((bs) => bs.quantity > 0 && itemProductIds.has(bs.productId)),
     )
 
-    // Si el bulto ya elegido (p. ej. al editar un borrador) dejó de pasar el filtro de arriba
-    // porque desde entonces se agregó o quitó un ítem, igual se vuelve a meter en la lista
-    // para que el selector no quede apuntando a una opción que no existe.
+    // El bulto ya elegido se reinserta aunque ya no pase el filtro, para no dejar el selector apuntando a una opción inexistente.
     if (currentSourceBinId && !available.some((b) => b.id === currentSourceBinId)) {
       const staleSelected = baseBins.find((b) => b.id === currentSourceBinId)
       if (staleSelected) return [...available, staleSelected]
@@ -359,13 +339,7 @@ export default function DocumentFormPage() {
       ? (destZones.find((z) => z.id === selectedZoneId)?.bins ?? [])
       : destZones.flatMap((z) => z.bins)
 
-    // "occupied" lo calcula el backend en vivo (tiene stock > 0), no es un interruptor manual.
-    // Un bulto ya ocupado por un traslado anterior no debe recibir otro hasta que se vacíe;
-    // se libera solo. El panel de administración de bodegas sí muestra todos los bultos.
-    // Excepción: un bulto ocupado sigue sirviendo si todo lo que contiene coincide con los
-    // productos que ya tiene este documento — eso es apilar el mismo producto, no mezclar.
-    // Un bulto solo puede tener un producto a la vez; el backend lo valida de verdad, este
-    // filtro es solo una ayuda visual.
+    // "occupied" lo calcula el backend (stock > 0); un bulto ocupado se filtra salvo que solo tenga productos ya presentes en este documento (apilar, no mezclar). Filtro solo visual, el backend valida de verdad.
     const available = baseBins.filter(
       (bin) => !bin.occupied || bin.binStocks.every((bs) => itemProductIds.has(bs.productId)),
     )
@@ -466,9 +440,7 @@ export default function DocumentFormPage() {
       destWarehouseId: values.destWarehouseId || undefined,
       destBinId: values.destBinId || undefined,
       adjustmentReason: values.type === 'EAI' ? values.adjustmentReason || undefined : undefined,
-      // Se manda null explícito (no undefined) cuando el motivo no es "otro": al serializar,
-      // las claves undefined se quitan del cuerpo, y un texto viejo de "otro motivo" quedaría
-      // guardado en la base si el motivo cambia de categoría antes de guardar.
+      // null explícito (no undefined): así viaja en el JSON y el backend borra el texto viejo si el motivo deja de ser "otro".
       adjustmentReasonOther:
         values.type === 'EAI' && values.adjustmentReason === 'otro'
           ? values.adjustmentReasonOther || undefined
@@ -671,10 +643,7 @@ export default function DocumentFormPage() {
                         setSelectedSupplierBrandIds(tp?.supplier?.brands.map((b) => b.id) ?? [])
                         setSelectedSupplierDiscountNotes(tp?.supplier?.discountNotes ?? undefined)
 
-                        // Cambiar de proveedor con ítems ya cargados invalida la marca de todos
-                        // ellos, así que se vacían (igual que al cambiar el tipo de documento).
-                        // Este mismo buscador sirve para elegir cliente en preventas y remisiones,
-                        // que no filtran por marca: ahí no se debe vaciar el carrito.
+                        // Cambiar de proveedor invalida la marca de los ítems ya cargados y los vacía; en PV/REM (sin filtro de marca) no aplica.
                         if (needsSupplier && getValues('items').length > 0) {
                           replace([])
                         }

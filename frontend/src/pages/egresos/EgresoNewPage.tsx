@@ -115,13 +115,9 @@ export default function EgresoNewPage() {
   } = useEgresoForm()
 
   const [confirmOpen, setConfirmOpen] = useState(false)
-  // Si el envío falla (p. ej. carrera con otro usuario), el diálogo se deja abierto a propósito
-  // para que el usuario reintente sin volver a armar el formulario — así que el refetch de
-  // open-items que muestra el estado real no puede dispararse ahí mismo (repoblaría la tabla
-  // detrás de un diálogo todavía abierto). Se difiere hasta que el usuario cierra el diálogo.
+  // Diferido hasta que se cierre el diálogo de confirmación, para no repoblar la tabla detrás de él
   const [needsOpenItemsRefetch, setNeedsOpenItemsRefetch] = useState(false)
 
-  // Búsqueda del combobox de proveedor — estado de UI puro, no vive en el hook.
   const [supplierSearch, setSupplierSearch] = useState('')
   const [debouncedSupplierSearch] = useDebounce(supplierSearch, 400)
   const [supplierSelectedName, setSupplierSelectedName] = useState('')
@@ -154,11 +150,7 @@ export default function EgresoNewPage() {
         ]
       : supplierOptions
 
-  // Mismo queryKey que usa useEgresoForm internamente para pedir las CxP/saldos abiertos del
-  // proveedor — TanStack Query comparte la caché, así que esto no dispara una segunda request.
-  // Se vuelve a pedir acá porque el hook no expone el `openItems` crudo (solo lo usa para
-  // poblar los field arrays), y la página necesita el documento/fecha de cada fila para pintar
-  // la tabla.
+  // Mismo queryKey que useEgresoForm — TanStack comparte caché, no dispara una segunda request
   const { data: openItems } = useQuery({
     queryKey: ['egresos-open-items', supplierId],
     queryFn: () => getEgresoOpenItems(supplierId),
@@ -199,8 +191,6 @@ export default function EgresoNewPage() {
     ]),
   )
 
-  // Valida el formulario completo (cuadre, cheque sin referencia, montos fuera de rango) antes
-  // de abrir el diálogo de confirmación; si algo no pasa, se avisa con un toast y ni se abre.
   const openConfirm = handleSubmit(
     () => setConfirmOpen(true),
     (formErrors) => toast.error(getFirstErrorMessage(formErrors)),
@@ -212,9 +202,7 @@ export default function EgresoNewPage() {
         await submitEgreso(values)
         setConfirmOpen(false)
       } catch {
-        // El propio hook ya mostró el toast de error (p. ej. carrera con otro usuario); se deja
-        // el diálogo abierto para que el usuario reintente sin volver a armar el formulario. El
-        // refetch de open-items queda pendiente hasta que cierre el diálogo (ver onCancel).
+        // El hook ya mostró el toast; el diálogo se deja abierto y el refetch queda pendiente hasta cerrarlo (ver onCancel)
         setNeedsOpenItemsRefetch(true)
       }
     },

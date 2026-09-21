@@ -85,9 +85,7 @@ export async function getCustomerCredit(customerId: string): Promise<CustomerCre
   return res.data.data
 }
 
-// Saldos a favor disponibles del cliente (notas generadas por devoluciones en venta). Se usa
-// en el checkout para aplicarlos a la venta. Distinto de getCustomerCredit, que es el cupo de
-// crédito. El backend solo devuelve los que están disponibles y con saldo mayor a cero.
+// Saldos a favor (de DVV) disponibles y con saldo > 0; distinto de getCustomerCredit, que es el cupo de crédito.
 export async function getAvailableCustomerCredits(
   customerId: string,
 ): Promise<AvailableCustomerCreditsResponse> {

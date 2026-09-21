@@ -46,10 +46,7 @@ export class FindAllProductsDto {
   @IsUUID()
   genderId?: string;
 
-  // Filtro por proveedor (CM/DVC): resuelve las marcas activas de ese
-  // proveedor y filtra por ellas. Independiente de brandId (que sigue
-  // sirviendo al filtro admin de ProductsPage) — con precedencia si algún
-  // día coexistieran ambos en la misma request.
+  // Filtro por proveedor (CM/DVC): filtra por sus marcas activas, independiente de brandId (que sigue usando ProductsPage).
   @IsOptional()
   @IsUUID()
   supplierId?: string;

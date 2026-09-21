@@ -1,9 +1,7 @@
 import type { Content, DynamicContent } from 'pdfmake/interfaces';
 import type { DocumentForPrint } from '@/documents/documents.service';
 
-// createdAt es un timestamp real (no una fecha-calendario como
-// document.date) — se formatea en la zona horaria real del negocio en vez
-// de UTC, para no depender del huso horario del servidor.
+// createdAt es timestamp real (no fecha-calendario): se formatea en la zona horaria del negocio, no UTC.
 function formatDate(date: Date | string): string {
   return new Intl.DateTimeFormat('es-CO', {
     day: '2-digit',

@@ -11,9 +11,7 @@ import { getFirstErrorMessage } from '@/lib/form-errors'
 import { getRoles, getRoleLabel } from '@/services/users.service'
 import type { AppUser } from '@/services/users.service'
 
-// ---------------------------------------------------------------------------
-// Schema
-// ---------------------------------------------------------------------------
+// ─── Schema ─────────────────────────────────────────────────────────────
 
 const createSchema = z
   .object({
@@ -57,9 +55,7 @@ export type CreateUserFormValues = z.infer<typeof createSchema>
 export type EditUserFormValues = z.infer<typeof editSchema>
 export type UserFormValues = CreateUserFormValues | EditUserFormValues
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
+// ─── Props ──────────────────────────────────────────────────────────────
 
 interface UserFormProps {
   open: boolean
@@ -69,9 +65,7 @@ interface UserFormProps {
   defaultValues?: AppUser
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
+// ─── Internal helpers ───────────────────────────────────────────────────
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -94,9 +88,7 @@ function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// ─── Component ──────────────────────────────────────────────────────────
 
 export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: UserFormProps) {
   const isEdit = !!defaultValues

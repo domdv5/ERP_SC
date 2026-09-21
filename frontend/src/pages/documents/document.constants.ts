@@ -19,10 +19,7 @@ import type {
   DvvRefundMethod,
 } from '@/types/document.types'
 
-// Etiquetas largas — se usan en el filtro de tipo del listado y en el selector "Tipo de
-// operación" del formulario. Las ventas aparecen acá solo para poder filtrar el listado; el
-// formulario las excluye de sus opciones porque tienen su propia pantalla de checkout. A
-// propósito son distintas de las etiquetas cortas de los pills (ej. "Devolución compra" vs "Dev. Compra").
+// Etiquetas largas del filtro de listado y del selector "Tipo de operación" (el form excluye las ventas, tienen su propio checkout).
 export const DOC_TYPE_SELECT_OPTIONS: { value: DocumentType; label: string }[] = [
   { value: 'CM', label: 'Compra' },
   { value: 'DVC', label: 'Devolución compra' },
@@ -96,9 +93,7 @@ export const DOC_TYPE_BADGE: Record<DocumentType, { label: string; className: st
   },
 }
 
-// Refuerzo visual del tipo a simple vista (ícono + borde de acento a la izquierda). Se usa en
-// el encabezado del detalle y del formulario. Reutiliza a propósito los mismos colores por tipo
-// que los pills, para que pill, ícono y borde compartan una sola idea: "este color = este tipo".
+// Ícono + borde de acento del encabezado; reusa los mismos colores por tipo que los pills.
 export const DOC_TYPE_ACCENT: Record<
   DocumentType,
   {
@@ -170,10 +165,7 @@ export const DOC_TYPE_ACCENT: Record<
   },
 }
 
-// Chip de estado de conversión de una preventa o remisión — bajo el pill de estado en el
-// listado y junto a los pills de tipo y estado en el detalle. Solo se muestra en "pending" y
-// "converted" ("none" no muestra nada). Violeta y ámbar elegidos a propósito para no chocar
-// con el verde de "confirmado" ni con el rosa de la preventa.
+// Chip de conversión PV/REM (listado y detalle); solo en "pending"/"converted". Violeta/ámbar para no chocar con el verde de "confirmado".
 export const PV_CONVERSION_BADGE: Record<
   'pending' | 'converted',
   { label: string; className: string }

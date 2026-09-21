@@ -31,21 +31,12 @@ const emptyDefaults = (): EgresoFormValues => ({
   payments: [],
 })
 
-// Encapsula toda la lógica de negocio del formulario de Egresos: carga de CxP/saldos a favor
-// abiertos del proveedor, propuesta y recorte del saldo a favor, cuadre (abonos − saldo a favor
-// = dinero a pagar), vista previa del reparto FIFO por CxP, y el envío con idempotencyKey. La
-// página que consume este hook solo arma el layout (tabla, combobox de proveedor, diálogo de
-// confirmación) sobre lo que devuelve acá.
+// Toda la lógica de negocio del form de Egresos (carga, cuadre, reparto FIFO, envío) — la página solo arma el layout
 export function useEgresoForm() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  // El idempotencyKey viaja igual en todos los reintentos de un mismo envío: si el POST se
-  // reenvía (doble clic, timeout con reintento), el backend devuelve el mismo egreso ya creado
-  // en vez de duplicarlo. Pero un cambio de proveedor dentro del mismo formulario es un egreso
-  // distinto en la práctica — si se reutilizara la misma key, el backend respondería 409 ("esta
-  // clave ya se usó para un egreso distinto") en vez de crear el nuevo. Se regenera más abajo
-  // cada vez que cambia el proveedor seleccionado.
+  // Se regenera por proveedor (abajo): reusar la key entre proveedores daría 409 en vez de crear el nuevo egreso
   const idempotencyKeyRef = useRef(crypto.randomUUID())
 
   const { control, register, watch, setValue, reset, handleSubmit } = useForm<EgresoFormValues>({
@@ -67,14 +58,10 @@ export function useEgresoForm() {
     staleTime: 30 * 1000,
   })
 
-  // Cambiar de proveedor reinicia por completo las filas de CxP y saldos a favor: las de un
-  // proveedor no tienen sentido para otro.
+  // Cambiar de proveedor reinicia las filas: las CxP/saldos de uno no aplican a otro
   useEffect(() => {
     if (!openItems) return
-    // `balance` es un campo Decimal de Prisma: llega como string en el JSON aunque el tipo TS
-    // diga number. Sin el Number(...) acá, zod rechaza el default del form con "expected
-    // number, received string" apenas se abre el formulario (bug real, visto al validar en
-    // navegador: el resolver falla en cuanto hay una CxP con balance, incluso sin tocar nada).
+    // balance llega como string (Decimal de Prisma); sin Number() acá zod rechaza el default con "expected number"
     payablesArray.replace(
       openItems.payables.map((p) => ({
         accountPayableId: p.id,
@@ -93,8 +80,6 @@ export function useEgresoForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openItems])
 
-  // Una key nueva por cada proveedor elegido: reutilizar la del proveedor anterior haría que un
-  // reintento tras cambiar de proveedor choque contra la protección de idempotencia del backend.
   useEffect(() => {
     idempotencyKeyRef.current = crypto.randomUUID()
   }, [supplierId])
@@ -106,9 +91,7 @@ export function useEgresoForm() {
   const selectedPayables = watchedPayables.filter((p) => p.selected)
   const totalAbonos = selectedPayables.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
 
-  // Igual que en el checkout de ventas: por-crédito, no global. Tocar un saldo a mano no debe
-  // congelar la propuesta de los demás; los que no se tocaron se siguen recalculando a medida
-  // que cambia el total de abonos seleccionado.
+  // Tocar un saldo a mano no congela los demás: solo los no tocados se siguen recalculando
   const creditsTouchedRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
@@ -176,10 +159,7 @@ export function useEgresoForm() {
   const totalCreditsApplied = watchedCredits.reduce((sum, c) => sum + (Number(c.amount) || 0), 0)
   const dineroAPagar = computeDineroAPagar(totalAbonos, totalCreditsApplied)
   const totalPayments = watchedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-  // Si el usuario fija el saldo a favor a mano y después baja el abono, `dineroAPagar` (que
-  // nunca es negativo) puede coincidir con `totalPayments` por un instante aunque el saldo a
-  // favor aplicado ya supere el total de abonos — el schema zod lo rechaza al enviar, pero acá
-  // se corta antes para que el resumen no se muestre "cuadrado" mientras tanto.
+  // No basta con que dineroAPagar === totalPayments: también hay que frenar si el saldo a favor ya supera los abonos
   const cuadraOk =
     Math.round(totalPayments) === Math.round(dineroAPagar) && totalCreditsApplied <= totalAbonos
 
@@ -231,12 +211,7 @@ export function useEgresoForm() {
       navigate(`/egresos/${egreso.id}`)
     } catch (err) {
       toast.error(extractErrorMessage(err) ?? 'Error al registrar el egreso')
-      // Una carrera con otro usuario (CxP ya pagada, saldo excedido) deja los datos de fondo
-      // desactualizados y hay que refetchear para que el usuario vea el estado real antes de
-      // reintentar — pero NO acá: el diálogo de confirmación todavía está abierto en este punto,
-      // y refetchear ahora dispararía el efecto que repuebla `payables`/`credits` (resetea
-      // selección y montos) debajo de un diálogo que el usuario todavía no cerró. Quien llama
-      // debe cerrar el diálogo primero y recién ahí invalidar `['egresos-open-items', supplierId]`.
+      // No invalidamos open-items acá: repoblaría payables/credits debajo del diálogo todavía abierto — el caller lo hace al cerrarlo
       throw err
     }
   }

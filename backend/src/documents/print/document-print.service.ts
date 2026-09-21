@@ -7,10 +7,7 @@ import { DocumentsService } from '@/documents/documents.service';
 import { DocumentPrintRegistry } from './strategies/document-print.registry';
 import { PdfGeneratorService } from './pdf-generator.service';
 
-/**
- * Orquesta la impresión: datos → diseño → PDF. Es solo el pegamento entre las
- * tres piezas; no conoce la base de datos ni la librería de PDF.
- */
+/** Orquesta la impresión (datos → diseño → PDF); solo pegamento, no conoce la base de datos ni la librería de PDF. */
 @Injectable()
 export class DocumentPrintService {
   private readonly logger = new Logger(DocumentPrintService.name);

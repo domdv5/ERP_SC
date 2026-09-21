@@ -46,8 +46,7 @@ model Category {
 
 // ─── Third parties (base for customers & suppliers) ──────────────────────────
 
-/// Tipo de retenedor especial declarado ante la DIAN. Puramente informativo — no
-/// dispara ningún cálculo de retención (eso corresponde a facturación electrónica, fase 2).
+/// Tipo de retenedor ante la DIAN — informativo, no dispara cálculo (fase 2: facturación electrónica).
 enum WithholdingAgentType {
   ninguno
   gran_contribuyente
@@ -55,8 +54,7 @@ enum WithholdingAgentType {
   agente_retencion_iva
 }
 
-/// Régimen de tributación del tercero. Puramente informativo — no dispara ningún
-/// cálculo de IVA (eso corresponde a facturación electrónica, fase 2).
+/// Régimen de tributación del tercero — informativo, no dispara cálculo de IVA (fase 2).
 enum TaxRegime {
   ordinario
   rst
@@ -124,10 +122,7 @@ model Customer {
 model Supplier {
   id             String  @id @db.Uuid
   internalNumber Int     @unique @map("internal_number")
-  /// Resumen informativo de las condiciones de descuento del proveedor (texto
-  /// libre — los descuentos reales varían demasiado entre proveedores como para
-  /// modelarlos con reglas: % fijo, por monto de compra, por referencia, etc.
-  /// No se usa para ningún cálculo, solo se muestra como aviso al comprar).
+  /// Condiciones de descuento del proveedor, texto libre informativo — no se usa en ningún cálculo.
   discountNotes  String? @map("discount_notes") @db.VarChar(500)
 
   thirdParty      ThirdParty        @relation(fields: [id], references: [id])
@@ -198,24 +193,12 @@ model Product {
   @@index([genderId])
   @@index([categoryId])
   @@index([createdAt])
-  // Listado paginado de productos (GET /products): el where SIEMPRE trae `active`
-  // y el orderBy SIEMPRE es createdAt desc. Con createdAt como última columna el
-  // planner recorre el índice ya ordenado y corta en LIMIT, en vez de materializar
-  // y ordenar todas las filas del filtro antes de paginar.
+  // GET /products siempre filtra por `active` y ordena por createdAt desc: el índice ya viene ordenado para el LIMIT.
   @@index([active, createdAt])
   @@index([active, brandId, createdAt])
   @@index([active, categoryId, createdAt])
   @@index([active, genderId, createdAt])
-  // DRIFT ACEPTADO — dos índices GIN trigram existen en la base pero NO acá:
-  //   product_code_trgm_idx         ON product USING GIN (code gin_trgm_ops)
-  //   product_legacy_code_trgm_idx  ON product USING GIN (legacy_code gin_trgm_ops)
-  // Creados en la migración 20260812140000_product_trigram_search (junto con
-  // CREATE EXTENSION pg_trgm) porque Prisma no sabe declarar ni extensiones ni
-  // operator classes. Sirven el `contains` + `mode: 'insensitive'` de
-  // ProductsService.findAll, que se traduce a ILIKE '%term%': el comodín inicial
-  // deja inservible cualquier btree, incluido el @unique de `code`.
-  // OJO: `prisma migrate diff` no los ve en este schema y genera DROP INDEX para
-  // ambos. Al armar una migración nueva a mano, borrá esos DROP del script.
+  // DRIFT ACEPTADO: product_code_trgm_idx / product_legacy_code_trgm_idx (GIN trigram) existen en la DB pero no en este schema — ver "Migration workaround" en backend/CLAUDE.md antes de armar una migración nueva.
   @@map("product")
 }
 
@@ -485,12 +468,7 @@ enum PaymentMethod {
   transferencia
 }
 
-/// Motivo del ajuste — obligatorio solo para EAI (ver EaiEffectStrategy.validateCreate).
-/// negativo: común del día a día, el sistema muestra menos stock del que hay físicamente.
-/// inventario_general: conteo físico completo, ~1 vez al año — mismo efecto que negativo
-/// pero se reporta aparte por su frecuencia/alcance distintos.
-/// traspaso_costo: unidades (y su costo real) movidas desde otro producto (ver SAJ del origen).
-/// otro: requiere adjustmentReasonOther con el detalle.
+/// Motivo del ajuste (obligatorio solo para EAI): negativo/inventario_general son el mismo caso (stock físico > sistema), separados solo para reportería; traspaso_costo mueve costo de otro producto; otro requiere adjustmentReasonOther.
 enum EaiAdjustmentReason {
   negativo
   inventario_general
@@ -498,12 +476,7 @@ enum EaiAdjustmentReason {
   otro
 }
 
-/// Modalidad de una devolución en venta (DVV) — obligatoria para ese tipo (ver DvvEffectStrategy).
-/// saldo_a_favor: caso normal, entra inventario y se genera un saldo a favor del cliente.
-/// cambio_producto: mismo efecto que saldo_a_favor; el cambio se opera como esta DVV más
-/// una venta aparte del producto nuevo. Se separa solo para reportería.
-/// devolucion_dinero: reembolso de efectivo — solo entra inventario, no genera saldo a favor
-/// (el desembolso es manual, no hay módulo de caja).
+/// Modalidad de una DVV (obligatoria): saldo_a_favor/cambio_producto generan saldo a favor del cliente; devolucion_dinero solo entra inventario (reembolso manual).
 enum DvvRefundMethod {
   saldo_a_favor
   cambio_producto
@@ -619,9 +592,7 @@ model DocumentItem {
 
 // ─── Liberación de reservas (preventa) ───────────────────────────────────────
 
-// Bitácora append-only: cada liberación parcial de una reserva de preventa deja
-// rastro de quién y cuándo. Nunca se actualiza ni se borra — DocumentItem.releasedQuantity
-// es el acumulado de estas filas.
+// Bitácora append-only de liberaciones parciales de reserva — nunca se edita ni se borra.
 model ReservationRelease {
   id             String   @id @default(uuid(7)) @db.Uuid
   documentItemId String   @map("document_item_id") @db.Uuid
@@ -697,10 +668,7 @@ model AccountsPayable {
   supplierId  String                @map("supplier_id") @db.Uuid
   documentId  String                @map("document_id") @db.Uuid
   totalAmount Decimal               @map("total_amount") @db.Decimal(16, 2)
-  /// Abonado acumulado (efectivo + saldo a favor). Caché de la suma de los abonos,
-  /// para filtrar y ordenar por saldo pendiente sin agregar en cada consulta.
-  /// Reforzado por los CHECK "accounts_payable_paid_amount_range_chk" y
-  /// "accounts_payable_status_paid_chk" (definidos a mano: Prisma no declara CHECKs).
+  /// Abonado acumulado (efectivo + saldo a favor), cacheado para filtrar/ordenar sin agregar en cada consulta. Reforzado por CHECKs a mano.
   paidAmount  Decimal               @default(0) @map("paid_amount") @db.Decimal(16, 2)
   dueDate     DateTime?             @map("due_date") @db.Date
   status      AccountsPayableStatus @default(pending)
@@ -748,10 +716,7 @@ model SupplierCredit {
   // Monto original de la nota crédito. Se guarda en positivo (a diferencia de la
   // AccountsPayable negativa que este modelo reemplaza) porque es un saldo a favor.
   amount           Decimal  @db.Decimal(16, 2)
-  // Saldo sin aplicar. Invariante de negocio: 0 <= balance <= amount (nunca negativo
-  // ni mayor que amount); cuando llega a 0, status pasa a 'used'. Reforzado a nivel DB
-  // por el CHECK "supplier_credit_balance_range_chk" (definido a mano en la migración
-  // — Prisma no declara CHECKs), mismo patrón que CustomerCredit.balance.
+  // Invariante: 0 <= balance <= amount; al llegar a 0, status pasa a 'used'. Reforzado por el CHECK "supplier_credit_balance_range_chk" (a mano).
   balance          Decimal  @db.Decimal(16, 2)
   sourceDocumentId String?  @map("source_document_id") @db.Uuid
   /// available | used
@@ -797,22 +762,14 @@ model SupplierCreditApplication {
 }
 
 // ─── Customer credit (saldo a favor del cliente) ─────────────────────────────
-// Homólogo lado cliente de SupplierCredit. Se genera al confirmar una DVV
-// (salvo modalidad devolucion_dinero) y se aplica al momento de una venta
-// POS/COT — nunca como abono contra una cuenta por cobrar existente. NO se
-// unifica con SupplierCredit (decisión de arquitectura): comparten solo la
-// lógica de servicio (centavos + FOR UPDATE ordenado).
+// Homólogo de SupplierCredit del lado cliente; no unificados (decisión de arquitectura), solo comparten lógica de servicio.
 
 model CustomerCredit {
   id               String   @id @default(uuid(7)) @db.Uuid
   customerId       String   @map("customer_id") @db.Uuid
   // Monto original del saldo a favor, en positivo.
   amount           Decimal  @db.Decimal(16, 2)
-  // Saldo sin aplicar. Invariante de negocio: 0 <= balance <= amount; al llegar
-  // a 0 el status pasa a 'used'. Todo decremento pasa por SELECT ... FOR UPDATE.
-  // Reforzado a nivel DB por el CHECK "customer_credit_balance_range_chk" (definido
-  // a mano en la migración 20260910120000_add_customer_credit — Prisma no declara
-  // CHECKs; es la única red contra un saldo corrupto, aceptada por ser dinero).
+  // Invariante: 0 <= balance <= amount; llega a 0 → status 'used'. Único CHECK a mano del schema ("customer_credit_balance_range_chk"), red final contra saldo corrupto.
   balance          Decimal  @db.Decimal(16, 2)
   sourceDocumentId String?  @map("source_document_id") @db.Uuid
   /// available | used
@@ -826,9 +783,7 @@ model CustomerCredit {
   // Incluye createdAt para que la consulta de créditos disponibles del cliente
   // (WHERE customerId + status, ORDER BY createdAt) salga ordenada sin nodo Sort.
   @@index([customerId, status, createdAt])
-  // Una DVV genera exactamente un crédito: bloquea duplicados por doble confirm
-  // o retry. En PostgreSQL varios NULL conviven, así que créditos sin documento
-  // origen no chocarían entre sí.
+  // Una DVV genera un único crédito — bloquea duplicados por doble confirm o retry.
   @@unique([sourceDocumentId])
   @@map("customer_credit")
 }
@@ -836,9 +791,7 @@ model CustomerCredit {
 model CustomerCreditApplication {
   id               String   @id @default(uuid(7)) @db.Uuid
   customerCreditId String   @map("customer_credit_id") @db.Uuid
-  // Referencia al documento de venta (POS/COT) donde se aplicó el saldo. La
-  // aplicación ocurre en la venta y POS no crea cuenta, así que se ancla al
-  // documento, no a una AccountsReceivable.
+  // Ancla a la venta (POS/COT), no a una cuenta — el saldo se aplica al confirmar la venta, y POS no crea cuenta.
   saleDocumentId   String   @map("sale_document_id") @db.Uuid
   amount           Decimal  @db.Decimal(16, 2)
   appliedAt        DateTime @default(now()) @map("applied_at") @db.Timestamptz
@@ -855,14 +808,7 @@ model CustomerCreditApplication {
 
 // ─── Consecutivos ─────────────────────────────────────────────────────────────
 
-/// Consecutivo atómico por tipo de documento. A propósito NO es un SEQUENCE nativo
-/// de PostgreSQL: ese no se revierte en un rollback y dejaría huecos. El número se
-/// toma con INSERT ... ON CONFLICT DO UPDATE ... RETURNING dentro de la misma
-/// transacción que crea el documento — el UPDATE bloquea la fila hasta el COMMIT,
-/// así dos creaciones del mismo tipo se serializan y el número se deshace si la
-/// transacción falla. Requiere aislamiento READ COMMITTED (el default de Prisma):
-/// con Serializable o RepeatableRead el ON CONFLICT lanza error de serialización
-/// en vez de esperar la fila. Ver SequenceService (common/sequence/).
+// Consecutivo atómico: INSERT...ON CONFLICT bloquea la fila hasta el COMMIT, sin huecos por rollback (a diferencia de un SEQUENCE nativo)
 model Sequence {
   key       String @id @db.VarChar(30)
   lastValue Int    @default(0) @map("last_value")
@@ -872,8 +818,7 @@ model Sequence {
 
 // ─── Egreso (documento de tesorería) ─────────────────────────────────────────
 
-/// Origen de la plata con que se paga. "almacén" vs "oficina" distingue de qué caja
-/// o cuenta sale — el sistema no lleva saldos de caja, es solo clasificación.
+/// Forma de pago del egreso — "almacén" vs "oficina" es solo clasificación, el sistema no lleva saldos de caja.
 enum EgresoPaymentMethod {
   efectivo_almacen
   consignacion_almacen
@@ -882,24 +827,16 @@ enum EgresoPaymentMethod {
   consignacion_oficina
 }
 
-/// Paga una o varias cuentas por pagar de UN mismo proveedor en un solo movimiento,
-/// con una o varias formas de pago y, si hay, saldos a favor del proveedor.
-/// No se anula ni se edita: si sale mal se registra el contrario a mano.
-/// Se muestra como "EG-<number>".
+/// Paga una o varias CxP de un mismo proveedor en un solo movimiento; no se anula ni se edita.
 model Egreso {
   id         String   @id @default(uuid(7)) @db.Uuid
-  /// Consecutivo propio (clave "EGRESO" en Sequence), con ceros a la izquierda a 6
-  /// dígitos igual que Document.number, para que ordenar como texto dé el orden real.
+  /// Consecutivo propio (clave "EGRESO" en Sequence), ceros a la izquierda a 6 dígitos para ordenar como texto.
   number     String   @unique @db.VarChar(30)
-  /// Sin @default a propósito: la fija el service. Un default now() sobre una columna
-  /// DATE se resuelve con el huso de la base, no el de Colombia — un egreso de las
-  /// 7pm caería en el día siguiente. Mismo criterio que Document.date.
+  /// Sin @default a propósito: la fija el service en huso Colombia, no el de la base (mismo criterio que Document.date).
   date       DateTime @db.Date
   supplierId String   @map("supplier_id") @db.Uuid
   userId     String   @map("user_id") @db.Uuid
-  /// total = cashTotal + creditTotal (lo garantiza un CHECK) y también la suma de
-  /// EgresoAllocation.amount (eso ningún CHECK lo puede ver: lo valida el service
-  /// en centavos dentro de la transacción).
+  /// total = cashTotal + creditTotal (CHECK) y también la suma de EgresoAllocation.amount (eso lo valida el service, ningún CHECK lo ve).
   total       Decimal @db.Decimal(16, 2)
   cashTotal   Decimal @map("cash_total") @db.Decimal(16, 2)
   creditTotal Decimal @map("credit_total") @db.Decimal(16, 2)
@@ -942,9 +879,7 @@ model EgresoAllocation {
   accountPayableId String  @map("account_payable_id") @db.Uuid
   /// Total abonado a esta cuenta por pagar en este egreso (efectivo + saldo a favor).
   amount           Decimal @db.Decimal(16, 2)
-  /// Parte de `amount` cubierta con saldo a favor. Es el total de las
-  /// SupplierCreditApplication de este egreso contra esta cuenta; se guarda aparte
-  /// para que el detalle de la CxP lo lea sin join. CHECK: 0 <= creditAmount <= amount.
+  /// Parte de `amount` cubierta con saldo a favor, guardada aparte para que el detalle de la CxP la lea sin join. CHECK: 0 <= creditAmount <= amount.
   creditAmount     Decimal @default(0) @map("credit_amount") @db.Decimal(16, 2)
 
   egreso         Egreso          @relation(fields: [egresoId], references: [id])
@@ -956,9 +891,7 @@ model EgresoAllocation {
 }
 
 // ─── Configuración del sistema ────────────────────────────────────────────────
-// Fila única (singleton) — controla el modo de solo lectura durante el cierre
-// contable de fin de mes. El backend cachea su valor en memoria (SystemConfigService)
-// y solo relee/escribe esta tabla al activar/desactivar el modo.
+// Fila única (singleton): modo de solo lectura del cierre contable, cacheado en memoria por SystemConfigService.
 model SystemConfig {
   id              String    @id @default(uuid(7)) @db.Uuid
   readOnlyMode    Boolean   @default(false) @map("read_only_mode")

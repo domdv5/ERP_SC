@@ -13,9 +13,7 @@ const VARIANT_CLASSES: Record<NonNullable<HintTextProps['variant']>, string> = {
   warning: 'text-amber-500 dark:text-amber-400',
 }
 
-// Texto secundario chico para avisos de fila (p. ej. disponibilidad, desviación de costo).
-// Va en una fila o celda aparte de los controles principales, nunca en la misma celda que un
-// input, para no desalinearlo respecto a los demás inputs de su fila.
+// Texto secundario chico para avisos de fila; va en celda aparte del input para no desalinear la fila.
 export function HintText({ children, variant = 'neutral' }: HintTextProps) {
   return (
     <p className={cn('flex items-center gap-1 text-xs', VARIANT_CLASSES[variant])}>

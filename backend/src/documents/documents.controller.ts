@@ -43,17 +43,13 @@ export class DocumentsController {
   }
 
   // Antes de @Get(':id') para que "customers" no se interprete como un id.
-  // Permiso document.create.COT: quien crea una venta a crédito necesita ver el
-  // cupo del cliente, sin ampliar ar.read a roles de venta.
   @Get('customers/:customerId/credit')
   @Permissions('document.create.COT')
   getCustomerCredit(@Param('customerId') customerId: string) {
     return this.documentsService.getCustomerCreditSummary(customerId);
   }
 
-  // Saldos a favor del cliente disponibles para aplicar a una venta. Permiso
-  // document.create.POS: quien cobra una venta necesita verlos. NO confundir con
-  // customers/:customerId/credit (cupo de crédito).
+  // No confundir con customers/:customerId/credit (cupo de crédito).
   @Get('customers/:customerId/available-credits')
   @Permissions('document.create.POS')
   getAvailableCustomerCredits(@Param('customerId') customerId: string) {
@@ -66,9 +62,7 @@ export class DocumentsController {
     return this.documentsService.findOne(id);
   }
 
-  // create/update/confirm/void/duplicate/remove no llevan @Permissions: el permiso
-  // requerido depende del tipo de documento (document.create.{type}), así
-  // que se resuelve dinámicamente en el service, no con un guard estático.
+  // Sin @Permissions: el permiso depende del tipo de documento y se resuelve en el service.
   @Post()
   create(
     @Body() createDocumentDto: CreateDocumentDto,
@@ -114,11 +108,7 @@ export class DocumentsController {
     return this.documentsService.convert(id, convertDocumentDto, req.user);
   }
 
-  // @Res({ passthrough: false }) toma control manual de la respuesta: lo que
-  // el método retorna nunca se usa para construir el HTTP response, así que
-  // ResponseFormatInterceptor nunca llega a envolver el PDF binario en
-  // {success, data}. ThrottlerGuard queda scoped solo a esta ruta (ver
-  // documents.module.ts) — el resto del controller no tiene rate limiting.
+  // passthrough: false evita que ResponseFormatInterceptor envuelva el PDF binario en {success, data}.
   @Get(':id/print')
   @Permissions('document.read')
   @UseGuards(ThrottlerGuard)

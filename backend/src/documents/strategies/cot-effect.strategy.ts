@@ -67,9 +67,7 @@ export class CotEffectStrategy extends BaseEffectStrategy {
       }),
     );
 
-    // Cupo de crédito: se valida sobre el neto (total menos los saldos a favor
-    // que se van a aplicar). Un cliente con saldo a favor no debe consumir cupo
-    // por la parte que ya tiene cubierta.
+    // Cupo de crédito se valida sobre el neto (total menos saldos a favor a aplicar), no sobre el bruto.
     const grossTotal = items.reduce(
       (sum, item) => sum + item.quantity * (item.unitPrice ?? 0),
       0,
@@ -90,10 +88,7 @@ export class CotEffectStrategy extends BaseEffectStrategy {
   ) {
     const warehouseId = this.requireWarehouse(document);
 
-    // Se vuelve a validar acá porque editar un borrador no re-corre las validaciones
-    // de creación. Si viene de convertir una preventa, su reserva sigue activa: hay
-    // que excluirla o daría un faltante falso contra sí misma (mismo motivo que la
-    // venta de contado).
+    // Revalida acá porque editar un borrador no re-corre create; si viene de convertir una preventa, excluye su propia reserva o da un faltante falso.
     const shortfalls = await this.assertBatchAvailability(
       tx,
       warehouseId,
@@ -123,9 +118,7 @@ export class CotEffectStrategy extends BaseEffectStrategy {
       throw new BadRequestException('La venta requiere un vendedor');
     }
 
-    // Saldos a favor que esta venta aplica. La cuenta por cobrar nace neta y el
-    // cupo se valida sobre el neto: el cliente no consume cupo por la parte que
-    // ya tiene cubierta con su saldo a favor.
+    // La cuenta por cobrar nace neta de los saldos a favor aplicados; el cupo también se valida sobre ese neto.
     const appliedCents = (context?.appliedCustomerCredits ?? []).reduce(
       (sum, credit) => sum + toCents(credit.amount),
       0,
@@ -133,10 +126,7 @@ export class CotEffectStrategy extends BaseEffectStrategy {
     const totalCents = toCents(Number(document.total));
     const netCents = totalCents - appliedCents;
 
-    // Bloquea la fila del cliente hasta el fin de la transacción: dos ventas a
-    // crédito del mismo cliente a la vez no pueden superar el cupo entre las dos.
-    // Además, como editar un borrador no re-valida, esta es la validación contra el
-    // total definitivo. Orden global de bloqueo: customers -> customer_credit -> accounts_receivable.
+    // Bloquea al cliente hasta el fin de la tx: dos ventas a crédito concurrentes no pueden superar el cupo entre las dos (orden global: customers -> customer_credit -> accounts_receivable).
     await tx.$queryRaw`SELECT id FROM customers WHERE id = ${document.thirdPartyId}::uuid FOR UPDATE`;
     await assertCreditWithinLimit(
       tx,
@@ -157,10 +147,7 @@ export class CotEffectStrategy extends BaseEffectStrategy {
       });
     }
 
-    // Venta a crédito: genera la cuenta por cobrar del cliente, ya neta de los
-    // saldos a favor aplicados. La fecha de vencimiento se deja en null por ahora.
-    // El monto se redondea a pesos enteros (el sistema maneja pesos sin centavos).
-    // Si el saldo a favor cubre toda la venta, la cuenta nace saldada.
+    // Cuenta por cobrar neta de los saldos a favor aplicados, redondeada a pesos enteros; si el saldo cubre todo, nace saldada.
     await tx.accountsReceivable.create({
       data: {
         clientId: document.thirdPartyId,

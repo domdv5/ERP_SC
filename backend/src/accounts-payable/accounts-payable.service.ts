@@ -125,10 +125,7 @@ export class AccountsPayableService {
     };
   }
 
-  /**
-   * Estado de cuenta completo de un proveedor: todas sus CxP (no solo las
-   * abiertas) y todos sus saldos a favor (disponibles y usados), con totales.
-   */
+  /** Estado de cuenta completo del proveedor: todas sus CxP y saldos a favor, con totales. */
   async statement(supplierId: string) {
     const supplier = await this.prisma.supplier.findUnique({
       where: { id: supplierId },
@@ -203,13 +200,7 @@ export class AccountsPayableService {
   }
 }
 
-/**
- * Historial unificado de abonos de una CxP, combinando tres fuentes que nunca
- * se solapan: egresos (módulo nuevo), pagos históricos (PayablePayment, ya no
- * se crean filas nuevas) y aplicaciones de saldo a favor sin egreso (las hacía
- * el viejo POST /accounts-payable/:id/payments, eliminado). Las aplicaciones
- * CON egreso ya aparecen dentro de su egreso — se excluyen aquí para no duplicar.
- */
+/** Historial unificado de abonos de una CxP: egresos, pagos históricos y aplicaciones de saldo a favor sin egreso (las que ya tienen egreso se excluyen para no duplicar). */
 function buildHistory(accountPayable: DetailRow) {
   const fromEgresos = accountPayable.egresoAllocations.map((allocation) => ({
     source: 'egreso' as const,
