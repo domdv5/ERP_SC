@@ -11,6 +11,7 @@ import {
   TrendingUp,
   TrendingDown,
   Landmark,
+  Wallet,
   ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
@@ -94,7 +95,15 @@ export const navGroups: NavGroup[] = [
   },
   {
     label: 'Tesorería',
-    items: [{ to: '/egresos', label: 'Egresos', icon: Landmark, permission: 'egreso.read' }],
+    items: [
+      { to: '/egresos', label: 'Egresos', icon: Landmark, permission: 'egreso.read' },
+      {
+        to: '/recibos-caja',
+        label: 'Recibos de caja',
+        icon: Wallet,
+        permission: 'recibo.read',
+      },
+    ],
   },
   {
     label: 'Finanzas',
