@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDebounce } from 'use-debounce'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
@@ -33,9 +33,14 @@ export default function AccountsPayableListPage() {
 
   const [debouncedSearch] = useDebounce(search, 400)
 
-  useEffect(() => {
+  const [prevFilters, setPrevFilters] = useState({ debouncedSearch, statusFilter })
+  if (
+    prevFilters.debouncedSearch !== debouncedSearch ||
+    prevFilters.statusFilter !== statusFilter
+  ) {
+    setPrevFilters({ debouncedSearch, statusFilter })
     setPage(1)
-  }, [debouncedSearch, statusFilter])
+  }
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['accounts-payable', debouncedSearch, statusFilter, page],
@@ -64,10 +69,16 @@ export default function AccountsPayableListPage() {
     staleTime: 5 * 60 * 1000,
   })
 
+  const { data: partialData, isLoading: isPartialLoading } = useQuery({
+    queryKey: ['accounts-payable', 'count', 'partial'],
+    queryFn: () => getAccountsPayable({ status: 'partial', page: 1, limit: 1 }),
+    staleTime: 5 * 60 * 1000,
+  })
+
   const items = data?.items ?? []
   const total = data?.meta.total ?? 0
   const totalPages = data?.meta.totalPages ?? 1
-  const pendingCount = pendingData?.meta.total ?? 0
+  const pendingCount = (pendingData?.meta.total ?? 0) + (partialData?.meta.total ?? 0)
   const paidCount = paidData?.meta.total ?? 0
 
   const statCards = [
@@ -106,7 +117,10 @@ export default function AccountsPayableListPage() {
         </div>
       </div>
 
-      <StatsGrid cards={statCards} isLoading={isLoading || isPendingLoading || isPaidLoading} />
+      <StatsGrid
+        cards={statCards}
+        isLoading={isLoading || isPendingLoading || isPaidLoading || isPartialLoading}
+      />
 
       {/* Table */}
       <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">

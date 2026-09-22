@@ -26,13 +26,20 @@ Off — repo sin `.spec.ts` (baseline conocido, ver memoria de sesión). Verific
 ## Tasks
 - [x] 1. Delegar a `react-code-crafter` la implementación completa (servicio + list page + detail page + StatusBadge + wiring de router/nav), instruyéndolo a invocar `Skill(vercel-react-best-practices)` y `Skill(typescript-advanced-types)` como primer paso, y a leer como referencia exacta: `accounts-payable.service.ts`, `AccountsPayableListPage.tsx`, `AccountsPayableDetailPage.tsx`, `StatusBadge.tsx` (AP), `RecibosCajaListPage.tsx`/`ReciboCajaDetailPage.tsx` (para el patrón de historial combinado), y el bloque `AccountsReceivableModule` de `backend/CLAUDE.md` para el contrato exacto de endpoints/permisos.
 - [x] 2. Verificar build/typecheck del frontend.
-- [ ] 3. Commit de work-unit en la rama `feature/recibos-caja` (conventional commit).
+- [x] 3. Commit de work-unit en la rama `feature/recibos-caja` (conventional commit).
 
 ## Ruta de implementación
 Delegated direct — write rule (4 archivos no triviales) dispara delegación obligatoria a un solo writer (`react-code-crafter`).
+
+## Tasks — ronda 2 (fixes del reviewer, ampliado a AP por decisión del usuario)
+- [ ] 4. Corregir 4 de los 5 hallazgos no bloqueantes del reviewer (deja fuera el de falta de tests). Los 4 son bugs preexistentes en `accounts-payable` copiados tal cual al espejar `accounts-receivable` — usuario decidió corregir ambos módulos para no abrir una inconsistencia nueva entre ellos:
+  - `formatDate` (`accounts-receivable.utils.ts` **y** `accounts-payable.utils.ts`): agregar `timeZone: 'America/Bogota'` a `toLocaleDateString` (mismo huso ya usado en backend para Egresos/Recibos de Caja) — evita que una fecha guardada en UTC medianoche se muestre un día antes.
+  - Reset de página (`AccountsReceivableListPage.tsx` **y** `AccountsPayableListPage.tsx`): mover `setPage(1)` del `useEffect` post-render a los propios handlers de cambio de búsqueda/filtro, para no disparar una consulta intermedia con filtro nuevo + página vieja.
+  - Estadística "Pendientes" (mismos dos archivos): hoy solo cuenta `status: 'pending'`, dejando fuera `partial` (que también tiene saldo pendiente). Sumar el conteo de `partial` al de `pending` en la tarjeta "Pendientes" (consulta adicional por `status: 'partial'`, igual patrón que las consultas de conteo ya existentes).
+  - Fallback ante status/origen desconocido (`StatusBadge.tsx` de ambos módulos + el `ORIGIN_BADGE[entry.source]` en ambos `*DetailPage.tsx`): no debe crashear si el backend manda un valor fuera del enum esperado — degradar a un badge neutro en vez de `undefined.className`.
 
 ## Progreso
 - Agente `react-code-crafter` completó la implementación: creó `accounts-receivable.types.ts`, `accounts-receivable.service.ts`, `accounts-receivable.utils.ts`, `StatusBadge.tsx`, `AccountsReceivableListPage.tsx`, `AccountsReceivableDetailPage.tsx`; modificó `types/index.ts`, `router/index.tsx` (reemplazó `ComingSoonPage` en `/accounts-receivable` por las páginas reales, gateado por `ar.read`, sin tocar `navigation.ts` porque el permiso ya existía ahí) y `frontend/CLAUDE.md`.
 - Sin formulario de pago ni client-statement page, según lo fuera de alcance.
 - **Verificación del orquestador (spot check)**: `git status`/`git diff --stat` coinciden con lo reportado por el agente; `pnpm exec tsc --noEmit` sin errores; confirmado que el import removido de `ComingSoonPage` no quedó huérfano.
-- Pendiente: commit de work-unit.
+- Commit de work-unit: `9579b15` — "feat(frontend): agregar pantalla de Cuentas por Cobrar" en `feature/recibos-caja`.

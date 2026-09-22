@@ -233,7 +233,10 @@ export default function AccountsReceivableDetailPage() {
               </thead>
               <tbody className="divide-y divide-ui-divide">
                 {history.map((entry, index) => {
-                  const origin = ORIGIN_BADGE[entry.source]
+                  const origin = ORIGIN_BADGE[entry.source] ?? {
+                    label: entry.source,
+                    className: 'bg-content-faint/10 text-content-faint',
+                  }
                   return (
                     <tr
                       key={`${entry.source}-${index}`}

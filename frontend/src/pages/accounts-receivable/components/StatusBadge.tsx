@@ -7,7 +7,10 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const info = STATUS_LABELS[status]
+  const info = STATUS_LABELS[status] ?? {
+    label: status,
+    className: 'bg-content-faint/10 text-content-faint',
+  }
   return (
     <span
       className={cn(
