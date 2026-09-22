@@ -9,6 +9,7 @@ import {
   IsPositive,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
   registerDecorator,
   ValidateNested,
@@ -86,8 +87,14 @@ export class CreateReciboCajaDto {
   clientId!: string;
 
   // Sin default acá: el service lo resuelve a hoy (fecha del servidor) si se omite.
+  // Solo YYYY-MM-DD: IsDateString() solo acepta ISO 8601 completo, y el service
+  // compara este string contra "hoy" lexicográficamente (mismo formato) — un
+  // datetime con hora se rechazaría como futuro aunque fuera el mismo día.
   @IsOptional()
   @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'date debe tener formato YYYY-MM-DD',
+  })
   date?: string;
 
   // VARCHAR(500) en la migración.

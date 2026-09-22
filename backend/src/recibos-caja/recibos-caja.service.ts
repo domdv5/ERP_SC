@@ -158,6 +158,22 @@ export class RecibosCajaService {
     ].sort();
     await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE id = ANY(${receivableIds}::uuid[]) ORDER BY id FOR UPDATE`;
 
+    // Re-chequeo tras el lock: un recibo concurrente con la misma idempotencyKey pudo
+    // haber comprometido mientras esperábamos el FOR UPDATE — sin esto, el segundo
+    // request choca contra "ya está totalmente pagada" en vez de recibir el mismo recibo.
+    const concurrentlyCreated = await tx.reciboCaja.findUnique({
+      where: { idempotencyKey: dto.idempotencyKey },
+      include: RECIBO_CAJA_DETAIL_INCLUDE,
+    });
+    if (concurrentlyCreated) {
+      if (!requestMatchesExisting(dto, concurrentlyCreated)) {
+        throw new ConflictException(
+          'Esta clave de idempotencia ya se usó para un recibo de caja distinto',
+        );
+      }
+      return concurrentlyCreated;
+    }
+
     const receivables = await tx.accountsReceivable.findMany({
       where: { id: { in: receivableIds } },
       orderBy: { createdAt: 'asc' },
@@ -266,7 +282,9 @@ export class RecibosCajaService {
         data: paymentLines.map((payment) => ({
           reciboCajaId: reciboCaja.id,
           method: payment.method,
-          amount: payment.amount,
+          // toCents()/100, no el monto crudo del cliente: así la suma de payments
+          // siempre cuadra exacto con `total` (que ya se calculó en centavos redondeados).
+          amount: toCents(payment.amount) / 100,
           reference: payment.reference,
           bank: payment.bank,
         })),
