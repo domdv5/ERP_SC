@@ -74,6 +74,16 @@ export type {
 } from './egreso.types'
 export { EGRESO_PAYMENT_METHOD_LABELS } from './egreso.types'
 export type {
+  AccountsReceivable,
+  AccountsReceivableClient,
+  AccountsReceivableSeller,
+  AccountsReceivableDocument,
+  AccountsReceivableDetail,
+  AccountsReceivableHistoryEntry,
+  AccountsReceivableMeta,
+  GetAccountsReceivableParams,
+} from './accounts-receivable.types'
+export type {
   AccountsReceivableStatus,
   ReciboCajaClient,
   ReciboCajaDocument,
