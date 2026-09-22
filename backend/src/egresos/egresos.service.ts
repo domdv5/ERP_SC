@@ -296,9 +296,9 @@ export class EgresosService {
       0,
     );
 
-    // Tolerancia de hasta 1 peso: CxP legadas con centavos, pero el abono se teclea en pesos enteros.
+    // Cuadre exacto en centavos: toCents() ya redondea cada monto individual antes de sumar, así que cualquier descuadre es un error real, no ruido de coma flotante.
     const settledCents = creditsTotalCents + paymentsTotalCents;
-    if (Math.abs(payablesTotalCents - settledCents) > 100) {
+    if (payablesTotalCents !== settledCents) {
       throw new BadRequestException(
         'El egreso no cuadra: la suma de los abonos debe ser igual a los saldos a favor más las formas de pago',
       );
