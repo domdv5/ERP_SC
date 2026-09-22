@@ -33,7 +33,9 @@ Implementar el módulo de Recibos de Caja: un recibo paga una o varias CxC de UN
 - [x] 4. RBAC: `recibo.read`/`recibo.create` sembrados a `admin`, `accounts_admin`, `accounts_assistant` — verificado en BD (`role_permission`).
 - [x] 5. Documentado en `backend/CLAUDE.md`: bullet nuevo de `RecibosCajaModule`, `AccountsReceivableModule` reescrito como "reworkeado a solo consulta", bullets de Database (`AccountsReceivable.paidAmount`, `ReciboCaja/ReciboCajaPayment/ReciboCajaAllocation`, `Sequence`), párrafo de RBAC roles.
 - [x] 6. Build limpio + 25/25 pruebas funcionales en vivo (cuadre exacto, descuadre real rechazado, idempotencia + conflicto, CxC ya pagada, cliente equivocado, cheque sin/con referencia, fecha futura, multi-forma-de-pago, bloqueo de `void()`, endpoint viejo 404, `history` con fuente `recibo_caja`, `open-items`). Confirmado que frontend no usa el endpoint retirado (sin página de CxC implementada, solo "Coming Soon").
-- [x] 7. Estrategia de entrega confirmada con el usuario: un solo commit (diff ~1100 líneas, cambio coherente ya verificado end-to-end). Pendiente: review RDD si el switch sigue activo al comitear.
+- [x] 7. Estrategia de entrega confirmada con el usuario: un solo commit (diff ~1100 líneas, cambio coherente ya verificado end-to-end). Review RDD corrida y aprobada (`review-d9bd435133316577`, acknowledged) — encontró 1 bug CRITICAL real (orden del CASE de reparo de status en la migración, corregido en `97b45c2`) y 4 hallazgos menores no bloqueantes (idempotencia bajo carrera, redondeo de payment.amount, formato de fecha, UUID sin validar en rutas), todos corregidos por pedido del usuario en `c74615c` y verificados con smoke test.
+
+**Estado final**: rama `feature/recibos-caja` pusheada a `origin` (3 commits: `f318ede`, `97b45c2`, `c74615c`). Sin PR creado todavía — el usuario no lo pidió, solo push.
 
 ## Verificación
 
