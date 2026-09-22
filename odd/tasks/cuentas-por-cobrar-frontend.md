@@ -45,6 +45,9 @@ Delegated direct — write rule (4 archivos no triviales) dispara delegación ob
 - [x] 8. Validador `IsValidChequeReference` duplicado verbatim entre `create-egreso.dto.ts` y `create-recibo-caja.dto.ts` — extraído a `backend/src/common/validators/is-valid-cheque-reference.validator.ts`.
 - [x] 9. Función `toCents()` reimplementada 5 veces en el backend — extraída a `backend/src/common/utils/money.util.ts`, los 5 archivos ahora importan de ahí.
 
+## Tasks — ronda 4 (auditoría propia del timezone, más allá de Recibos de Caja)
+- [x] 10. Mismo bug de timezone (columna DATE sin `timeZone: 'America/Bogota'`) confirmado y corregido en 5 sitios más: `EgresoDetailPage.tsx` (`egreso.date`), `EgresoNewPage.tsx` (`openPayable.document.date`), `EgresosListPage.tsx` (`egreso.date`), `DocumentsPage.tsx` (`doc.date`), `DocumentDetailPage.tsx` (`doc.date`, más `convertedAt`/`appliedAt` que son timestamp real — ahí el fix es cosmético, no un desplazamiento de día). Auditoría completa hecha por un fork read-only antes de tocar nada; descartados 5 falsos positivos (`toLocaleString` sobre números) y 2 casos no aplicables (hora del navegador, timestamp real en `ReadOnlyBanner.tsx`). Verificado: diff coincide con lo reportado, `tsc --noEmit` limpio.
+
 ## Progreso — ronda 3
 - Delegado a `react-code-crafter` (tasks 6-7) y `nestjs-code-crafter` (tasks 8-9) en paralelo, dominios sin archivos compartidos.
 - Verificación del orquestador: `git status`/`git diff --stat` coinciden con lo reportado por ambos agentes; `pnpm exec tsc --noEmit` limpio en `backend/` y `frontend/`; inspeccionado el diff de `cot-effect.strategy.ts` para confirmar que el import de `toCents` compartido no pisó mi fix manual (task 5).
