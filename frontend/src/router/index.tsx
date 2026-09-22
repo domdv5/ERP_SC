@@ -29,6 +29,9 @@ const StockLookupPage = lazy(() => import('@/pages/stock-lookup/StockLookupPage'
 const EgresosListPage = lazy(() => import('@/pages/egresos/EgresosListPage'))
 const EgresoDetailPage = lazy(() => import('@/pages/egresos/EgresoDetailPage'))
 const EgresoNewPage = lazy(() => import('@/pages/egresos/EgresoNewPage'))
+const RecibosCajaListPage = lazy(() => import('@/pages/recibos-caja/RecibosCajaListPage'))
+const ReciboCajaDetailPage = lazy(() => import('@/pages/recibos-caja/ReciboCajaDetailPage'))
+const RecibosCajaNewPage = lazy(() => import('@/pages/recibos-caja/RecibosCajaNewPage'))
 
 // Delay de 200ms antes del loader de pantalla completa: un chunk ya cacheado no llega a mostrarlo, evita el parpadeo en cada click.
 function DelayedPageLoader() {
@@ -234,6 +237,36 @@ export const router = createBrowserRouter([
           <Lazy>
             <PermissionGuard permission="egreso.read">
               <EgresoDetailPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'recibos-caja',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="recibo.read">
+              <RecibosCajaListPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'recibos-caja/new',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="recibo.create">
+              <RecibosCajaNewPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'recibos-caja/:id',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="recibo.read">
+              <ReciboCajaDetailPage />
             </PermissionGuard>
           </Lazy>
         ),

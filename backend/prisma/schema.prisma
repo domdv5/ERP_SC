@@ -113,6 +113,7 @@ model Customer {
   seller             ThirdParty?          @relation("SellerThirdParty", fields: [sellerId], references: [id])
   accountsReceivable AccountsReceivable[]
   customerCredits    CustomerCredit[]
+  recibosCaja        ReciboCaja[]
 
   @@map("customers")
 }
@@ -426,6 +427,7 @@ model User {
   systemConfigsActivated   SystemConfig[]       @relation("SystemConfigActivatedBy")
   systemConfigsDeactivated SystemConfig[]       @relation("SystemConfigDeactivatedBy")
   egresos                  Egreso[]
+  recibosCaja              ReciboCaja[]
 
   @@map("user")
 }
@@ -540,15 +542,15 @@ model Document {
   sourceDocument   Document?   @relation("DocumentSource", fields: [sourceDocumentId], references: [id])
   derivedDocuments Document[]  @relation("DocumentSource")
 
-  documentItems         DocumentItem[]
-  inventoryMovements    InventoryMovement[]
-  accountsReceivable    AccountsReceivable[]
-  accountsPayable       AccountsPayable[]
-  supplierCredits       SupplierCredit[]              @relation("DvcSupplierCredit")
+  documentItems          DocumentItem[]
+  inventoryMovements     InventoryMovement[]
+  accountsReceivable     AccountsReceivable[]
+  accountsPayable        AccountsPayable[]
+  supplierCredits        SupplierCredit[]            @relation("DvcSupplierCredit")
   // Créditos a favor del cliente generados por esta DVV
-  customerCredits       CustomerCredit[]              @relation("DvvCustomerCredit")
+  customerCredits        CustomerCredit[]            @relation("DvvCustomerCredit")
   // Aplicaciones de saldo a favor hechas al confirmar esta venta (POS/COT)
-  appliedCustomerCredits CustomerCreditApplication[]  @relation("CustomerCreditSaleApplication")
+  appliedCustomerCredits CustomerCreditApplication[] @relation("CustomerCreditSaleApplication")
 
   @@unique([type, number])
   @@index([type, status])
@@ -624,6 +626,8 @@ model AccountsReceivable {
   sellerId    String                   @map("seller_id") @db.Uuid
   documentId  String                   @map("document_id") @db.Uuid
   totalAmount Decimal                  @map("total_amount") @db.Decimal(16, 2)
+  /// Abonado acumulado, cacheado para filtrar/ordenar sin agregar en cada consulta. Reforzado por CHECKs a mano. Mismo criterio que AccountsPayable.paidAmount.
+  paidAmount  Decimal                  @default(0) @map("paid_amount") @db.Decimal(16, 2)
   dueDate     DateTime?                @map("due_date") @db.Date
   status      AccountsReceivableStatus @default(pending)
   createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamptz
@@ -633,7 +637,8 @@ model AccountsReceivable {
   seller   ThirdParty @relation("SellerAR", fields: [sellerId], references: [id])
   document Document   @relation(fields: [documentId], references: [id])
 
-  receivablePayments ReceivablePayment[]
+  receivablePayments    ReceivablePayment[]
+  reciboCajaAllocations ReciboCajaAllocation[]
 
   @@index([clientId, status])
   @@index([sellerId])
@@ -729,11 +734,11 @@ model SupplierCredit {
   sourceDocument Document?                   @relation("DvcSupplierCredit", fields: [sourceDocumentId], references: [id])
   applications   SupplierCreditApplication[]
 
+  // Una DVC genera exactamente un crédito: bloquea duplicados por doble confirm o retry.
+  @@unique([sourceDocumentId])
   // Incluye createdAt para que "créditos disponibles de un proveedor" (WHERE
   // supplierId + status, ORDER BY createdAt) salga ordenada sin nodo Sort.
   @@index([supplierId, status, createdAt])
-  // Una DVC genera exactamente un crédito: bloquea duplicados por doble confirm o retry.
-  @@unique([sourceDocumentId])
   @@map("supplier_credit")
 }
 
@@ -755,11 +760,11 @@ model SupplierCreditApplication {
   /// dejaría la aplicación huérfana si alguna vez se borra un egreso.
   egreso         Egreso?         @relation(fields: [egresoId], references: [id], onDelete: Restrict)
 
-  @@index([accountPayableId])
-  @@index([supplierCreditId])
   // Un mismo crédito no se aplica dos veces a la misma cuenta dentro de un egreso. En
   // PostgreSQL varios NULL conviven, así que las filas viejas (sin egreso) no chocan.
   @@unique([egresoId, accountPayableId, supplierCreditId])
+  @@index([accountPayableId])
+  @@index([supplierCreditId])
   @@map("supplier_credit_application")
 }
 
@@ -782,11 +787,11 @@ model CustomerCredit {
   sourceDocument Document?                   @relation("DvvCustomerCredit", fields: [sourceDocumentId], references: [id])
   applications   CustomerCreditApplication[]
 
+  // Una DVV genera un único crédito — bloquea duplicados por doble confirm o retry.
+  @@unique([sourceDocumentId])
   // Incluye createdAt para que la consulta de créditos disponibles del cliente
   // (WHERE customerId + status, ORDER BY createdAt) salga ordenada sin nodo Sort.
   @@index([customerId, status, createdAt])
-  // Una DVV genera un único crédito — bloquea duplicados por doble confirm o retry.
-  @@unique([sourceDocumentId])
   @@map("customer_credit")
 }
 
@@ -801,10 +806,10 @@ model CustomerCreditApplication {
   customerCredit CustomerCredit @relation(fields: [customerCreditId], references: [id])
   saleDocument   Document       @relation("CustomerCreditSaleApplication", fields: [saleDocumentId], references: [id])
 
-  @@index([saleDocumentId])
   // Un mismo crédito no se aplica dos veces a la misma venta; el prefijo cubre
   // el lookup "¿este crédito ya tiene aplicaciones?" al anular la DVV.
   @@unique([customerCreditId, saleDocumentId])
+  @@index([saleDocumentId])
   @@map("customer_credit_application")
 }
 
@@ -831,18 +836,18 @@ enum EgresoPaymentMethod {
 
 /// Paga una o varias CxP de un mismo proveedor en un solo movimiento; no se anula ni se edita.
 model Egreso {
-  id         String   @id @default(uuid(7)) @db.Uuid
+  id             String   @id @default(uuid(7)) @db.Uuid
   /// Consecutivo propio (clave "EGRESO" en Sequence), ceros a la izquierda a 6 dígitos para ordenar como texto.
-  number     String   @unique @db.VarChar(30)
+  number         String   @unique @db.VarChar(30)
   /// Sin @default a propósito: la fija el service en huso Colombia, no el de la base (mismo criterio que Document.date).
-  date       DateTime @db.Date
-  supplierId String   @map("supplier_id") @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
+  date           DateTime @db.Date
+  supplierId     String   @map("supplier_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
   /// total = cashTotal + creditTotal (CHECK) y también la suma de EgresoAllocation.amount (eso lo valida el service, ningún CHECK lo ve).
-  total       Decimal @db.Decimal(16, 2)
-  cashTotal   Decimal @map("cash_total") @db.Decimal(16, 2)
-  creditTotal Decimal @map("credit_total") @db.Decimal(16, 2)
-  notes       String? @db.VarChar(500)
+  total          Decimal  @db.Decimal(16, 2)
+  cashTotal      Decimal  @map("cash_total") @db.Decimal(16, 2)
+  creditTotal    Decimal  @map("credit_total") @db.Decimal(16, 2)
+  notes          String?  @db.VarChar(500)
   /// Clave que manda el cliente para que un reintento de red no pague dos veces.
   idempotencyKey String   @unique @map("idempotency_key") @db.VarChar(100)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
@@ -890,6 +895,67 @@ model EgresoAllocation {
   @@unique([egresoId, accountPayableId])
   @@index([accountPayableId])
   @@map("egreso_allocation")
+}
+
+// ─── Recibo de caja (documento de tesorería, lado cliente) ───────────────────
+
+/// Paga una o varias CxC de un mismo cliente en un solo movimiento; no se anula ni se edita. Sin saldo a favor: a diferencia de Egreso, no hay líneas de crédito — regla de negocio explícita.
+model ReciboCaja {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  /// Consecutivo propio (clave "RECIBO_CAJA" en Sequence), ceros a la izquierda a 6 dígitos para ordenar como texto.
+  number         String   @unique @db.VarChar(30)
+  /// Sin @default a propósito: la fija el service en huso Colombia, no el de la base (mismo criterio que Egreso.date).
+  date           DateTime @db.Date
+  clientId       String   @map("client_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  /// total = suma de las formas de pago (CHECK) y también la suma de ReciboCajaAllocation.amount (eso lo valida el service, ningún CHECK lo ve).
+  total          Decimal  @db.Decimal(16, 2)
+  notes          String?  @db.VarChar(500)
+  /// Clave que manda el cliente para que un reintento de red no cobre dos veces.
+  idempotencyKey String   @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  client      Customer               @relation(fields: [clientId], references: [id])
+  user        User                   @relation(fields: [userId], references: [id])
+  payments    ReciboCajaPayment[]
+  allocations ReciboCajaAllocation[]
+
+  @@index([date])
+  @@index([clientId, date])
+  @@index([userId])
+  @@map("recibo_caja")
+}
+
+model ReciboCajaPayment {
+  id           String              @id @default(uuid(7)) @db.Uuid
+  reciboCajaId String              @map("recibo_caja_id") @db.Uuid
+  /// Mismo enum que Egreso — misma tesorería, mismas formas de pago (regla de negocio explícita).
+  method       EgresoPaymentMethod
+  amount       Decimal             @db.Decimal(16, 2)
+  /// Número de cheque o de consignación. Obligatorio para `cheque` — lo valida el service.
+  reference    String?             @db.VarChar(100)
+  bank         String?             @db.VarChar(100)
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  reciboCaja ReciboCaja @relation(fields: [reciboCajaId], references: [id])
+
+  @@index([reciboCajaId])
+  @@map("recibo_caja_payment")
+}
+
+model ReciboCajaAllocation {
+  id                  String  @id @default(uuid(7)) @db.Uuid
+  reciboCajaId        String  @map("recibo_caja_id") @db.Uuid
+  accountReceivableId String  @map("account_receivable_id") @db.Uuid
+  /// Total abonado a esta cuenta por cobrar en este recibo.
+  amount              Decimal @db.Decimal(16, 2)
+
+  reciboCaja        ReciboCaja         @relation(fields: [reciboCajaId], references: [id])
+  accountReceivable AccountsReceivable @relation(fields: [accountReceivableId], references: [id])
+
+  @@unique([reciboCajaId, accountReceivableId])
+  @@index([accountReceivableId])
+  @@map("recibo_caja_allocation")
 }
 
 // ─── Configuración del sistema ────────────────────────────────────────────────
