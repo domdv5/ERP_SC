@@ -11,6 +11,7 @@ import { DocumentsModule } from './documents/documents.module';
 import { AccountsPayableModule } from '@/accounts-payable/accounts-payable.module';
 import { AccountsReceivableModule } from '@/accounts-receivable/accounts-receivable.module';
 import { EgresosModule } from '@/egresos/egresos.module';
+import { RecibosCajaModule } from '@/recibos-caja/recibos-caja.module';
 import { SystemConfigModule } from '@/system-config/system-config.module';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
@@ -31,6 +32,7 @@ import { ReadOnlyModeGuard } from '@/common/guards/read-only-mode.guard';
     AccountsPayableModule,
     AccountsReceivableModule,
     EgresosModule,
+    RecibosCajaModule,
     SystemConfigModule,
   ],
   providers: [
