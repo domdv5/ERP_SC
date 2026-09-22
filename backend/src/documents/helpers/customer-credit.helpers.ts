@@ -1,10 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-
-/** Compara montos en centavos enteros para evitar errores de coma flotante. */
-function toCents(amount: number | Prisma.Decimal) {
-  return Math.round(Number(amount) * 100);
-}
+import { toCents } from '@/common/utils/money.util';
 
 export interface ApplyCustomerCreditsParams {
   /** Cliente de la venta — debe coincidir con el dueño de cada saldo a favor. */

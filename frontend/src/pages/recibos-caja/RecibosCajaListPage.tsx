@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
@@ -24,6 +24,7 @@ const formatDate = (iso: string) =>
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    timeZone: 'America/Bogota',
   })
 
 export default function RecibosCajaListPage() {
@@ -41,10 +42,17 @@ export default function RecibosCajaListPage() {
   const [debouncedSearch] = useDebounce(search, 400)
   const [debouncedClientSearch] = useDebounce(clientSearch, 400)
 
-  // Volver a la página 1 cuando cambia cualquier filtro.
-  useEffect(() => {
+  // Ajuste de estado durante el render: resetea la página sin disparar un fetch intermedio con el filtro nuevo y la página vieja.
+  const [prevFilters, setPrevFilters] = useState({ debouncedSearch, clientId, dateFrom, dateTo })
+  if (
+    prevFilters.debouncedSearch !== debouncedSearch ||
+    prevFilters.clientId !== clientId ||
+    prevFilters.dateFrom !== dateFrom ||
+    prevFilters.dateTo !== dateTo
+  ) {
+    setPrevFilters({ debouncedSearch, clientId, dateFrom, dateTo })
     setPage(1)
-  }, [debouncedSearch, clientId, dateFrom, dateTo])
+  }
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['recibos-caja', debouncedSearch, clientId, dateFrom, dateTo, page],

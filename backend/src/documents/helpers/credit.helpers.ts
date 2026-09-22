@@ -1,13 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PrismaService } from '@/prisma/prisma.service';
+import { toCents } from '@/common/utils/money.util';
 
 type PrismaOrTx = PrismaService | Prisma.TransactionClient;
-
-/** Compara montos en centavos enteros para evitar errores de coma flotante. */
-function toCents(amount: number | Prisma.Decimal) {
-  return Math.round(Number(amount) * 100);
-}
 
 export interface CustomerCreditSummary {
   /** Todos en pesos. `creditLimit` null en la ficha del cliente ⇒ 0. */

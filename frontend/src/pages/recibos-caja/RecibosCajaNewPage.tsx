@@ -23,6 +23,7 @@ const formatDate = (iso: string) =>
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    timeZone: 'America/Bogota',
   })
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────

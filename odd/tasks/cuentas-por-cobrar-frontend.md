@@ -38,7 +38,19 @@ Delegated direct — write rule (4 archivos no triviales) dispara delegación ob
   - Estadística "Pendientes" (mismos dos archivos): hoy solo cuenta `status: 'pending'`, dejando fuera `partial` (que también tiene saldo pendiente). Sumar el conteo de `partial` al de `pending` en la tarjeta "Pendientes" (consulta adicional por `status: 'partial'`, igual patrón que las consultas de conteo ya existentes).
   - Fallback ante status/origen desconocido (`StatusBadge.tsx` de ambos módulos + el `ORIGIN_BADGE[entry.source]` en ambos `*DetailPage.tsx`): no debe crashear si el backend manda un valor fuera del enum esperado — degradar a un badge neutro en vez de `undefined.className`.
 
-## Progreso
+## Tasks — ronda 3 (hallazgos de /ultrareview sobre el PR #2)
+- [x] 5. Bug real y confirmado en `CotEffectStrategy.confirm()` (backend/src/documents/strategies/cot-effect.strategy.ts): una sobre-aplicación de saldos a favor del cliente hacía `netCents` negativo y el `INSERT` en `accounts_receivable` violaba el CHECK `accounts_receivable_paid_amount_range_chk` agregado hoy (Postgres crudo, 500 en vez de 400). Implementado YO MISMO (decisión de negocio real, no delegado): guard agregado antes de crear la cuenta, mismo mensaje que ya usa `applyCustomerCredits`. Verificado leyendo el CHECK real de la migración y el flujo completo antes de escribir el fix. `tsc --noEmit` del backend limpio.
+- [x] 6. Timezone faltante en `RecibosCajaListPage.tsx`/`ReciboCajaDetailPage.tsx`/`RecibosCajaNewPage.tsx` — mismo bug que se corrigió hoy en AR/AP, colado en 3 páginas creadas en sesión anterior.
+- [x] 7. `RecibosCajaListPage.tsx` mantiene el viejo patrón `useEffect(() => setPage(1), [...])` que ya se reemplazó en AR/AP por el patrón de reset durante el render.
+- [x] 8. Validador `IsValidChequeReference` duplicado verbatim entre `create-egreso.dto.ts` y `create-recibo-caja.dto.ts` — extraído a `backend/src/common/validators/is-valid-cheque-reference.validator.ts`.
+- [x] 9. Función `toCents()` reimplementada 5 veces en el backend — extraída a `backend/src/common/utils/money.util.ts`, los 5 archivos ahora importan de ahí.
+
+## Progreso — ronda 3
+- Delegado a `react-code-crafter` (tasks 6-7) y `nestjs-code-crafter` (tasks 8-9) en paralelo, dominios sin archivos compartidos.
+- Verificación del orquestador: `git status`/`git diff --stat` coinciden con lo reportado por ambos agentes; `pnpm exec tsc --noEmit` limpio en `backend/` y `frontend/`; inspeccionado el diff de `cot-effect.strategy.ts` para confirmar que el import de `toCents` compartido no pisó mi fix manual (task 5).
+- Los 5 hallazgos de `/ultrareview` sobre el PR #2 quedan corregidos.
+
+## Progreso — ronda 1/2
 - Agente `react-code-crafter` completó la implementación: creó `accounts-receivable.types.ts`, `accounts-receivable.service.ts`, `accounts-receivable.utils.ts`, `StatusBadge.tsx`, `AccountsReceivableListPage.tsx`, `AccountsReceivableDetailPage.tsx`; modificó `types/index.ts`, `router/index.tsx` (reemplazó `ComingSoonPage` en `/accounts-receivable` por las páginas reales, gateado por `ar.read`, sin tocar `navigation.ts` porque el permiso ya existía ahí) y `frontend/CLAUDE.md`.
 - Sin formulario de pago ni client-statement page, según lo fuera de alcance.
 - **Verificación del orquestador (spot check)**: `git status`/`git diff --stat` coinciden con lo reportado por el agente; `pnpm exec tsc --noEmit` sin errores; confirmado que el import removido de `ComingSoonPage` no quedó huérfano.
