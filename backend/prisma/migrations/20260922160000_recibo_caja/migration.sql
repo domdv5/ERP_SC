@@ -15,10 +15,15 @@ SET "paid_amount" = COALESCE(
 );
 
 -- Repara status a partir de paid_amount recién calculado, mismo motivo que el rework de AP.
+-- Orden importa: un COT que aplicó saldo a favor puede nacer con total_amount=0 y
+-- status='paid' (ver CotEffectStrategy en backend/CLAUDE.md) — paid_amount backfillea
+-- a 0 para esas filas (nunca tuvieron un receivable_payment real), así que hay que
+-- chequear "paid_amount >= total_amount" ANTES que "paid_amount <= 0" o esas filas
+-- se reescriben a 'pending' con un saldo que nunca se puede cobrar.
 UPDATE "accounts_receivable"
 SET "status" = CASE
-  WHEN "paid_amount" <= 0 THEN 'pending'::"AccountsReceivableStatus"
   WHEN "paid_amount" >= "total_amount" THEN 'paid'::"AccountsReceivableStatus"
+  WHEN "paid_amount" <= 0 THEN 'pending'::"AccountsReceivableStatus"
   ELSE 'partial'::"AccountsReceivableStatus"
 END;
 
