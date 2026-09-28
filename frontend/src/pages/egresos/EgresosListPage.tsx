@@ -200,7 +200,14 @@ export default function EgresosListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Número', 'Fecha', 'Proveedor', 'Total', 'Dinero', 'Saldo a favor'].map((h) => (
+                  {[
+                    'Número',
+                    'Fecha',
+                    'Proveedor',
+                    'Total',
+                    'Pagado en efectivo',
+                    'Saldo a favor',
+                  ].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"

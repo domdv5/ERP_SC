@@ -129,7 +129,7 @@ export default function EgresoDetailPage() {
               <Banknote className="w-4 h-4 text-content-muted" />
             </div>
             <div>
-              <p className="text-xs text-content-faint">Dinero</p>
+              <p className="text-xs text-content-faint">Pagado en efectivo</p>
               <p className="text-sm text-content font-medium">
                 {formatCOP(Number(egreso.cashTotal))}
               </p>
@@ -230,7 +230,7 @@ export default function EgresoDetailPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ui-border">
-                {['Documento', 'Abonado', 'Dinero', 'Saldo a favor'].map((h) => (
+                {['Documento', 'Abonado', 'Pagado en efectivo', 'Saldo a favor'].map((h) => (
                   <th
                     key={h}
                     className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
