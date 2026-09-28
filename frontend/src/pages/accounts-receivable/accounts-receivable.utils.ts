@@ -2,12 +2,14 @@ import type { AccountsReceivableStatus, DocumentType } from '@/types'
 
 export const formatDate = (iso: string | null) => {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'America/Bogota',
-  })
+  const date = new Date(iso)
+  const day = date.toLocaleDateString('es-CO', { day: 'numeric', timeZone: 'America/Bogota' })
+  // toLocaleDateString con month:'short' agrega un punto ("ago."); se saca para que quede "17 ago 2026".
+  const month = date
+    .toLocaleDateString('es-CO', { month: 'short', timeZone: 'America/Bogota' })
+    .replace('.', '')
+  const year = date.toLocaleDateString('es-CO', { year: 'numeric', timeZone: 'America/Bogota' })
+  return `${day} ${month} ${year}`
 }
 
 export const STATUS_LABELS: Record<AccountsReceivableStatus, { label: string; className: string }> =

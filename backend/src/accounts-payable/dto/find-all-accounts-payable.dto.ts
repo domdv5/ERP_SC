@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   Min,
 } from 'class-validator';
@@ -35,4 +36,17 @@ export class FindAllAccountsPayableDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  // Solo fecha calendario (no datetime) — el service asume este formato para calcular el día completo en horario Bogotá.
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'dateFrom debe tener formato YYYY-MM-DD',
+  })
+  dateFrom?: string;
+
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'dateTo debe tener formato YYYY-MM-DD',
+  })
+  dateTo?: string;
 }

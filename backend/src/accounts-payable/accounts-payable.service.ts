@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
@@ -35,6 +39,44 @@ type DetailRow = Prisma.AccountsPayableGetPayload<{
   include: typeof DETAIL_INCLUDE;
 }>;
 
+// El regex del DTO solo valida la forma (YYYY-MM-DD); una fecha con forma válida pero
+// inexistente (13-32, 02-30) da Invalid Date y Prisma la rechaza con un 500, no un 400.
+function assertValidCalendarDate(label: string, value: string) {
+  if (Number.isNaN(new Date(`${value}T00:00:00.000-05:00`).getTime())) {
+    throw new BadRequestException(`${label} no es una fecha válida`);
+  }
+}
+
+// Bogotá es UTC-5 fijo (sin horario de verano) — mismo huso que usa EgresosService para "hoy".
+// createdAt es timestamptz; el límite superior es el inicio del día siguiente en Bogotá, exclusivo.
+function dateRangeFilter(dateFrom?: string, dateTo?: string) {
+  return {
+    ...(dateFrom && { gte: new Date(`${dateFrom}T00:00:00.000-05:00`) }),
+    ...(dateTo && {
+      lt: new Date(
+        new Date(`${dateTo}T00:00:00.000-05:00`).getTime() +
+          24 * 60 * 60 * 1000,
+      ),
+    }),
+  };
+}
+
+/** Totales sobre el conjunto filtrado completo (no solo la página actual), mismo criterio de saldo que withDerivedFields. */
+function buildTotals(totals: {
+  _sum: {
+    totalAmount: Prisma.Decimal | null;
+    paidAmount: Prisma.Decimal | null;
+  };
+}) {
+  const totalAmount = totals._sum.totalAmount ?? new Prisma.Decimal(0);
+  const paidAmount = totals._sum.paidAmount ?? new Prisma.Decimal(0);
+  return {
+    totalAmount,
+    paidAmount,
+    balance: totalAmount.minus(paidAmount),
+  };
+}
+
 /** Reparte los campos derivados (abonado, aplicado en nota crédito, saldo) sobre una fila con sus creditApplications ya cargadas. */
 function withDerivedFields<
   T extends Pick<ListRow, 'totalAmount' | 'paidAmount' | 'creditApplications'>,
@@ -63,7 +105,15 @@ export class AccountsPayableService {
       status,
       supplierId,
       search,
+      dateFrom,
+      dateTo,
     } = findAllAccountsPayableDto;
+    if (dateFrom) assertValidCalendarDate('dateFrom', dateFrom);
+    if (dateTo) assertValidCalendarDate('dateTo', dateTo);
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      throw new BadRequestException('dateFrom no puede ser posterior a dateTo');
+    }
+
     const skip = (page - 1) * limit;
 
     const where: Prisma.AccountsPayableWhereInput = {
@@ -74,9 +124,12 @@ export class AccountsPayableService {
           thirdParty: { name: { contains: search, mode: 'insensitive' } },
         },
       }),
+      ...((dateFrom || dateTo) && {
+        createdAt: dateRangeFilter(dateFrom, dateTo),
+      }),
     };
 
-    const [rawItems, total] = await this.prisma.$transaction([
+    const [rawItems, total, totals] = await this.prisma.$transaction([
       this.prisma.accountsPayable.findMany({
         where,
         include: LIST_INCLUDE,
@@ -85,6 +138,10 @@ export class AccountsPayableService {
         orderBy: { dueDate: { sort: 'asc', nulls: 'last' } },
       }),
       this.prisma.accountsPayable.count({ where }),
+      this.prisma.accountsPayable.aggregate({
+        where,
+        _sum: { totalAmount: true, paidAmount: true },
+      }),
     ]);
 
     return {
@@ -94,6 +151,7 @@ export class AccountsPayableService {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+        totals: buildTotals(totals),
       },
     };
   }

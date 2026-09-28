@@ -2,20 +2,24 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDebounce } from 'use-debounce'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { TrendingUp, Clock, CheckCircle2 } from 'lucide-react'
+import { TrendingUp, Clock, CheckCircle2, RefreshCw } from 'lucide-react'
 import { getAccountsReceivable } from '@/services/accounts-receivable.service'
+import { getThirdParties } from '@/services/third-parties.service'
 import {
+  Combobox,
   StatsGrid,
-  TableToolbar,
   TableSkeleton,
   EmptyState,
   ErrorState,
   TablePagination,
 } from '@/components/shared'
+import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { StatusBadge } from './components/StatusBadge'
 import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-receivable.utils'
 import type { AccountsReceivableStatus } from '@/types'
+import type { ThirdParty } from '@/types/third-party.types'
 
 const ALL_STATUSES: { value: AccountsReceivableStatus | ''; label: string }[] = [
   { value: '', label: 'Todos los estados' },
@@ -24,30 +28,71 @@ const ALL_STATUSES: { value: AccountsReceivableStatus | ''; label: string }[] = 
   { value: 'paid', label: 'Pagado' },
 ]
 
+const ALL_CLIENTS_OPTION: ComboboxOption = { id: '', label: 'Todos los clientes' }
+
 export default function AccountsReceivableListPage() {
   const navigate = useNavigate()
 
-  const [search, setSearch] = useState('')
+  const [clientId, setClientId] = useState('')
+  const [clientSearch, setClientSearch] = useState('')
+  const [clientSelectedName, setClientSelectedName] = useState('')
   const [statusFilter, setStatusFilter] = useState<AccountsReceivableStatus | ''>('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
 
-  const [debouncedSearch] = useDebounce(search, 400)
+  const [debouncedClientSearch] = useDebounce(clientSearch, 400)
 
-  const [prevFilters, setPrevFilters] = useState({ debouncedSearch, statusFilter })
+  const [prevFilters, setPrevFilters] = useState({
+    clientId,
+    statusFilter,
+    dateFrom,
+    dateTo,
+  })
   if (
-    prevFilters.debouncedSearch !== debouncedSearch ||
-    prevFilters.statusFilter !== statusFilter
+    prevFilters.clientId !== clientId ||
+    prevFilters.statusFilter !== statusFilter ||
+    prevFilters.dateFrom !== dateFrom ||
+    prevFilters.dateTo !== dateTo
   ) {
-    setPrevFilters({ debouncedSearch, statusFilter })
+    setPrevFilters({ clientId, statusFilter, dateFrom, dateTo })
     setPage(1)
   }
 
+  // Filtro exacto por cliente: selección de UN tercero vía Combobox, no búsqueda por texto libre.
+  const hasClientSearch = debouncedClientSearch.length >= 1
+  const { data: clientData, isLoading: isLoadingClients } = useQuery({
+    queryKey: ['third-parties-search-clients', debouncedClientSearch],
+    queryFn: () =>
+      getThirdParties({
+        search: debouncedClientSearch || undefined,
+        page: 1,
+        limit: 30,
+        isCustomer: true,
+      }),
+    staleTime: 2 * 60 * 1000,
+    enabled: hasClientSearch,
+  })
+
+  const clientOptions: ComboboxOption[] = (clientData?.items ?? []).map((tp: ThirdParty) => ({
+    id: tp.id,
+    label: tp.name,
+  }))
+  const clientDisplayOptions: ComboboxOption[] = [
+    ALL_CLIENTS_OPTION,
+    ...(clientId && !debouncedClientSearch
+      ? [{ id: clientId, label: clientSelectedName }, ...clientOptions]
+      : clientOptions),
+  ]
+
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['accounts-receivable', debouncedSearch, statusFilter, page],
+    queryKey: ['accounts-receivable', clientId, statusFilter, dateFrom, dateTo, page],
     queryFn: () =>
       getAccountsReceivable({
-        search: debouncedSearch || undefined,
+        clientId: clientId || undefined,
         status: statusFilter || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
         page,
         limit: 20,
       }),
@@ -56,7 +101,7 @@ export default function AccountsReceivableListPage() {
   })
 
   // Conteos por estado para la fila de estadísticas: el listado no trae ese
-  // desglose, así que se pide una sola fila por cada estado.
+  // desglose, así que se pide una sola fila por cada estado (sin los filtros activos, son globales).
   const { data: pendingData, isLoading: isPendingLoading } = useQuery({
     queryKey: ['accounts-receivable', 'count', 'pending'],
     queryFn: () => getAccountsReceivable({ status: 'pending', page: 1, limit: 1 }),
@@ -80,11 +125,12 @@ export default function AccountsReceivableListPage() {
   const totalPages = data?.meta.totalPages ?? 1
   const pendingCount = (pendingData?.meta.total ?? 0) + (partialData?.meta.total ?? 0)
   const paidCount = paidData?.meta.total ?? 0
+  const balanceTotal = data?.meta.totals.balance ?? '0'
 
   const statCards = [
     {
-      label: 'Total',
-      value: total,
+      label: 'Saldo total',
+      value: formatCOP(Number(balanceTotal)),
       icon: TrendingUp,
       bg: 'bg-brand-primary/10',
       fg: 'text-brand-primary dark:text-content',
@@ -104,6 +150,8 @@ export default function AccountsReceivableListPage() {
       fg: 'text-brand-secondary',
     },
   ]
+
+  const hasActiveFilters = Boolean(clientId || statusFilter || dateFrom || dateTo)
 
   return (
     <div className="space-y-6">
@@ -125,16 +173,35 @@ export default function AccountsReceivableListPage() {
       {/* Table */}
       <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
         <div className="border-b border-ui-border">
-          <TableToolbar
-            search={search}
-            onSearchChange={setSearch}
-            placeholder="Buscar por cliente..."
-            isLoading={isLoading}
-            itemCount={items.length}
-            total={total}
-            onRefresh={refetch}
-          />
-          <div className="px-5 pb-4 flex gap-3">
+          <div className="px-5 py-4 flex items-center gap-3">
+            <div className="flex-1 max-w-xs">
+              <Combobox
+                value={clientId}
+                onChange={(id, option) => {
+                  setClientId(id)
+                  setClientSelectedName(option.label)
+                }}
+                options={clientDisplayOptions}
+                isLoading={isLoadingClients}
+                placeholder="Filtrar por cliente..."
+                searchValue={clientSearch}
+                onSearchChange={setClientSearch}
+              />
+            </div>
+            <span className="text-xs text-content-faint ml-auto">
+              {isLoading ? '...' : `${items.length} de ${total} registros`}
+            </span>
+            <button
+              onClick={() => refetch()}
+              className="p-2 rounded-lg text-content-faint hover:text-content-muted hover:bg-surface-hover transition-colors"
+              title="Recargar"
+            >
+              <div className={cn(isLoading && 'animate-spin')}>
+                <RefreshCw className="w-4 h-4" />
+              </div>
+            </button>
+          </div>
+          <div className="px-5 pb-4 flex flex-wrap gap-3">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as AccountsReceivableStatus | '')}
@@ -146,6 +213,26 @@ export default function AccountsReceivableListPage() {
                 </option>
               ))}
             </select>
+            <label className="flex items-center gap-1.5 text-xs text-content-muted">
+              Desde
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                max={dateTo || undefined}
+                className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-content-muted">
+              Hasta
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                min={dateFrom || undefined}
+                className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+              />
+            </label>
           </div>
         </div>
 
@@ -159,13 +246,13 @@ export default function AccountsReceivableListPage() {
           <EmptyState
             icon={TrendingUp}
             title={
-              debouncedSearch
-                ? `Sin resultados para "${debouncedSearch}"`
+              hasActiveFilters
+                ? 'Sin resultados para estos filtros'
                 : 'No hay cuentas por cobrar registradas'
             }
             description={
-              debouncedSearch
-                ? 'Prueba con otro término de búsqueda'
+              hasActiveFilters
+                ? 'Prueba con otro cliente, estado o rango de fechas'
                 : 'Las cuentas se generan automáticamente al confirmar ventas a crédito (COT)'
             }
           />
@@ -179,6 +266,7 @@ export default function AccountsReceivableListPage() {
                   {[
                     'Cliente',
                     'Documento',
+                    'Fecha venta',
                     'Monto total',
                     'Pagado',
                     'Saldo',
@@ -220,6 +308,9 @@ export default function AccountsReceivableListPage() {
                           {DOCUMENT_TYPE_LABELS[account.document.type] ?? account.document.type}
                         </span>
                       </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                      {formatDate(account.document.date)}
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                       {formatCOP(Number(account.totalAmount))}
