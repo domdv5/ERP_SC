@@ -16,18 +16,8 @@ import {
   TablePagination,
 } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
-import { formatCOP, docNumber } from '@/lib/format'
+import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import type { ThirdParty } from '@/types/third-party.types'
-
-// ReciboCaja.date es @db.Date, Prisma la serializa como medianoche UTC. Leerla en horario
-// Bogotá la corre un día atrás (bug 2026-09-28) — hay que leerla en UTC.
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
 
 export default function RecibosCajaListPage() {
   const navigate = useNavigate()
@@ -229,7 +219,7 @@ export default function RecibosCajaListPage() {
                       {docNumber('RC', reciboCaja.number)}
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatDate(reciboCaja.date)}
+                      {formatDateOnly(reciboCaja.date)}
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">

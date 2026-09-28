@@ -3,18 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Wallet, Banknote, Landmark, Hash, StickyNote } from 'lucide-react'
 
 import { getReciboCaja } from '@/services/recibos-caja.service'
-import { formatCOP, docNumber } from '@/lib/format'
+import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
-
-// ReciboCaja.date es @db.Date, Prisma la serializa como medianoche UTC. Leerla en horario
-// Bogotá la corre un día atrás (bug 2026-09-28) — hay que leerla en UTC.
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
 
 export default function ReciboCajaDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -105,7 +95,8 @@ export default function ReciboCajaDetailPage() {
             </h1>
             <p className="text-content-muted text-sm mt-1 font-accent">
               <span className="text-content font-medium">{reciboCaja.client.thirdParty.name}</span>{' '}
-              &middot; {formatDate(reciboCaja.date)} &middot; Registrado por {reciboCaja.user.name}
+              &middot; {formatDateOnly(reciboCaja.date)} &middot; Registrado por{' '}
+              {reciboCaja.user.name}
             </p>
           </div>
         </div>

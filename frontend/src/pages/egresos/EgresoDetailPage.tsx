@@ -3,18 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Wallet, Banknote, HandCoins, Landmark, Hash, StickyNote } from 'lucide-react'
 
 import { getEgreso } from '@/services/egresos.service'
-import { formatCOP, docNumber } from '@/lib/format'
+import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
-
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    // Egreso.date es @db.Date, Prisma la serializa como medianoche UTC. Leerla en horario
-    // Bogotá la corre un día atrás (bug 2026-09-28) — hay que leerla en UTC.
-    timeZone: 'UTC',
-  })
 
 export default function EgresoDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -108,7 +98,7 @@ export default function EgresoDetailPage() {
               >
                 {egreso.supplier.thirdParty.name}
               </button>{' '}
-              &middot; {formatDate(egreso.date)} &middot; Registrado por {egreso.user.name}
+              &middot; {formatDateOnly(egreso.date)} &middot; Registrado por {egreso.user.name}
             </p>
           </div>
         </div>

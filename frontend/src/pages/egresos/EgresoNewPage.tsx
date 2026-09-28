@@ -10,23 +10,13 @@ import { getThirdParties } from '@/services/third-parties.service'
 import { getEgresoOpenItems } from '@/services/egresos.service'
 import { Combobox, CreditsPanel, ThousandsInput } from '@/components/shared'
 import type { ComboboxOption, CreditsPanelCredit } from '@/components/shared'
-import { formatCOP, docNumber } from '@/lib/format'
+import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { useEgresoForm } from './useEgresoForm'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
 import type { EgresoPaymentMethod } from '@/types'
 import type { ThirdParty } from '@/types/third-party.types'
-
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    // Document.date es @db.Date, Prisma la serializa como medianoche UTC. Leerla en horario
-    // Bogotá la corre un día atrás (bug 2026-09-28) — hay que leerla en UTC.
-    timeZone: 'UTC',
-  })
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
 // Mismo patrón que DocumentDetailPage.tsx: overlay + card, sin librería de modales.
@@ -380,7 +370,7 @@ export default function EgresoNewPage() {
                                 )}
                               </td>
                               <td className="px-5 py-3 text-content-muted text-xs whitespace-nowrap">
-                                {openPayable ? formatDate(openPayable.document.date) : '—'}
+                                {openPayable ? formatDateOnly(openPayable.document.date) : '—'}
                               </td>
                               <td className="px-5 py-3 text-content-secondary text-xs whitespace-nowrap">
                                 {formatCOP(row?.balance ?? 0)}

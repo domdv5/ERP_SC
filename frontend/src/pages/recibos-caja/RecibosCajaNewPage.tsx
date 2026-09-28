@@ -10,23 +10,13 @@ import { getThirdParties } from '@/services/third-parties.service'
 import { getReciboCajaOpenItems } from '@/services/recibos-caja.service'
 import { Combobox, ThousandsInput } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
-import { formatCOP, docNumber } from '@/lib/format'
+import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { useReciboCajaForm } from './useReciboCajaForm'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
 import type { EgresoPaymentMethod } from '@/types'
 import type { ThirdParty } from '@/types/third-party.types'
-
-// Document.date es @db.Date, Prisma la serializa como medianoche UTC. Leerla en horario
-// Bogotá la corre un día atrás (bug 2026-09-28) — hay que leerla en UTC.
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
 // Mismo patrón que EgresoNewPage.tsx: overlay + card, sin librería de modales.
@@ -339,7 +329,9 @@ export default function RecibosCajaNewPage() {
                                 )}
                               </td>
                               <td className="px-5 py-3 text-content-muted text-xs whitespace-nowrap">
-                                {openReceivable ? formatDate(openReceivable.document.date) : '—'}
+                                {openReceivable
+                                  ? formatDateOnly(openReceivable.document.date)
+                                  : '—'}
                               </td>
                               <td className="px-5 py-3 text-content-secondary text-xs whitespace-nowrap">
                                 {formatCOP(row?.balance ?? 0)}
