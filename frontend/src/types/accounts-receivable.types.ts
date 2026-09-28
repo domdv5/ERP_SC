@@ -62,11 +62,19 @@ export interface AccountsReceivableDetail extends AccountsReceivable {
   history: AccountsReceivableHistoryEntry[]
 }
 
+// Suma sobre TODO el conjunto que matchea los filtros activos (no solo la página visible).
+export interface AccountsReceivableTotals {
+  totalAmount: string
+  paidAmount: string
+  balance: string
+}
+
 export interface AccountsReceivableMeta {
   total: number
   page: number
   limit: number
   totalPages: number
+  totals: AccountsReceivableTotals
 }
 
 export interface GetAccountsReceivableParams {
@@ -75,4 +83,7 @@ export interface GetAccountsReceivableParams {
   status?: AccountsReceivableStatus
   clientId?: string
   search?: string
+  // Formato YYYY-MM-DD (el que da un <input type="date">); filtra sobre document.date
+  dateFrom?: string
+  dateTo?: string
 }

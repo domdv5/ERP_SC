@@ -48,13 +48,25 @@ import { getPendingQuantity, hasPendingItems } from './pos-checkout.utils'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
+// Timestamptz reales (convertedAt/appliedAt): se leen en horario Bogotá, el día en que
+// ocurrieron localmente.
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('es-CO', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
-    // doc.date es @db.Date (medianoche UTC); convertedAt/appliedAt son timestamptz — mismo timeZone, sin downside.
     timeZone: 'America/Bogota',
+  })
+
+// doc.date es @db.Date, Prisma la serializa como medianoche UTC. Leerla en horario Bogotá la
+// corre un día atrás (bug 2026-09-28, antes esta función se usaba para ambos casos) — hay que
+// leerla en UTC para recuperar el día calendario guardado tal cual.
+const formatDateOnly = (iso: string) =>
+  new Date(iso).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
   })
 
 // ─── label maps ──────────────────────────────────────────────────────────────
@@ -606,7 +618,7 @@ export default function DocumentDetailPage() {
             </div>
             <div>
               <p className="text-xs text-content-faint font-accent">Fecha</p>
-              <p className="text-sm text-content">{formatDate(doc.date)}</p>
+              <p className="text-sm text-content">{formatDateOnly(doc.date)}</p>
             </div>
           </div>
 

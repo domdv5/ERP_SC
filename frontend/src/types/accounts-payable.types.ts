@@ -78,11 +78,19 @@ export interface AccountsPayableDetail extends AccountsPayable {
   history: AccountsPayableHistoryEntry[]
 }
 
+// Suma sobre TODO el conjunto que matchea los filtros activos (no solo la página visible).
+export interface AccountsPayableTotals {
+  totalAmount: string
+  paidAmount: string
+  balance: string
+}
+
 export interface AccountsPayableMeta {
   total: number
   page: number
   limit: number
   totalPages: number
+  totals: AccountsPayableTotals
 }
 
 export interface GetAccountsPayableParams {
@@ -91,6 +99,9 @@ export interface GetAccountsPayableParams {
   status?: AccountsPayableStatus
   supplierId?: string
   search?: string
+  // Formato YYYY-MM-DD (el que da un <input type="date">); filtra sobre document.date
+  dateFrom?: string
+  dateTo?: string
 }
 
 export interface SupplierStatementTotals {

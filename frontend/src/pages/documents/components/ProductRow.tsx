@@ -3,13 +3,15 @@ import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { Trash2, Copy } from 'lucide-react'
 import { toast } from 'sonner'
-import type {
-  UseFormRegister,
-  UseFormSetValue,
-  UseFormWatch,
-  UseFormGetValues,
+import {
+  Controller,
+  type Control,
+  type UseFormRegister,
+  type UseFormSetValue,
+  type UseFormWatch,
+  type UseFormGetValues,
 } from 'react-hook-form'
-import { Combobox, HintText } from '@/components/shared'
+import { Combobox, HintText, ThousandsInput } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { getProducts } from '@/services/products.service'
 import { formatCOP } from '@/lib/format'
@@ -22,6 +24,7 @@ interface ProductRowProps {
   docType: DocumentType
   onRemove: () => void
   register: UseFormRegister<FormValues>
+  control: Control<FormValues>
   setValue: UseFormSetValue<FormValues>
   watch: UseFormWatch<FormValues>
   getValues: UseFormGetValues<FormValues>
@@ -44,6 +47,7 @@ export function ProductRow({
   docType,
   onRemove,
   register,
+  control,
   setValue,
   watch,
   getValues,
@@ -282,12 +286,19 @@ export function ProductRow({
         {/* Costo unitario */}
         {showCost && (
           <td className="px-3 py-2 w-36">
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              {...register(`items.${index}.unitCost`)}
-              className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all border-ui-border-medium"
+            <Controller
+              control={control}
+              name={`items.${index}.unitCost`}
+              render={({ field }) => (
+                <ThousandsInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
+                  className="bg-surface-raised"
+                />
+              )}
             />
           </td>
         )}
@@ -318,12 +329,19 @@ export function ProductRow({
         {/* Precio unitario — solo preventas y remisiones: editable, prellenado con el precio de venta, sin costo */}
         {showPrice && (
           <td className="px-3 py-2 w-36">
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              {...register(`items.${index}.unitPrice`)}
-              className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all border-ui-border-medium"
+            <Controller
+              control={control}
+              name={`items.${index}.unitPrice`}
+              render={({ field }) => (
+                <ThousandsInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
+                  className="bg-surface-raised"
+                />
+              )}
             />
           </td>
         )}

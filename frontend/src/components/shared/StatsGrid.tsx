@@ -2,7 +2,8 @@ import type { LucideIcon } from 'lucide-react'
 
 export interface StatCard {
   label: string
-  value: number
+  // string admite valores ya formateados (ej. formatCOP) además de conteos crudos
+  value: number | string
   icon: LucideIcon
   bg: string
   fg: string

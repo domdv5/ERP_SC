@@ -24,8 +24,9 @@ const formatDate = (iso: string) =>
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    // Egreso.date es @db.Date (medianoche UTC) — sin esto se ve un día antes en Bogotá.
-    timeZone: 'America/Bogota',
+    // Egreso.date es @db.Date, Prisma la serializa como medianoche UTC. Leerla en horario
+    // Bogotá la corre un día atrás (bug 2026-09-28) — hay que leerla en UTC.
+    timeZone: 'UTC',
   })
 
 export default function EgresosListPage() {
@@ -200,14 +201,16 @@ export default function EgresosListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Número', 'Fecha', 'Proveedor', 'Total', 'Dinero', 'Saldo a favor'].map((h) => (
-                    <th
-                      key={h}
-                      className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
-                    >
-                      {h}
-                    </th>
-                  ))}
+                  {['Número', 'Fecha', 'Proveedor', 'Total', 'Formas de pago', 'Saldo a favor'].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
+                      >
+                        {h}
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">

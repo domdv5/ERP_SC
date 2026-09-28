@@ -934,6 +934,7 @@ export default function POSCheckoutPage() {
                           key={field.id}
                           index={index}
                           register={register}
+                          control={control}
                           watch={watch}
                           onRemove={() => remove(index)}
                           minSalePrice={detail?.minSalePrice}

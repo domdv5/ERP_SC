@@ -11,8 +11,9 @@ const formatDate = (iso: string) =>
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    // Egreso.date es @db.Date (medianoche UTC) — sin esto se ve un día antes en Bogotá.
-    timeZone: 'America/Bogota',
+    // Egreso.date es @db.Date, Prisma la serializa como medianoche UTC. Leerla en horario
+    // Bogotá la corre un día atrás (bug 2026-09-28) — hay que leerla en UTC.
+    timeZone: 'UTC',
   })
 
 export default function EgresoDetailPage() {
@@ -129,7 +130,7 @@ export default function EgresoDetailPage() {
               <Banknote className="w-4 h-4 text-content-muted" />
             </div>
             <div>
-              <p className="text-xs text-content-faint">Dinero</p>
+              <p className="text-xs text-content-faint">Formas de pago</p>
               <p className="text-sm text-content font-medium">
                 {formatCOP(Number(egreso.cashTotal))}
               </p>
@@ -230,7 +231,7 @@ export default function EgresoDetailPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ui-border">
-                {['Documento', 'Abonado', 'Dinero', 'Saldo a favor'].map((h) => (
+                {['Documento', 'Abonado', 'Formas de pago', 'Saldo a favor'].map((h) => (
                   <th
                     key={h}
                     className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"

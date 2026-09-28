@@ -15,7 +15,7 @@ import { getAccountPayable } from '@/services/accounts-payable.service'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
 import { StatusBadge } from './components/StatusBadge'
-import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-payable.utils'
+import { formatDate, formatHistoryDate, DOCUMENT_TYPE_LABELS } from './accounts-payable.utils'
 import type { AccountsPayableHistoryEntry } from '@/types'
 
 // Distingue de un vistazo si cada fila del historial es un pago moderno (Egresos),
@@ -259,7 +259,7 @@ export default function AccountsPayableDetailPage() {
                       className="hover:bg-surface-raised transition-colors"
                     >
                       <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                        {formatDate(entry.date)}
+                        {formatHistoryDate(entry)}
                       </td>
                       <td className="px-5 py-3.5">
                         <span
