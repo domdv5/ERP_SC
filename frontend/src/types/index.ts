@@ -73,6 +73,23 @@ export type {
   CreateEgresoPaymentPayload,
 } from './egreso.types'
 export { EGRESO_PAYMENT_METHOD_LABELS } from './egreso.types'
+export type {
+  AccountsReceivableStatus,
+  ReciboCajaClient,
+  ReciboCajaDocument,
+  ReciboCajaListItem,
+  ReciboCajaPaymentLine,
+  ReciboCajaAllocation,
+  ReciboCajaAllocationAccountReceivable,
+  ReciboCaja,
+  ReciboCajaMeta,
+  GetRecibosCajaParams,
+  ReciboCajaOpenItems,
+  ReciboCajaOpenReceivable,
+  CreateReciboCajaPayload,
+  CreateReciboCajaReceivablePayload,
+  CreateReciboCajaPaymentPayload,
+} from './recibo-caja.types'
 export type { SystemStatus, SystemStatusActivatedBy } from './system.types'
 
 export interface ApiResponse<T> {

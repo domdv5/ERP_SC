@@ -553,7 +553,9 @@ export class DocumentsService {
             egresoAllocations: true,
           },
         },
-        accountsReceivable: { include: { receivablePayments: true } },
+        accountsReceivable: {
+          include: { receivablePayments: true, reciboCajaAllocations: true },
+        },
         supplierCredits: { include: { applications: true } },
         customerCredits: { include: { applications: true } },
         appliedCustomerCredits: true,
@@ -623,7 +625,9 @@ export class DocumentsService {
     // La venta a crédito genera una cuenta por cobrar; si ya recibió pagos no se
     // puede anular (quedarían sueltos). Mismo criterio que la cuenta por pagar de arriba.
     const hasReceivablePayments = document.accountsReceivable.some(
-      (receivable) => receivable.receivablePayments.length > 0,
+      (receivable) =>
+        receivable.receivablePayments.length > 0 ||
+        receivable.reciboCajaAllocations.length > 0,
     );
 
     if (hasReceivablePayments) {
@@ -877,7 +881,7 @@ export class DocumentsService {
           }),
           tx.accountsReceivable.findMany({
             where: { documentId: id },
-            include: { receivablePayments: true },
+            include: { receivablePayments: true, reciboCajaAllocations: true },
           }),
         ]);
 
@@ -894,7 +898,9 @@ export class DocumentsService {
         }
 
         const stillHasReceivablePayments = freshReceivables.some(
-          (receivable) => receivable.receivablePayments.length > 0,
+          (receivable) =>
+            receivable.receivablePayments.length > 0 ||
+            receivable.reciboCajaAllocations.length > 0,
         );
         if (stillHasReceivablePayments) {
           throw new ConflictException(

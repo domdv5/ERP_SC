@@ -1,25 +1,67 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
-import {
-  FindAllAccountsReceivableDto,
-  RegisterReceivablePaymentDto,
-} from './dto/index';
+import { FindAllAccountsReceivableDto } from './dto/index';
+
+const LIST_INCLUDE = {
+  client: { include: { thirdParty: { select: { id: true, name: true } } } },
+  seller: { select: { id: true, name: true } },
+  document: { select: { id: true, type: true, number: true, date: true } },
+} satisfies Prisma.AccountsReceivableInclude;
 
 const DETAIL_INCLUDE = {
   client: { include: { thirdParty: { select: { id: true, name: true } } } },
   seller: { select: { id: true, name: true } },
   document: { select: { id: true, type: true, number: true, date: true } },
   receivablePayments: { orderBy: { paymentDate: 'desc' } },
+  reciboCajaAllocations: {
+    include: {
+      reciboCaja: { select: { id: true, number: true, date: true } },
+    },
+  },
 } satisfies Prisma.AccountsReceivableInclude;
 
-/** Convierte a centavos enteros para comparar montos sin errores de coma flotante. */
-function toCents(amount: number | Prisma.Decimal) {
-  return Math.round(Number(amount) * 100);
+type ListRow = Prisma.AccountsReceivableGetPayload<{
+  include: typeof LIST_INCLUDE;
+}>;
+type DetailRow = Prisma.AccountsReceivableGetPayload<{
+  include: typeof DETAIL_INCLUDE;
+}>;
+
+/** Agrega el saldo derivado (totalAmount - paidAmount) sobre una fila, mismo patrón que AccountsPayableService. */
+function withDerivedFields<
+  T extends Pick<ListRow, 'totalAmount' | 'paidAmount'>,
+>(row: T) {
+  return {
+    ...row,
+    balance: row.totalAmount.minus(row.paidAmount),
+  };
+}
+
+/** Combina receivablePayments (histórico, pre-Recibo de Caja) y reciboCajaAllocations en un único historial ordenado por fecha, mismo patrón que buildHistory de AccountsPayableService. */
+function buildHistory(accountReceivable: DetailRow) {
+  const fromRecibosCaja = accountReceivable.reciboCajaAllocations.map(
+    (allocation) => ({
+      source: 'recibo_caja' as const,
+      date: allocation.reciboCaja.date,
+      amount: allocation.amount,
+      reciboCaja: allocation.reciboCaja,
+    }),
+  );
+
+  const fromHistoricPayments = accountReceivable.receivablePayments.map(
+    (payment) => ({
+      source: 'pago_historico' as const,
+      date: payment.paymentDate,
+      amount: payment.amount,
+      paymentMethod: payment.paymentMethod,
+      reference: payment.reference,
+    }),
+  );
+
+  return [...fromRecibosCaja, ...fromHistoricPayments].sort(
+    (a, b) => b.date.getTime() - a.date.getTime(),
+  );
 }
 
 @Injectable()
@@ -46,18 +88,10 @@ export class AccountsReceivableService {
       }),
     };
 
-    const [items, total] = await this.prisma.$transaction([
+    const [rawItems, total] = await this.prisma.$transaction([
       this.prisma.accountsReceivable.findMany({
         where,
-        include: {
-          client: {
-            include: { thirdParty: { select: { id: true, name: true } } },
-          },
-          seller: { select: { id: true, name: true } },
-          document: {
-            select: { id: true, type: true, number: true, date: true },
-          },
-        },
+        include: LIST_INCLUDE,
         skip,
         take: limit,
         orderBy: { dueDate: { sort: 'asc', nulls: 'last' } },
@@ -66,7 +100,7 @@ export class AccountsReceivableService {
     ]);
 
     return {
-      items,
+      items: rawItems.map(withDerivedFields),
       meta: {
         total,
         page,
@@ -86,71 +120,17 @@ export class AccountsReceivableService {
       throw new NotFoundException('Cuenta por cobrar no encontrada');
     }
 
-    return accountReceivable;
-  }
+    // receivablePayments/reciboCajaAllocations ya quedan resumidos en `history`
+    // — no se devuelven crudos para no duplicar la misma info.
+    const { receivablePayments, reciboCajaAllocations, ...rest } =
+      accountReceivable;
 
-  async registerPayment(
-    id: string,
-    registerReceivablePaymentDto: RegisterReceivablePaymentDto,
-  ) {
-    const { amount, paymentDate, paymentMethod, reference } =
-      registerReceivablePaymentDto;
-
-    return this.prisma.$transaction(
-      async (tx) => {
-        // Bloquea la fila hasta terminar la transacción: pone en fila los pagos que
-        // llegan a la vez para que no se validen los dos contra el mismo saldo y se pague de más.
-        await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE id = ${id} FOR UPDATE`;
-
-        const accountReceivable = await tx.accountsReceivable.findUnique({
-          where: { id },
-          include: { receivablePayments: true },
-        });
-
-        if (!accountReceivable) {
-          throw new NotFoundException('Cuenta por cobrar no encontrada');
-        }
-
-        const paidSoFarCents = accountReceivable.receivablePayments.reduce(
-          (sum, payment) => sum + toCents(payment.amount),
-          0,
-        );
-        const amountCents = toCents(amount);
-        const totalCents = toCents(accountReceivable.totalAmount);
-
-        if (paidSoFarCents + amountCents > totalCents) {
-          const availableCents = totalCents - paidSoFarCents;
-          throw new BadRequestException(
-            `El pago excede el saldo pendiente. Saldo disponible: ${(availableCents / 100).toFixed(2)}`,
-          );
-        }
-
-        await tx.receivablePayment.create({
-          data: {
-            accountReceivableId: id,
-            amount,
-            paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-            paymentMethod,
-            reference,
-          },
-        });
-
-        // Recalcula el estado a partir del total pagado tras este pago.
-        const newPaidCents = paidSoFarCents + amountCents;
-        const status =
-          newPaidCents >= totalCents
-            ? 'paid'
-            : newPaidCents > 0
-              ? 'partial'
-              : 'pending';
-
-        return tx.accountsReceivable.update({
-          where: { id },
-          data: { status },
-          include: DETAIL_INCLUDE,
-        });
-      },
-      { timeout: 30000 },
-    );
+    return {
+      ...rest,
+      balance: accountReceivable.totalAmount.minus(
+        accountReceivable.paidAmount,
+      ),
+      history: buildHistory(accountReceivable),
+    };
   }
 }
