@@ -6,12 +6,14 @@ import { getReciboCaja } from '@/services/recibos-caja.service'
 import { formatCOP, docNumber } from '@/lib/format'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
 
+// ReciboCaja.date es @db.Date, Prisma la serializa como medianoche UTC. Leerla en horario
+// Bogotá la corre un día atrás (bug 2026-09-28) — hay que leerla en UTC.
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('es-CO', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    timeZone: 'America/Bogota',
+    timeZone: 'UTC',
   })
 
 export default function ReciboCajaDetailPage() {

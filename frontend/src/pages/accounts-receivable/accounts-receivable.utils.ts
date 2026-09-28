@@ -1,14 +1,16 @@
 import type { AccountsReceivableStatus, DocumentType } from '@/types'
 
+// dueDate y document.date son @db.Date, Prisma las serializa como medianoche UTC. Leerlas en
+// horario Bogotá las corre un día atrás (bug 2026-09-28) — hay que leerlas en UTC.
 export const formatDate = (iso: string | null) => {
   if (!iso) return '—'
   const date = new Date(iso)
-  const day = date.toLocaleDateString('es-CO', { day: 'numeric', timeZone: 'America/Bogota' })
+  const day = date.toLocaleDateString('es-CO', { day: 'numeric', timeZone: 'UTC' })
   // toLocaleDateString con month:'short' agrega un punto ("ago."); se saca para que quede "17 ago 2026".
   const month = date
-    .toLocaleDateString('es-CO', { month: 'short', timeZone: 'America/Bogota' })
+    .toLocaleDateString('es-CO', { month: 'short', timeZone: 'UTC' })
     .replace('.', '')
-  const year = date.toLocaleDateString('es-CO', { year: 'numeric', timeZone: 'America/Bogota' })
+  const year = date.toLocaleDateString('es-CO', { year: 'numeric', timeZone: 'UTC' })
   return `${day} ${month} ${year}`
 }
 
