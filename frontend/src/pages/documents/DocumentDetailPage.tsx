@@ -53,6 +53,8 @@ const formatDate = (iso: string) =>
     day: '2-digit',
     month: 'long',
     year: 'numeric',
+    // doc.date es @db.Date (medianoche UTC); convertedAt/appliedAt son timestamptz — mismo timeZone, sin downside.
+    timeZone: 'America/Bogota',
   })
 
 // ─── label maps ──────────────────────────────────────────────────────────────

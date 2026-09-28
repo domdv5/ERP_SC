@@ -1,9 +1,9 @@
 import { cn } from '@/lib/utils'
-import type { AccountsPayableStatus } from '@/types'
-import { STATUS_LABELS } from '@/pages/accounts-payable/accounts-payable.utils'
+import type { AccountsReceivableStatus } from '@/types'
+import { STATUS_LABELS } from '@/pages/accounts-receivable/accounts-receivable.utils'
 
 interface StatusBadgeProps {
-  status: AccountsPayableStatus
+  status: AccountsReceivableStatus
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {

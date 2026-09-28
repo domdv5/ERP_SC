@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDebounce } from 'use-debounce'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { Wallet, Clock, CheckCircle2 } from 'lucide-react'
-import { getAccountsPayable } from '@/services/accounts-payable.service'
+import { TrendingUp, Clock, CheckCircle2 } from 'lucide-react'
+import { getAccountsReceivable } from '@/services/accounts-receivable.service'
 import {
   StatsGrid,
   TableToolbar,
@@ -14,21 +14,21 @@ import {
 } from '@/components/shared'
 import { formatCOP, docNumber } from '@/lib/format'
 import { StatusBadge } from './components/StatusBadge'
-import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-payable.utils'
-import type { AccountsPayableStatus } from '@/types'
+import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-receivable.utils'
+import type { AccountsReceivableStatus } from '@/types'
 
-const ALL_STATUSES: { value: AccountsPayableStatus | ''; label: string }[] = [
+const ALL_STATUSES: { value: AccountsReceivableStatus | ''; label: string }[] = [
   { value: '', label: 'Todos los estados' },
   { value: 'pending', label: 'Pendiente' },
   { value: 'partial', label: 'Parcial' },
   { value: 'paid', label: 'Pagado' },
 ]
 
-export default function AccountsPayableListPage() {
+export default function AccountsReceivableListPage() {
   const navigate = useNavigate()
 
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<AccountsPayableStatus | ''>('')
+  const [statusFilter, setStatusFilter] = useState<AccountsReceivableStatus | ''>('')
   const [page, setPage] = useState(1)
 
   const [debouncedSearch] = useDebounce(search, 400)
@@ -43,9 +43,9 @@ export default function AccountsPayableListPage() {
   }
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['accounts-payable', debouncedSearch, statusFilter, page],
+    queryKey: ['accounts-receivable', debouncedSearch, statusFilter, page],
     queryFn: () =>
-      getAccountsPayable({
+      getAccountsReceivable({
         search: debouncedSearch || undefined,
         status: statusFilter || undefined,
         page,
@@ -58,20 +58,20 @@ export default function AccountsPayableListPage() {
   // Conteos por estado para la fila de estadísticas: el listado no trae ese
   // desglose, así que se pide una sola fila por cada estado.
   const { data: pendingData, isLoading: isPendingLoading } = useQuery({
-    queryKey: ['accounts-payable', 'count', 'pending'],
-    queryFn: () => getAccountsPayable({ status: 'pending', page: 1, limit: 1 }),
+    queryKey: ['accounts-receivable', 'count', 'pending'],
+    queryFn: () => getAccountsReceivable({ status: 'pending', page: 1, limit: 1 }),
     staleTime: 5 * 60 * 1000,
   })
 
   const { data: paidData, isLoading: isPaidLoading } = useQuery({
-    queryKey: ['accounts-payable', 'count', 'paid'],
-    queryFn: () => getAccountsPayable({ status: 'paid', page: 1, limit: 1 }),
+    queryKey: ['accounts-receivable', 'count', 'paid'],
+    queryFn: () => getAccountsReceivable({ status: 'paid', page: 1, limit: 1 }),
     staleTime: 5 * 60 * 1000,
   })
 
   const { data: partialData, isLoading: isPartialLoading } = useQuery({
-    queryKey: ['accounts-payable', 'count', 'partial'],
-    queryFn: () => getAccountsPayable({ status: 'partial', page: 1, limit: 1 }),
+    queryKey: ['accounts-receivable', 'count', 'partial'],
+    queryFn: () => getAccountsReceivable({ status: 'partial', page: 1, limit: 1 }),
     staleTime: 5 * 60 * 1000,
   })
 
@@ -85,7 +85,7 @@ export default function AccountsPayableListPage() {
     {
       label: 'Total',
       value: total,
-      icon: Wallet,
+      icon: TrendingUp,
       bg: 'bg-brand-primary/10',
       fg: 'text-brand-primary dark:text-content',
     },
@@ -110,9 +110,9 @@ export default function AccountsPayableListPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl text-content">Cuentas por Pagar</h1>
+          <h1 className="text-2xl text-content">Cuentas por Cobrar</h1>
           <p className="text-content-muted text-sm mt-0.5 font-accent">
-            Obligaciones con proveedores y su estado de pago
+            Ventas a crédito y su estado de cobro
           </p>
         </div>
       </div>
@@ -128,7 +128,7 @@ export default function AccountsPayableListPage() {
           <TableToolbar
             search={search}
             onSearchChange={setSearch}
-            placeholder="Buscar por proveedor..."
+            placeholder="Buscar por cliente..."
             isLoading={isLoading}
             itemCount={items.length}
             total={total}
@@ -137,7 +137,7 @@ export default function AccountsPayableListPage() {
           <div className="px-5 pb-4 flex gap-3">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as AccountsPayableStatus | '')}
+              onChange={(e) => setStatusFilter(e.target.value as AccountsReceivableStatus | '')}
               className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
             >
               {ALL_STATUSES.map((s) => (
@@ -150,23 +150,23 @@ export default function AccountsPayableListPage() {
         </div>
 
         {isError && (
-          <ErrorState message="Error al cargar las cuentas por pagar" onRetry={refetch} />
+          <ErrorState message="Error al cargar las cuentas por cobrar" onRetry={refetch} />
         )}
 
         {isLoading && <TableSkeleton rows={6} widths={['w-40', 'w-28', 'w-24', 'w-20']} />}
 
         {!isLoading && !isError && items.length === 0 && (
           <EmptyState
-            icon={Wallet}
+            icon={TrendingUp}
             title={
               debouncedSearch
                 ? `Sin resultados para "${debouncedSearch}"`
-                : 'No hay cuentas por pagar registradas'
+                : 'No hay cuentas por cobrar registradas'
             }
             description={
               debouncedSearch
                 ? 'Prueba con otro término de búsqueda'
-                : 'Las cuentas se generan automáticamente al confirmar compras'
+                : 'Las cuentas se generan automáticamente al confirmar ventas a crédito (COT)'
             }
           />
         )}
@@ -177,11 +177,10 @@ export default function AccountsPayableListPage() {
               <thead>
                 <tr className="border-b border-ui-border">
                   {[
-                    'Proveedor',
+                    'Cliente',
                     'Documento',
                     'Monto total',
                     'Pagado',
-                    'Saldo a favor aplicado',
                     'Saldo',
                     'Vencimiento',
                     'Estado',
@@ -199,23 +198,17 @@ export default function AccountsPayableListPage() {
                 {items.map((account) => (
                   <tr
                     key={account.id}
-                    onClick={() => navigate(`/accounts-payable/${account.id}`)}
+                    onClick={() => navigate(`/accounts-receivable/${account.id}`)}
                     className="hover:bg-surface-raised transition-colors group cursor-pointer"
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
-                          {account.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
+                          {account.client.thirdParty.name[0]?.toUpperCase() ?? '?'}
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/accounts-payable/suppliers/${account.supplier.id}`)
-                          }}
-                          className="font-medium text-brand-secondary hover:underline text-left"
-                        >
-                          {account.supplier.thirdParty.name}
-                        </button>
+                        <span className="font-medium text-content">
+                          {account.client.thirdParty.name}
+                        </span>
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
@@ -233,9 +226,6 @@ export default function AccountsPayableListPage() {
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
                       {formatCOP(Number(account.paidAmount))}
-                    </td>
-                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatCOP(Number(account.creditApplied))}
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                       {formatCOP(Number(account.balance))}

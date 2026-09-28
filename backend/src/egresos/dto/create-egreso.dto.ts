@@ -10,48 +10,11 @@ import {
   IsString,
   IsUUID,
   MaxLength,
-  registerDecorator,
   ValidateNested,
-  ValidationArguments,
-  ValidationOptions,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { EgresoPaymentMethod } from '@prisma/client';
-
-/** Valida `reference`: opcional salvo si `method === 'cheque'` — @IsOptional()/@ValidateIf() no sirven porque ambos descartan el validador entero cuando la condición da falso. */
-function IsValidChequeReference(validationOptions?: ValidationOptions) {
-  return function (object: object, propertyName: string) {
-    registerDecorator({
-      name: 'isValidChequeReference',
-      target: object.constructor,
-      propertyName,
-      options: validationOptions,
-      validator: {
-        validate(value: unknown, args: ValidationArguments) {
-          const line = args.object as EgresoPaymentLineDto;
-          const isCheque = line.method === EgresoPaymentMethod.cheque;
-
-          if (value === undefined || value === null) {
-            return !isCheque;
-          }
-          if (typeof value !== 'string' || value.length > 100) {
-            return false;
-          }
-          if (isCheque && value.trim().length === 0) {
-            return false;
-          }
-          return true;
-        },
-        defaultMessage(args: ValidationArguments) {
-          const line = args.object as EgresoPaymentLineDto;
-          return line.method === EgresoPaymentMethod.cheque
-            ? 'El número de cheque es obligatorio para este método de pago'
-            : 'reference debe ser un texto de máximo 100 caracteres';
-        },
-      },
-    });
-  };
-}
+import { IsValidChequeReference } from '@/common/validators/is-valid-cheque-reference.validator';
 
 /** Abono a una cuenta por pagar dentro del egreso (dinero + saldo a favor, sin distinguir todavía). */
 export class EgresoPayableLineDto {

@@ -23,6 +23,8 @@ const formatDate = (iso: string) =>
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    // Document.date es @db.Date (medianoche UTC) — sin esto se ve un día antes en Bogotá.
+    timeZone: 'America/Bogota',
   })
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────

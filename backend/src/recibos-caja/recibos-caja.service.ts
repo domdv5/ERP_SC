@@ -8,6 +8,7 @@ import { Prisma, AccountsReceivableStatus } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import type { JwtPayload } from '@/common/types';
+import { toCents } from '@/common/utils/money.util';
 import { CreateReciboCajaDto } from './dto/create-recibo-caja.dto';
 import { FindAllRecibosCajaDto } from './dto/find-all-recibos-caja.dto';
 
@@ -27,11 +28,6 @@ export const RECIBO_CAJA_DETAIL_INCLUDE = {
     },
   },
 } satisfies Prisma.ReciboCajaInclude;
-
-/** Convierte a centavos enteros para comparar montos sin errores de coma flotante. */
-function toCents(amount: number | Prisma.Decimal) {
-  return Math.round(Number(amount) * 100);
-}
 
 type ExistingReciboCajaForIdempotency = {
   clientId: string;

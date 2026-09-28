@@ -8,6 +8,7 @@ import { Prisma, AccountsPayableStatus } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import type { JwtPayload } from '@/common/types';
+import { toCents } from '@/common/utils/money.util';
 import { CreateEgresoDto } from './dto/create-egreso.dto';
 import { FindAllEgresosDto } from './dto/find-all-egresos.dto';
 
@@ -38,11 +39,6 @@ export const EGRESO_DETAIL_INCLUDE = {
     },
   },
 } satisfies Prisma.EgresoInclude;
-
-/** Convierte a centavos enteros para comparar montos sin errores de coma flotante. */
-function toCents(amount: number | Prisma.Decimal) {
-  return Math.round(Number(amount) * 100);
-}
 
 type ExistingEgresoForIdempotency = {
   supplierId: string;

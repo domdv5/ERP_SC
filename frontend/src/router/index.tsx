@@ -10,12 +10,17 @@ const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'))
 const ThirdPartiesPage = lazy(() => import('@/pages/third-parties/ThirdPartiesPage'))
 const ProductsPage = lazy(() => import('@/pages/products/ProductsPage'))
 const WarehousesPage = lazy(() => import('@/pages/warehouses/WarehousesPage'))
-const ComingSoonPage = lazy(() => import('@/pages/coming-soon/ComingSoonPage'))
 const DocumentsPage = lazy(() => import('@/pages/documents/DocumentsPage'))
 const DocumentFormPage = lazy(() => import('@/pages/documents/DocumentFormPage'))
 const DocumentDetailPage = lazy(() => import('@/pages/documents/DocumentDetailPage'))
 const POSCheckoutPage = lazy(() => import('@/pages/documents/POSCheckoutPage'))
 const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
+const AccountsReceivableListPage = lazy(
+  () => import('@/pages/accounts-receivable/AccountsReceivableListPage'),
+)
+const AccountsReceivableDetailPage = lazy(
+  () => import('@/pages/accounts-receivable/AccountsReceivableDetailPage'),
+)
 const AccountsPayableListPage = lazy(
   () => import('@/pages/accounts-payable/AccountsPayableListPage'),
 )
@@ -176,7 +181,17 @@ export const router = createBrowserRouter([
         element: (
           <Lazy>
             <PermissionGuard permission="ar.read">
-              <ComingSoonPage />
+              <AccountsReceivableListPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'accounts-receivable/:id',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="ar.read">
+              <AccountsReceivableDetailPage />
             </PermissionGuard>
           </Lazy>
         ),

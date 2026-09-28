@@ -8,37 +8,32 @@ import {
   CreditCard,
   Landmark,
   Hash,
-  Receipt,
-  History,
+  User,
 } from 'lucide-react'
-import { getAccountPayable } from '@/services/accounts-payable.service'
+import { getAccountReceivable } from '@/services/accounts-receivable.service'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
 import { StatusBadge } from './components/StatusBadge'
-import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-payable.utils'
-import type { AccountsPayableHistoryEntry } from '@/types'
+import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-receivable.utils'
+import type { AccountsReceivableHistoryEntry } from '@/types'
 
-// Distingue de un vistazo si cada fila del historial es un pago moderno (Egresos),
-// un pago registrado antes del rework, o una nota crédito aplicada a mano en esa misma época.
+// Distingue de un vistazo si cada fila del historial es un abono moderno (Recibo de Caja)
+// o un pago registrado antes del rework.
 const ORIGIN_BADGE: Record<
-  AccountsPayableHistoryEntry['source'],
+  AccountsReceivableHistoryEntry['source'],
   { label: string; className: string }
 > = {
-  egreso: {
-    label: 'Egreso',
+  recibo_caja: {
+    label: 'Recibo de caja',
     className: 'bg-brand-secondary/10 text-brand-secondary',
   },
   pago_historico: {
     label: 'Pago histórico',
     className: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
   },
-  nota_credito_historica: {
-    label: 'Nota crédito histórica',
-    className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
-  },
 }
 
-export default function AccountsPayableDetailPage() {
+export default function AccountsReceivableDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
@@ -48,8 +43,8 @@ export default function AccountsPayableDetailPage() {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ['accounts-payable', id],
-    queryFn: () => getAccountPayable(id!),
+    queryKey: ['accounts-receivable', id],
+    queryFn: () => getAccountReceivable(id!),
     staleTime: 5 * 60 * 1000,
     enabled: Boolean(id),
   })
@@ -84,15 +79,15 @@ export default function AccountsPayableDetailPage() {
     return (
       <div className="space-y-4">
         <button
-          onClick={() => navigate('/accounts-payable')}
+          onClick={() => navigate('/accounts-receivable')}
           className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Volver a cuentas por pagar
+          Volver a cuentas por cobrar
         </button>
         <div className="bg-surface rounded-2xl border border-ui-border p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
-          <p className="text-content-secondary mb-3">Error al cargar la cuenta por pagar</p>
+          <p className="text-content-secondary mb-3">Error al cargar la cuenta por cobrar</p>
           <button
             onClick={() => refetch()}
             className="text-sm text-brand-secondary hover:underline"
@@ -106,7 +101,6 @@ export default function AccountsPayableDetailPage() {
 
   const totalAmount = Number(account.totalAmount)
   const paidAmount = Number(account.paidAmount)
-  const creditApplied = Number(account.creditApplied)
   const balance = Number(account.balance)
   const history = account.history
 
@@ -114,39 +108,29 @@ export default function AccountsPayableDetailPage() {
     <div className="space-y-6 pb-10">
       {/* Back */}
       <button
-        onClick={() => navigate('/accounts-payable')}
+        onClick={() => navigate('/accounts-receivable')}
         className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Volver a cuentas por pagar
+        Volver a cuentas por cobrar
       </button>
 
       {/* Header card */}
       <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
-              {account.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
-            </div>
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl text-content">{account.supplier.thirdParty.name}</h1>
-                <StatusBadge status={account.status} />
-              </div>
-              <p className="text-content-muted text-sm mt-1 font-accent">
-                Documento {docNumber(account.document.type, account.document.number)} &middot;{' '}
-                {DOCUMENT_TYPE_LABELS[account.document.type] ?? account.document.type}
-              </p>
-            </div>
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
+            {account.client.thirdParty.name[0]?.toUpperCase() ?? '?'}
           </div>
-
-          <button
-            onClick={() => navigate(`/accounts-payable/suppliers/${account.supplier.id}`)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-secondary hover:underline shrink-0"
-          >
-            <Receipt className="w-4 h-4" />
-            Ver estado de cuenta del proveedor
-          </button>
+          <div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl text-content">{account.client.thirdParty.name}</h1>
+              <StatusBadge status={account.status} />
+            </div>
+            <p className="text-content-muted text-sm mt-1 font-accent">
+              Documento {docNumber(account.document.type, account.document.number)} &middot;{' '}
+              {DOCUMENT_TYPE_LABELS[account.document.type] ?? account.document.type}
+            </p>
+          </div>
         </div>
 
         {/* Meta grid */}
@@ -173,11 +157,11 @@ export default function AccountsPayableDetailPage() {
 
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
-              <History className="w-4 h-4 text-content-muted" />
+              <User className="w-4 h-4 text-content-muted" />
             </div>
             <div>
-              <p className="text-xs text-content-faint">Saldo a favor aplicado</p>
-              <p className="text-sm text-content font-medium">{formatCOP(creditApplied)}</p>
+              <p className="text-xs text-content-faint">Vendedor</p>
+              <p className="text-sm text-content font-medium">{account.seller?.name ?? '—'}</p>
             </div>
           </div>
 
@@ -213,7 +197,7 @@ export default function AccountsPayableDetailPage() {
       {/* Payment history */}
       <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-ui-border">
-          <h2 className="text-content font-semibold">Historial de pagos</h2>
+          <h2 className="text-content font-semibold">Historial de abonos</h2>
           <p className="text-content-muted text-xs mt-0.5 font-accent">
             {history.length}{' '}
             {history.length === 1 ? 'movimiento registrado' : 'movimientos registrados'}
@@ -229,7 +213,7 @@ export default function AccountsPayableDetailPage() {
               Aún no hay movimientos registrados
             </p>
             <p className="text-content-faint text-xs mt-1 font-accent">
-              Los pagos desde Egresos y los movimientos históricos aparecerán aquí
+              Los abonos desde Recibos de Caja y los movimientos históricos aparecerán aquí
             </p>
           </div>
         ) : (
@@ -273,35 +257,21 @@ export default function AccountsPayableDetailPage() {
                       </td>
                       <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                         {formatCOP(Number(entry.amount))}
-                        {entry.source === 'egreso' && Number(entry.creditAmount) > 0 && (
-                          <p className="text-content-faint text-[11px] font-normal mt-0.5">
-                            de los cuales {formatCOP(Number(entry.creditAmount))} fue saldo a favor
-                          </p>
-                        )}
                       </td>
                       <td className="px-5 py-3.5">
-                        {entry.source === 'egreso' && (
+                        {entry.source === 'recibo_caja' && (
                           <button
-                            onClick={() => navigate(`/egresos/${entry.egreso.id}`)}
+                            onClick={() => navigate(`/recibos-caja/${entry.reciboCaja.id}`)}
                             className="flex items-center gap-1.5 text-xs text-brand-secondary hover:underline"
                           >
                             <Landmark className="w-3.5 h-3.5" />
-                            {docNumber('EG', entry.egreso.number)}
+                            {docNumber('RC', entry.reciboCaja.number)}
                           </button>
                         )}
                         {entry.source === 'pago_historico' && (
                           <span className="flex items-center gap-1.5 text-content-muted text-xs">
                             <Landmark className="w-3.5 h-3.5 text-content-faint" />
                             {entry.paymentMethod}
-                            {entry.bankDestination ? ` · ${entry.bankDestination}` : ''}
-                          </span>
-                        )}
-                        {entry.source === 'nota_credito_historica' && (
-                          <span className="text-content-muted text-xs">
-                            Nota crédito aplicada
-                            {Number(entry.supplierCredit.balance) > 0
-                              ? ` (saldo restante: ${formatCOP(Number(entry.supplierCredit.balance))})`
-                              : ''}
                           </span>
                         )}
                       </td>

@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DocumentType, MovementType } from '@/common/enums';
+import { toCents } from '@/common/utils/money.util';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { assertCreditWithinLimit } from '@/documents/helpers/credit.helpers';
 import { applyCustomerCredits } from '@/documents/helpers/customer-credit.helpers';
@@ -13,11 +14,6 @@ import type {
   ConfirmContext,
   DocumentWithItems,
 } from './document-effect.strategy';
-
-/** Convierte a centavos enteros para operar montos sin errores de coma flotante. */
-function toCents(amount: number) {
-  return Math.round(amount * 100);
-}
 
 /** Venta a crédito: igual que la venta de contado (saca stock físico, valorado al precio de venta) pero no pide forma de pago, valida el cupo de crédito del cliente y al confirmar crea una cuenta por cobrar. */
 @Injectable()
@@ -124,6 +120,17 @@ export class CotEffectStrategy extends BaseEffectStrategy {
       0,
     );
     const totalCents = toCents(Number(document.total));
+
+    // Rechaza la sobre-aplicación ANTES de crear la cuenta por cobrar: netCents negativo
+    // violaría el CHECK accounts_receivable_paid_amount_range_chk (paid_amount <= total_amount)
+    // con un error crudo de Postgres en vez de este 400 — applyCustomerCredits() repite este
+    // mismo chequeo más abajo, pero para entonces la cuenta ya se habría intentado crear.
+    if (appliedCents > totalCents) {
+      throw new BadRequestException(
+        'El saldo a favor aplicado no puede superar el total de la venta',
+      );
+    }
+
     const netCents = totalCents - appliedCents;
 
     // Bloquea al cliente hasta el fin de la tx: dos ventas a crédito concurrentes no pueden superar el cupo entre las dos (orden global: customers -> customer_credit -> accounts_receivable).
