@@ -83,7 +83,7 @@ export interface GetAccountsReceivableParams {
   status?: AccountsReceivableStatus
   clientId?: string
   search?: string
-  // Formato YYYY-MM-DD (el que da un <input type="date">); filtra sobre createdAt
+  // Formato YYYY-MM-DD (el que da un <input type="date">); filtra sobre document.date
   dateFrom?: string
   dateTo?: string
 }
