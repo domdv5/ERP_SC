@@ -1037,6 +1037,7 @@ export default function DocumentFormPage() {
                       docType={docType}
                       onRemove={() => remove(index)}
                       register={register}
+                      control={control}
                       setValue={setValue}
                       watch={watch}
                       getValues={getValues}

@@ -1,12 +1,14 @@
 import { Trash2 } from 'lucide-react'
-import type { UseFormRegister, UseFormWatch } from 'react-hook-form'
-import { HintText } from '@/components/shared'
+import { Controller, type Control, type UseFormRegister, type UseFormWatch } from 'react-hook-form'
+import { HintText, ThousandsInput } from '@/components/shared'
 import { formatCOP } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 
 interface POSCartLineProps {
   index: number
   register: UseFormRegister<FormValues>
+  control: Control<FormValues>
   watch: UseFormWatch<FormValues>
   onRemove: () => void
   // Precio mínimo actual del producto (piso del 2%). Lo resuelve la pantalla de checkout al
@@ -20,6 +22,7 @@ interface POSCartLineProps {
 export function POSCartLine({
   index,
   register,
+  control,
   watch,
   onRemove,
   minSalePrice,
@@ -53,16 +56,22 @@ export function POSCartLine({
         </td>
 
         <td className="px-4 py-3 w-32">
-          <input
-            type="number"
-            min={0}
-            step={0.01}
-            {...register(`items.${index}.unitPrice`)}
-            className={
-              'w-full px-2.5 py-1.5 text-sm text-right rounded-lg border bg-surface-raised text-content transition-all ' +
-              'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary ' +
-              (isBelowFloor ? 'border-red-500' : 'border-ui-border-medium')
-            }
+          <Controller
+            control={control}
+            name={`items.${index}.unitPrice`}
+            render={({ field }) => (
+              <ThousandsInput
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
+                ref={field.ref}
+                className={cn(
+                  'text-right bg-surface-raised',
+                  isBelowFloor ? 'border-red-500' : undefined,
+                )}
+              />
+            )}
           />
         </td>
 
