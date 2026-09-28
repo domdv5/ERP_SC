@@ -32,10 +32,15 @@ type DetailRow = Prisma.AccountsReceivableGetPayload<{
   include: typeof DETAIL_INCLUDE;
 }>;
 
-// El regex del DTO solo valida la forma (YYYY-MM-DD); una fecha con forma válida pero
-// inexistente (13-32, 02-30) da Invalid Date y Prisma la rechaza con un 500, no un 400.
+// El regex del DTO solo valida la forma (YYYY-MM-DD), no que la fecha exista. Un overflow de mes
+// (13-01) da Invalid Date, pero un overflow de día (02-30) NO — Date lo corre al día siguiente en
+// silencio (2026-02-30 -> 2026-03-02). Se detecta comparando la fecha reformateada contra el input.
 function assertValidCalendarDate(label: string, value: string) {
-  if (Number.isNaN(new Date(`${value}T00:00:00.000-05:00`).getTime())) {
+  const date = new Date(`${value}T00:00:00.000-05:00`);
+  const roundTrip = date.toLocaleDateString('sv-SE', {
+    timeZone: 'America/Bogota',
+  });
+  if (Number.isNaN(date.getTime()) || roundTrip !== value) {
     throw new BadRequestException(`${label} no es una fecha válida`);
   }
 }

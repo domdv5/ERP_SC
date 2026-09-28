@@ -85,6 +85,10 @@ export default function AccountsPayableListPage() {
       : supplierOptions),
   ]
 
+  // El input date nativo no impide escribir un rango invertido a mano; se corta antes de pedirlo
+  // al backend (que igual lo rechazaría con 400) para no mostrar el ErrorState genérico.
+  const hasInvalidDateRange = Boolean(dateFrom && dateTo && dateFrom > dateTo)
+
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['accounts-payable', supplierId, statusFilter, dateFrom, dateTo, page],
     queryFn: () =>
@@ -98,6 +102,7 @@ export default function AccountsPayableListPage() {
       }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
+    enabled: !hasInvalidDateRange,
   })
 
   // Conteos por estado para la fila de estadísticas: el listado no trae ese
@@ -236,13 +241,23 @@ export default function AccountsPayableListPage() {
           </div>
         </div>
 
-        {isError && (
+        {hasInvalidDateRange && (
+          <EmptyState
+            icon={Wallet}
+            title="Rango de fechas inválido"
+            description='"Desde" no puede ser posterior a "Hasta"'
+          />
+        )}
+
+        {!hasInvalidDateRange && isError && (
           <ErrorState message="Error al cargar las cuentas por pagar" onRetry={refetch} />
         )}
 
-        {isLoading && <TableSkeleton rows={6} widths={['w-40', 'w-28', 'w-24', 'w-20']} />}
+        {!hasInvalidDateRange && isLoading && (
+          <TableSkeleton rows={6} widths={['w-40', 'w-28', 'w-24', 'w-20']} />
+        )}
 
-        {!isLoading && !isError && items.length === 0 && (
+        {!hasInvalidDateRange && !isLoading && !isError && items.length === 0 && (
           <EmptyState
             icon={Wallet}
             title={
