@@ -5,7 +5,7 @@ import { getSupplierStatement } from '@/services/accounts-payable.service'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
 import { StatusBadge } from './components/StatusBadge'
-import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-payable.utils'
+import { formatDate, formatEventDate, DOCUMENT_TYPE_LABELS } from './accounts-payable.utils'
 
 // Estado de una nota de saldo a favor: solo 'available' | 'used' en el backend.
 const CREDIT_STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -298,7 +298,7 @@ export default function AccountsPayableSupplierStatementPage() {
                           className="flex items-center gap-2 text-xs text-content-muted"
                         >
                           <span className="text-content-faint">
-                            {formatDate(application.appliedAt)}
+                            {formatEventDate(application.appliedAt)}
                           </span>
                           <span>·</span>
                           <span className="text-content-secondary font-medium">
