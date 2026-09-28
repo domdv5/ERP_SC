@@ -125,12 +125,15 @@ export default function AccountsPayableListPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const items = data?.items ?? []
-  const total = data?.meta.total ?? 0
-  const totalPages = data?.meta.totalPages ?? 1
+  // keepPreviousData mantiene la respuesta del filtro anterior mientras la query está
+  // deshabilitada por rango inválido; sin este corte, "Saldo total" y el contador quedan
+  // mostrando números del filtro previo en vez de limpiarse.
+  const items = hasInvalidDateRange ? [] : (data?.items ?? [])
+  const total = hasInvalidDateRange ? 0 : (data?.meta.total ?? 0)
+  const totalPages = hasInvalidDateRange ? 1 : (data?.meta.totalPages ?? 1)
   const pendingCount = (pendingData?.meta.total ?? 0) + (partialData?.meta.total ?? 0)
   const paidCount = paidData?.meta.total ?? 0
-  const balanceTotal = data?.meta.totals.balance ?? '0'
+  const balanceTotal = hasInvalidDateRange ? '0' : (data?.meta.totals.balance ?? '0')
 
   const statCards = [
     {

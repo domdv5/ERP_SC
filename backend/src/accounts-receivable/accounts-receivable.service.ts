@@ -45,15 +45,16 @@ function assertValidCalendarDate(label: string, value: string) {
   }
 }
 
-// Bogotá es UTC-5 fijo (sin horario de verano) — mismo huso que usa EgresosService para "hoy".
-// createdAt es timestamptz; el límite superior es el inicio del día siguiente en Bogotá, exclusivo.
+// Filtra sobre document.date (lo que muestra la columna "Fecha venta"), no sobre createdAt —
+// antes filtraba createdAt mientras la UI mostraba document.date, y podían no coincidir en una
+// venta confirmada otro día. document.date es @db.Date (medianoche UTC), así que la comparación
+// es directa en UTC, sin el huso Bogotá que sí hace falta para createdAt.
 function dateRangeFilter(dateFrom?: string, dateTo?: string) {
   return {
-    ...(dateFrom && { gte: new Date(`${dateFrom}T00:00:00.000-05:00`) }),
+    ...(dateFrom && { gte: new Date(`${dateFrom}T00:00:00.000Z`) }),
     ...(dateTo && {
       lt: new Date(
-        new Date(`${dateTo}T00:00:00.000-05:00`).getTime() +
-          24 * 60 * 60 * 1000,
+        new Date(`${dateTo}T00:00:00.000Z`).getTime() + 24 * 60 * 60 * 1000,
       ),
     }),
   };
@@ -142,7 +143,7 @@ export class AccountsReceivableService {
         },
       }),
       ...((dateFrom || dateTo) && {
-        createdAt: dateRangeFilter(dateFrom, dateTo),
+        document: { date: dateRangeFilter(dateFrom, dateTo) },
       }),
     };
 
