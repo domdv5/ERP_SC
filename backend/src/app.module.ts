@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { LoggerModule } from 'nestjs-pino';
+import { buildLoggerParams } from '@/common/logger/logger.config';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { SequenceModule } from '@/common/sequence/sequence.module';
 import { AuthModule } from '@/auth/auth.module';
@@ -21,6 +23,15 @@ import { ReadOnlyModeGuard } from '@/common/guards/read-only-mode.guard';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    LoggerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) =>
+        buildLoggerParams({
+          nodeEnv: config.get<string>('NODE_ENV'),
+          logLevel: config.get<string>('LOG_LEVEL'),
+          logHttpConsole: config.get<string>('LOG_HTTP_CONSOLE'),
+        }),
     }),
     AuthModule,
     PrismaModule,

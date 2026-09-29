@@ -21,6 +21,7 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 - Global `ValidationPipe` for DTO validation
 - Global `PrismaExceptionFilter` — catches Prisma errors P2002/P2003/P2025 and returns Spanish-language HTTP errors
 - Global `ResponseFormatInterceptor` — wraps all responses as `{ success, data }`
+- `bufferLogs: true` + `app.useLogger(app.get(Logger))` (nestjs-pino) — ver Logging abajo
 - Listens on `PORT` env var (default 3000)
 
 **AppModule** imports: `ConfigModule` (global, reads `.env`), `SequenceModule`, `AuthModule`, `PrismaModule`, `ThirdPartiesModule`, `ProductsModule`, `WarehousesModule`, `DocumentsModule`, `AccountsPayableModule`, `AccountsReceivableModule`, `EgresosModule`, `RecibosCajaModule`, `SystemConfigModule`
@@ -183,6 +184,19 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 - `interceptors/response-format.interceptor.ts` — wraps responses as `{ success: true, data: T }`
 - `enums/index.ts` — exports `MovementType`, `DocumentType`, `DocumentStatus`
 - `types/index.ts` — exports `JwtPayload`, `RequestWithUser`, `ResponseFormat<T>`
+
+### Logging (2026-09-29)
+
+Logging estructurado con `nestjs-pino` (`LoggerModule.forRootAsync` en `AppModule`, config en `src/common/logger/logger.config.ts`). **Los logs NO se guardan en BD ni en servicios externos** — solo terminal y archivo.
+
+- **Dónde ver**: terminal (en dev, `pino-pretty` con color; en `NODE_ENV=production`, JSON crudo a stdout) y archivo `backend/logs/app.<yyyy-MM-dd>.<n>.log` (JSON por línea, `pino-roll`: rotación diaria, se conservan 14 archivos, carpeta `logs/` ya en `.gitignore`). La ruta sale de `process.cwd()`, así que el backend debe arrancarse desde `backend/` (como hacen los scripts de `pnpm`).
+- **Nivel**: `debug` en dev, `info` con `NODE_ENV=production`; se sobreescribe con la variable `LOG_LEVEL`.
+- **`LOG_HTTP_CONSOLE=false`**: oculta en la terminal solo las líneas automáticas de request de pino-http (las que traen `res` + `responseTime`, incluidos los 5xx); el arranque de Nest, "Mapped {...}", los `Logger` de servicios/filtros y los stack traces siguen saliendo. El archivo recibe siempre todo. Por defecto está encendida (solo el valor exacto `false`, sin importar mayúsculas/espacios, la apaga). Implementación: `pino.multistream` en proceso con un stream de consola que filtra por campos parseando el JSON (no por texto del mensaje); consola y archivo (`pino-roll`) corren en el hilo principal, no en worker threads.
+- **Cada request** loguea una línea al terminar: `req.{id,method,url}`, `res.statusCode`, `responseTime` y `user.{id,username}` si hubo JWT. Nivel: 4xx → `warn`, 5xx/error → `error`, resto `info`. Los `new Logger()` de `@nestjs/common` (Prisma, filtro, PDF) pasan por pino sin cambios.
+- **Usuario**: `JwtAuthGuard` corre después del middleware de pino-http; `customProps` se evalúa al cerrar la respuesta y lee `req.user` (`sub` → `user.id`), por eso la línea final sí trae el usuario. Rutas públicas o con 401 salen sin `user`.
+- **Request id**: se toma de `x-request-id` o `randomUUID()`, y se devuelve en el header de respuesta.
+- **Secretos**: el serializer de `req` solo emite `id/method/url` (no headers ni body) y `redact` censora `authorization`, `cookie`, `*.password`, `*.token`, `*.accessToken`. El `?token=` del SSE se reemplaza por `[REDACTED]` en la URL.
+- **Ruido**: `GET /system/status/stream` (SSE) no genera línea de request.
 
 ### Authentication & Authorization
 
