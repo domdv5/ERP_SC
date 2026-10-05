@@ -68,10 +68,16 @@ Estrategia `ask-on-risk`. Pronóstico > 400 líneas (backend ~600–900, fronten
 
 ## Pendiente para mañana (2026-10-06)
 
+0. **Primero (aprobado por el usuario 2026-10-05): corregir hallazgos 1 y 2 de la revisión RDD** (ruta: delegado `nestjs-code-crafter`, mostrar diff antes del commit):
+   - T8. Regla "una CMO activa por CM" debe contar solo CMO **confirmadas** (no borradores), en `validateCreate`/`confirm` y en la bandeja; mantener el `FOR UPDATE` de la CM origen en confirm para serializar confirms concurrentes.
+   - T9. `findProductMovements` del libro: correr movimientos + saldo inicial dentro de una sola `$transaction` (como `findAll`).
 1. **T6 frontend** (`react-code-crafter`, cargar `vercel-react-best-practices` + `typescript-advanced-types` y pedírselo en el prompt): casilla "Compra oficial (con factura)" + número de factura en el form de CM; formulario de Compra oficial (CMO) con columnas IVA y prefill desde la bandeja; página de bandeja (`GET /documents/official-purchases/pending`); interruptor "Oficial" en `POSCheckoutPage` que cambia el tipo a POSO (sin saldos a favor, sin chequeo de stock); página del libro (`GET /official-ledger` + detalle `GET /official-ledger/products/:productId`); navegación y `isPriceBasedType` del frontend incluyendo POSO.
 2. **T7** `frontend/CLAUDE.md`.
 3. **Mostrar al usuario archivos y líneas tocadas antes de cada commit** y esperar su OK (feedback 2026-10-05).
-4. **Revisión RDD pendiente** del commit de backend (no se arrancó por pedido del usuario de esperar): correr `gentle-ai review assess --cwd . --agent claude-code --base-ref d989c30 --committed-only --json` y seguir su `next_transition`; relayar el consentimiento al usuario.
+4. ~~Revisión RDD del backend~~ **hecha 2026-10-05**: riesgo medio, consentimiento otorgado por el usuario, 1 lente (reliability) → **aprobada** y reconocida (`review-f1b90bbc0e385193`, authority burned). Próxima base revisada: `bfbb44b`. Hallazgos no bloqueantes (decidir con el usuario si se atienden):
+   - WARNING `cmo-effect.strategy.ts:77-85`: dos borradores CMO de la misma CM (creación concurrente, o un borrador abandonado) se bloquean mutuamente con 409 al confirmar y ocultan la CM de la bandeja hasta borrar uno.
+   - SUGGESTION `official-ledger.service.ts:133-163`: el detalle por producto corre sus consultas en paralelo sin transacción; un confirm/void entre ellas puede dar saldo inicial y acumulado inconsistentes en esa respuesta.
+   - WARNING: sin tests automatizados (IVA, libro). Baseline del repo sin tests; el usuario no quiere archivos de test salvo que los pida.
 5. Usuarios deben volver a iniciar sesión para ver los permisos nuevos (seed ya corrido en BD local).
 6. PR único (`single-pr`) cuando el frontend esté listo — crear PR solo si el usuario lo pide.
 7. Ignorar `.atl/skill-registry.*` (cambios del `gentle-ai sync`, no son del proyecto; no comitear).
