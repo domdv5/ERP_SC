@@ -102,7 +102,7 @@ export class CmoEffectStrategy extends BaseEffectStrategy {
     }
   }
 
-  /** La CM origen debe estar confirmada, ser oficial, del mismo proveedor y sin otra CMO activa enlazada. */
+  /** La CM origen debe estar confirmada, ser oficial, del mismo proveedor y sin otra CMO confirmada enlazada (los borradores no cuentan). */
   private async assertValidSource(
     client: Pick<Prisma.TransactionClient, 'document'>,
     params: {
@@ -142,7 +142,7 @@ export class CmoEffectStrategy extends BaseEffectStrategy {
       where: {
         sourceDocumentId: params.sourceDocumentId,
         type: DocumentType.CMO,
-        status: { not: DocumentStatus.voided },
+        status: DocumentStatus.confirmed,
         ...(params.excludeDocumentId && {
           id: { not: params.excludeDocumentId },
         }),
@@ -151,7 +151,7 @@ export class CmoEffectStrategy extends BaseEffectStrategy {
 
     if (linked > 0) {
       throw new ConflictException(
-        'La compra de origen ya tiene una compra oficial activa enlazada',
+        'La compra de origen ya tiene una compra oficial confirmada enlazada',
       );
     }
   }

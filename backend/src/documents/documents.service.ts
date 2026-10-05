@@ -246,7 +246,7 @@ export class DocumentsService {
     };
   }
 
-  /** Bandeja de Administración: CM oficiales confirmadas que aún no tienen una CMO activa (no anulada) enlazada. */
+  /** Bandeja de Administración: CM oficiales confirmadas que aún no tienen una CMO confirmada enlazada (los borradores no la ocultan). */
   async findPendingOfficialPurchases(dto: FindPendingOfficialPurchasesDto) {
     const { page = 1, limit = 20, supplierId, search, dateFrom, dateTo } = dto;
     const dateRange = buildDateColumnRange(dateFrom, dateTo);
@@ -259,7 +259,7 @@ export class DocumentsService {
       derivedDocuments: {
         none: {
           type: DocumentType.CMO,
-          status: { not: DocumentStatus.voided },
+          status: DocumentStatus.confirmed,
         },
       },
       ...(supplierId && { thirdPartyId: supplierId }),

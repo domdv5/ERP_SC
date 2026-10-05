@@ -127,36 +127,41 @@ export class OfficialLedgerService {
       throw new NotFoundException('Producto no encontrado');
     }
 
-    const [items, openingBalance] = await Promise.all([
-      this.prisma.documentItem.findMany({
-        where: {
-          productId,
-          document: {
-            type: { in: [DocumentType.CMO, DocumentType.POSO] },
-            status: DocumentStatus.confirmed,
-            ...((dateFrom || dateTo) && { date: dateRange }),
-          },
-        },
-        select: {
-          quantity: true,
-          document: {
-            select: {
-              id: true,
-              type: true,
-              number: true,
-              date: true,
-              thirdParty: { select: { name: true } },
+    const [items, purchasedBefore, soldBefore] = await this.prisma.$transaction(
+      [
+        this.prisma.documentItem.findMany({
+          where: {
+            productId,
+            document: {
+              type: { in: [DocumentType.CMO, DocumentType.POSO] },
+              status: DocumentStatus.confirmed,
+              ...((dateFrom || dateTo) && { date: dateRange }),
             },
           },
-        },
-        orderBy: [
-          { document: { date: 'asc' } },
-          { document: { createdAt: 'asc' } },
-          { id: 'asc' },
-        ],
-      }),
-      dateFrom ? this.balanceBefore(productId, dateFrom) : 0,
-    ]);
+          select: {
+            quantity: true,
+            document: {
+              select: {
+                id: true,
+                type: true,
+                number: true,
+                date: true,
+                thirdParty: { select: { name: true } },
+              },
+            },
+          },
+          orderBy: [
+            { document: { date: 'asc' } },
+            { document: { createdAt: 'asc' } },
+            { id: 'asc' },
+          ],
+        }),
+        this.openingAggregate(productId, DocumentType.CMO, dateFrom),
+        this.openingAggregate(productId, DocumentType.POSO, dateFrom),
+      ],
+    );
+    const openingBalance =
+      (purchasedBefore._sum.quantity ?? 0) - (soldBefore._sum.quantity ?? 0);
 
     let runningBalance = openingBalance;
     const movements = items.map((item) => {
@@ -189,26 +194,25 @@ export class OfficialLedgerService {
     };
   }
 
-  private async balanceBefore(productId: string, dateFrom: string) {
-    const before = (type: DocumentType) =>
-      this.prisma.documentItem.aggregate({
-        where: {
-          productId,
-          document: {
-            type,
-            status: DocumentStatus.confirmed,
-            date: { lt: new Date(`${dateFrom}T00:00:00.000Z`) },
+  // Sin dateFrom el corte es la época Unix: no matchea nada y el saldo inicial queda en 0.
+  private openingAggregate(
+    productId: string,
+    type: DocumentType,
+    dateFrom?: string,
+  ) {
+    return this.prisma.documentItem.aggregate({
+      where: {
+        productId,
+        document: {
+          type,
+          status: DocumentStatus.confirmed,
+          date: {
+            lt: dateFrom ? new Date(`${dateFrom}T00:00:00.000Z`) : new Date(0),
           },
         },
-        _sum: { quantity: true },
-      });
-
-    const [purchased, sold] = await Promise.all([
-      before(DocumentType.CMO),
-      before(DocumentType.POSO),
-    ]);
-
-    return (purchased._sum.quantity ?? 0) - (sold._sum.quantity ?? 0);
+      },
+      _sum: { quantity: true },
+    });
   }
 }
 
