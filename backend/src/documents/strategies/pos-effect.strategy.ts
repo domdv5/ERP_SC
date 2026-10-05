@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-} from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DocumentType, MovementType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
@@ -19,51 +15,7 @@ export class PosEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.POS;
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
-    const { thirdPartyId, sellerId, paymentMethod, items } = createDocumentDto;
-
-    const thirdParty = thirdPartyId
-      ? await this.prisma.thirdParty.findUnique({
-          where: { id: thirdPartyId },
-          include: { customer: true },
-        })
-      : null;
-
-    if (!thirdParty?.customer) {
-      throw new BadRequestException('La venta requiere un cliente válido');
-    }
-
-    if (!sellerId) {
-      throw new BadRequestException('La venta requiere un vendedor');
-    }
-
-    const seller = await this.prisma.thirdParty.findUnique({
-      where: { id: sellerId },
-    });
-
-    if (!seller?.isSeller) {
-      throw new BadRequestException('El vendedor asignado no es válido');
-    }
-
-    if (!paymentMethod) {
-      throw new BadRequestException('La venta requiere una forma de pago');
-    }
-
-    const products = await this.prisma.product.findMany({
-      where: { id: { in: items.map((i) => i.productId) } },
-      select: { id: true, code: true, minSalePrice: true },
-    });
-    const productById = new Map(products.map((p) => [p.id, p]));
-
-    this.assertPricesAboveFloor(
-      items.map((item) => {
-        const product = productById.get(item.productId);
-        return {
-          code: product?.code ?? item.productId,
-          unitPrice: item.unitPrice ?? 0,
-          minSalePrice: product?.minSalePrice ?? 0,
-        };
-      }),
-    );
+    await this.validateCashSale(createDocumentDto);
   }
 
   async confirm(

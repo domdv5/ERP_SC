@@ -20,6 +20,7 @@ import {
   ConvertDocumentDto,
   CreateDocumentDto,
   FindAllDocumentsDto,
+  FindPendingOfficialPurchasesDto,
   ReleaseItemsDto,
   UpdateDocumentDto,
 } from './dto/index';
@@ -40,6 +41,13 @@ export class DocumentsController {
     @Req() req: RequestWithUser,
   ) {
     return this.documentsService.findAll(findAllDocumentsDto, req.user);
+  }
+
+  // Antes de @Get(':id') para que "official-purchases" no se interprete como un id.
+  @Get('official-purchases/pending')
+  @Permissions('document.create.CMO')
+  findPendingOfficialPurchases(@Query() dto: FindPendingOfficialPurchasesDto) {
+    return this.documentsService.findPendingOfficialPurchases(dto);
   }
 
   // Antes de @Get(':id') para que "customers" no se interprete como un id.

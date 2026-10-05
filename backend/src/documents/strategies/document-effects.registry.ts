@@ -6,6 +6,8 @@ import type {
 } from './document-effect.strategy';
 import { isReservationStrategy } from './document-effect.strategy';
 import { CmEffectStrategy } from './cm-effect.strategy';
+import { CmoEffectStrategy } from './cmo-effect.strategy';
+import { PosoEffectStrategy } from './poso-effect.strategy';
 import { DvcEffectStrategy } from './dvc-effect.strategy';
 import { DvvEffectStrategy } from './dvv-effect.strategy';
 import { EaiEffectStrategy } from './eai-effect.strategy';
@@ -32,6 +34,8 @@ export class DocumentEffectsRegistry {
     remEffectStrategy: RemEffectStrategy,
     posEffectStrategy: PosEffectStrategy,
     cotEffectStrategy: CotEffectStrategy,
+    cmoEffectStrategy: CmoEffectStrategy,
+    posoEffectStrategy: PosoEffectStrategy,
   ) {
     for (const strategy of [
       cmEffectStrategy,
@@ -44,6 +48,8 @@ export class DocumentEffectsRegistry {
       remEffectStrategy,
       posEffectStrategy,
       cotEffectStrategy,
+      cmoEffectStrategy,
+      posoEffectStrategy,
     ]) {
       this.strategies.set(strategy.type, strategy);
     }

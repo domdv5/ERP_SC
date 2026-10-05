@@ -1,0 +1,78 @@
+# Facturación oficial / no oficial (Compra oficial, POS oficial, libro de control oficial)
+
+## Objetivo
+
+Separar las operaciones oficiales (que luego irán a Tributo/DIAN) del flujo físico, con un libro de control oficial por producto (compras oficiales − POS oficiales = saldo), sin tocar el inventario físico ni crear una contabilidad paralela.
+
+## Problema / por qué
+
+Hoy la empresa registra en SAE, de forma independiente: Compras registra todas las compras (entrada física); Administración registra aparte solo las compras oficiales. Las ventas oficiales no dependen del stock físico, y una mercancía comprada no oficialmente puede venderse oficialmente. Se necesita trazabilidad de las operaciones oficiales y su saldo, sin que ese saldo se interprete como existencia física.
+
+## Decisiones confirmadas con el usuario (2026-10-05)
+
+1. Inventario físico intacto: `CM`, `POS` no oficial y demás tipos siguen igual.
+2. Libro de control oficial: saldo por producto (sin bodega) = Σ cantidades de compras oficiales confirmadas − Σ cantidades de POS oficiales confirmados. Puede quedar negativo (= venta oficial respaldada por compra no oficial). Nunca bloquea. Derivado en vivo de los documentos, sin tabla de saldos.
+3. Venta oficial = solo POS oficial. No mueve stock, no valida stock, no aplica saldos a favor, no crea CxC/CxP. Mantiene cliente, vendedor, forma de pago y piso de precio.
+4. Compra oficial: documento propio con consecutivo propio, registrado por Administración. No mueve stock ni crea CxP. Enlace opcional a una `CM` (prefill editable). Se puede crear sin `CM`.
+5. `CM`: nuevo flag "Compra oficial (con factura)" + número de factura del proveedor (obligatorio si el flag está activo). Compras sabe si es oficial al registrar. Ningún otro cambio de comportamiento.
+6. Bandeja de Administración: `CM` confirmadas marcadas oficiales que aún no tienen compra oficial activa (no anulada) enlazada.
+7. IVA: en compra oficial y POS oficial se digita el valor SIN IVA; el sistema guarda aparte el IVA = 19% del subtotal por línea y en el documento; total = subtotal + IVA. La `CM` mantiene el IVA implícito en el subtotal; el 19% del PDF de la CM es informativo y NO se cambia.
+8. Permisos: crear compra oficial → `accounts_admin`, `accounts_assistant`, `admin`. POS oficial → mismos roles que POS hoy (`billing`, `admin`). Consultar libro oficial + bandeja → `accounts_admin`, `accounts_assistant`, `admin`.
+9. Safety Rules autorizadas explícitamente por el usuario: migración de schema y seed RBAC.
+
+## Modelado
+
+- Nuevos `DocumentType`: `CMO` (compra oficial) y `POSO` (POS oficial) — consecutivo propio gratis por `@@unique([type, number])` + `Sequence` por tipo; permisos `document.create.CMO`/`document.create.POSO` por el mecanismo dinámico existente.
+- `CMO` enlaza la `CM` vía `Document.sourceDocumentId` existente.
+- Campos IVA en `DocumentItem` y `Document` (nullable, solo los usan CMO/POSO).
+- Campos `CM`: flag oficial + número de factura del proveedor.
+
+## Tareas
+
+- [x] T1. Schema + migración manual + seed RBAC (tipos `CMO`/`POSO`, flag/factura en CM, campos IVA, permisos). Ruta: delegado (`nestjs-code-crafter`, writer trigger 2+ archivos). Migración `20261005120000_facturacion_oficial` aplicada; seed corrido (idempotente).
+- [x] T2. CM: validación flag + número de factura (validateCreate y confirm). Ruta: delegado (mismo writer backend).
+- [x] T3. Estrategia `CMO` + cálculo IVA + bandeja `GET /documents/official-purchases/pending`. Ruta: delegado (mismo writer backend). Usuario confirmó mantener la bandeja.
+- [x] T4. Estrategia `POSO` + cálculo IVA (validación compartida movida a `BaseEffectStrategy.validateCashSale`). Ruta: delegado (mismo writer backend).
+- [x] T5. `OfficialLedgerModule`: `GET /official-ledger` + `GET /official-ledger/products/:productId`. Ruta: delegado (mismo writer backend).
+- [ ] T6. Frontend: campos CM, formulario CMO con IVA, bandeja, toggle Oficial en POS checkout, página del libro, navegación. Ruta: delegado (`react-code-crafter`).
+- [ ] T7. Documentación `backend/CLAUDE.md` + `frontend/CLAUDE.md` (va con cada tarea).
+
+## Criterios de aceptación
+
+- Confirmar CMO/POSO no crea `InventoryMovement` ni toca `Inventory`/`BinStock`, ni CxP/CxC.
+- IVA = round(subtotal × 0.19) por línea; totales de documento coherentes.
+- CM oficial sin número de factura → 400.
+- Bandeja lista solo CM confirmadas oficiales sin CMO activa.
+- Libro: saldo = compras − ventas por producto, filtrable por fechas, con negativos visibles.
+- Anular CMO/POSO las saca del libro.
+
+## Verificación
+
+- `pnpm run build` (backend) y `pnpm run build` / lint (frontend).
+- Prueba funcional en vivo vía API (backend dev corre `dist/` — rebuild + restart para probar).
+- Sin tests automatizados (baseline del repo: 0 `.spec.ts`; no crear archivos de test).
+
+## TDD
+
+Desactivado — baseline del repo sin tests; verificación funcional en vivo.
+
+## Entrega
+
+Estrategia `ask-on-risk`. Pronóstico > 400 líneas (backend ~600–900, frontend ~800+). **Decisión del usuario (2026-10-05): un solo PR** (`single-pr`, mismo criterio que Recibos de Caja), con commits por unidad de trabajo dentro de la rama.
+
+## Progreso
+
+- Rama `feature/facturacion-oficial` creada desde `main` (d989c30).
+- RDD: on (global).
+- 2026-10-05: backend revisado archivo por archivo por el usuario antes del commit (primer commit `b534b65` se deshizo a pedido del usuario para revisarlo en VS Code). Commit + push del backend autorizados por el usuario.
+
+## Pendiente para mañana (2026-10-06)
+
+1. **T6 frontend** (`react-code-crafter`, cargar `vercel-react-best-practices` + `typescript-advanced-types` y pedírselo en el prompt): casilla "Compra oficial (con factura)" + número de factura en el form de CM; formulario de Compra oficial (CMO) con columnas IVA y prefill desde la bandeja; página de bandeja (`GET /documents/official-purchases/pending`); interruptor "Oficial" en `POSCheckoutPage` que cambia el tipo a POSO (sin saldos a favor, sin chequeo de stock); página del libro (`GET /official-ledger` + detalle `GET /official-ledger/products/:productId`); navegación y `isPriceBasedType` del frontend incluyendo POSO.
+2. **T7** `frontend/CLAUDE.md`.
+3. **Mostrar al usuario archivos y líneas tocadas antes de cada commit** y esperar su OK (feedback 2026-10-05).
+4. **Revisión RDD pendiente** del commit de backend (no se arrancó por pedido del usuario de esperar): correr `gentle-ai review assess --cwd . --agent claude-code --base-ref d989c30 --committed-only --json` y seguir su `next_transition`; relayar el consentimiento al usuario.
+5. Usuarios deben volver a iniciar sesión para ver los permisos nuevos (seed ya corrido en BD local).
+6. PR único (`single-pr`) cuando el frontend esté listo — crear PR solo si el usuario lo pide.
+7. Ignorar `.atl/skill-registry.*` (cambios del `gentle-ai sync`, no son del proyecto; no comitear).
+- Backend T1–T5 verificado por el writer: `pnpm run build` OK (spot check del parent OK); pruebas en vivo en instancia temporal :3999 todas pasan (CM oficial sin factura 400, CMO IVA 10000+1900, segundo CMO misma CM 409, CMO/POSO sin cambios en inventory/bin_stock/movements/AP/AR, POSO con customerCredits 400, convert→POSO 400, bandeja, libro con saldo negativo, void saca del libro). Lint: 2 errores preexistentes en `documents.service.ts` (no introducidos). Datos de prueba anulados: CM `FV-TEST-001`, CMO 000001, POSO 000001.

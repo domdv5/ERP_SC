@@ -22,6 +22,8 @@ export async function seedPermissions(prisma: PrismaClient) {
       { code: 'document.create.DVV', module: 'documents' },
       { code: 'document.create.T', module: 'documents' },
       { code: 'document.create.PV', module: 'documents' },
+      { code: 'document.create.CMO', module: 'documents' },
+      { code: 'document.create.POSO', module: 'documents' },
       { code: 'document.read', module: 'documents' },
 
       // Preventa / remisión — liberar reserva y convertir a venta son acciones
@@ -62,6 +64,9 @@ export async function seedPermissions(prisma: PrismaClient) {
       // registrar pagos; ar.manage queda sembrado sin uso (ver backend/CLAUDE.md)
       { code: 'recibo.read', module: 'accounts' },
       { code: 'recibo.create', module: 'accounts' },
+
+      // Libro de control oficial (compras oficiales − POS oficiales)
+      { code: 'official.read', module: 'accounts' },
 
       // Caja
       { code: 'cash.create', module: 'cash' },
