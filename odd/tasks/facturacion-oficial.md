@@ -37,6 +37,19 @@ Hoy la empresa registra en SAE, de forma independiente: Compras registra todas l
 - [ ] T6. Frontend: campos CM, formulario CMO con IVA, bandeja, toggle Oficial en POS checkout, página del libro, navegación. Ruta: delegado (`react-code-crafter`).
 - [ ] T7. Documentación `backend/CLAUDE.md` + `frontend/CLAUDE.md` (va con cada tarea).
 
+## Futuro: cierre mensual del libro oficial (anotado 2026-10-06, sin implementar)
+
+Motivo: el libro suma desde el primer documento de la historia; con volumen mayorista (~1M líneas/año estimado) la consulta crece cada año. Hoy es suficiente (índices `document(type,status)`, `document_item(documentId)`).
+
+Idea acordada con el usuario: tarea programada (`@nestjs/schedule`) a fin de mes en la madrugada que guarda el saldo por producto en una tabla de cierres; el informe parte del último cierre y solo suma lo posterior (no recalcular desde el principio).
+
+Cosas a resolver antes de implementarlo:
+1. Documentos con fecha de un mes ya cerrado (confirmar/anular POSO/CMO de octubre en noviembre) desactualizan el cierre → **bloquear periodos cerrados** (recomendado) o recalcular ese mes y los siguientes. **Pendiente: preguntar si en la tienda se anulan/registran ventas con fecha del mes anterior.**
+2. Si la tarea no corre (servidor apagado), el informe debe partir del último cierre existente, no asumir el mes anterior; la tarea debe ser repetible sin duplicar (upsert por producto+mes).
+3. Con varios servidores la tarea correría en cada uno → prever un candado (hoy hay un solo servidor).
+
+Relacionado: `InventorySnapshot` (tabla sin uso, candidata para cierres).
+
 ## Criterios de aceptación
 
 - Confirmar CMO/POSO no crea `InventoryMovement` ni toca `Inventory`/`BinStock`, ni CxP/CxC.
