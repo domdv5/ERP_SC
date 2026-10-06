@@ -34,8 +34,14 @@ Hoy la empresa registra en SAE, de forma independiente: Compras registra todas l
 - [x] T3. Estrategia `CMO` + cálculo IVA + bandeja `GET /documents/official-purchases/pending`. Ruta: delegado (mismo writer backend). Usuario confirmó mantener la bandeja.
 - [x] T4. Estrategia `POSO` + cálculo IVA (validación compartida movida a `BaseEffectStrategy.validateCashSale`). Ruta: delegado (mismo writer backend).
 - [x] T5. `OfficialLedgerModule`: `GET /official-ledger` + `GET /official-ledger/products/:productId`. Ruta: delegado (mismo writer backend).
-- [ ] T6. Frontend: campos CM, formulario CMO con IVA, bandeja, toggle Oficial en POS checkout, página del libro, navegación. Ruta: delegado (`react-code-crafter`).
-- [ ] T7. Documentación `backend/CLAUDE.md` + `frontend/CLAUDE.md` (va con cada tarea).
+- [x] T6. Frontend: campos CM, formulario CMO con IVA, bandeja, toggle Oficial en POS checkout, página del libro, navegación. Ruta: delegado (`react-code-crafter`). Commit `e9593ce` (build OK; sin prueba en navegador aún).
+- [x] T7. Documentación `backend/CLAUDE.md` + `frontend/CLAUDE.md` (va con cada tarea).
+- [x] T10. IVA: `salePrice`/`minSalePrice` y costos de CM traen IVA (confirmado por el usuario 2026-10-06). CMO precarga costo ÷1,19; POSO precarga precio ÷1,19 hacia arriba y el piso se compara sin IVA en backend y frontend. Commits `283cd9a`, `6ba5815`. Ruta: inline (piezas de regla de negocio).
+- [x] T11. Hallazgos code-review: CMO borrador suelta la CM al cambiar proveedor (`null` en PATCH); aviso de preventa se re-chequea al apagar "Oficial". En `e9593ce`.
+- [ ] T12. Prueba en navegador del flujo completo (CM oficial → bandeja → CMO; POS oficial; libro). Pendiente.
+- [ ] T13. Renombrar pastilla/casilla "Compra oficial" de la CM a "Con factura" + enlace a su CMO. Propuesto, pendiente de OK del usuario.
+
+RDD 2026-10-06: revisión `review-0358902ea15eb7b5` (base `bfbb44b`..`e214e48`) aprobada y reconocida; hallazgos R3-001 (redondeo prefill vs piso) y R3-002 (RepeatableRead) corregidos en `6ba5815` (assess: under_budget, 18 líneas, pendiente en el slice). Próxima base revisada: `e214e48`.
 
 ## Futuro: cierre mensual del libro oficial (anotado 2026-10-06, sin implementar)
 

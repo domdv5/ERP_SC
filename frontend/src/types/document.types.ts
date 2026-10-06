@@ -132,6 +132,13 @@ export interface Document extends DocumentListItem {
   // Solo CM: marcada como compra oficial; exige supplierInvoiceNumber. En CMO solo viaja la factura.
   officialPurchase?: boolean
   supplierInvoiceNumber?: string | null
+  // Solo CM: sus CMO no anuladas (borradores incluidos); null en otros tipos.
+  officialPurchases?: Array<{
+    id: string
+    type: DocumentType
+    number: number | string
+    status: DocumentStatus
+  }> | null
   // Solo CMO/POSO: IVA total del documento; total = subtotal + IVA.
   taxTotal?: number | string | null
 }

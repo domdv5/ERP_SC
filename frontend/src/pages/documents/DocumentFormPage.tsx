@@ -1010,7 +1010,7 @@ export default function DocumentFormPage() {
                     {...register('officialPurchase')}
                     className="w-4 h-4 rounded border-ui-border-medium accent-brand-secondary"
                   />
-                  Compra oficial (con factura)
+                  Con factura (compra oficial)
                 </label>
               )}
               {(docType === 'CMO' || isOfficialPurchase) && (

@@ -1317,8 +1317,16 @@ export class DocumentsService {
 
   /** Agrega el bloque `pv` (nombre histórico, incluye REM) con el estado de conversión; se calcula en cada lectura, no se guarda. */
   private withPvStatus<T extends PvStatusInput>(doc: T) {
-    const { derivedDocuments: _derivedDocuments, ...rest } = doc;
-    return { ...rest, pv: buildPvStatus(doc) };
+    const { derivedDocuments, ...rest } = doc;
+    // Solo CM: sus compras oficiales no anuladas (borradores incluidos), para enlazarlas desde la CM.
+    const officialPurchases =
+      doc.type === DocumentType.CM
+        ? derivedDocuments.filter(
+            (d) =>
+              d.type === DocumentType.CMO && d.status !== DocumentStatus.voided,
+          )
+        : null;
+    return { ...rest, pv: buildPvStatus(doc), officialPurchases };
   }
 
   // `action` elige el permiso: crear cubre todo el ciclo normal, liberar reserva tiene permiso propio (puede ser otro rol).

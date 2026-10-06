@@ -486,7 +486,7 @@ export default function DocumentDetailPage() {
                 </span>
                 {doc.type === 'CM' && doc.officialPurchase && (
                   <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-400">
-                    Compra oficial
+                    Con factura
                   </span>
                 )}
                 {pvConvBadge && (
@@ -712,6 +712,40 @@ export default function DocumentDetailPage() {
                 >
                   {docNumber(doc.sourceDocument.type, doc.sourceDocument.number)}
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Compras oficiales (CMO) registradas desde esta CM con factura */}
+          {doc.type === 'CM' && doc.officialPurchase && (
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <Link2 className="w-4 h-4 text-content-muted" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint font-accent">Compra oficial</p>
+                {doc.officialPurchases && doc.officialPurchases.length > 0 ? (
+                  <div className="flex flex-col gap-0.5">
+                    {doc.officialPurchases.map((cmo) => (
+                      <button
+                        key={cmo.id}
+                        type="button"
+                        onClick={() => navigate(`/documents/${cmo.id}`)}
+                        className="text-sm text-brand-secondary hover:underline font-mono text-left"
+                      >
+                        {docNumber(cmo.type, cmo.number)}
+                        <span className="font-sans text-content-muted">
+                          {' · '}
+                          {cmo.status === 'confirmed' ? 'confirmada' : 'borrador'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  doc.status === 'confirmed' && (
+                    <p className="text-sm text-content-muted">Sin compra oficial registrada</p>
+                  )
+                )}
               </div>
             </div>
           )}
