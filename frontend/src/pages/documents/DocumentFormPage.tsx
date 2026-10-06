@@ -5,7 +5,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { useDebounce } from 'use-debounce'
-import { ArrowLeft, Plus, Loader2, Info } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2, Info, Link2 } from 'lucide-react'
 
 import { getDocument, createDocument, updateDocument } from '@/services/documents.service'
 import { getWarehouses, getWarehouse } from '@/services/warehouses.service'
@@ -14,7 +14,8 @@ import { useAuthStore } from '@/stores/auth.store'
 import { Combobox } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
-import { formatCOP } from '@/lib/format'
+import { formatCOP, docNumber } from '@/lib/format'
+import { computeOfficialTotals, removeOfficialTax } from '@/lib/tax'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { formSchema, type FormValues } from './document-form.schema'
 import {
@@ -28,6 +29,7 @@ import { BarcodeScanInput } from './components/BarcodeScanInput'
 
 import type { Warehouse, WarehouseDetail } from '@/types/warehouse.types'
 import type { ThirdParty } from '@/types/third-party.types'
+import type { DocumentSourceRef } from '@/types/document.types'
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
@@ -37,7 +39,16 @@ const TODAY = new Date().toISOString().slice(0, 10)
 
 // Sustantivo por tipo para títulos y botones: la remisión y la devolución en venta tienen
 // texto propio; el resto usa "operación".
-const TYPE_NOUN: Record<string, string> = { REM: 'remisión', DVV: 'devolución en venta' }
+const TYPE_NOUN: Record<string, string> = {
+  REM: 'remisión',
+  DVV: 'devolución en venta',
+  CMO: 'compra oficial',
+}
+const FIXED_TYPE_LABEL: Record<string, string> = {
+  REM: 'Remisión',
+  DVV: 'Devolución en venta',
+  CMO: 'Compra oficial',
+}
 const nounFor = (t: string) => TYPE_NOUN[t] ?? 'operación'
 
 // ─── main page ───────────────────────────────────────────────────────────────
@@ -59,11 +70,13 @@ export default function DocumentFormPage() {
       opt.value !== 'COT' &&
       opt.value !== 'REM' &&
       opt.value !== 'DVV' &&
+      opt.value !== 'CMO' &&
+      opt.value !== 'POSO' &&
       canCreateType(opt.value),
   )
 
   // Tipos que solo se pueden crear desde un enlace directo, no desde el desplegable.
-  const DEEP_LINK_TYPES: readonly FormValues['type'][] = ['REM', 'DVV']
+  const DEEP_LINK_TYPES: readonly FormValues['type'][] = ['REM', 'DVV', 'CMO']
   const requestedType = searchParams.get('type') as FormValues['type'] | null
   const requestedTypeAllowed =
     requestedType != null &&
@@ -82,6 +95,11 @@ export default function DocumentFormPage() {
     navigate('/documents', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedType, isEditing])
+
+  // CM oficial de la que se precarga la compra oficial (bandeja); solo aplica a CMO nueva.
+  const fromCMId = searchParams.get('fromCM')
+  const [sourceRef, setSourceRef] = useState<DocumentSourceRef | null>(null)
+  const prefilledFromCMRef = useRef(false)
 
   // Búsqueda de tercero: proveedor en compras y devoluciones, cliente en preventas y remisiones.
   const [tpSearch, setTpSearch] = useState('')
@@ -138,8 +156,8 @@ export default function DocumentFormPage() {
   const accent = DOC_TYPE_ACCENT[docType]
   // Tipos que llegan con el tipo ya fijado por deep-link: el selector se reemplaza por un pill
   // no editable.
-  const isFixedType = docType === 'REM' || docType === 'DVV'
-  const fixedTypeLabel = docType === 'REM' ? 'Remisión' : 'Devolución en venta'
+  const isFixedType = docType === 'REM' || docType === 'DVV' || docType === 'CMO'
+  const fixedTypeLabel = FIXED_TYPE_LABEL[docType] ?? ''
 
   // ── load existing document for edit ──────────────────────────────────────
   const { data: existingDoc, isLoading: isLoadingDoc } = useQuery({
@@ -157,7 +175,7 @@ export default function DocumentFormPage() {
       return
     }
     // Un borrador de venta no se edita acá (sin cliente/vendedora/forma de pago/cupo en este form genérico); se retoma desde el checkout.
-    if (existingDoc.type === 'POS' || existingDoc.type === 'COT') {
+    if (existingDoc.type === 'POS' || existingDoc.type === 'COT' || existingDoc.type === 'POSO') {
       toast.error('Las ventas se editan desde el checkout, no desde este formulario')
       navigate(`/documents/${existingDoc.id}`)
       return
@@ -166,6 +184,7 @@ export default function DocumentFormPage() {
     setSellerSelectedName(existingDoc.seller?.name ?? '')
     setSelectedSupplierBrandIds(existingDoc.thirdParty?.supplier?.brands.map((b) => b.id) ?? [])
     setSelectedSupplierDiscountNotes(existingDoc.thirdParty?.supplier?.discountNotes ?? undefined)
+    setSourceRef(existingDoc.type === 'CMO' ? existingDoc.sourceDocument : null)
     setScannedProductInfo(
       Object.fromEntries(
         existingDoc.documentItems.map((item) => [
@@ -189,6 +208,9 @@ export default function DocumentFormPage() {
       adjustmentReason: existingDoc.adjustmentReason ?? undefined,
       adjustmentReasonOther: existingDoc.adjustmentReasonOther ?? undefined,
       refundMethod: existingDoc.refundMethod ?? undefined,
+      officialPurchase: existingDoc.officialPurchase ?? false,
+      supplierInvoiceNumber: existingDoc.supplierInvoiceNumber ?? undefined,
+      sourceDocumentId: existingDoc.type === 'CMO' ? existingDoc.sourceDocument?.id : undefined,
       notes: existingDoc.notes ?? undefined,
       items: existingDoc.documentItems.map((item) => ({
         productId: item.productId,
@@ -211,11 +233,57 @@ export default function DocumentFormPage() {
 
   // CM/DVC piden proveedor; PV, REM y DVV piden cliente — mismo combobox, distinto filtro
   // server-side. La devolución en venta no lleva vendedora (v1, igual que la devolución compra).
-  const needsSupplier = docType === 'CM' || docType === 'DVC'
+  const needsSupplier = docType === 'CM' || docType === 'DVC' || docType === 'CMO'
   const needsCustomer = docType === 'PV' || docType === 'REM' || docType === 'DVV'
   const needsSeller = docType === 'PV' || docType === 'REM'
 
   const hasTpSearch = debouncedTpSearch.length >= 1
+
+  // Prefill desde la bandeja: proveedor, factura, ítems y precios de la CM origen, todo editable.
+  const { data: fromCMDoc } = useQuery({
+    queryKey: ['document', fromCMId],
+    queryFn: () => getDocument(fromCMId!),
+    enabled: !isEditing && docType === 'CMO' && Boolean(fromCMId),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  useEffect(() => {
+    if (!fromCMDoc || prefilledFromCMRef.current) return
+    prefilledFromCMRef.current = true
+    if (
+      fromCMDoc.type !== 'CM' ||
+      fromCMDoc.status !== 'confirmed' ||
+      !fromCMDoc.officialPurchase
+    ) {
+      toast.error('La compra de origen no es una compra oficial confirmada')
+      return
+    }
+    setTpSelectedName(fromCMDoc.thirdParty?.name ?? '')
+    setSelectedSupplierBrandIds(fromCMDoc.thirdParty?.supplier?.brands.map((b) => b.id) ?? [])
+    setScannedProductInfo(
+      Object.fromEntries(
+        fromCMDoc.documentItems.map((item) => [
+          item.productId,
+          { avgCost: Number(item.product.avgCost), unitOfMeasure: item.product.unitOfMeasure },
+        ]),
+      ),
+    )
+    setSourceRef({ id: fromCMDoc.id, type: fromCMDoc.type, number: fromCMDoc.number })
+    setValue('thirdPartyId', fromCMDoc.thirdParty?.id ?? undefined)
+    setValue('supplierInvoiceNumber', fromCMDoc.supplierInvoiceNumber ?? undefined)
+    setValue('sourceDocumentId', fromCMDoc.id)
+    replace(
+      fromCMDoc.documentItems.map((item) => ({
+        productId: item.productId,
+        productCode: item.product.code,
+        productDesc: item.product.description,
+        quantity: item.quantity,
+        unitCost: removeOfficialTax(Number(item.unitCost)),
+        unitPrice: undefined,
+        observaciones: undefined,
+      })),
+    )
+  }, [fromCMDoc, setValue, replace])
 
   const { data: tpData, isLoading: isLoadingTp } = useQuery({
     queryKey: ['third-parties-search', debouncedTpSearch, needsCustomer],
@@ -390,6 +458,7 @@ export default function DocumentFormPage() {
   // ── mutations ─────────────────────────────────────────────────────────────
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['documents'] })
+    queryClient.invalidateQueries({ queryKey: ['official-purchases-pending'] })
   }, [queryClient])
 
   const { mutate: create, isPending: isCreating } = useMutation({
@@ -447,6 +516,21 @@ export default function DocumentFormPage() {
           : null,
       // Solo la devolución en venta manda modalidad; el backend la exige para ese tipo.
       refundMethod: values.type === 'DVV' ? values.refundMethod || undefined : undefined,
+      // Solo CM manda el flag (el backend lo rechaza en otros tipos); '' limpia la factura al desmarcarlo.
+      officialPurchase: values.type === 'CM' ? Boolean(values.officialPurchase) : undefined,
+      supplierInvoiceNumber:
+        values.type === 'CM'
+          ? values.officialPurchase
+            ? values.supplierInvoiceNumber?.trim()
+            : ''
+          : values.type === 'CMO'
+            ? values.supplierInvoiceNumber?.trim()
+            : undefined,
+      // Al editar, null suelta el vínculo con la CM; undefined lo dejaría intacto en BD.
+      sourceDocumentId:
+        values.type === 'CMO'
+          ? values.sourceDocumentId || (isEditing ? null : undefined)
+          : undefined,
       notes: values.notes || undefined,
       items: values.items.map((item) => ({
         productId: item.productId,
@@ -488,13 +572,23 @@ export default function DocumentFormPage() {
   const needsTransfer = docType === 'T'
   const needsAdjustmentReason = docType === 'EAI'
   const currentAdjustmentReason = watch('adjustmentReason')
-  const showCostColumn = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
+  const isOfficialPurchase = docType === 'CM' && Boolean(watch('officialPurchase'))
+  const isOfficialPurchaseDoc = docType === 'CMO'
+  const showCostColumn =
+    docType === 'CM' || docType === 'DVC' || docType === 'EAI' || docType === 'CMO'
   // Preventas, remisiones y devoluciones en venta muestran precio de venta editable en vez de
   // costo: es una columna aparte.
   const showPriceColumn = docType === 'PV' || docType === 'REM' || docType === 'DVV'
   // Las salidas por ajuste y los traslados también necesitan la columna de costo (de solo
   // lectura) para que las celdas de cada fila sigan alineadas con el encabezado.
   const hasCostColumn = showCostColumn || showPriceColumn || docType === 'SAJ' || docType === 'T'
+  // Totales de la compra oficial en vivo: IVA por línea redondeado como el backend.
+  const officialTotals = computeOfficialTotals(
+    (watchedItems ?? []).map((item) => ({
+      quantity: Number(item.quantity || 0),
+      unitValue: Number(item.unitCost || 0),
+    })),
+  )
   // Nota de talla por línea: solo en traslados.
   const showObservacionesColumn = docType === 'T'
 
@@ -528,7 +622,9 @@ export default function DocumentFormPage() {
                 ? 'Crea una nueva remisión'
                 : docType === 'DVV'
                   ? 'Crea una nueva devolución en venta'
-                  : 'Crea una nueva operación de inventario'}
+                  : docType === 'CMO'
+                    ? 'Registra la compra con factura; los valores se digitan sin IVA'
+                    : 'Crea una nueva operación de inventario'}
           </p>
         </div>
       </div>
@@ -588,6 +684,8 @@ export default function DocumentFormPage() {
                         setValue('destBinId', undefined)
                         setValue('adjustmentReason', undefined)
                         setValue('adjustmentReasonOther', undefined)
+                        setValue('officialPurchase', false)
+                        setValue('supplierInvoiceNumber', undefined)
                         setTpSelectedName('')
                         setSellerSelectedName('')
                         setSelectedSupplierBrandIds([])
@@ -642,6 +740,12 @@ export default function DocumentFormPage() {
                         const tp = tpData?.items.find((t: ThirdParty) => t.id === selectedId)
                         setSelectedSupplierBrandIds(tp?.supplier?.brands.map((b) => b.id) ?? [])
                         setSelectedSupplierDiscountNotes(tp?.supplier?.discountNotes ?? undefined)
+
+                        // El backend exige mismo proveedor entre la CMO y su CM origen: cambiar de proveedor suelta el vínculo.
+                        if (docType === 'CMO' && getValues('sourceDocumentId')) {
+                          setValue('sourceDocumentId', undefined)
+                          setSourceRef(null)
+                        }
 
                         // Cambiar de proveedor invalida la marca de los ítems ya cargados y los vacía; en PV/REM (sin filtro de marca) no aplica.
                         if (needsSupplier && getValues('items').length > 0) {
@@ -896,6 +1000,58 @@ export default function DocumentFormPage() {
             )}
           </div>
 
+          {/* Facturación oficial — CM: casilla + factura del proveedor; CMO: factura (obligatoria) y vínculo a la CM origen. */}
+          {(docType === 'CM' || docType === 'CMO') && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {docType === 'CM' && (
+                <label className="flex items-center gap-2.5 text-sm font-medium text-content-secondary cursor-pointer self-end pb-2">
+                  <input
+                    type="checkbox"
+                    {...register('officialPurchase')}
+                    className="w-4 h-4 rounded border-ui-border-medium accent-brand-secondary"
+                  />
+                  Compra oficial (con factura)
+                </label>
+              )}
+              {(docType === 'CMO' || isOfficialPurchase) && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-content-secondary">
+                    Número de factura del proveedor <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={50}
+                    placeholder="Ej. FV-12345"
+                    {...register('supplierInvoiceNumber')}
+                    className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                  />
+                </div>
+              )}
+              {docType === 'CMO' && sourceRef && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-content-secondary">
+                    Compra de origen
+                  </label>
+                  <div className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-ui-border-medium bg-surface-raised text-content">
+                    <Link2 className="w-4 h-4 text-content-muted shrink-0" />
+                    <span className="font-mono">{docNumber(sourceRef.type, sourceRef.number)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {docType === 'CMO' && sourceRef && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
+              <Info className="w-4 h-4 shrink-0 mt-0.5" />
+              <p className="text-xs font-accent">
+                Los valores se precargaron desde la compra{' '}
+                {docNumber(sourceRef.type, sourceRef.number)} sin el IVA que traían incluido (costo
+                ÷ 1,19). Revísalos contra la factura del proveedor.
+              </p>
+            </div>
+          )}
+
           {/* Modalidad de devolución — solo devoluciones en venta. Define si la devolución deja
               saldo a favor, es un cambio de producto, o se devuelve el dinero. */}
           {docType === 'DVV' && (
@@ -1015,6 +1171,9 @@ export default function DocumentFormPage() {
                     {hasCostColumn && (
                       <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-36">
                         {showPriceColumn ? 'Precio unit.' : 'Costo unit.'}{' '}
+                        {isOfficialPurchaseDoc && (
+                          <span className="text-content-faint normal-case">(sin IVA)</span>
+                        )}
                         {docType === 'EAI' && (
                           <span className="text-content-faint normal-case">(opc.)</span>
                         )}
@@ -1026,6 +1185,11 @@ export default function DocumentFormPage() {
                     <th className="text-right text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-32">
                       Subtotal
                     </th>
+                    {isOfficialPurchaseDoc && (
+                      <th className="text-right text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-28">
+                        IVA 19%
+                      </th>
+                    )}
                     <th className="w-12" />
                   </tr>
                 </thead>
@@ -1053,28 +1217,61 @@ export default function DocumentFormPage() {
                     />
                   ))}
                 </tbody>
-                {(showCostColumn || showPriceColumn) && fields.length > 0 && (
+                {isOfficialPurchaseDoc && fields.length > 0 && (
                   <tfoot>
-                    <tr className="border-t border-ui-border bg-surface-raised">
-                      <td colSpan={2} />
-                      <td className="px-3 py-3 text-right text-xs font-semibold text-content-faint uppercase tracking-wider">
-                        Total
-                      </td>
-                      <td className="px-3 py-3 text-right text-sm font-medium text-content-secondary">
-                        {formatCOP(
-                          fields.reduce((sum, _, i) => {
-                            const qty = Number(watch(`items.${i}.quantity`) ?? 0)
-                            const price = showPriceColumn
-                              ? Number(watch(`items.${i}.unitPrice`) ?? 0)
-                              : Number(watch(`items.${i}.unitCost`) ?? 0)
-                            return sum + qty * price
-                          }, 0),
+                    {[
+                      { label: 'Subtotal', value: officialTotals.subtotal, strong: false },
+                      { label: 'IVA (19%)', value: officialTotals.taxTotal, strong: false },
+                      { label: 'Total', value: officialTotals.total, strong: true },
+                    ].map((row) => (
+                      <tr
+                        key={row.label}
+                        className={cn(
+                          'bg-surface-raised',
+                          row.label === 'Subtotal' && 'border-t border-ui-border',
                         )}
-                      </td>
-                      <td />
-                    </tr>
+                      >
+                        <td colSpan={2} />
+                        <td className="px-3 py-2 text-right text-xs font-semibold text-content-faint uppercase tracking-wider">
+                          {row.label}
+                        </td>
+                        <td
+                          className={cn(
+                            'px-3 py-2 text-right text-sm',
+                            row.strong ? 'font-semibold text-content' : 'text-content-secondary',
+                          )}
+                        >
+                          {formatCOP(row.value)}
+                        </td>
+                        <td colSpan={2} />
+                      </tr>
+                    ))}
                   </tfoot>
                 )}
+                {!isOfficialPurchaseDoc &&
+                  (showCostColumn || showPriceColumn) &&
+                  fields.length > 0 && (
+                    <tfoot>
+                      <tr className="border-t border-ui-border bg-surface-raised">
+                        <td colSpan={2} />
+                        <td className="px-3 py-3 text-right text-xs font-semibold text-content-faint uppercase tracking-wider">
+                          Total
+                        </td>
+                        <td className="px-3 py-3 text-right text-sm font-medium text-content-secondary">
+                          {formatCOP(
+                            fields.reduce((sum, _, i) => {
+                              const qty = Number(watch(`items.${i}.quantity`) ?? 0)
+                              const price = showPriceColumn
+                                ? Number(watch(`items.${i}.unitPrice`) ?? 0)
+                                : Number(watch(`items.${i}.unitCost`) ?? 0)
+                              return sum + qty * price
+                            }, 0),
+                          )}
+                        </td>
+                        <td />
+                      </tr>
+                    </tfoot>
+                  )}
               </table>
             </div>
           )}

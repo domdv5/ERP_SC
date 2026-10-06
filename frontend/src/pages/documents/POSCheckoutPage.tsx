@@ -13,6 +13,7 @@ import {
   Wallet,
   ArrowRightLeft,
   CreditCard,
+  BadgeCheck,
 } from 'lucide-react'
 
 import {
@@ -31,6 +32,12 @@ import type { ComboboxOption } from '@/components/shared'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
+import {
+  addOfficialTax,
+  computeOfficialTotals,
+  officialNetFloor,
+  removeOfficialTax,
+} from '@/lib/tax'
 import {
   proposeCreditApplication,
   clampCreditAmount,
@@ -171,9 +178,13 @@ export default function POSCheckoutPage() {
   // ── modo de venta: contado (POS) / crédito (COT) ─────────────────────────
   // Solo visible con permiso COT; se bloquea con borrador en curso (el tipo de un documento creado no cambia).
   const canCreateCOT = usePermission('document.create.COT')
+  const canCreatePOSO = usePermission('document.create.POSO')
   const [mode, setMode] = useState<SaleMode>('POS')
+  // Venta oficial (POSO): solo contado, valores sin IVA, sin stock ni saldos a favor; se bloquea con borrador en curso.
+  const [official, setOfficial] = useState(false)
   const isCredit = mode === 'COT'
-  const accent = DOC_TYPE_ACCENT[mode]
+  const docType: DocumentType = official ? 'POSO' : mode
+  const accent = DOC_TYPE_ACCENT[docType]
 
   // ── forma de pago (solo contado) ─────────────────────────────────────────
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('')
@@ -198,6 +209,12 @@ export default function POSCheckoutPage() {
     setThirdPartyId(id)
     setTpSelectedName(label)
     setPendingPreventa(null)
+    // La conversión PV/REM→venta no existe para POSO: no se busca preventa activa en modo oficial.
+    if (official) return
+    await checkPendingPreventa(id)
+  }
+
+  async function checkPendingPreventa(id: string) {
     setCheckingPreventa(true)
     try {
       const pv = await findActivePendingPreventa(id)
@@ -223,7 +240,7 @@ export default function POSCheckoutPage() {
   const { data: availableCreditsData } = useQuery({
     queryKey: ['customer-available-credits', thirdPartyId],
     queryFn: () => getAvailableCustomerCredits(thirdPartyId),
-    enabled: Boolean(thirdPartyId),
+    enabled: Boolean(thirdPartyId) && !official,
     staleTime: 30 * 1000,
   })
 
@@ -320,7 +337,8 @@ export default function POSCheckoutPage() {
   const manualProductOptions: ComboboxOption[] = (manualProductData?.items ?? []).map((p) => ({
     id: p.id,
     label: `${p.code} — ${p.description}`,
-    sublabel: `Disponible: ${p.availableStock}`,
+    // La venta oficial no consulta stock físico.
+    sublabel: official ? undefined : `Disponible: ${p.availableStock}`,
   }))
 
   function handleManualProductAdd(id: string) {
@@ -343,7 +361,9 @@ export default function POSCheckoutPage() {
         productDesc: product.description,
         quantity: 1,
         unitCost: undefined,
-        unitPrice: Number(product.salePrice),
+        unitPrice: official
+          ? removeOfficialTax(Number(product.salePrice))
+          : Number(product.salePrice),
         observaciones: undefined,
       })
       toast.success(`${product.code} agregado`)
@@ -376,9 +396,11 @@ export default function POSCheckoutPage() {
 
   const minSalePriceByProductId = useMemo(() => {
     const map = new Map<string, number>()
-    productDetailByCode.forEach((p) => map.set(p.id, p.minSalePrice))
+    productDetailByCode.forEach((p) =>
+      map.set(p.id, official ? officialNetFloor(p.minSalePrice) : p.minSalePrice),
+    )
     return map
-  }, [productDetailByCode])
+  }, [productDetailByCode, official])
 
   const priceFloorViolations = findPriceFloorViolations(
     cartItems
@@ -399,9 +421,17 @@ export default function POSCheckoutPage() {
   const hasValidItems =
     fields.length > 0 && cartItems.every((item) => item.productId && Number(item.quantity) > 0)
   const totalUnits = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+  // En venta oficial el precio digitado va sin IVA: total = subtotal + IVA por línea.
+  const officialTotals = computeOfficialTotals(
+    cartItems.map((item) => ({
+      quantity: Number(item.quantity || 0),
+      unitValue: Number(item.unitPrice || 0),
+    })),
+  )
+  const grandTotal = official ? officialTotals.total : total
 
   // ── saldos a favor aplicados a la venta ─────────────────────────────────
-  const availableCredits = availableCreditsData?.credits ?? []
+  const availableCredits = official ? [] : (availableCreditsData?.credits ?? [])
   // Monto aplicado por cada saldo a favor (id del saldo → monto). El usuario puede bajarlo.
   const [creditAmounts, setCreditAmounts] = useState<Record<string, number>>({})
   // Por-crédito, no global: tocar un saldo no congela la propuesta de los demás, que sigue recalculando mientras sube el total.
@@ -435,7 +465,7 @@ export default function POSCheckoutPage() {
       return next
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [thirdPartyId, availableCreditsData, total])
+  }, [thirdPartyId, availableCreditsData, total, official])
 
   const balanceByCreditId = new Map(availableCredits.map((c) => [c.id, c.balance]))
   // Lista final aplicada: cada monto recortado a su saldo, y la suma recortada al total.
@@ -449,7 +479,7 @@ export default function POSCheckoutPage() {
     total,
   ).map((c) => ({ customerCreditId: c.id, amount: c.amount }))
   const creditsApplied = selectedCredits.reduce((sum, c) => sum + c.amount, 0)
-  const totalToPay = Math.max(total - creditsApplied, 0)
+  const totalToPay = Math.max(grandTotal - creditsApplied, 0)
 
   function setCreditAmount(creditId: string, next: number) {
     creditsTouchedRef.current.add(creditId)
@@ -504,6 +534,7 @@ export default function POSCheckoutPage() {
     queryClient.invalidateQueries({ queryKey: ['products-search-pos'] })
     queryClient.invalidateQueries({ queryKey: ['customer-credit'] })
     queryClient.invalidateQueries({ queryKey: ['customer-available-credits'] })
+    queryClient.invalidateQueries({ queryKey: ['official-ledger'] })
     if (confirmed.sourceDocument) {
       queryClient.invalidateQueries({ queryKey: ['document', confirmed.sourceDocument.id] })
     }
@@ -548,7 +579,7 @@ export default function POSCheckoutPage() {
       } else {
         // Crédito manda los saldos desde el create (la CxC nace neteada); contado los aplica recién al confirmar.
         doc = await createMutateAsync({
-          type: mode,
+          type: docType,
           ...payload,
           customerCredits: isCredit && selectedCredits.length ? selectedCredits : undefined,
         })
@@ -565,7 +596,9 @@ export default function POSCheckoutPage() {
       const confirmed = await confirmMutateAsync({ id: doc.id, customerCredits: selectedCredits })
       invalidateAfterSale(confirmed)
       toast.success(
-        `Venta ${docNumber(confirmed.type, confirmed.number)} confirmada. El inventario fue actualizado.`,
+        official
+          ? `Venta oficial ${docNumber(confirmed.type, confirmed.number)} confirmada. No se movió inventario.`
+          : `Venta ${docNumber(confirmed.type, confirmed.number)} confirmada. El inventario fue actualizado.`,
       )
       navigate(`/documents/${confirmed.id}`)
     } catch (err) {
@@ -602,10 +635,12 @@ export default function POSCheckoutPage() {
           <h1 className="text-2xl text-content">Nueva venta</h1>
           <p className="text-content-muted text-sm mt-0.5 font-accent">
             {draftId && draftNumber !== null
-              ? `Borrador ${docNumber(mode, draftNumber)} en curso`
-              : isCredit
-                ? 'Venta a crédito'
-                : 'Venta de contado'}
+              ? `Borrador ${docNumber(docType, draftNumber)} en curso`
+              : official
+                ? 'Venta oficial de contado (valores sin IVA)'
+                : isCredit
+                  ? 'Venta a crédito'
+                  : 'Venta de contado'}
           </p>
         </div>
         {sourceDocument && (
@@ -628,16 +663,46 @@ export default function POSCheckoutPage() {
           >
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ui-divide pb-3">
               <h2 className="text-base text-content">Datos de la venta</h2>
-              {canCreateCOT && (
-                <SegmentedToggle
-                  checked={isCredit}
-                  onChange={(checked) => {
-                    if (!draftId) setMode(checked ? 'COT' : 'POS')
-                  }}
-                  uncheckedLabel="Contado"
-                  checkedLabel="Crédito"
-                />
-              )}
+              <div className="flex flex-wrap items-center gap-3">
+                {canCreatePOSO && (
+                  <SegmentedToggle
+                    checked={official}
+                    onChange={(checked) => {
+                      if (draftId || sourceDocument) return
+                      setOfficial(checked)
+                      // Precio de venta trae IVA; en modo oficial se digita sin IVA, así que se convierte el carrito.
+                      getValues('items').forEach((item, i) => {
+                        if (item.unitPrice === undefined) return
+                        setValue(
+                          `items.${i}.unitPrice`,
+                          checked
+                            ? removeOfficialTax(item.unitPrice)
+                            : addOfficialTax(item.unitPrice),
+                        )
+                      })
+                      if (checked) {
+                        setMode('POS')
+                        setPendingPreventa(null)
+                      } else if (thirdPartyId) {
+                        // El cliente pudo elegirse en modo oficial, donde no se buscó su preventa activa.
+                        void checkPendingPreventa(thirdPartyId)
+                      }
+                    }}
+                    uncheckedLabel="Normal"
+                    checkedLabel="Oficial"
+                  />
+                )}
+                {canCreateCOT && !official && (
+                  <SegmentedToggle
+                    checked={isCredit}
+                    onChange={(checked) => {
+                      if (!draftId) setMode(checked ? 'COT' : 'POS')
+                    }}
+                    uncheckedLabel="Contado"
+                    checkedLabel="Crédito"
+                  />
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -800,23 +865,36 @@ export default function POSCheckoutPage() {
               </div>
             )}
 
+            {/* Aviso de venta oficial: no hay stock ni saldos a favor. */}
+            {official && (
+              <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-lime-50 text-lime-700 dark:bg-lime-500/20 dark:text-lime-400">
+                <BadgeCheck className="w-4 h-4 shrink-0 mt-0.5" />
+                <p className="text-xs font-accent">
+                  Venta oficial: los precios se digitan sin IVA, no se valida ni se descuenta stock
+                  y no aplica saldo a favor del cliente.
+                </p>
+              </div>
+            )}
+
             {/* Saldo a favor del cliente aplicable a esta venta. */}
-            <CreditsPanel
-              title="Saldo a favor del cliente"
-              credits={availableCredits.map((c) => ({
-                id: c.id,
-                balance: c.balance,
-                label: docNumber(c.sourceDocument.type, c.sourceDocument.number),
-              }))}
-              creditAmounts={creditAmounts}
-              setCreditAmount={setCreditAmount}
-              creditsApplied={creditsApplied}
-              totalAvailable={availableCreditsData?.totalAvailable ?? 0}
-            />
+            {!official && (
+              <CreditsPanel
+                title="Saldo a favor del cliente"
+                credits={availableCredits.map((c) => ({
+                  id: c.id,
+                  balance: c.balance,
+                  label: docNumber(c.sourceDocument.type, c.sourceDocument.number),
+                }))}
+                creditAmounts={creditAmounts}
+                setCreditAmount={setCreditAmount}
+                creditsApplied={creditsApplied}
+                totalAvailable={availableCreditsData?.totalAvailable ?? 0}
+              />
+            )}
           </div>
 
           {/* Aviso de preventa activa */}
-          {pendingPreventa && (
+          {pendingPreventa && !official && (
             <div className="flex items-start gap-3 px-5 py-4 rounded-2xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20">
               <ArrowRightLeft className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
@@ -874,7 +952,7 @@ export default function POSCheckoutPage() {
             </div>
 
             <BarcodeScanInput
-              docType={mode}
+              docType={docType}
               append={append}
               getValues={getValues}
               setValue={setValue}
@@ -917,11 +995,19 @@ export default function POSCheckoutPage() {
                         Cant.
                       </th>
                       <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-32">
-                        Precio unit.
+                        Precio unit.{' '}
+                        {official && (
+                          <span className="text-content-faint normal-case">(sin IVA)</span>
+                        )}
                       </th>
                       <th className="text-right text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-32">
                         Subtotal
                       </th>
+                      {official && (
+                        <th className="text-right text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-28">
+                          IVA 19%
+                        </th>
+                      )}
                       <th className="w-10" />
                     </tr>
                   </thead>
@@ -937,8 +1023,9 @@ export default function POSCheckoutPage() {
                           control={control}
                           watch={watch}
                           onRemove={() => remove(index)}
-                          minSalePrice={detail?.minSalePrice}
-                          availableStock={detail?.availableStock}
+                          minSalePrice={detail && minSalePriceByProductId.get(detail.id)}
+                          availableStock={official ? undefined : detail?.availableStock}
+                          showTax={official}
                         />
                       )
                     })}
@@ -954,13 +1041,27 @@ export default function POSCheckoutPage() {
           <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-4">
             <div>
               <p className="text-xs text-content-faint font-accent uppercase tracking-wider">
-                {creditsApplied > 0
-                  ? isCredit
-                    ? 'Total a crédito (neto)'
-                    : 'Total a pagar en efectivo'
-                  : 'Total a pagar'}
+                {official
+                  ? 'Total a pagar (con IVA)'
+                  : creditsApplied > 0
+                    ? isCredit
+                      ? 'Total a crédito (neto)'
+                      : 'Total a pagar en efectivo'
+                    : 'Total a pagar'}
               </p>
               <p className="text-4xl text-content mt-1 font-mono">{formatCOP(totalToPay)}</p>
+              {official && (
+                <div className="mt-2 space-y-0.5 text-xs font-accent">
+                  <div className="flex items-center justify-between text-content-muted">
+                    <span>Subtotal (sin IVA)</span>
+                    <span className="font-mono">{formatCOP(officialTotals.subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-content-muted">
+                    <span>IVA (19%)</span>
+                    <span className="font-mono">{formatCOP(officialTotals.taxTotal)}</span>
+                  </div>
+                </div>
+              )}
               {creditsApplied > 0 && (
                 <div className="mt-2 space-y-0.5 text-xs font-accent">
                   <div className="flex items-center justify-between text-content-muted">

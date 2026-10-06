@@ -15,6 +15,7 @@ import { Combobox, HintText, ThousandsInput } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { getProducts } from '@/services/products.service'
 import { formatCOP } from '@/lib/format'
+import { computeOfficialLineTax } from '@/lib/tax'
 import type { Product, StockByWarehouse } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
@@ -88,9 +89,11 @@ export function ProductRow({
   // Solo en traslados: mismo producto repartido en varios bultos, cada uno con talla distinta.
   const showObservaciones = docType === 'T'
   // Sin proveedor elegido el buscador queda deshabilitado, no se muestra sin filtrar.
-  const needsSupplier = docType === 'CM' || docType === 'DVC'
+  const needsSupplier = docType === 'CM' || docType === 'DVC' || docType === 'CMO'
   const noSupplierYet = needsSupplier && !watch('thirdPartyId')
-  const showCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
+  const showCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI' || docType === 'CMO'
+  // CMO digita el valor sin IVA: la columna extra muestra el IVA 19% de la línea.
+  const showTax = docType === 'CMO'
   // SAJ/T nunca dejan digitar costo: SAJ usa siempre el costo promedio, T solo lo muestra de referencia.
   const showCostReadonly = docType === 'SAJ' || docType === 'T'
   // SAJ/T no llenan el costo de línea, así que el subtotal se calcula aparte con el costo promedio.
@@ -222,7 +225,8 @@ export function ProductRow({
               setSelectedUnitOfMeasure(product?.unitOfMeasure ?? null)
               setSelectedAvailableStock(product?.availableStock ?? null)
               setSelectedStockByWarehouse(product?.stockByWarehouse ?? null)
-              if (showCost && product?.avgCost) {
+              // En CMO el costo promedio no sirve de sugerencia: el valor va sin IVA y lo digita el usuario.
+              if (showCost && product?.avgCost && docType !== 'CMO') {
                 setValue(`items.${index}.unitCost`, Number(product.avgCost))
               }
               if (showPrice && product?.salePrice) {
@@ -359,6 +363,15 @@ export function ProductRow({
           </span>
         </td>
 
+        {/* IVA de la línea — solo compra oficial */}
+        {showTax && (
+          <td className="px-3 py-2 w-28 text-right">
+            <span className="text-sm text-content-muted">
+              {formatCOP(computeOfficialLineTax(subtotal))}
+            </span>
+          </td>
+        )}
+
         {/* Quitar */}
         <td className="px-3 py-2 w-12 text-center">
           <button
@@ -393,6 +406,7 @@ export function ProductRow({
           {showObservaciones && <td className="px-3 pt-0 pb-2 w-40" />}
           {(showCost || showCostReadonly || showPrice) && <td className="px-3 pt-0 pb-2 w-36" />}
           <td className="px-3 pt-0 pb-2 w-32" />
+          {showTax && <td className="px-3 pt-0 pb-2 w-28" />}
           <td className="px-3 pt-0 pb-2 w-12" />
         </tr>
       )}

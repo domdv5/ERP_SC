@@ -7,7 +7,13 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRoleLabel } from '@/services/users.service'
 import { getWarehouses } from '@/services/warehouses.service'
-import { navGroups, REM_NEW_PATH, DVV_NEW_PATH, type NavItem } from '@/config/navigation'
+import {
+  navGroups,
+  REM_NEW_PATH,
+  DVV_NEW_PATH,
+  CMO_NEW_PATH,
+  type NavItem,
+} from '@/config/navigation'
 
 function getNavLinkClass(isActive: boolean) {
   return cn(
@@ -30,13 +36,19 @@ function isDvvNewActive(pathname: string, search: string) {
   return pathname === '/documents/new' && new URLSearchParams(search).get('type') === 'DVV'
 }
 
+// Ruta del ítem "Nueva compra oficial". Mismo motivo: NavLink no distingue el "?type=CMO".
+function isCmoNewActive(pathname: string, search: string) {
+  return pathname === '/documents/new' && new URLSearchParams(search).get('type') === 'CMO'
+}
+
 // Excluye checkout POS y remisión: ambas empiezan con "/documents" y marcarían "Operaciones" activo por error.
 function isDocumentsActive(pathname: string, search: string) {
   return (
     pathname.startsWith('/documents') &&
     !pathname.startsWith('/documents/pos') &&
     !isRemNewActive(pathname, search) &&
-    !isDvvNewActive(pathname, search)
+    !isDvvNewActive(pathname, search) &&
+    !isCmoNewActive(pathname, search)
   )
 }
 
@@ -110,6 +122,9 @@ function navLinkClassFor(item: NavItem, pathname: string, search: string) {
   }
   if (item.to === DVV_NEW_PATH) {
     return () => getNavLinkClass(isDvvNewActive(pathname, search))
+  }
+  if (item.to === CMO_NEW_PATH) {
+    return () => getNavLinkClass(isCmoNewActive(pathname, search))
   }
   return ({ isActive }: { isActive: boolean }) => getNavLinkClass(isActive)
 }

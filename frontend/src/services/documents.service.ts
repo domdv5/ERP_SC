@@ -12,6 +12,9 @@ import type {
   CustomerCreditSummary,
   ConfirmDocumentPayload,
   AvailableCustomerCreditsResponse,
+  PendingOfficialPurchase,
+  PendingOfficialPurchasesMeta,
+  GetPendingOfficialPurchasesParams,
 } from '@/types/document.types'
 
 export async function getDocuments(
@@ -92,6 +95,16 @@ export async function getAvailableCustomerCredits(
   const res = await api.get<ApiResponse<AvailableCustomerCreditsResponse>>(
     `/documents/customers/${customerId}/available-credits`,
   )
+  return res.data.data
+}
+
+// Bandeja de Administración: CM oficiales confirmadas que aún no tienen compra oficial confirmada.
+export async function getPendingOfficialPurchases(
+  params?: GetPendingOfficialPurchasesParams,
+): Promise<{ items: PendingOfficialPurchase[]; meta: PendingOfficialPurchasesMeta }> {
+  const res = await api.get<
+    ApiResponse<{ items: PendingOfficialPurchase[]; meta: PendingOfficialPurchasesMeta }>
+  >('/documents/official-purchases/pending', { params })
   return res.data.data
 }
 

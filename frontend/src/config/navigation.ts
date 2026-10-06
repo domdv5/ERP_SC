@@ -13,6 +13,9 @@ import {
   Landmark,
   Wallet,
   ShieldCheck,
+  FileCheck2,
+  Inbox,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -22,6 +25,9 @@ export const REM_NEW_PATH = '/documents/new?type=REM'
 
 // Ruta del ítem "Nueva devolución" (grupo Ventas). Mismo problema del "?type=" que REM.
 export const DVV_NEW_PATH = '/documents/new?type=DVV'
+
+// Ruta del ítem "Nueva compra oficial" (grupo Facturación oficial). Mismo problema del "?type=" que REM.
+export const CMO_NEW_PATH = '/documents/new?type=CMO'
 
 // Marcador para ítems que el Sidebar renderiza con un componente propio en vez
 // de un NavLink plano (hoy solo el acordeón de bodegas).
@@ -119,6 +125,30 @@ export const navGroups: NavGroup[] = [
         label: 'Cuentas × Pagar',
         icon: TrendingDown,
         permission: 'ap.read',
+      },
+    ],
+  },
+  {
+    label: 'Facturación oficial',
+    items: [
+      // La bandeja exige document.create.CMO en el backend (no official.read): el gate espeja ese permiso.
+      {
+        to: '/official-purchases',
+        label: 'Compras pendientes',
+        icon: Inbox,
+        permission: 'document.create.CMO',
+      },
+      {
+        to: CMO_NEW_PATH,
+        label: 'Nueva compra oficial',
+        icon: FileCheck2,
+        permission: 'document.create.CMO',
+      },
+      {
+        to: '/official-ledger',
+        label: 'Libro oficial',
+        icon: BookOpen,
+        permission: 'official.read',
       },
     ],
   },
