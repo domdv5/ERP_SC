@@ -38,8 +38,8 @@ Hoy la empresa registra en SAE, de forma independiente: Compras registra todas l
 - [x] T7. Documentación `backend/CLAUDE.md` + `frontend/CLAUDE.md` (va con cada tarea).
 - [x] T10. IVA: `salePrice`/`minSalePrice` y costos de CM traen IVA (confirmado por el usuario 2026-10-06). CMO precarga costo ÷1,19; POSO precarga precio ÷1,19 hacia arriba y el piso se compara sin IVA en backend y frontend. Commits `283cd9a`, `6ba5815`. Ruta: inline (piezas de regla de negocio).
 - [x] T11. Hallazgos code-review: CMO borrador suelta la CM al cambiar proveedor (`null` en PATCH); aviso de preventa se re-chequea al apagar "Oficial". En `e9593ce`.
-- [ ] T12. Prueba en navegador del flujo completo (CM oficial → bandeja → CMO; POS oficial; libro). Pendiente.
-- [ ] T13. Renombrar pastilla/casilla "Compra oficial" de la CM a "Con factura" + enlace a su CMO. Propuesto, pendiente de OK del usuario.
+- [x] T12. Prueba en navegador (Playwright visible, 2026-10-06): 8/8 pasos OK con PRD-1010 (CM-000044 → CMO-000007 costo 10.000 + IVA 3.800; POSO-000003 precio 36.051; stock solo +2 por la CM; libro 2/1/1; todo anulado después). Hallado: el toggle Oficial↔Normal sube el precio $1 en cada ida y vuelta (`addOfficialTax` redondea, `officialNetSalePrice` sube) → pendiente de decisión. Menor: detalle CMO/POSO muestra "Bodega: Almacén".
+- [x] T13. Pastilla/casilla de la CM → "Con factura" + enlaces a sus CMO (campo computado `officialPurchases` en backend). Commit `a50a411`. Ruta: backend inline (1 archivo), frontend delegado (`react-code-crafter`). Build OK.
 
 RDD 2026-10-06: revisión `review-0358902ea15eb7b5` (base `bfbb44b`..`e214e48`) aprobada y reconocida; hallazgos R3-001 (redondeo prefill vs piso) y R3-002 (RepeatableRead) corregidos en `6ba5815` (assess: under_budget, 18 líneas, pendiente en el slice). Próxima base revisada: `e214e48`.
 

@@ -14,8 +14,9 @@ export const officialNetSalePrice = (salePriceWithTax: number) =>
   Math.ceil((salePriceWithTax * 100) / (100 + OFFICIAL_TAX_PERCENT))
 
 // Inverso de removeOfficialTax: vuelve a sumar el IVA al salir del modo oficial del POS.
+// Hacia abajo: así officialNetSalePrice (hacia arriba) devuelve el mismo valor y el precio no sube en cada cambio.
 export const addOfficialTax = (valueWithoutTax: number) =>
-  Math.round((valueWithoutTax * (100 + OFFICIAL_TAX_PERCENT)) / 100)
+  Math.floor((valueWithoutTax * (100 + OFFICIAL_TAX_PERCENT)) / 100)
 
 // Piso de precio sin IVA para POSO (minSalePrice trae IVA); redondeo hacia arriba como el backend.
 export const officialNetFloor = (minSalePriceWithTax: number) =>
