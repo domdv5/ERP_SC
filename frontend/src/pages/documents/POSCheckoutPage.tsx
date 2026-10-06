@@ -36,7 +36,7 @@ import {
   addOfficialTax,
   computeOfficialTotals,
   officialNetFloor,
-  removeOfficialTax,
+  officialNetSalePrice,
 } from '@/lib/tax'
 import {
   proposeCreditApplication,
@@ -362,7 +362,7 @@ export default function POSCheckoutPage() {
         quantity: 1,
         unitCost: undefined,
         unitPrice: official
-          ? removeOfficialTax(Number(product.salePrice))
+          ? officialNetSalePrice(Number(product.salePrice))
           : Number(product.salePrice),
         observaciones: undefined,
       })
@@ -676,7 +676,7 @@ export default function POSCheckoutPage() {
                         setValue(
                           `items.${i}.unitPrice`,
                           checked
-                            ? removeOfficialTax(item.unitPrice)
+                            ? officialNetSalePrice(item.unitPrice)
                             : addOfficialTax(item.unitPrice),
                         )
                       })

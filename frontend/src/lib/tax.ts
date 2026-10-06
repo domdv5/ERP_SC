@@ -9,6 +9,10 @@ export const computeOfficialLineTax = (subtotal: number) =>
 export const removeOfficialTax = (valueWithTax: number) =>
   Math.round((valueWithTax * 100) / (100 + OFFICIAL_TAX_PERCENT))
 
+// Precio de venta sin IVA para POSO: hacia arriba, para no quedar nunca por debajo de officialNetFloor.
+export const officialNetSalePrice = (salePriceWithTax: number) =>
+  Math.ceil((salePriceWithTax * 100) / (100 + OFFICIAL_TAX_PERCENT))
+
 // Inverso de removeOfficialTax: vuelve a sumar el IVA al salir del modo oficial del POS.
 export const addOfficialTax = (valueWithoutTax: number) =>
   Math.round((valueWithoutTax * (100 + OFFICIAL_TAX_PERCENT)) / 100)

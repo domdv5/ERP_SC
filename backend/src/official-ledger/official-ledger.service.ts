@@ -159,6 +159,8 @@ export class OfficialLedgerService {
         this.openingAggregate(productId, DocumentType.CMO, dateFrom),
         this.openingAggregate(productId, DocumentType.POSO, dateFrom),
       ],
+      // RepeatableRead: con READ COMMITTED cada consulta toma su propio snapshot y el saldo inicial podría no cuadrar con los movimientos.
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
     const openingBalance =
       (purchasedBefore._sum.quantity ?? 0) - (soldBefore._sum.quantity ?? 0);
