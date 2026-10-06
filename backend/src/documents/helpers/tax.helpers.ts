@@ -19,6 +19,14 @@ export function computeOfficialLine(quantity: number, unitValue: number) {
   return { subtotal, taxAmount };
 }
 
+/** Piso de precio sin IVA: minSalePrice ya trae IVA, así que en POSO se compara contra minSalePrice / 1,19. */
+export function officialNetFloor(minSalePriceWithTax: number | Prisma.Decimal) {
+  return new Prisma.Decimal(minSalePriceWithTax)
+    .div(OFFICIAL_TAX_RATE.plus(1))
+    .toDecimalPlaces(2, Prisma.Decimal.ROUND_UP)
+    .toNumber();
+}
+
 /** Totales del documento a partir de las líneas: total = Σ subtotal + Σ IVA. */
 export function sumOfficialLines(
   lines: { subtotal: Prisma.Decimal; taxAmount: Prisma.Decimal }[],

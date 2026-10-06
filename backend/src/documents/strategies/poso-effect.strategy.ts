@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { DocumentType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
+import { officialNetFloor } from '@/documents/helpers/tax.helpers';
 import type {
   ConfirmContext,
   DocumentWithItems,
@@ -14,7 +15,7 @@ export class PosoEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.POSO;
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
-    await this.validateCashSale(createDocumentDto);
+    await this.validateCashSale(createDocumentDto, { pricesExcludeTax: true });
   }
 
   confirm(
@@ -28,7 +29,7 @@ export class PosoEffectStrategy extends BaseEffectStrategy {
       document.documentItems.map((item) => ({
         code: item.product.code,
         unitPrice: Number(item.unitPrice),
-        minSalePrice: item.product.minSalePrice,
+        minSalePrice: officialNetFloor(item.product.minSalePrice),
       })),
     );
 
