@@ -18,6 +18,8 @@ El repo tiene cero pruebas; los cálculos de IVA y redondeo afectan dinero y un 
 ## Tasks
 - [ ] T1 — Specs de tax.helpers y pdf-totals.helper + docs. Route: delegated (nestjs-code-crafter; routing rule del repo para backend, 2 archivos no triviales).
 
+- [x] T2 — Specs de computeNewAvgCost/computeReversedAvgCost (tx falso), toCents, date-range.util, buildPvStatus, IsValidChequeReference; mismo PR #7 (usuario, 2026-10-07). Route: delegated (nestjs-code-crafter).
+
 ## Checks
 - `pnpm test` en backend/ (todas en verde), `pnpm run build`.
 - TDD: no aplica RED/GREEN — son pruebas de caracterización sobre código existente; se valida que fallen al romper un valor (prueba de sanidad).
@@ -32,6 +34,8 @@ El repo tiene cero pruebas; los cálculos de IVA y redondeo afectan dinero y un 
 - Hook `.githooks/pre-commit` corre Jest si hay `.ts` de backend staged; probado: pasa con 41/41 y bloquea con 1 prueba rota.
 - CI `.github/workflows/ci.yml` (PR a main: install, prisma generate con DATABASE_URL ficticia, test, build). CD descartado por ahora (no hay servidor).
 - RDD: review-2680fae952f69984 approved+acknowledged (antes de ci.yml).
+
+- T2: 44 pruebas nuevas en 5 archivos, total 91/91 (writer + spot check del padre), tsc sin errores, sin bugs.
 
 ## Next step
 Push/PR a decisión del usuario; ver el check de CI en el PR. Opcional: regla de rama en GitHub que exija el check.

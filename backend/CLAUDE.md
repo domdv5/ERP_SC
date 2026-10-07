@@ -16,7 +16,7 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 
 - Los tests viven junto al archivo que prueban, con nombre `*.spec.ts` (Jest + ts-jest, el alias `@/` ya está mapeado en `package.json`).
 - Correr desde `backend/`: `pnpm test` (todo), `pnpm test:watch` (modo vigilancia), `pnpm test tax.helpers` (un solo archivo, por parte del nombre) o `pnpm test:cov` (cobertura).
-- Cobertura actual: solo los helpers puros de cálculo de dinero (`documents/helpers/tax.helpers.spec.ts` y `documents/print/helpers/pdf-totals.helper.spec.ts`); no hay tests de services, controllers ni e2e.
+- Cobertura actual: solo helpers/utilidades puras — IVA y totales (`documents/helpers/tax.helpers`, `documents/print/helpers/pdf-totals.helper`), costo promedio (`documents/helpers/stock.helpers`: `computeNewAvgCost`/`computeReversedAvgCost`), estado de conversión PV/REM (`pv-status.helper`), `common/utils/money.util` y `date-range.util`, y el validador `IsValidChequeReference`; no hay tests de services, controllers ni e2e.
 
 ## Architecture
 
