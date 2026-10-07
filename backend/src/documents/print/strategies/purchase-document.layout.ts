@@ -17,7 +17,7 @@ export function buildPurchaseDocumentDefinition(
 
   return {
     pageSize: 'LETTER',
-    pageMargins: [30, 90, 30, 60],
+    pageMargins: [30, 110, 30, 60],
     header: buildHeader(document, opts.title),
     footer: buildFooter(document),
     content: [buildItemsTable(document.documentItems), buildTotalsBox(totals)],

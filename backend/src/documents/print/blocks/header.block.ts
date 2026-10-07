@@ -17,9 +17,11 @@ function formatDate(date: Date | string): string {
 export function buildHeader(
   document: DocumentForPrint,
   title: string,
+  opts: { showSeller?: boolean } = {},
 ): DynamicContent {
   return (): Content => {
     const thirdParty = document.thirdParty;
+    const sellerName = opts.showSeller ? document.seller?.name : undefined;
 
     return {
       margin: [30, 20, 30, 10],
@@ -46,6 +48,12 @@ export function buildHeader(
           stack: [
             { text: title, bold: true, fontSize: 13, alignment: 'right' },
             {
+              text: `No. ${document.number}`,
+              bold: true,
+              fontSize: 10,
+              alignment: 'right',
+            },
+            {
               text: `Fecha: ${formatDate(document.date)}`,
               fontSize: 8,
               alignment: 'right',
@@ -64,12 +72,33 @@ export function buildHeader(
               fontSize: 8,
               alignment: 'right',
             },
-            {
-              text: thirdParty?.address ?? '',
-              fontSize: 8,
-              alignment: 'right',
-            },
-            { text: thirdParty?.phone ?? '', fontSize: 8, alignment: 'right' },
+            ...(thirdParty?.address
+              ? [
+                  {
+                    text: thirdParty.address,
+                    fontSize: 8,
+                    alignment: 'right' as const,
+                  },
+                ]
+              : []),
+            ...(thirdParty?.phone
+              ? [
+                  {
+                    text: thirdParty.phone,
+                    fontSize: 8,
+                    alignment: 'right' as const,
+                  },
+                ]
+              : []),
+            ...(sellerName
+              ? [
+                  {
+                    text: `Vendedor: ${sellerName}`,
+                    fontSize: 8,
+                    alignment: 'right' as const,
+                  },
+                ]
+              : []),
           ],
         },
       ],

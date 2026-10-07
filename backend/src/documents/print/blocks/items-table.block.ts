@@ -1,6 +1,9 @@
 import type { Content, TableCell } from 'pdfmake/interfaces';
 import type { DocumentForPrint } from '@/documents/documents.service';
-import { computeItemIva } from '../helpers/pdf-totals.helper';
+import {
+  computeItemIva,
+  computeSaleUnitValues,
+} from '../helpers/pdf-totals.helper';
 import { formatCOP } from '../helpers/format.helper';
 
 const HEADERS = [
@@ -34,6 +37,31 @@ export function buildItemsTable(
     ];
   });
 
+  return wrapTable(rows);
+}
+
+/** Ventas: precio de venta; en POSO el IVA sale de lo guardado, en el resto va incluido en el precio. */
+export function buildSaleItemsTable(
+  items: DocumentForPrint['documentItems'],
+): Content {
+  const rows: TableCell[][] = items.map((item) => {
+    const values = computeSaleUnitValues(item);
+
+    return [
+      { text: item.product.code, fontSize: 7 },
+      { text: item.product.description, fontSize: 7 },
+      { text: String(item.quantity), fontSize: 7, alignment: 'right' },
+      { text: formatCOP(values.unit), fontSize: 7, alignment: 'right' },
+      { text: formatCOP(values.unitIva), fontSize: 7, alignment: 'right' },
+      { text: formatCOP(values.unitTotal), fontSize: 7, alignment: 'right' },
+      { text: formatCOP(values.lineTotal), fontSize: 7, alignment: 'right' },
+    ];
+  });
+
+  return wrapTable(rows);
+}
+
+function wrapTable(rows: TableCell[][]): Content {
   const headerRow: TableCell[] = HEADERS.map((header) => ({
     text: header,
     bold: true,
