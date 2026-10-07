@@ -35,7 +35,7 @@ El repo tiene cero pruebas; los cálculos de IVA y redondeo afectan dinero y un 
 - CI `.github/workflows/ci.yml` (PR a main: install, prisma generate con DATABASE_URL ficticia, test, build). CD descartado por ahora (no hay servidor).
 - RDD: review-2680fae952f69984 approved+acknowledged (antes de ci.yml).
 
-- T2: 44 pruebas nuevas en 5 archivos, total 91/91 (writer + spot check del padre), tsc sin errores, sin bugs.
+- T2: 50 pruebas nuevas en 5 archivos (13+8+9+9+11), total 91/91 (writer + spot check del padre), tsc sin errores, sin bugs.
 
 ## Next step
 Push/PR a decisión del usuario; ver el check de CI en el PR. Opcional: regla de rama en GitHub que exija el check.
