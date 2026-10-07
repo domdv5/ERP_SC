@@ -35,6 +35,7 @@ import {
   duplicateDocument,
   printDocument,
 } from '@/services/documents.service'
+import type { DocumentType } from '@/types/document.types'
 import { usePermission } from '@/hooks/usePermission'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
@@ -72,6 +73,18 @@ const formatDateOnly = (iso: string) =>
   })
 
 // ─── label maps ──────────────────────────────────────────────────────────────
+
+// Tipos con PDF en GET /documents/:id/print
+const PRINTABLE_TYPES: ReadonlySet<DocumentType> = new Set<DocumentType>([
+  'CM',
+  'DVC',
+  'POS',
+  'COT',
+  'REM',
+  'DVV',
+  'PV',
+  'POSO',
+])
 
 const TYPE_LABELS = DOC_TYPE_BADGE
 const STATUS_LABELS = DOC_STATUS_BADGE
@@ -610,7 +623,7 @@ export default function DocumentDetailPage() {
                 Ver venta {docNumber(pvActiveDerived.type, pvActiveDerived.number)}
               </button>
             )}
-            {isConfirmed && (doc.type === 'CM' || doc.type === 'DVC') && (
+            {isConfirmed && PRINTABLE_TYPES.has(doc.type) && (
               <button
                 onClick={() => doPrint()}
                 disabled={isPrinting}

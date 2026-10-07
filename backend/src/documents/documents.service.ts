@@ -140,6 +140,7 @@ const PRINT_INCLUDE = {
     },
   },
   user: { select: { id: true, name: true } },
+  seller: { select: { id: true, name: true } },
 } satisfies Prisma.DocumentInclude;
 
 export type DocumentForPrint = Prisma.DocumentGetPayload<{

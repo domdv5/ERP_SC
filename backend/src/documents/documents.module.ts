@@ -22,6 +22,12 @@ import {
   DocumentPrintRegistry,
   DocumentPrintService,
   DvcPrintStrategy,
+  PosPrintStrategy,
+  CotPrintStrategy,
+  RemPrintStrategy,
+  DvvPrintStrategy,
+  PvPrintStrategy,
+  PosoPrintStrategy,
   PdfGeneratorService,
 } from './print/index';
 
@@ -51,6 +57,12 @@ import {
     DocumentPrintRegistry,
     CmPrintStrategy,
     DvcPrintStrategy,
+    PosPrintStrategy,
+    CotPrintStrategy,
+    RemPrintStrategy,
+    DvvPrintStrategy,
+    PvPrintStrategy,
+    PosoPrintStrategy,
   ],
 })
 export class DocumentsModule {}
