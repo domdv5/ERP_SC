@@ -12,6 +12,12 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 > 3. `pnpm exec prisma migrate deploy --config prisma/prisma.config.ts` → apply
 > 4. `pnpm exec prisma generate --config prisma/prisma.config.ts` → regenerate client
 
+## Pruebas
+
+- Los tests viven junto al archivo que prueban, con nombre `*.spec.ts` (Jest + ts-jest, el alias `@/` ya está mapeado en `package.json`).
+- Correr desde `backend/`: `pnpm test` (todo), `pnpm test:watch` (modo vigilancia), `pnpm test tax.helpers` (un solo archivo, por parte del nombre) o `pnpm test:cov` (cobertura).
+- Cobertura actual: solo helpers/utilidades puras — IVA y totales (`documents/helpers/tax.helpers`, `documents/print/helpers/pdf-totals.helper`), costo promedio (`documents/helpers/stock.helpers`: `computeNewAvgCost`/`computeReversedAvgCost`), estado de conversión PV/REM (`pv-status.helper`), `common/utils/money.util` y `date-range.util`, y el validador `IsValidChequeReference`; no hay tests de services, controllers ni e2e.
+
 ## Architecture
 
 ### Module Structure

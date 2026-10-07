@@ -23,5 +23,23 @@ format_workspace() {
   echo "$files" | xargs git add
 }
 
+test_backend() {
+  files=$(git diff --cached --name-only --diff-filter=ACMD -- backend | grep -E '\.ts$' || true)
+  [ -z "$files" ] && return 0
+
+  bin="$root/backend/node_modules/.bin/jest"
+  if [ ! -x "$bin" ]; then
+    echo "pre-commit: no se encontro $bin (¿falta 'pnpm install' en backend?)" >&2
+    exit 1
+  fi
+
+  echo "pre-commit: corriendo las pruebas del backend..."
+  if ! (cd "$root/backend" && "$bin" --passWithNoTests); then
+    echo "pre-commit: commit bloqueado, hay pruebas del backend fallando (ver arriba)." >&2
+    exit 1
+  fi
+}
+
 format_workspace frontend
 format_workspace backend
+test_backend
