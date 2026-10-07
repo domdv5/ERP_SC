@@ -26,6 +26,9 @@
       "@/*": ["./src/*"]
     },
 
+    // TS 6 (el que trae VS Code) ya no carga @types solo; sin esto el editor no reconoce describe/it
+    "types": ["node", "jest"],
+
     "incremental": true,
     "skipLibCheck": true,
 

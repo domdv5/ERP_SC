@@ -45,6 +45,10 @@ Al delegar a `nestjs-code-crafter`/`react-code-crafter`, el prompt de delegació
 
 Este repo usa un pre-commit hook versionado en `.githooks/pre-commit` (no `.husky/`, no hay `package.json` en la raíz) que corre Prettier sobre los archivos `.ts`/`.tsx` staged de `frontend/`/`backend/` antes de cada commit, usando el binario local de cada workspace (`frontend/node_modules/.bin/prettier`, `backend/node_modules/.bin/prettier`). Objetivo: evitar que un editor con autoformato distinto (comillas dobles + punto y coma, los defaults de Prettier) cuele un reformateo masivo mezclado con un cambio de lógica chico.
 
+Además, si el commit incluye algún `.ts` de `backend/`, el hook corre **todas** las pruebas Jest del backend (`backend/node_modules/.bin/jest`) y **bloquea el commit si alguna falla**. Commits solo de frontend o docs no las corren. Saltarlo de forma puntual: `git commit --no-verify` (no usarlo para esconder una prueba rota).
+
+**CI** (`.github/workflows/ci.yml`): en cada PR a `main`, GitHub Actions instala el backend, genera el cliente Prisma (con una `DATABASE_URL` ficticia — el backend no tiene `postinstall` que lo genere y `prisma.config.ts` exige la variable), corre `pnpm test` y `pnpm run build`. Es la red que no se puede saltar con `--no-verify`. No hay CD: todavía no existe servidor de producción.
+
 **Activación** — `git config core.hooksPath .githooks` es una config local de git, no se propaga sola. Cualquier clon nuevo del repo (o worktree nuevo) necesita correrlo una vez para que el hook funcione; si no está activo, los commits no fallan, simplemente no corren Prettier automáticamente.
 
 `frontend/.prettierrc` fija `semi: false, singleQuote: true` (matching el estilo a mano ya establecido en el código); `backend/.prettierrc` ya tenía `singleQuote: true` y usa el default `semi: true` de Prettier (matching el estilo a mano del backend, que sí usa punto y coma). No asumir que ambos workspaces comparten el mismo estilo — son consistentes cada uno consigo mismo, no entre sí.

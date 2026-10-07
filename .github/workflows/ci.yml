@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      # prisma.config.ts exige DATABASE_URL aunque generate no se conecta; nunca poner la real aquí
+      - run: pnpm exec prisma generate --config prisma/prisma.config.ts
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
+      - run: pnpm test
+
+      - run: pnpm run build
