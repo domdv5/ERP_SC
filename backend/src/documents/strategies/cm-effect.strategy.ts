@@ -13,6 +13,10 @@ export class CmEffectStrategy extends BaseEffectStrategy {
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
     await this.assertValidSupplier(createDocumentDto.thirdPartyId);
+    this.assertOfficialInvoice(
+      createDocumentDto.officialPurchase,
+      createDocumentDto.supplierInvoiceNumber,
+    );
 
     const products = await this.prisma.product.findMany({
       where: {
@@ -40,6 +44,11 @@ export class CmEffectStrategy extends BaseEffectStrategy {
         'El documento requiere un proveedor válido',
       );
     }
+
+    this.assertOfficialInvoice(
+      document.officialPurchase,
+      document.supplierInvoiceNumber,
+    );
 
     // Chequeo extra: editar un borrador no vuelve a validar, así que un ítem de una
     // marca equivocada podría colarse si solo se revisara al crear.
@@ -92,5 +101,16 @@ export class CmEffectStrategy extends BaseEffectStrategy {
         status: 'pending',
       },
     });
+  }
+
+  private assertOfficialInvoice(
+    officialPurchase?: boolean | null,
+    supplierInvoiceNumber?: string | null,
+  ) {
+    if (officialPurchase && !supplierInvoiceNumber?.trim()) {
+      throw new BadRequestException(
+        'La compra oficial requiere el número de factura del proveedor',
+      );
+    }
   }
 }

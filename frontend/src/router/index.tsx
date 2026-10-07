@@ -37,6 +37,13 @@ const EgresoNewPage = lazy(() => import('@/pages/egresos/EgresoNewPage'))
 const RecibosCajaListPage = lazy(() => import('@/pages/recibos-caja/RecibosCajaListPage'))
 const ReciboCajaDetailPage = lazy(() => import('@/pages/recibos-caja/ReciboCajaDetailPage'))
 const RecibosCajaNewPage = lazy(() => import('@/pages/recibos-caja/RecibosCajaNewPage'))
+const OfficialPurchasesPendingPage = lazy(
+  () => import('@/pages/official-purchases/OfficialPurchasesPendingPage'),
+)
+const OfficialLedgerPage = lazy(() => import('@/pages/official-ledger/OfficialLedgerPage'))
+const OfficialLedgerProductPage = lazy(
+  () => import('@/pages/official-ledger/OfficialLedgerProductPage'),
+)
 
 // Delay de 200ms antes del loader de pantalla completa: un chunk ya cacheado no llega a mostrarlo, evita el parpadeo en cada click.
 function DelayedPageLoader() {
@@ -282,6 +289,36 @@ export const router = createBrowserRouter([
           <Lazy>
             <PermissionGuard permission="recibo.read">
               <ReciboCajaDetailPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'official-purchases',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="document.create.CMO">
+              <OfficialPurchasesPendingPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'official-ledger',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="official.read">
+              <OfficialLedgerPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'official-ledger/products/:productId',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="official.read">
+              <OfficialLedgerProductPage />
             </PermissionGuard>
           </Lazy>
         ),

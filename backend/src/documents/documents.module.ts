@@ -4,6 +4,7 @@ import { DocumentsService } from './documents.service';
 import { DocumentsController } from './documents.controller';
 import {
   CmEffectStrategy,
+  CmoEffectStrategy,
   CotEffectStrategy,
   DocumentEffectsRegistry,
   DvcEffectStrategy,
@@ -12,6 +13,7 @@ import {
   PvEffectStrategy,
   RemEffectStrategy,
   PosEffectStrategy,
+  PosoEffectStrategy,
   SajEffectStrategy,
   TransferEffectStrategy,
 } from './strategies/index';
@@ -41,6 +43,8 @@ import {
     RemEffectStrategy,
     PosEffectStrategy,
     CotEffectStrategy,
+    CmoEffectStrategy,
+    PosoEffectStrategy,
     DocumentEffectsRegistry,
     DocumentPrintService,
     PdfGeneratorService,

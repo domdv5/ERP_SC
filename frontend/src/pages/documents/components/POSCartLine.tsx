@@ -2,6 +2,7 @@ import { Trash2 } from 'lucide-react'
 import { Controller, type Control, type UseFormRegister, type UseFormWatch } from 'react-hook-form'
 import { HintText, ThousandsInput } from '@/components/shared'
 import { formatCOP } from '@/lib/format'
+import { computeOfficialLineTax } from '@/lib/tax'
 import { cn } from '@/lib/utils'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 
@@ -16,6 +17,8 @@ interface POSCartLineProps {
   minSalePrice?: number
   // Disponible ya neteado; solo informativo, es un aviso temprano y el backend rechaza al confirmar si de verdad no alcanza.
   availableStock?: number
+  // Venta oficial: agrega la columna con el IVA 19% de la línea (el precio va sin IVA).
+  showTax?: boolean
 }
 
 // Componente propio, no reutiliza ProductRow: acá el producto siempre llega resuelto (escaneo/búsqueda), nunca se elige desde la fila.
@@ -27,6 +30,7 @@ export function POSCartLine({
   onRemove,
   minSalePrice,
   availableStock,
+  showTax = false,
 }: POSCartLineProps) {
   const productCode = watch(`items.${index}.productCode`)
   const productDesc = watch(`items.${index}.productDesc`)
@@ -79,6 +83,14 @@ export function POSCartLine({
           <span className="text-sm text-content-secondary font-medium">{formatCOP(subtotal)}</span>
         </td>
 
+        {showTax && (
+          <td className="px-4 py-3 w-28 text-right">
+            <span className="text-sm text-content-muted">
+              {formatCOP(computeOfficialLineTax(subtotal))}
+            </span>
+          </td>
+        )}
+
         <td className="px-3 py-3 w-10 text-center">
           <button
             type="button"
@@ -93,7 +105,7 @@ export function POSCartLine({
 
       {(isBelowFloor || exceedsAvailable) && (
         <tr>
-          <td className="px-4 pt-0 pb-2" colSpan={5}>
+          <td className="px-4 pt-0 pb-2" colSpan={showTax ? 6 : 5}>
             <div className="flex flex-wrap gap-x-4">
               {isBelowFloor && (
                 <HintText variant="warning">

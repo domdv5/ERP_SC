@@ -101,6 +101,15 @@ export type {
   CreateReciboCajaPaymentPayload,
 } from './recibo-caja.types'
 export type { SystemStatus, SystemStatusActivatedBy } from './system.types'
+export type {
+  OfficialLedgerItem,
+  OfficialLedgerTotals,
+  OfficialLedgerMeta,
+  GetOfficialLedgerParams,
+  GetOfficialLedgerMovementsParams,
+  OfficialLedgerMovement,
+  OfficialLedgerProductDetail,
+} from './official-ledger.types'
 
 export interface ApiResponse<T> {
   success: boolean

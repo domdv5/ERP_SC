@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DocumentType, MovementType } from '@/common/enums';
 import { PrismaService } from '@/prisma/prisma.service';
+import type { CreateDocumentDto } from '@/documents/dto/index';
 import type {
   ConfirmContext,
   DocumentEffectStrategy,
@@ -12,6 +13,7 @@ import {
   applyStockChange,
 } from '@/documents/helpers/stock.helpers';
 import { getReservedByProduct } from '@/documents/helpers/reservation.helpers';
+import { officialNetFloor } from '@/documents/helpers/tax.helpers';
 
 /** Base de las estrategias de efectos: concentra la lógica compartida para que cada una solo describa lo propio de su tipo. */
 @Injectable()
@@ -61,6 +63,61 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     if (!thirdParty?.customer) {
       throw new BadRequestException('El documento requiere un cliente válido');
     }
+  }
+
+  /** Reglas de creación de una venta de contado (POS y POS oficial): cliente, vendedor, forma de pago y piso de precio. */
+  protected async validateCashSale(
+    createDocumentDto: CreateDocumentDto,
+    { pricesExcludeTax = false }: { pricesExcludeTax?: boolean } = {},
+  ) {
+    const { thirdPartyId, sellerId, paymentMethod, items } = createDocumentDto;
+
+    const thirdParty = thirdPartyId
+      ? await this.prisma.thirdParty.findUnique({
+          where: { id: thirdPartyId },
+          include: { customer: true },
+        })
+      : null;
+
+    if (!thirdParty?.customer) {
+      throw new BadRequestException('La venta requiere un cliente válido');
+    }
+
+    if (!sellerId) {
+      throw new BadRequestException('La venta requiere un vendedor');
+    }
+
+    const seller = await this.prisma.thirdParty.findUnique({
+      where: { id: sellerId },
+    });
+
+    if (!seller?.isSeller) {
+      throw new BadRequestException('El vendedor asignado no es válido');
+    }
+
+    if (!paymentMethod) {
+      throw new BadRequestException('La venta requiere una forma de pago');
+    }
+
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: items.map((i) => i.productId) } },
+      select: { id: true, code: true, minSalePrice: true },
+    });
+    const productById = new Map(products.map((p) => [p.id, p]));
+
+    this.assertPricesAboveFloor(
+      items.map((item) => {
+        const product = productById.get(item.productId);
+        const minSalePrice = product?.minSalePrice ?? 0;
+        return {
+          code: product?.code ?? item.productId,
+          unitPrice: item.unitPrice ?? 0,
+          minSalePrice: pricesExcludeTax
+            ? officialNetFloor(minSalePrice)
+            : minSalePrice,
+        };
+      }),
+    );
   }
 
   /** Bloqueo total: la marca y el proveedor de un producto son fijos, así que un ítem de otra marca siempre es un error real, nunca un caso a permitir con solo aviso. */

@@ -9,6 +9,8 @@ import {
   CreditCard,
   Truck,
   RotateCcw,
+  FileCheck2,
+  BadgeCheck,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -31,6 +33,8 @@ export const DOC_TYPE_SELECT_OPTIONS: { value: DocumentType; label: string }[] =
   { value: 'POS', label: 'Venta (POS)' },
   { value: 'COT', label: 'Venta crédito' },
   { value: 'DVV', label: 'Devolución venta' },
+  { value: 'CMO', label: 'Compra oficial' },
+  { value: 'POSO', label: 'Venta oficial (POS)' },
 ]
 
 // Modalidad de una devolución en venta — obligatoria al crear una DVV.
@@ -90,6 +94,14 @@ export const DOC_TYPE_BADGE: Record<DocumentType, { label: string; className: st
   DVV: {
     label: 'Dev. Venta',
     className: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/20 dark:text-fuchsia-400',
+  },
+  CMO: {
+    label: 'Compra oficial',
+    className: 'bg-sky-100    text-sky-700    dark:bg-sky-500/20    dark:text-sky-400',
+  },
+  POSO: {
+    label: 'Venta oficial',
+    className: 'bg-lime-100   text-lime-700   dark:bg-lime-500/20   dark:text-lime-400',
   },
 }
 
@@ -162,6 +174,18 @@ export const DOC_TYPE_ACCENT: Record<
     iconBg: 'bg-fuchsia-100 dark:bg-fuchsia-500/20',
     iconText: 'text-fuchsia-700 dark:text-fuchsia-400',
     border: 'border-l-fuchsia-500',
+  },
+  CMO: {
+    icon: FileCheck2,
+    iconBg: 'bg-sky-100    dark:bg-sky-500/20',
+    iconText: 'text-sky-700    dark:text-sky-400',
+    border: 'border-l-sky-500',
+  },
+  POSO: {
+    icon: BadgeCheck,
+    iconBg: 'bg-lime-100   dark:bg-lime-500/20',
+    iconText: 'text-lime-700   dark:text-lime-400',
+    border: 'border-l-lime-500',
   },
 }
 

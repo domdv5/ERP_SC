@@ -458,6 +458,8 @@ enum DocumentType {
   DVV // Devolución en venta — entrada inventario + saldo a favor
   T // Traslado entre bodegas
   PV // Preventa — reserva lógica de inventario, sin movimiento físico
+  CMO // Compra oficial — solo libro de control oficial, sin stock ni CxP
+  POSO // POS oficial — solo libro de control oficial, sin stock ni CxC
 }
 
 enum DocumentStatus {
@@ -507,6 +509,12 @@ model Document {
   paymentMethod         PaymentMethod?       @map("payment_method")
   /// Modalidad de devolución — solo DVV, obligatoria para ese tipo
   refundMethod          DvvRefundMethod?     @map("refund_method")
+  /// Solo CM: compra con factura oficial; exige supplierInvoiceNumber
+  officialPurchase      Boolean              @default(false) @map("official_purchase")
+  /// Número de factura del proveedor — CM oficial y CMO
+  supplierInvoiceNumber String?              @map("supplier_invoice_number") @db.VarChar(50)
+  /// IVA total del documento — solo CMO/POSO (total = Σ subtotal + taxTotal)
+  taxTotal              Decimal?             @map("tax_total") @db.Decimal(16, 2)
   /// Bodega principal: destino en CM/EAI, origen en DVC/SAJ/T
   warehouseId           String?              @map("warehouse_id") @db.Uuid
   /// Bodega destino — solo traslados (T)
@@ -573,6 +581,8 @@ model DocumentItem {
   unitPrice         Decimal  @default(0) @map("unit_price") @db.Decimal(14, 4)
   unitCost          Decimal  @default(0) @map("unit_cost") @db.Decimal(14, 4)
   subtotal          Decimal  @default(0) @db.Decimal(16, 2)
+  /// IVA de la línea — solo CMO/POSO
+  taxAmount         Decimal? @map("tax_amount") @db.Decimal(16, 2)
   observaciones     String?  @db.VarChar(500)
   /// Solo PV: cantidad de la reserva liberada manualmente. La reserva vigente es
   /// derivada (quantity - releasedQuantity - convertedQuantity), nunca un total persistido.

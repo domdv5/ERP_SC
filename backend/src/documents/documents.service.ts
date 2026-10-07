@@ -10,12 +10,14 @@ import { DocumentStatus, DocumentType, MovementType } from '@/common/enums';
 import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
+import { buildDateColumnRange } from '@/common/utils/date-range.util';
 import {
   ConfirmDocumentDto,
   ConvertDocumentDto,
   CreateDocumentDto,
   CreateDocumentItemDto,
   FindAllDocumentsDto,
+  FindPendingOfficialPurchasesDto,
   ReleaseItemsDto,
   UpdateDocumentDto,
 } from './dto/index';
@@ -32,6 +34,11 @@ import {
 } from './helpers/stock.helpers';
 import { matchItemsByProduct } from './helpers/conversion.helpers';
 import { getCustomerCreditSummary } from './helpers/credit.helpers';
+import {
+  computeOfficialLine,
+  OFFICIAL_TAX_TYPES,
+  sumOfficialLines,
+} from './helpers/tax.helpers';
 import { buildPvStatus, PvStatusInput } from './helpers/pv-status.helper';
 import {
   DocumentEffectsRegistry,
@@ -239,6 +246,64 @@ export class DocumentsService {
     };
   }
 
+  /** Bandeja de Administración: CM oficiales confirmadas que aún no tienen una CMO confirmada enlazada (los borradores no la ocultan). */
+  async findPendingOfficialPurchases(dto: FindPendingOfficialPurchasesDto) {
+    const { page = 1, limit = 20, supplierId, search, dateFrom, dateTo } = dto;
+    const dateRange = buildDateColumnRange(dateFrom, dateTo);
+    const term = search?.trim();
+
+    const where: Prisma.DocumentWhereInput = {
+      type: DocumentType.CM,
+      status: DocumentStatus.confirmed,
+      officialPurchase: true,
+      derivedDocuments: {
+        none: {
+          type: DocumentType.CMO,
+          status: DocumentStatus.confirmed,
+        },
+      },
+      ...(supplierId && { thirdPartyId: supplierId }),
+      ...((dateFrom || dateTo) && { date: dateRange }),
+      ...(term && {
+        OR: [
+          { number: { contains: term } },
+          { supplierInvoiceNumber: { contains: term, mode: 'insensitive' } },
+        ],
+      }),
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.document.findMany({
+        where,
+        select: {
+          id: true,
+          number: true,
+          date: true,
+          supplierInvoiceNumber: true,
+          total: true,
+          thirdParty: { select: { id: true, name: true } },
+          documentItems: {
+            select: {
+              productId: true,
+              quantity: true,
+              unitCost: true,
+              product: { select: { id: true, code: true, description: true } },
+            },
+          },
+        },
+        orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.document.count({ where }),
+    ]);
+
+    return {
+      items,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
   async findOne(id: string) {
     const document = await this.prisma.document.findUnique({
       where: { id },
@@ -317,10 +382,18 @@ export class DocumentsService {
       adjustmentReasonOther,
       paymentMethod,
       refundMethod,
+      officialPurchase,
+      supplierInvoiceNumber,
+      sourceDocumentId,
       ...rest
     } = createDocumentDto;
 
     this.assertDocumentPermission(user, type);
+    this.assertOfficialFieldsAllowed(type, {
+      officialPurchase,
+      supplierInvoiceNumber,
+      sourceDocumentId,
+    });
 
     // Falla si el tipo de documento todavía no está implementado.
     const strategy = this.effectsRegistry.get(type);
@@ -347,7 +420,7 @@ export class DocumentsService {
 
     const document = await this.prisma.$transaction(async (tx) => {
       const number = await this.nextNumber(tx, type);
-      const total = this.computeTotal(items, type);
+      const amounts = this.computeAmounts(items, type);
 
       return tx.document.create({
         data: {
@@ -358,7 +431,8 @@ export class DocumentsService {
           sellerId,
           userId: user.sub,
           status: DocumentStatus.draft,
-          total,
+          total: amounts.total,
+          taxTotal: amounts.taxTotal,
           notes,
           warehouseId,
           destWarehouseId,
@@ -368,13 +442,17 @@ export class DocumentsService {
           adjustmentReasonOther,
           paymentMethod: paymentMethod ?? null,
           refundMethod: refundMethod ?? null,
+          officialPurchase: officialPurchase ?? false,
+          supplierInvoiceNumber: supplierInvoiceNumber?.trim() || null,
+          sourceDocumentId: sourceDocumentId ?? null,
           documentItems: {
-            create: items.map((item) => ({
+            create: items.map((item, index) => ({
               productId: item.productId,
               quantity: item.quantity,
               unitCost: item.unitCost ?? 0,
               unitPrice: item.unitPrice ?? 0,
-              subtotal: this.computeItemSubtotal(item, type),
+              subtotal: amounts.lines[index].subtotal,
+              taxAmount: amounts.lines[index].taxAmount,
               observaciones: item.observaciones ?? null,
             })),
           },
@@ -411,22 +489,31 @@ export class DocumentsService {
       items,
       date,
       customerCredits: _customerCredits,
+      supplierInvoiceNumber,
       ...rest
     } = updateDocumentDto;
+
+    this.assertOfficialFieldsAllowed(document.type, {
+      officialPurchase: rest.officialPurchase,
+      supplierInvoiceNumber,
+      sourceDocumentId: rest.sourceDocumentId,
+    });
+    const amounts = items && this.computeAmounts(items, document.type);
 
     // Al editar un borrador no se vuelven a correr las validaciones de creación.
     // Por eso la confirmación del traslado revalida bulto y bodega desde cero.
     const updated = await this.prisma.$transaction(async (tx) => {
-      if (items) {
+      if (items && amounts) {
         await tx.documentItem.deleteMany({ where: { documentId: id } });
         await tx.documentItem.createMany({
-          data: items.map((item) => ({
+          data: items.map((item, index) => ({
             documentId: id,
             productId: item.productId,
             quantity: item.quantity,
             unitCost: item.unitCost ?? 0,
             unitPrice: item.unitPrice ?? 0,
-            subtotal: this.computeItemSubtotal(item, document.type),
+            subtotal: amounts.lines[index].subtotal,
+            taxAmount: amounts.lines[index].taxAmount,
             observaciones: item.observaciones ?? null,
           })),
         });
@@ -438,7 +525,13 @@ export class DocumentsService {
           ...rest,
           updatedById: user.sub,
           ...(date && { date: new Date(date) }),
-          ...(items && { total: this.computeTotal(items, document.type) }),
+          ...(supplierInvoiceNumber !== undefined && {
+            supplierInvoiceNumber: supplierInvoiceNumber.trim() || null,
+          }),
+          ...(amounts && {
+            total: amounts.total,
+            taxTotal: amounts.taxTotal,
+          }),
         },
         include: DETAIL_INCLUDE,
       });
@@ -1224,8 +1317,16 @@ export class DocumentsService {
 
   /** Agrega el bloque `pv` (nombre histórico, incluye REM) con el estado de conversión; se calcula en cada lectura, no se guarda. */
   private withPvStatus<T extends PvStatusInput>(doc: T) {
-    const { derivedDocuments: _derivedDocuments, ...rest } = doc;
-    return { ...rest, pv: buildPvStatus(doc) };
+    const { derivedDocuments, ...rest } = doc;
+    // Solo CM: sus compras oficiales no anuladas (borradores incluidos), para enlazarlas desde la CM.
+    const officialPurchases =
+      doc.type === DocumentType.CM
+        ? derivedDocuments.filter(
+            (d) =>
+              d.type === DocumentType.CMO && d.status !== DocumentStatus.voided,
+          )
+        : null;
+    return { ...rest, pv: buildPvStatus(doc), officialPurchases };
   }
 
   // `action` elige el permiso: crear cubre todo el ciclo normal, liberar reserva tiene permiso propio (puede ser otro rol).
@@ -1254,7 +1355,72 @@ export class DocumentsService {
     DocumentType.POS,
     DocumentType.COT,
     DocumentType.DVV,
+    DocumentType.POSO,
   ]);
+
+  /** Subtotales, IVA y total del documento; CMO/POSO digitan valor sin IVA y el IVA se guarda aparte. */
+  private computeAmounts(items: CreateDocumentItemDto[], type: DocumentType) {
+    if (!OFFICIAL_TAX_TYPES.has(type)) {
+      return {
+        lines: items.map((item) => ({
+          subtotal: this.computeItemSubtotal(item, type),
+          taxAmount: null as number | null,
+        })),
+        total: this.computeTotal(items, type),
+        taxTotal: null as number | null,
+      };
+    }
+
+    const usePrice = DocumentsService.PRICE_BASED_TYPES.has(type);
+    const official = items.map((item) =>
+      computeOfficialLine(
+        item.quantity,
+        usePrice ? (item.unitPrice ?? 0) : (item.unitCost ?? 0),
+      ),
+    );
+    const totals = sumOfficialLines(official);
+
+    return {
+      lines: official.map((line) => ({
+        subtotal: line.subtotal.toNumber(),
+        taxAmount: line.taxAmount.toNumber(),
+      })),
+      total: totals.total.toNumber(),
+      taxTotal: totals.taxTotal.toNumber(),
+    };
+  }
+
+  /** Los campos de facturación oficial solo aplican a ciertos tipos; en el resto se rechazan en vez de ignorarse. */
+  private assertOfficialFieldsAllowed(
+    type: DocumentType,
+    fields: {
+      officialPurchase?: boolean;
+      supplierInvoiceNumber?: string;
+      sourceDocumentId?: string;
+    },
+  ) {
+    if (fields.officialPurchase && type !== DocumentType.CM) {
+      throw new BadRequestException(
+        'Solo una compra (CM) puede marcarse como oficial',
+      );
+    }
+
+    if (
+      fields.supplierInvoiceNumber?.trim() &&
+      type !== DocumentType.CM &&
+      type !== DocumentType.CMO
+    ) {
+      throw new BadRequestException(
+        'El número de factura del proveedor solo aplica a compras',
+      );
+    }
+
+    if (fields.sourceDocumentId && type !== DocumentType.CMO) {
+      throw new BadRequestException(
+        'Solo una compra oficial (CMO) puede enlazar una compra de origen',
+      );
+    }
+  }
 
   private computeItemSubtotal(item: CreateDocumentItemDto, type: DocumentType) {
     const usePrice = DocumentsService.PRICE_BASED_TYPES.has(type);

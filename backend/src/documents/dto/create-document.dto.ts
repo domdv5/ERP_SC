@@ -1,6 +1,7 @@
 import {
   ArrayNotEmpty,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -107,6 +108,22 @@ export class CreateDocumentDto {
   @IsOptional()
   @IsEnum(DvvRefundMethod)
   refundMethod?: DvvRefundMethod;
+
+  // Solo CM: marca la compra como oficial (con factura); exige supplierInvoiceNumber.
+  @IsOptional()
+  @IsBoolean()
+  officialPurchase?: boolean;
+
+  // Solo CM oficial y CMO.
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  supplierInvoiceNumber?: string;
+
+  // Solo CMO: CM oficial confirmada de la que se precarga la compra oficial.
+  @IsOptional()
+  @IsUUID()
+  sourceDocumentId?: string;
 
   // Solo en COT: saldos a favor que la venta va a aplicar. No se persiste — solo
   // lo lee CotEffectStrategy.validateCreate para netear antes del chequeo de cupo.

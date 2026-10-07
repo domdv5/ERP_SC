@@ -16,7 +16,20 @@ export const itemSchema = z.object({
 export const formSchema = z
   .object({
     // POS/COT solo para que el tipo encaje al reabrir en edición; el form redirige al checkout si detecta un borrador de venta.
-    type: z.enum(['CM', 'DVC', 'EAI', 'SAJ', 'T', 'PV', 'REM', 'DVV', 'POS', 'COT'] as const),
+    type: z.enum([
+      'CM',
+      'DVC',
+      'EAI',
+      'SAJ',
+      'T',
+      'PV',
+      'REM',
+      'DVV',
+      'POS',
+      'COT',
+      'CMO',
+      'POSO',
+    ] as const),
     date: z.string().min(1, 'La fecha es requerida'),
     thirdPartyId: z.string().optional(),
     // Preventas y remisiones: vendedora responsable de la operación.
@@ -39,11 +52,16 @@ export const formSchema = z
     refundMethod: z
       .enum(['saldo_a_favor', 'cambio_producto', 'devolucion_dinero'] as const)
       .optional(),
+    // CM: marca de compra oficial. CM oficial y CMO: factura del proveedor (obligatoria, se valida abajo).
+    officialPurchase: z.boolean().optional(),
+    supplierInvoiceNumber: z.string().max(50, 'Máximo 50 caracteres').optional(),
+    // Solo CMO: CM de origen cuando se llega desde la bandeja.
+    sourceDocumentId: z.string().optional(),
     notes: z.string().optional(),
     items: z.array(itemSchema).min(1, 'Agrega al menos un ítem'),
   })
   .superRefine((data, ctx) => {
-    if (data.type === 'CM' || data.type === 'DVC') {
+    if (data.type === 'CM' || data.type === 'DVC' || data.type === 'CMO') {
       if (!data.thirdPartyId) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -51,6 +69,27 @@ export const formSchema = z
           path: ['thirdPartyId'],
         })
       }
+    }
+    if (
+      (data.type === 'CM' && data.officialPurchase && !data.supplierInvoiceNumber?.trim()) ||
+      (data.type === 'CMO' && !data.supplierInvoiceNumber?.trim())
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'El número de factura del proveedor es requerido',
+        path: ['supplierInvoiceNumber'],
+      })
+    }
+    if (data.type === 'CMO') {
+      data.items.forEach((item, index) => {
+        if (item.unitCost === undefined || item.unitCost <= 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'El valor unitario (sin IVA) es obligatorio y debe ser mayor a cero',
+            path: ['items', index, 'unitCost'],
+          })
+        }
+      })
     }
     // Preventas y remisiones comparten campos de venta: cliente y vendedora obligatorios.
     if (data.type === 'PV' || data.type === 'REM') {

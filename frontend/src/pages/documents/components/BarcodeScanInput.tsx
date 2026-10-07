@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import type { UseFieldArrayAppend, UseFormGetValues, UseFormSetValue } from 'react-hook-form'
 import { getProductByCode } from '@/services/products.service'
 import { cn } from '@/lib/utils'
+import { officialNetSalePrice } from '@/lib/tax'
 import type { Product } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
@@ -114,7 +115,8 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
           const avgCost = Number(product.avgCost)
           const salePrice = Number(product.salePrice)
           const shouldPrefillCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
-          const shouldPrefillPrice = docType === 'PV' || docType === 'POS' || docType === 'COT'
+          const shouldPrefillPrice =
+            docType === 'PV' || docType === 'POS' || docType === 'COT' || docType === 'POSO'
           const newIndex = currentItems.length
           append({
             productId: product.id,
@@ -122,7 +124,11 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
             productDesc: product.description,
             quantity: 1,
             unitCost: shouldPrefillCost ? avgCost : undefined,
-            unitPrice: shouldPrefillPrice ? salePrice : undefined,
+            unitPrice: shouldPrefillPrice
+              ? docType === 'POSO'
+                ? officialNetSalePrice(salePrice)
+                : salePrice
+              : undefined,
             observaciones: undefined,
           })
           onProductScanned(product.id, avgCost, product.unitOfMeasure, product.availableStock)

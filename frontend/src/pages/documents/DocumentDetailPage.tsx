@@ -23,6 +23,8 @@ import {
   Clock,
   RotateCcw,
   Wallet,
+  Receipt,
+  Link2,
 } from 'lucide-react'
 
 import {
@@ -202,6 +204,9 @@ export default function DocumentDetailPage() {
     enabled: Boolean(id),
   })
 
+  // CMO/POSO: valores sin IVA, IVA 19% guardado aparte; no mueven inventario ni cuentas.
+  const isOfficialType = doc?.type === 'CMO' || doc?.type === 'POSO'
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['documents'] })
     queryClient.invalidateQueries({ queryKey: ['document', id] })
@@ -217,6 +222,9 @@ export default function DocumentDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['accounts-payable'] })
     // Refresca el detalle de bodega: confirmar/anular un traslado cambia el stock de los bultos.
     queryClient.invalidateQueries({ queryKey: ['warehouse-detail'] })
+    // Confirmar o anular una CMO/POSO cambia el libro oficial; una CM oficial entra o sale de la bandeja.
+    queryClient.invalidateQueries({ queryKey: ['official-ledger'] })
+    queryClient.invalidateQueries({ queryKey: ['official-purchases-pending'] })
   }
 
   const { mutate: doConfirm, isPending: isConfirming } = useMutation({
@@ -224,7 +232,11 @@ export default function DocumentDetailPage() {
     onSuccess: () => {
       invalidate()
       setConfirmOpen(false)
-      toast.success('Operación confirmada. El inventario fue actualizado.')
+      toast.success(
+        isOfficialType
+          ? 'Operación confirmada. No se movió inventario.'
+          : 'Operación confirmada. El inventario fue actualizado.',
+      )
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -237,7 +249,11 @@ export default function DocumentDetailPage() {
     onSuccess: () => {
       invalidate()
       setVoidOpen(false)
-      toast.success('Operación anulada. Los movimientos de inventario fueron revertidos.')
+      toast.success(
+        isOfficialType
+          ? 'Operación anulada. Ya no cuenta en el libro oficial.'
+          : 'Operación anulada. Los movimientos de inventario fueron revertidos.',
+      )
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -370,7 +386,9 @@ export default function DocumentDetailPage() {
     doc.type === 'REM' ||
     doc.type === 'POS' ||
     doc.type === 'COT' ||
-    doc.type === 'DVV'
+    doc.type === 'DVV' ||
+    doc.type === 'POSO'
+  const itemTax = (item: (typeof doc.documentItems)[number]) => Number(item.taxAmount ?? 0)
   const itemUnitCost = (item: (typeof doc.documentItems)[number]) =>
     isPriceBasedType
       ? item.unitPrice
@@ -394,11 +412,13 @@ export default function DocumentDetailPage() {
     : usesAvgCostFallback
       ? 'Costo unit. (prom.)'
       : 'Costo unit.'
-  const itemHeaders = showObservaciones
+  const baseItemHeaders = showObservaciones
     ? ['Código', 'Descripción', 'Cantidad', 'Observaciones', costHeaderLabel, 'Subtotal']
     : isReservationType
       ? ['Código', 'Descripción', 'Cantidad', 'Liberado', 'Pendiente', costHeaderLabel, 'Subtotal']
       : ['Código', 'Descripción', 'Cantidad', costHeaderLabel, 'Subtotal']
+  const itemHeaders = isOfficialType ? [...baseItemHeaders, 'IVA 19%'] : baseItemHeaders
+  const taxTotal = isOfficialType ? Number(doc.taxTotal ?? 0) : 0
   // Cuántas celdas vacías dejar en el pie de la tabla antes del "Total", para que quede
   // alineado bajo la columna de costo aunque haya columnas extra (Observaciones, o Liberado y Pendiente).
   const footerSkipCols = showObservaciones ? 4 : isReservationType ? 5 : 3
@@ -424,7 +444,9 @@ export default function DocumentDetailPage() {
         <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-red-500/10 border border-red-500/20">
           <XCircle className="w-5 h-5 text-red-500 shrink-0" />
           <p className="text-sm text-red-600 dark:text-red-400 font-medium">
-            Esta operación fue anulada. Los movimientos de inventario fueron revertidos.
+            {isOfficialType
+              ? 'Esta operación fue anulada. Ya no cuenta en el libro de control oficial.'
+              : 'Esta operación fue anulada. Los movimientos de inventario fueron revertidos.'}
           </p>
         </div>
       )}
@@ -462,6 +484,11 @@ export default function DocumentDetailPage() {
                 >
                   {statusInfo.label}
                 </span>
+                {doc.type === 'CM' && doc.officialPurchase && (
+                  <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-400">
+                    Con factura
+                  </span>
+                )}
                 {pvConvBadge && (
                   <span
                     className={cn(
@@ -643,13 +670,82 @@ export default function DocumentDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-content-faint font-accent">
-                  {doc.type === 'CM' || doc.type === 'DVC'
+                  {doc.type === 'CM' || doc.type === 'DVC' || doc.type === 'CMO'
                     ? 'Proveedor'
-                    : doc.type === 'PV' || doc.type === 'REM' || doc.type === 'DVV'
+                    : doc.type === 'PV' ||
+                        doc.type === 'REM' ||
+                        doc.type === 'DVV' ||
+                        doc.type === 'POSO'
                       ? 'Cliente'
                       : 'Tercero'}
                 </p>
                 <p className="text-sm text-content">{doc.thirdParty.name}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Factura del proveedor — CM oficial y CMO */}
+          {(doc.type === 'CM' || doc.type === 'CMO') && doc.supplierInvoiceNumber && (
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <Receipt className="w-4 h-4 text-content-muted" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint font-accent">Factura del proveedor</p>
+                <p className="text-sm text-content font-mono">{doc.supplierInvoiceNumber}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Compra de origen — solo CMO enlazada a una CM */}
+          {doc.type === 'CMO' && doc.sourceDocument && (
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <Link2 className="w-4 h-4 text-content-muted" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint font-accent">Compra de origen</p>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/documents/${doc.sourceDocument!.id}`)}
+                  className="text-sm text-brand-secondary hover:underline font-mono"
+                >
+                  {docNumber(doc.sourceDocument.type, doc.sourceDocument.number)}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Compras oficiales (CMO) registradas desde esta CM con factura */}
+          {doc.type === 'CM' && doc.officialPurchase && (
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <Link2 className="w-4 h-4 text-content-muted" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint font-accent">Compra oficial</p>
+                {doc.officialPurchases && doc.officialPurchases.length > 0 ? (
+                  <div className="flex flex-col gap-0.5">
+                    {doc.officialPurchases.map((cmo) => (
+                      <button
+                        key={cmo.id}
+                        type="button"
+                        onClick={() => navigate(`/documents/${cmo.id}`)}
+                        className="text-sm text-brand-secondary hover:underline font-mono text-left"
+                      >
+                        {docNumber(cmo.type, cmo.number)}
+                        <span className="font-sans text-content-muted">
+                          {' · '}
+                          {cmo.status === 'confirmed' ? 'confirmada' : 'borrador'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  doc.status === 'confirmed' && (
+                    <p className="text-sm text-content-muted">Sin compra oficial registrada</p>
+                  )
+                )}
               </div>
             </div>
           )}
@@ -668,7 +764,7 @@ export default function DocumentDetailPage() {
           )}
 
           {/* Seller — preventas (PV) y remisiones (REM) */}
-          {isReservationType && doc.seller && (
+          {(isReservationType || doc.type === 'POSO') && doc.seller && (
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
                 <UserCog className="w-4 h-4 text-content-muted" />
@@ -796,11 +892,49 @@ export default function DocumentDetailPage() {
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs">
                       {itemSubtotal(item) > 0 ? formatCOP(itemSubtotal(item)) : '—'}
                     </td>
+                    {isOfficialType && (
+                      <td className="px-5 py-3.5 text-content-muted text-xs">
+                        {itemTax(item) > 0 ? formatCOP(itemTax(item)) : '—'}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                {creditsApplied > 0 ? (
+                {isOfficialType ? (
+                  <>
+                    <tr className="border-t border-ui-border bg-surface-raised">
+                      <td colSpan={footerSkipCols} />
+                      <td className="px-5 py-2.5 text-xs font-semibold text-content-faint uppercase tracking-wider">
+                        Subtotal
+                      </td>
+                      <td className="px-5 py-2.5 text-sm text-content-secondary">
+                        {formatCOP(itemsTotal)}
+                      </td>
+                      <td />
+                    </tr>
+                    <tr className="bg-surface-raised">
+                      <td colSpan={footerSkipCols} />
+                      <td className="px-5 py-2.5 text-xs font-semibold text-content-faint uppercase tracking-wider">
+                        IVA (19%)
+                      </td>
+                      <td className="px-5 py-2.5 text-sm text-content-secondary">
+                        {formatCOP(taxTotal)}
+                      </td>
+                      <td />
+                    </tr>
+                    <tr className="border-t border-ui-border bg-surface-raised">
+                      <td colSpan={footerSkipCols} />
+                      <td className="px-5 py-3.5 text-xs font-semibold text-content uppercase tracking-wider">
+                        Total
+                      </td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-content">
+                        {formatCOP(itemsTotal + taxTotal)}
+                      </td>
+                      <td />
+                    </tr>
+                  </>
+                ) : creditsApplied > 0 ? (
                   <>
                     <tr className="border-t border-ui-border bg-surface-raised">
                       <td colSpan={footerSkipCols} />
@@ -965,7 +1099,7 @@ export default function DocumentDetailPage() {
       <ConfirmDialog
         open={confirmOpen}
         title="Confirmar operación"
-        description={`Al confirmar ${docRef}, se ejecutarán los movimientos de inventario correspondientes. Esta acción no se puede deshacer directamente (solo anulando la operación después).`}
+        description={`Al confirmar ${docRef}, ${isOfficialType ? 'quedará registrada en el libro de control oficial; no se mueve inventario ni cuentas.' : 'se ejecutarán los movimientos de inventario correspondientes.'} Esta acción no se puede deshacer directamente (solo anulando la operación después).`}
         confirmLabel="Confirmar operación"
         confirmClass="gradient-action"
         isPending={isConfirming}
@@ -982,7 +1116,11 @@ export default function DocumentDetailPage() {
       <ConfirmDialog
         open={voidOpen}
         title="Anular operación"
-        description={`Al anular ${docRef}, todos los movimientos de inventario generados por esta operación serán revertidos. Esta acción afecta el stock y no se puede deshacer.`}
+        description={
+          isOfficialType
+            ? `Al anular ${docRef}, dejará de contar en el libro de control oficial. Esta acción no se puede deshacer.`
+            : `Al anular ${docRef}, todos los movimientos de inventario generados por esta operación serán revertidos. Esta acción afecta el stock y no se puede deshacer.`
+        }
         confirmLabel="Anular operación"
         confirmClass="bg-red-600 hover:bg-red-700"
         isPending={isVoiding}

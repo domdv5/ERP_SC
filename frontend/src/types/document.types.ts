@@ -1,6 +1,8 @@
 // POS = venta de contado, COT = venta a crédito (valida cupo y genera CxC al confirmar).
 // REM = remisión, gemela de PV: reserva lógica de stock, convertible a POS/COT.
-export type DocumentType = 'CM' | 'DVC' | 'EAI' | 'SAJ' | 'T' | 'PV' | 'POS' | 'COT' | 'REM' | 'DVV'
+// CMO = compra oficial, POSO = POS oficial: circuito separado del inventario, valor digitado sin IVA (el IVA se guarda aparte).
+export type DocumentType =
+  'CM' | 'DVC' | 'EAI' | 'SAJ' | 'T' | 'PV' | 'POS' | 'COT' | 'REM' | 'DVV' | 'CMO' | 'POSO'
 export type DocumentStatus = 'draft' | 'confirmed' | 'voided'
 export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia'
 // Motivo del ajuste — obligatorio solo para documentos EAI (Entrada por Ajuste de Inventario).
@@ -66,6 +68,8 @@ export interface DocumentItem {
   unitPrice: number
   unitCost: number
   subtotal: number
+  // Solo CMO/POSO: IVA de la línea (el backend lo serializa como texto o número).
+  taxAmount?: number | string | null
   // Nota de talla por línea, solo en traslados: permite registrar un mismo producto repartido
   // en varios bultos, cada uno con una talla distinta.
   observaciones?: string | null
@@ -125,6 +129,50 @@ export interface Document extends DocumentListItem {
   customerCredits?: CustomerCredit[]
   // Solo en ventas POS/COT: los saldos a favor que se aplicaron a esta venta.
   appliedCustomerCredits?: AppliedCustomerCredit[]
+  // Solo CM: marcada como compra oficial; exige supplierInvoiceNumber. En CMO solo viaja la factura.
+  officialPurchase?: boolean
+  supplierInvoiceNumber?: string | null
+  // Solo CM: sus CMO no anuladas (borradores incluidos); null en otros tipos.
+  officialPurchases?: Array<{
+    id: string
+    type: DocumentType
+    number: number | string
+    status: DocumentStatus
+  }> | null
+  // Solo CMO/POSO: IVA total del documento; total = subtotal + IVA.
+  taxTotal?: number | string | null
+}
+
+// Fila de la bandeja "Compras oficiales pendientes": CM confirmada oficial sin CMO confirmada enlazada.
+export interface PendingOfficialPurchase {
+  id: string
+  number: number | string
+  date: string
+  supplierInvoiceNumber: string | null
+  total: number | string
+  thirdParty: { id: string; name: string } | null
+  documentItems: {
+    productId: string
+    quantity: number
+    unitCost: number | string
+    product: { id: string; code: string; description: string }
+  }[]
+}
+
+export interface PendingOfficialPurchasesMeta {
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export interface GetPendingOfficialPurchasesParams {
+  page?: number
+  limit?: number
+  supplierId?: string
+  search?: string
+  dateFrom?: string
+  dateTo?: string
 }
 
 // Nota de saldo a favor generada por una devolución en venta. `balance` es lo que queda
@@ -228,6 +276,12 @@ export interface CreateDocumentPayload {
   refundMethod?: DvvRefundMethod
   // Solo en creación COT: backend netea la CxC y valida cupo sobre el neto (POS los aplica recién al confirmar).
   customerCredits?: { customerCreditId: string; amount: number }[]
+  // Solo CM: el backend rechaza el flag en otros tipos; con true exige supplierInvoiceNumber.
+  officialPurchase?: boolean
+  // Solo CM oficial y CMO; '' al editar limpia el valor guardado.
+  supplierInvoiceNumber?: string
+  // Solo CMO: CM oficial confirmada de la que se precargó la compra; null al editar quita el vínculo.
+  sourceDocumentId?: string | null
   items: CreateDocumentItemPayload[]
 }
 
