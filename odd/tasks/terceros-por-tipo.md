@@ -27,6 +27,7 @@ Branch: feature/terceros-por-tipo. Un commit por tarea; PR a main solo cuando el
 - T2: controller/service/seed/backend CLAUDE.md (nestjs-code-crafter); `pnpm test` 101/101, `pnpm run build` OK (writer); diff revisado por el padre.
 - T3: helper frontend `lib/third-party-permissions.ts` (padre) + ThirdPartyForm/ThirdPartiesPage/frontend CLAUDE.md (react-code-crafter); tsc -b 0 errores.
 - T4 (gentle-ai-verify): backend 101/101, build OK, frontend tsc OK; códigos de permiso coinciden front/seed.
+- RDD: review-fc5692153faa46cc approved + acknowledged (adbeead..7fdbed5). Avisos no bloqueantes: JWT viejo sin thirdparty.role.* da 403 hasta re-login; chequeo fuera de la transacción de escritura; service y helper frontend sin prueba; selector `?? []` crea array nuevo (mismo patrón que DocumentsPage).
 
 ## Next step
 Push y PR a decisión del usuario; después del merge: `pnpm seed` + re-login.
