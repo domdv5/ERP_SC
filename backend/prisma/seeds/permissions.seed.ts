@@ -47,6 +47,10 @@ export async function seedPermissions(prisma: PrismaClient) {
       { code: 'thirdparty.read', module: 'third-parties' },
       { code: 'thirdparty.update', module: 'third-parties' },
       { code: 'thirdparty.delete', module: 'third-parties' },
+      // Tipo de tercero que el usuario puede crear/editar (cliente, proveedor, vendedor)
+      { code: 'thirdparty.role.customer', module: 'third-parties' },
+      { code: 'thirdparty.role.supplier', module: 'third-parties' },
+      { code: 'thirdparty.role.seller', module: 'third-parties' },
 
       // Bodegas — manage porque solo bodega las gestiona completamente
       { code: 'warehouse.manage', module: 'warehouses' },

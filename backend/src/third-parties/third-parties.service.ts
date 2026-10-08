@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Customer, Prisma, Supplier } from '@prisma/client';
 import {
   CreateThirdPartyDto,
@@ -6,6 +11,18 @@ import {
   UpdateThirdPartyDto,
 } from './dto/index';
 import { PrismaService } from '@/prisma/prisma.service';
+import type { JwtPayload } from '@/common/types';
+import {
+  missingThirdPartyRoles,
+  ThirdPartyRole,
+  ThirdPartyRoleFlags,
+} from './helpers/third-party-permissions';
+
+const ROLE_LABELS: Record<ThirdPartyRole, string> = {
+  customer: 'cliente',
+  supplier: 'proveedor',
+  seller: 'vendedor',
+};
 
 @Injectable()
 export class ThirdPartiesService {
@@ -66,7 +83,9 @@ export class ThirdPartiesService {
     };
   }
 
-  async create(createThirdPartyDto: CreateThirdPartyDto) {
+  async create(createThirdPartyDto: CreateThirdPartyDto, user: JwtPayload) {
+    this.assertRolePermissions(user, null, createThirdPartyDto, 'registrar');
+
     const {
       isCustomer,
       isSupplier,
@@ -133,7 +152,14 @@ export class ThirdPartiesService {
     });
   }
 
-  renameBrand(supplierId: string, brandId: string, name: string) {
+  async renameBrand(
+    supplierId: string,
+    brandId: string,
+    name: string,
+    user: JwtPayload,
+  ) {
+    await this.assertCanEdit(supplierId, {}, user);
+
     return this.prisma.brand.update({
       where: { id: brandId, supplierId },
       data: { name },
@@ -162,7 +188,13 @@ export class ThirdPartiesService {
     });
   }
 
-  async update(id: string, updateThirdPartyDto: UpdateThirdPartyDto) {
+  async update(
+    id: string,
+    updateThirdPartyDto: UpdateThirdPartyDto,
+    user: JwtPayload,
+  ) {
+    await this.assertCanEdit(id, updateThirdPartyDto, user);
+
     const {
       isCustomer,
       isSupplier,
@@ -250,5 +282,34 @@ export class ThirdPartiesService {
         include: { customer: true, supplier: { include: { brands: true } } },
       });
     });
+  }
+
+  private assertRolePermissions(
+    user: JwtPayload,
+    current: ThirdPartyRoleFlags | null,
+    change: ThirdPartyRoleFlags,
+    verb: 'registrar' | 'editar',
+  ) {
+    const missing = missingThirdPartyRoles(user.permissions, current, change);
+    if (missing.length > 0) {
+      throw new ForbiddenException(
+        `No tiene permiso para ${verb} terceros de tipo ${missing.map((role) => ROLE_LABELS[role]).join(', ')}`,
+      );
+    }
+  }
+
+  private async assertCanEdit(
+    id: string,
+    change: ThirdPartyRoleFlags,
+    user: JwtPayload,
+  ) {
+    const current = await this.prisma.thirdParty.findUnique({
+      where: { id },
+      select: { isCustomer: true, isSupplier: true, isSeller: true },
+    });
+    if (!current) {
+      throw new NotFoundException('Tercero no encontrado.');
+    }
+    this.assertRolePermissions(user, current, change, 'editar');
   }
 }

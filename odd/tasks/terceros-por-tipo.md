@@ -15,7 +15,7 @@ Hoy `billing` tiene `thirdparty.create`/`update` sin restricción de tipo: puede
 
 ## Tasks
 - [x] T1 — Helper puro `backend/src/third-parties/helpers/third-party-permissions.ts` + spec (test-first). Route: inline (punto de decisión de negocio, regla TODO(human)).
-- [ ] T2 — Backend: controller pasa `req.user`; service valida en create/update/renameBrand; seed de permisos y role-permissions; backend/CLAUDE.md. Route: delegated (nestjs-code-crafter).
+- [x] T2 — Backend: controller pasa `req.user`; service valida en create/update/renameBrand; seed de permisos y role-permissions; backend/CLAUDE.md. Route: delegated (nestjs-code-crafter).
 - [ ] T3 — Frontend: ocultar casillas proveedor/vendedor sin permiso, cliente marcado por defecto, ocultar Editar en terceros fuera de los permisos; frontend/CLAUDE.md. Route: delegated (react-code-crafter).
 - [ ] T4 — Verificación: `pnpm test` + build backend, `tsc -b` frontend. Route: gentle-ai-verify.
 
@@ -24,6 +24,7 @@ Branch: feature/terceros-por-tipo. Un commit por tarea; PR a main solo cuando el
 
 ## Progress / Evidence
 - T1: RED 5/10 con stub vacío → GREEN 10/10 (`jest third-party-permissions`).
+- T2: controller/service/seed/backend CLAUDE.md (nestjs-code-crafter); `pnpm test` 101/101, `pnpm run build` OK (writer); diff revisado por el padre.
 
 ## Next step
-T2.
+T3.
