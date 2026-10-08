@@ -1,0 +1,16 @@
+{
+  "model_profiles": {
+    "nestjs-code-crafter": {
+      "model": "claude-bridge/claude-sonnet-5-5",
+      "effort": "medium"
+    },
+    "prisma-db-architect": {
+      "model": "claude-bridge/claude-opus-5-5",
+      "effort": "high"
+    },
+    "react-code-crafter": {
+      "model": "claude-bridge/claude-sonnet-5-5",
+      "effort": "medium"
+    }
+  }
+}
