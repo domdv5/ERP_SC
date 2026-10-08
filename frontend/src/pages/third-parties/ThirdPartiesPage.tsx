@@ -12,6 +12,8 @@ import {
   renameBrand,
 } from '@/services/third-parties.service'
 import { usePermission } from '@/hooks/usePermission'
+import { useAuthStore } from '@/stores/auth.store'
+import { canEditThirdParty } from '@/lib/third-party-permissions'
 import { ThirdPartyForm } from './components/ThirdPartyForm'
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
 import {
@@ -50,6 +52,7 @@ export default function ThirdPartiesPage() {
   const canCreate = usePermission('thirdparty.create')
   const canUpdate = usePermission('thirdparty.update')
   const canDelete = usePermission('thirdparty.delete')
+  const permissions = useAuthStore((s) => s.user?.permissions ?? [])
 
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -281,99 +284,105 @@ export default function ThirdPartiesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
-                {items.map((t) => (
-                  <tr
-                    key={t.id}
-                    onClick={canUpdate ? () => setEditing(t) : undefined}
-                    className={cn(
-                      'hover:bg-surface-raised transition-colors group',
-                      canUpdate && 'cursor-pointer',
-                    )}
-                  >
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
-                          {t.name[0].toUpperCase()}
+                {items.map((t) => {
+                  const canEditRow = canUpdate && canEditThirdParty(t, permissions)
+                  return (
+                    <tr
+                      key={t.id}
+                      onClick={canEditRow ? () => setEditing(t) : undefined}
+                      className={cn(
+                        'hover:bg-surface-raised transition-colors group',
+                        canEditRow && 'cursor-pointer',
+                      )}
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
+                            {t.name[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-content">{t.name}</p>
+                            {t.email && <p className="text-xs text-content-faint">{t.email}</p>}
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-content">{t.name}</p>
-                          {t.email && <p className="text-xs text-content-faint">{t.email}</p>}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={cn(
+                            'px-2 py-0.5 rounded-full text-xs font-medium',
+                            t.personType === 'natural'
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+                              : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400',
+                          )}
+                        >
+                          {t.personType === 'natural' ? 'Natural' : 'Jurídica'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="font-mono text-xs font-medium text-content-muted">
+                          {t.documentType}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-content-muted text-xs">{t.documentNumber}</td>
+                      <td className="px-5 py-3.5 text-content-muted text-xs">{t.phone ?? '—'}</td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex gap-1 flex-wrap">
+                          {ROLE_BADGES.filter(({ key }) => t[key as keyof ThirdParty]).map(
+                            ({ key, label, color }) => (
+                              <span
+                                key={key}
+                                className={cn(
+                                  'px-2 py-0.5 rounded-full text-xs font-medium',
+                                  color,
+                                )}
+                              >
+                                {label}
+                              </span>
+                            ),
+                          )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className={cn(
-                          'px-2 py-0.5 rounded-full text-xs font-medium',
-                          t.personType === 'natural'
-                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
-                            : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400',
-                        )}
-                      >
-                        {t.personType === 'natural' ? 'Natural' : 'Jurídica'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="font-mono text-xs font-medium text-content-muted">
-                        {t.documentType}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-content-muted text-xs">{t.documentNumber}</td>
-                    <td className="px-5 py-3.5 text-content-muted text-xs">{t.phone ?? '—'}</td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex gap-1 flex-wrap">
-                        {ROLE_BADGES.filter(({ key }) => t[key as keyof ThirdParty]).map(
-                          ({ key, label, color }) => (
-                            <span
-                              key={key}
-                              className={cn('px-2 py-0.5 rounded-full text-xs font-medium', color)}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {canEditRow && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditing(t)
+                              }}
+                              className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
                             >
-                              {label}
-                            </span>
-                          ),
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {canUpdate && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setEditing(t)
-                            }}
-                            className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {canDelete && !showInactive && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setDeleting(t)
-                            }}
-                            className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {canDelete && showInactive && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              reactivate(t.id)
-                            }}
-                            disabled={isReactivating}
-                            className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors disabled:opacity-50"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canDelete && !showInactive && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeleting(t)
+                              }}
+                              className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canDelete && showInactive && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                reactivate(t.id)
+                              }}
+                              disabled={isReactivating}
+                              className="p-1.5 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors disabled:opacity-50"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
