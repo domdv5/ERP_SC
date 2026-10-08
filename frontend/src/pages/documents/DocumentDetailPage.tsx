@@ -39,6 +39,8 @@ import type { DocumentType } from '@/types/document.types'
 import { usePermission } from '@/hooks/usePermission'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
+import { canVoidDocument } from '@/lib/document-permissions'
+import { useAuthStore } from '@/stores/auth.store'
 import {
   DOC_TYPE_BADGE,
   DOC_TYPE_ACCENT,
@@ -204,6 +206,7 @@ export default function DocumentDetailPage() {
   const canReleaseREM = usePermission('document.release.REM')
   const canConvertREM = usePermission('document.convert.REM')
   const canDuplicateCM = usePermission('document.create.CM')
+  const userPermissions = useAuthStore((s) => s.user?.permissions)
 
   const {
     data: doc,
@@ -637,15 +640,17 @@ export default function DocumentDetailPage() {
                 Imprimir
               </button>
             )}
-            {isConfirmed && !pvActiveDerived && (
-              <button
-                onClick={() => setVoidOpen(true)}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-500/30 rounded-xl hover:bg-red-500/10 transition-colors"
-              >
-                <XCircle className="w-4 h-4" />
-                Anular
-              </button>
-            )}
+            {isConfirmed &&
+              !pvActiveDerived &&
+              canVoidDocument(doc.type, userPermissions ?? []) && (
+                <button
+                  onClick={() => setVoidOpen(true)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-500/30 rounded-xl hover:bg-red-500/10 transition-colors"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Anular
+                </button>
+              )}
           </div>
         </div>
 
