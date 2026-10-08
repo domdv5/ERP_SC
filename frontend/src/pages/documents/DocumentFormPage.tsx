@@ -19,7 +19,7 @@ import { computeOfficialTotals, removeOfficialTax } from '@/lib/tax'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { formSchema, type FormValues } from './document-form.schema'
 import {
-  DOC_TYPE_SELECT_OPTIONS,
+  operationFormTypes,
   DOC_TYPE_ACCENT,
   EAI_ADJUSTMENT_REASON_OPTIONS,
   DVV_REFUND_METHOD_OPTIONS,
@@ -32,8 +32,6 @@ import type { ThirdParty } from '@/types/third-party.types'
 import type { DocumentSourceRef } from '@/types/document.types'
 
 // ─── constants ───────────────────────────────────────────────────────────────
-
-const DOC_TYPE_OPTIONS = DOC_TYPE_SELECT_OPTIONS
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -63,17 +61,7 @@ export default function DocumentFormPage() {
   const userPermissions = useAuthStore((s) => s.user?.permissions ?? [])
   const canCreateType = (t: string) => userPermissions.includes(`document.create.${t}`)
 
-  // Fuera del desplegable: ventas tienen su propio checkout; REM/DVV se crean solo desde su enlace del menú, tipo ya fijado.
-  const availableTypes = DOC_TYPE_OPTIONS.filter(
-    (opt) =>
-      opt.value !== 'POS' &&
-      opt.value !== 'COT' &&
-      opt.value !== 'REM' &&
-      opt.value !== 'DVV' &&
-      opt.value !== 'CMO' &&
-      opt.value !== 'POSO' &&
-      canCreateType(opt.value),
-  )
+  const availableTypes = operationFormTypes(userPermissions)
 
   // Tipos que solo se pueden crear desde un enlace directo, no desde el desplegable.
   const DEEP_LINK_TYPES: readonly FormValues['type'][] = ['REM', 'DVV', 'CMO']
@@ -95,6 +83,15 @@ export default function DocumentFormPage() {
     navigate('/documents', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedType, isEditing])
+
+  // Sin tipos para el desplegable ni enlace válido no hay qué crear (el caso del enlace sin permiso ya avisa arriba).
+  useEffect(() => {
+    if (isEditing || requestedTypeAllowed || availableTypes.length > 0) return
+    if (requestedType && !canCreateType(requestedType)) return
+    toast.error('No tienes operaciones disponibles para crear')
+    navigate('/documents', { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, requestedTypeAllowed, availableTypes.length])
 
   // CM oficial de la que se precarga la compra oficial (bandeja); solo aplica a CMO nueva.
   const fromCMId = searchParams.get('fromCM')
