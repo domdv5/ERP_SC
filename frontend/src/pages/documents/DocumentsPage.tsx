@@ -18,6 +18,7 @@ import { formatCOP, docNumber } from '@/lib/format'
 import { visibleDocumentTypes } from '@/lib/document-permissions'
 import {
   DOC_TYPE_SELECT_OPTIONS,
+  operationFormTypes,
   DOC_TYPE_BADGE,
   DOC_STATUS_BADGE,
   PV_CONVERSION_BADGE,
@@ -59,7 +60,7 @@ const ALL_STATUSES: { value: string; label: string }[] = [
 export default function DocumentsPage() {
   const navigate = useNavigate()
   const userPermissions = useAuthStore((s) => s.user?.permissions ?? [])
-  const canCreateAnyDoc = userPermissions.some((p) => p.startsWith('document.create.'))
+  const canCreateOperation = operationFormTypes(userPermissions).length > 0
 
   // Tipos que este usuario puede crear o anular; se usan para acotar el listado.
   const allowedTypes = visibleDocumentTypes(userPermissions)
@@ -140,7 +141,7 @@ export default function DocumentsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {canCreateAnyDoc && (
+          {canCreateOperation && (
             <button
               onClick={() => navigate('/documents/new')}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
@@ -209,7 +210,9 @@ export default function DocumentsPage() {
             description={
               debouncedSearch
                 ? 'Prueba con otro número de operación'
-                : 'Crea la primera con el botón "Nueva operación"'
+                : canCreateOperation
+                  ? 'Crea la primera con el botón "Nueva operación"'
+                  : 'Aún no se ha registrado ninguna'
             }
           />
         )}

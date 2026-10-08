@@ -37,6 +37,23 @@ export const DOC_TYPE_SELECT_OPTIONS: { value: DocumentType; label: string }[] =
   { value: 'POSO', label: 'Venta oficial (POS)' },
 ]
 
+// Ventas, REM, DVV y CMO se crean desde su checkout o enlace del menú, no desde "Nueva operación".
+const NOT_IN_OPERATION_FORM: ReadonlySet<DocumentType> = new Set([
+  'POS',
+  'COT',
+  'REM',
+  'DVV',
+  'CMO',
+  'POSO',
+])
+
+export function operationFormTypes(permissions: readonly string[]) {
+  return DOC_TYPE_SELECT_OPTIONS.filter(
+    (opt) =>
+      !NOT_IN_OPERATION_FORM.has(opt.value) && permissions.includes(`document.create.${opt.value}`),
+  )
+}
+
 // Modalidad de una devolución en venta — obligatoria al crear una DVV.
 export const DVV_REFUND_METHOD_OPTIONS: { value: DvvRefundMethod; label: string }[] = [
   { value: 'saldo_a_favor', label: 'Saldo a favor del cliente' },
