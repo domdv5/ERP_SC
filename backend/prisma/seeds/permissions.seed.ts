@@ -33,6 +33,12 @@ export async function seedPermissions(prisma: PrismaClient) {
       { code: 'document.release.REM', module: 'documents' },
       { code: 'document.convert.REM', module: 'documents' },
 
+      // Anular ventas es autoridad de cuentas, no de quien las crea
+      { code: 'document.void.POS', module: 'documents' },
+      { code: 'document.void.COT', module: 'documents' },
+      { code: 'document.void.POSO', module: 'documents' },
+      { code: 'document.void.REM', module: 'documents' },
+
       // Etiquetas
       { code: 'label.print', module: 'labels' },
 

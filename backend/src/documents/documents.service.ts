@@ -45,6 +45,14 @@ import {
   isReservationStrategy,
 } from './strategies/index';
 
+// Anular ventas es autoridad de cuentas (document.void.{TIPO}), no de quien las crea.
+const SALE_VOID_TYPES: ReadonlySet<DocumentType> = new Set([
+  DocumentType.POS,
+  DocumentType.COT,
+  DocumentType.POSO,
+  DocumentType.REM,
+]);
+
 const DETAIL_INCLUDE = {
   documentItems: {
     include: {
@@ -157,12 +165,13 @@ export class DocumentsService {
 
   /** Tipos de documento visibles en el listado: se derivan de los permisos document.create.{TIPO} del usuario. */
   private visibleDocumentTypes(permissions: string[]): DocumentType[] {
-    const prefix = 'document.create.';
+    const prefixes = ['document.create.', 'document.void.'];
     const valid = new Set<string>(Object.values(DocumentType));
-    return permissions
-      .filter((p) => p.startsWith(prefix))
-      .map((p) => p.slice(prefix.length))
-      .filter((t): t is DocumentType => valid.has(t));
+    const types = permissions.flatMap((p) => {
+      const prefix = prefixes.find((pre) => p.startsWith(pre));
+      return prefix ? [p.slice(prefix.length)] : [];
+    });
+    return [...new Set(types)].filter((t): t is DocumentType => valid.has(t));
   }
 
   async findAll(findAllDocumentsDto: FindAllDocumentsDto, user: JwtPayload) {
@@ -660,7 +669,11 @@ export class DocumentsService {
       throw new NotFoundException('Documento no encontrado');
     }
 
-    this.assertDocumentPermission(user, document.type);
+    this.assertDocumentPermission(
+      user,
+      document.type,
+      SALE_VOID_TYPES.has(document.type) ? 'void' : 'create',
+    );
 
     if (document.status !== DocumentStatus.confirmed) {
       throw new ConflictException(
@@ -1334,7 +1347,7 @@ export class DocumentsService {
   private assertDocumentPermission(
     user: JwtPayload,
     type: DocumentType,
-    action: 'create' | 'release' | 'convert' = 'create',
+    action: 'create' | 'release' | 'convert' | 'void' = 'create',
   ) {
     if (!user.permissions.includes(`document.${action}.${type}`)) {
       const actionLabel =
@@ -1342,7 +1355,9 @@ export class DocumentsService {
           ? 'liberar reservas de'
           : action === 'convert'
             ? 'convertir'
-            : 'crear';
+            : action === 'void'
+              ? 'anular'
+              : 'crear';
       throw new ForbiddenException(
         `No tiene permiso para ${actionLabel} documentos de tipo ${type}`,
       );

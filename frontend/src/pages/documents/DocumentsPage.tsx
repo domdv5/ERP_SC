@@ -15,6 +15,7 @@ import {
 } from '@/components/shared'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
+import { visibleDocumentTypes } from '@/lib/document-permissions'
 import {
   DOC_TYPE_SELECT_OPTIONS,
   DOC_TYPE_BADGE,
@@ -60,12 +61,10 @@ export default function DocumentsPage() {
   const userPermissions = useAuthStore((s) => s.user?.permissions ?? [])
   const canCreateAnyDoc = userPermissions.some((p) => p.startsWith('document.create.'))
 
-  // Tipos que este usuario puede crear; se usan para acotar el listado.
-  const allowedTypes = userPermissions
-    .filter((p) => p.startsWith('document.create.'))
-    .map((p) => p.replace('document.create.', '') as DocumentType)
+  // Tipos que este usuario puede crear o anular; se usan para acotar el listado.
+  const allowedTypes = visibleDocumentTypes(userPermissions)
 
-  // En el filtro de tipo solo se muestran los que el usuario puede crear (más la opción "Todos").
+  // En el filtro de tipo solo se muestran los que el usuario puede crear o anular (más la opción "Todos").
   const visibleTypeOptions =
     allowedTypes.length > 0
       ? ALL_TYPES.filter((t) => t.value === '' || allowedTypes.includes(t.value as DocumentType))
@@ -89,7 +88,7 @@ export default function DocumentsPage() {
       getDocuments({
         search: debouncedSearch || undefined,
         type: typeFilter || undefined,
-        // Si el usuario solo puede crear ciertos tipos, el listado se limita a esos.
+        // Si el usuario solo puede crear o anular ciertos tipos, el listado se limita a esos.
         types: !typeFilter && allowedTypes.length > 0 ? allowedTypes.join(',') : undefined,
         status: statusFilter || undefined,
         page,
