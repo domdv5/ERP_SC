@@ -6,6 +6,8 @@ import { X, Plus, Trash2, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
+import { canAssignThirdPartyRole } from '@/lib/third-party-permissions'
+import { useAuthStore } from '@/stores/auth.store'
 import { ThousandsInput } from '@/components/shared'
 import type { ThirdParty } from '@/types'
 import {
@@ -218,15 +220,27 @@ export function ThirdPartyForm({
   const cancelRenameRef = useRef(false)
   const isEdit = !!defaultValues
 
+  const permissions = useAuthStore((s) => s.user?.permissions ?? [])
+  const canCustomer = canAssignThirdPartyRole('customer', permissions)
+  const canSupplier = canAssignThirdPartyRole('supplier', permissions)
+  const canSeller = canAssignThirdPartyRole('seller', permissions)
+  // Quien solo puede asignar cliente (ej. billing) crea terceros con ese tipo ya marcado.
+  const onlyCustomer = canCustomer && !canSupplier && !canSeller
+
+  const emptyValues = (): FormValues => ({
+    personType: 'natural',
+    documentType: 'CC',
+    documentNumber: '',
+    isCustomer: onlyCustomer,
+    isSupplier: false,
+    isSeller: false,
+    brands: [],
+  })
+
   const { register, handleSubmit, watch, setValue, reset, control } = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
-      personType: 'natural',
-      documentType: 'CC',
-      isCustomer: false,
-      isSupplier: false,
-      isSeller: false,
-      brands: [],
+      ...emptyValues(),
       ...(defaultValues ? flattenDefaults(defaultValues) : {}),
     },
   })
@@ -234,18 +248,14 @@ export function ThirdPartyForm({
   useEffect(() => {
     if (open) {
       reset({
-        personType: 'natural',
-        documentType: 'CC',
-        isCustomer: false,
-        isSupplier: false,
-        isSeller: false,
-        brands: [],
+        ...emptyValues(),
         ...(defaultValues ? flattenDefaults(defaultValues) : {}),
       })
       setBrandIds(new Map(defaultValues?.supplier?.brands?.map((b) => [b.name, b.id]) ?? []))
       setEditingBrand(null)
     }
-  }, [open, defaultValues, reset])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultValues, reset, onlyCustomer])
 
   const personType = watch('personType')
   const isCustomer = watch('isCustomer')
@@ -433,21 +443,27 @@ export function ThirdPartyForm({
                 Roles del tercero
               </label>
               <div className="flex flex-wrap gap-2">
-                <Toggle
-                  checked={!!isCustomer}
-                  onChange={(v) => setValue('isCustomer', v)}
-                  label="Cliente"
-                />
-                <Toggle
-                  checked={!!isSupplier}
-                  onChange={(v) => setValue('isSupplier', v)}
-                  label="Proveedor"
-                />
-                <Toggle
-                  checked={!!watch('isSeller')}
-                  onChange={(v) => setValue('isSeller', v)}
-                  label="Vendedor"
-                />
+                {canCustomer && (
+                  <Toggle
+                    checked={!!isCustomer}
+                    onChange={(v) => setValue('isCustomer', v)}
+                    label="Cliente"
+                  />
+                )}
+                {canSupplier && (
+                  <Toggle
+                    checked={!!isSupplier}
+                    onChange={(v) => setValue('isSupplier', v)}
+                    label="Proveedor"
+                  />
+                )}
+                {canSeller && (
+                  <Toggle
+                    checked={!!watch('isSeller')}
+                    onChange={(v) => setValue('isSeller', v)}
+                    label="Vendedor"
+                  />
+                )}
               </div>
             </div>
 

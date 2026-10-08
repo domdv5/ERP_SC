@@ -30,8 +30,11 @@ export class ThirdPartiesController {
 
   @Post()
   @Permissions('thirdparty.create')
-  create(@Body() createThirdPartyDto: CreateThirdPartyDto) {
-    return this.thirdPartiesService.create(createThirdPartyDto);
+  create(
+    @Body() createThirdPartyDto: CreateThirdPartyDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.thirdPartiesService.create(createThirdPartyDto, req.user);
   }
 
   @Patch(':id')
@@ -39,8 +42,9 @@ export class ThirdPartiesController {
   update(
     @Param('id') id: string,
     @Body() updateThirdPartyDto: UpdateThirdPartyDto,
+    @Req() req: RequestWithUser,
   ) {
-    return this.thirdPartiesService.update(id, updateThirdPartyDto);
+    return this.thirdPartiesService.update(id, updateThirdPartyDto, req.user);
   }
 
   @Patch(':id/brands/:brandId')
@@ -49,8 +53,9 @@ export class ThirdPartiesController {
     @Param('id') id: string,
     @Param('brandId') brandId: string,
     @Body('name') name: string,
+    @Req() req: RequestWithUser,
   ) {
-    return this.thirdPartiesService.renameBrand(id, brandId, name);
+    return this.thirdPartiesService.renameBrand(id, brandId, name, req.user);
   }
 
   @Delete(':id')
