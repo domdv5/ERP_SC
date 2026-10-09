@@ -35,8 +35,8 @@ type ExistingReciboCajaForIdempotency = {
   allocations: { accountReceivableId: string; amount: Prisma.Decimal }[];
 };
 
-/** Compara el reintento contra el recibo ya guardado con la misma idempotencyKey: receivables exacto, payments solo por total (el reparto interno lo decide el service). Mismo patrón que requestMatchesExisting de EgresosService. */
-function requestMatchesExisting(
+/** Compara el reintento contra el recibo ya guardado con la misma idempotencyKey: receivables exacto, payments solo por total (el reparto interno lo decide el service). Mismo patrón que isSameEgresoRequest de EgresosService. */
+function isSameEgresoRequest(
   dto: CreateReciboCajaDto,
   existing: ExistingReciboCajaForIdempotency,
 ): boolean {
@@ -91,7 +91,7 @@ export class RecibosCajaService {
       include: RECIBO_CAJA_DETAIL_INCLUDE,
     });
     if (alreadyCreated) {
-      if (!requestMatchesExisting(dto, alreadyCreated)) {
+      if (!isSameEgresoRequest(dto, alreadyCreated)) {
         throw new ConflictException(
           'Esta clave de idempotencia ya se usó para un recibo de caja distinto',
         );
@@ -119,7 +119,7 @@ export class RecibosCajaService {
           include: RECIBO_CAJA_DETAIL_INCLUDE,
         });
         if (existing) {
-          if (!requestMatchesExisting(dto, existing)) {
+          if (!isSameEgresoRequest(dto, existing)) {
             throw new ConflictException(
               'Esta clave de idempotencia ya se usó para un recibo de caja distinto',
             );
@@ -162,7 +162,7 @@ export class RecibosCajaService {
       include: RECIBO_CAJA_DETAIL_INCLUDE,
     });
     if (concurrentlyCreated) {
-      if (!requestMatchesExisting(dto, concurrentlyCreated)) {
+      if (!isSameEgresoRequest(dto, concurrentlyCreated)) {
         throw new ConflictException(
           'Esta clave de idempotencia ya se usó para un recibo de caja distinto',
         );

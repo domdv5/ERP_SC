@@ -48,7 +48,7 @@ type ExistingEgresoForIdempotency = {
 };
 
 /** Compara el reintento contra el egreso ya guardado con la misma idempotencyKey: payables exacto, credits/payments solo por total (el reparto interno lo decide el service). */
-function requestMatchesExisting(
+function isSameEgresoRequest(
   dto: CreateEgresoDto,
   existing: ExistingEgresoForIdempotency,
 ): boolean {
@@ -109,7 +109,7 @@ export class EgresosService {
       include: EGRESO_DETAIL_INCLUDE,
     });
     if (alreadyCreated) {
-      if (!requestMatchesExisting(dto, alreadyCreated)) {
+      if (!isSameEgresoRequest(dto, alreadyCreated)) {
         throw new ConflictException(
           'Esta clave de idempotencia ya se usó para un egreso distinto',
         );
@@ -137,7 +137,7 @@ export class EgresosService {
           include: EGRESO_DETAIL_INCLUDE,
         });
         if (existing) {
-          if (!requestMatchesExisting(dto, existing)) {
+          if (!isSameEgresoRequest(dto, existing)) {
             throw new ConflictException(
               'Esta clave de idempotencia ya se usó para un egreso distinto',
             );

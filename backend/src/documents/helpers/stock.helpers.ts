@@ -168,7 +168,7 @@ export async function computeNewAvgCost(
 }
 
 /** Deshace un recálculo del costo promedio; solo es exacto si no hubo consumo de stock desde la compra original — el llamador debe verificarlo antes. */
-export async function computeReversedAvgCost(
+export async function calculateAvgCostAfterVoid(
   tx: Prisma.TransactionClient,
   productId: string,
   currentAvgCost: number,
@@ -184,7 +184,7 @@ export async function computeReversedAvgCost(
 }
 
 /** Nuevo "último costo" tras anular una compra (`undefined` si no hay que tocarlo); busca la compra viva anterior más reciente, o 0. */
-export async function resolveLastCostAfterVoidingCm(
+export async function findLastPurchaseCostAfterVoid(
   tx: Prisma.TransactionClient,
   productId: string,
   voidedDocumentId: string,

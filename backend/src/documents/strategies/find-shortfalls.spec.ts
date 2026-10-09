@@ -33,9 +33,9 @@ describe('findShortfalls', () => {
     batchSpy = jest
       .spyOn(
         BaseEffectStrategy.prototype as unknown as {
-          assertBatchAvailability: () => Promise<unknown>;
+          calculateMissingStock: () => Promise<unknown>;
         },
-        'assertBatchAvailability',
+        'calculateMissingStock',
       )
       .mockResolvedValue([shortfall]);
   });

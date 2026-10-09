@@ -78,7 +78,7 @@ export class CotEffectStrategy extends BaseEffectStrategy {
 
   // Si viene de convertir una preventa, excluye su reserva o da un faltante falso.
   findShortfalls(tx: Prisma.TransactionClient, document: DocumentWithItems) {
-    return this.assertBatchAvailability(
+    return this.calculateMissingStock(
       tx,
       this.requireWarehouse(document),
       document.documentItems,

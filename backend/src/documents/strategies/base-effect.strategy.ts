@@ -14,7 +14,7 @@ import {
   applyStockChange,
 } from '@/documents/helpers/stock.helpers';
 import { getReservedByProduct } from '@/documents/helpers/reservation.helpers';
-import { officialNetFloor } from '@/documents/helpers/tax.helpers';
+import { getOfficialMinNetPrice } from '@/documents/helpers/tax.helpers';
 
 /** Base de las estrategias de efectos: concentra la lógica compartida para que cada una solo describa lo propio de su tipo. */
 @Injectable()
@@ -114,7 +114,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
           code: product?.code ?? item.productId,
           unitPrice: item.unitPrice ?? 0,
           minSalePrice: pricesExcludeTax
-            ? officialNetFloor(minSalePrice)
+            ? getOfficialMinNetPrice(minSalePrice)
             : minSalePrice,
         };
       }),
@@ -163,8 +163,8 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     }
   }
 
-  /** Valida el disponible de todos los ítems en una sola consulta que bloquea las filas; devuelve los faltantes en vez de lanzar, cada llamador arma su mensaje. */
-  protected async assertBatchAvailability(
+  /** Calcula los faltantes de todos los ítems en una sola consulta que bloquea las filas; no lanza, cada llamador arma su mensaje. */
+  protected async calculateMissingStock(
     tx: Prisma.TransactionClient,
     warehouseId: string,
     items: { productId: string; quantity: number; product: { code: string } }[],

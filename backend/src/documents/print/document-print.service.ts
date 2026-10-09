@@ -24,7 +24,7 @@ export class DocumentPrintService {
 
     let buffer: Buffer;
     try {
-      buffer = await this.pdfGenerator.generate(
+      buffer = await this.pdfGenerator.generatePdf(
         strategy.buildDefinition(document),
       );
     } catch (err) {

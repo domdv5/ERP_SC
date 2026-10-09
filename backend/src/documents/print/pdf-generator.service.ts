@@ -19,7 +19,7 @@ export class PdfGeneratorService {
     pdfMake.setUrlAccessPolicy(() => false);
   }
 
-  generate(definition: TDocumentDefinitions): Promise<Buffer> {
+  generatePdf(definition: TDocumentDefinitions): Promise<Buffer> {
     return pdfMake.createPdf(definition).getBuffer();
   }
 }
