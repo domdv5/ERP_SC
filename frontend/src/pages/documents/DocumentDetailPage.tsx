@@ -51,7 +51,7 @@ import {
 } from './document.constants'
 import { ReleaseItemsDialog } from './components/ReleaseItemsDialog'
 import { MissingStockDialog } from './components/MissingStockDialog'
-import { getPendingQuantity, hasPendingItems } from './pos-checkout.utils'
+import { getPendingQuantity, hasPendingItems, parseMissingStockError } from './pos-checkout.utils'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -266,6 +266,14 @@ export default function DocumentDetailPage() {
       )
     },
     onError: (err: unknown) => {
+      const missingItems = parseMissingStockError(err)
+      if (missingItems) {
+        // El 409 trae la lista al momento de confirmar: reemplaza la del chip, que pudo quedar vieja
+        queryClient.setQueryData(['document', id, 'missing-stock'], missingItems)
+        setConfirmOpen(false)
+        setMissingStockOpen(true)
+        return
+      }
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       toast.error(msg ?? 'Error al confirmar la operación')
     },
