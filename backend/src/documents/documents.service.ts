@@ -551,7 +551,7 @@ export class DocumentsService {
   }
 
   /** Faltantes de stock de un borrador, con la misma regla que usa confirm(); [] si el tipo no valida stock. */
-  async findStockShortfalls(id: string, user: JwtPayload) {
+  async findMissingStock(id: string, user: JwtPayload) {
     const document = await this.prisma.document.findUnique({
       where: { id },
       include: {
@@ -575,10 +575,10 @@ export class DocumentsService {
     }
 
     const strategy = this.effectsRegistry.get(document.type);
-    if (!strategy.findShortfalls) return [];
+    if (!strategy.findMissingStock) return [];
 
     // Sin $transaction: el FOR UPDATE se libera al instante en autocommit y una lectura nunca retiene locks de inventario.
-    return strategy.findShortfalls(this.prisma, document);
+    return strategy.findMissingStock(this.prisma, document);
   }
 
   async confirm(

@@ -70,10 +70,10 @@ export class DocumentsController {
     return this.documentsService.findOne(id);
   }
 
-  @Get(':id/stock-shortfalls')
+  @Get(':id/missing-stock')
   @Permissions('document.read')
-  findStockShortfalls(@Param('id') id: string, @Req() req: RequestWithUser) {
-    return this.documentsService.findStockShortfalls(id, req.user);
+  findMissingStock(@Param('id') id: string, @Req() req: RequestWithUser) {
+    return this.documentsService.findMissingStock(id, req.user);
   }
 
   // Sin @Permissions: el permiso depende del tipo de documento y se resuelve en el service.

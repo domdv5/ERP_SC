@@ -7,7 +7,7 @@ import type {
   ConfirmContext,
   DocumentEffectStrategy,
   DocumentWithItems,
-  StockShortfall,
+  MissingStockItem,
 } from './document-effect.strategy';
 import {
   applyBinStockChange,
@@ -169,7 +169,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     warehouseId: string,
     items: { productId: string; quantity: number; product: { code: string } }[],
     options?: { excludeDocumentId?: string },
-  ): Promise<StockShortfall[]> {
+  ): Promise<MissingStockItem[]> {
     const productIds = items.map((item) => item.productId);
 
     const [reservedMap, inventoryRows] = await Promise.all([
@@ -188,7 +188,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
       inventoryRows.map((row) => [row.product_id, row.quantity]),
     );
 
-    const shortfalls: StockShortfall[] = [];
+    const missingStock: MissingStockItem[] = [];
 
     for (const item of items) {
       const totalStock = stockByProduct.get(item.productId) ?? 0;
@@ -196,7 +196,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
       const available = totalStock - reserved;
 
       if (available < item.quantity) {
-        shortfalls.push({
+        missingStock.push({
           productId: item.productId,
           code: item.product.code,
           available,
@@ -205,7 +205,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
       }
     }
 
-    return shortfalls;
+    return missingStock;
   }
 
   /** Aplica el cambio de stock en el inventario y registra el movimiento en el kardex. */

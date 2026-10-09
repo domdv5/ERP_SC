@@ -51,7 +51,7 @@ export abstract class AbstractReservationStrategy
   }
 
   // Excluye su propia reserva: al reconfirmar no debe competir consigo misma.
-  findShortfalls(tx: Prisma.TransactionClient, document: DocumentWithItems) {
+  findMissingStock(tx: Prisma.TransactionClient, document: DocumentWithItems) {
     return this.calculateMissingStock(
       tx,
       this.requireWarehouse(document),
@@ -67,10 +67,10 @@ export abstract class AbstractReservationStrategy
     _context?: ConfirmContext,
   ) {
     // Bloquea las filas de inventario al validar: dos confirmaciones del mismo producto a la vez quedan en fila.
-    const shortfalls = await this.findShortfalls(tx, document);
+    const missingStock = await this.findMissingStock(tx, document);
 
-    if (shortfalls.length > 0) {
-      const s = shortfalls[0];
+    if (missingStock.length > 0) {
+      const s = missingStock[0];
       throw new ConflictException(
         `Stock insuficiente para reservar el producto ${s.code}: disponible ${s.available}, solicitado ${s.requested}`,
       );

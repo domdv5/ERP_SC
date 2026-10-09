@@ -301,7 +301,7 @@ export interface ConvertDocumentPayload {
 
 // Resumen del cupo de crédito del cliente, en pesos. El disponible es el límite menos lo
 // usado (puede ser negativo).
-export interface CustomerCreditSummary {
+export interface CreditLimitSummary {
   creditLimit: number
   usedCredit: number
   availableCredit: number
@@ -309,7 +309,7 @@ export interface CustomerCreditSummary {
 
 // Cuerpo del error "cupo excedido" (al crear, confirmar o convertir una venta a crédito).
 // `credit` viaja al lado de `message` en la respuesta, igual que los faltantes del error de stock.
-export interface CreditLimitExceededDetail extends CustomerCreditSummary {
+export interface CreditLimitExceededDetail extends CreditLimitSummary {
   requested: number
 }
 
@@ -318,8 +318,8 @@ export interface ReleaseDocumentItemPayload {
   quantity: number
 }
 
-// El backend responde { message, shortfalls } al confirmar y GET /documents/:id/stock-shortfalls lo devuelve directo
-export interface StockShortfall {
+// El backend responde { message, missingStock } al confirmar y GET /documents/:id/missing-stock lo devuelve directo
+export interface MissingStockItem {
   productId: string
   code: string
   available: number

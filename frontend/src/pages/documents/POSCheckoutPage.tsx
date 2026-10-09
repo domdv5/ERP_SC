@@ -22,7 +22,7 @@ import {
   updateDocument,
   confirmDocument,
   convertDocument,
-  getCustomerCredit,
+  getCreditLimit,
   getAvailableCustomerCredits,
 } from '@/services/documents.service'
 import { getThirdParties } from '@/services/third-parties.service'
@@ -35,26 +35,26 @@ import { formatCOP, docNumber } from '@/lib/format'
 import {
   addOfficialTax,
   computeOfficialTotals,
-  officialNetFloor,
-  officialNetSalePrice,
+  getOfficialMinNetPrice,
+  getOfficialNetSalePrice,
 } from '@/lib/tax'
 import {
-  proposeCreditApplication,
-  clampCreditAmount,
-  capCreditsToTotal,
+  suggestCreditAmounts,
+  limitCreditAmount,
+  limitCreditsToTotal,
 } from '@/lib/credit-application'
 import { DOC_TYPE_ACCENT } from './document.constants'
 import type { FormValues } from './document-form.schema'
 import { BarcodeScanInput } from './components/BarcodeScanInput'
 import { POSCartLine } from './components/POSCartLine'
-import { POSStockShortfallDialog } from './components/POSStockShortfallDialog'
+import { MissingStockDialog } from './components/MissingStockDialog'
 import {
   hasPendingItems,
   findActivePendingPreventa,
   findPriceFloorViolations,
-  parseStockShortfallError,
+  parseMissingStockError,
   parseCreditLimitError,
-  type StockShortfall,
+  type MissingStockItem,
   type SelectedCredit,
 } from './pos-checkout.utils'
 
@@ -75,7 +75,7 @@ type SaleMode = Extract<DocumentType, 'POS' | 'COT'>
 // ─── constants ───────────────────────────────────────────────────────────────
 
 // Sustantivo del documento de origen para el aviso de conversión: preventa o remisión.
-const sourceKindNoun = (type: DocumentType) => (type === 'REM' ? 'remisión' : 'preventa')
+const sourceTypeLabel = (type: DocumentType) => (type === 'REM' ? 'remisión' : 'preventa')
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -230,7 +230,7 @@ export default function POSCheckoutPage() {
   // ── cupo de crédito del cliente (solo modo crédito) ──────────────────────
   const { data: creditData, isLoading: isLoadingCredit } = useQuery({
     queryKey: ['customer-credit', thirdPartyId],
-    queryFn: () => getCustomerCredit(thirdPartyId),
+    queryFn: () => getCreditLimit(thirdPartyId),
     enabled: isCredit && Boolean(thirdPartyId),
     staleTime: 30 * 1000,
   })
@@ -262,7 +262,7 @@ export default function POSCheckoutPage() {
     if (!fromSourceDoc) return
     if (!hasPendingItems(fromSourceDoc)) {
       toast.error(
-        `Esta ${sourceKindNoun(fromSourceDoc.type)} ya no tiene cantidad pendiente por convertir`,
+        `Esta ${sourceTypeLabel(fromSourceDoc.type)} ya no tiene cantidad pendiente por convertir`,
       )
       return
     }
@@ -362,7 +362,7 @@ export default function POSCheckoutPage() {
         quantity: 1,
         unitCost: undefined,
         unitPrice: official
-          ? officialNetSalePrice(Number(product.salePrice))
+          ? getOfficialNetSalePrice(Number(product.salePrice))
           : Number(product.salePrice),
         observaciones: undefined,
       })
@@ -397,7 +397,7 @@ export default function POSCheckoutPage() {
   const minSalePriceByProductId = useMemo(() => {
     const map = new Map<string, number>()
     productDetailByCode.forEach((p) =>
-      map.set(p.id, official ? officialNetFloor(p.minSalePrice) : p.minSalePrice),
+      map.set(p.id, official ? getOfficialMinNetPrice(p.minSalePrice) : p.minSalePrice),
     )
     return map
   }, [productDetailByCode, official])
@@ -450,7 +450,7 @@ export default function POSCheckoutPage() {
         .filter((c) => touched.has(c.id))
         .reduce((sum, c) => sum + Math.max(0, Math.min(prev[c.id] ?? 0, c.balance)), 0)
       const remaining = Math.max(total - manuallyAppliedSum, 0)
-      const proposal = proposeCreditApplication(
+      const proposal = suggestCreditAmounts(
         availableCredits.filter((c) => !touched.has(c.id)),
         remaining,
       )
@@ -469,7 +469,7 @@ export default function POSCheckoutPage() {
 
   const balanceByCreditId = new Map(availableCredits.map((c) => [c.id, c.balance]))
   // Lista final aplicada: cada monto recortado a su saldo, y la suma recortada al total.
-  const selectedCredits: SelectedCredit[] = capCreditsToTotal(
+  const selectedCredits: SelectedCredit[] = limitCreditsToTotal(
     availableCredits
       .map((c) => ({
         id: c.id,
@@ -488,7 +488,7 @@ export default function POSCheckoutPage() {
       const othersSum = Object.entries(prev)
         .filter(([id]) => id !== creditId)
         .reduce((sum, [, amt]) => sum + amt, 0)
-      return { ...prev, [creditId]: clampCreditAmount(next, balance, total, othersSum) }
+      return { ...prev, [creditId]: limitCreditAmount(next, balance, total, othersSum) }
     })
   }
 
@@ -510,7 +510,7 @@ export default function POSCheckoutPage() {
   const canConfirm = missingItems.length === 0
 
   // ── mutaciones de guardado/confirmación ───────────────────────────────────
-  const [shortfalls, setShortfalls] = useState<StockShortfall[] | null>(null)
+  const [missingStock, setMissingStock] = useState<MissingStockItem[] | null>(null)
 
   const { mutateAsync: createMutateAsync, isPending: isCreating } = useMutation({
     mutationFn: createDocument,
@@ -602,9 +602,9 @@ export default function POSCheckoutPage() {
       )
       navigate(`/documents/${confirmed.id}`)
     } catch (err) {
-      const parsedShortfalls = parseStockShortfallError(err)
-      if (parsedShortfalls) {
-        setShortfalls(parsedShortfalls)
+      const parsedMissingStock = parseMissingStockError(err)
+      if (parsedMissingStock) {
+        setMissingStock(parsedMissingStock)
         return
       }
       if (handleCreditError(err)) return
@@ -676,7 +676,7 @@ export default function POSCheckoutPage() {
                         setValue(
                           `items.${i}.unitPrice`,
                           checked
-                            ? officialNetSalePrice(item.unitPrice)
+                            ? getOfficialNetSalePrice(item.unitPrice)
                             : addOfficialTax(item.unitPrice),
                         )
                       })
@@ -900,13 +900,13 @@ export default function POSCheckoutPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">
                   {pendingPreventa.thirdParty?.name ?? 'Este cliente'} tiene una{' '}
-                  {sourceKindNoun(pendingPreventa.type)} activa (
+                  {sourceTypeLabel(pendingPreventa.type)} activa (
                   {docNumber(pendingPreventa.type, pendingPreventa.number)}) con productos
                   pendientes por convertir.
                 </p>
                 <p className="text-xs text-blue-600/80 dark:text-blue-400/70 mt-1 font-accent">
                   Se creará una venta {isCredit ? 'a crédito' : 'nueva'} con los mismos ítems y
-                  precios cotizados de esa {sourceKindNoun(pendingPreventa.type)}.
+                  precios cotizados de esa {sourceTypeLabel(pendingPreventa.type)}.
                   {fields.length > 0 &&
                     ` Esto reemplazará los ${fields.length} producto(s) ya agregados al carrito.`}
                 </p>
@@ -1113,8 +1113,8 @@ export default function POSCheckoutPage() {
         </div>
       </div>
 
-      {shortfalls && (
-        <POSStockShortfallDialog shortfalls={shortfalls} onClose={() => setShortfalls(null)} />
+      {missingStock && (
+        <MissingStockDialog missingStock={missingStock} onClose={() => setMissingStock(null)} />
       )}
     </div>
   )

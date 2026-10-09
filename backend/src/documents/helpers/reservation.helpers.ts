@@ -53,7 +53,7 @@ export async function getReservedByProduct(
 }
 
 /** Cifras en bruto que recibe quien valida disponibilidad para armar su propio mensaje de error. */
-export interface AvailabilityShortfall {
+export interface MissingStockDetail {
   available: number;
   reserved: number;
   requestedQty: number;
@@ -65,7 +65,7 @@ export async function assertAvailableForReservation(
   productId: string,
   warehouseId: string,
   requestedQty: number,
-  buildMessage?: (shortfall: AvailabilityShortfall) => string,
+  buildMessage?: (missingItem: MissingStockDetail) => string,
 ): Promise<void> {
   const rows = await tx.$queryRaw<{ quantity: number }[]>`
     SELECT quantity FROM inventory

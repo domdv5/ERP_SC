@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import type { UseFieldArrayAppend, UseFormGetValues, UseFormSetValue } from 'react-hook-form'
 import { getProductByCode } from '@/services/products.service'
 import { cn } from '@/lib/utils'
-import { officialNetSalePrice } from '@/lib/tax'
+import { getOfficialNetSalePrice } from '@/lib/tax'
 import type { Product } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
@@ -126,7 +126,7 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
             unitCost: shouldPrefillCost ? avgCost : undefined,
             unitPrice: shouldPrefillPrice
               ? docType === 'POSO'
-                ? officialNetSalePrice(salePrice)
+                ? getOfficialNetSalePrice(salePrice)
                 : salePrice
               : undefined,
             observaciones: undefined,

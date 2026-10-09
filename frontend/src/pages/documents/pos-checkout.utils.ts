@@ -3,7 +3,7 @@ import type {
   CreditLimitExceededDetail,
   Document,
   DocumentItem,
-  StockShortfall,
+  MissingStockItem,
 } from '@/types/document.types'
 
 // ─── preventa pendiente (conversión PV → POS) ─────────────────────────────────
@@ -57,13 +57,13 @@ export function findPriceFloorViolations(
 
 // ─── 409 de stock insuficiente (POST /documents/:id/confirm, solo POS) ────────
 
-export type { StockShortfall }
+export type { MissingStockItem }
 
-export function parseStockShortfallError(err: unknown): StockShortfall[] | null {
+export function parseMissingStockError(err: unknown): MissingStockItem[] | null {
   const data = (err as { response?: { data?: unknown } })?.response?.data
   if (typeof data !== 'object' || data === null) return null
-  const shortfalls = (data as { shortfalls?: unknown }).shortfalls
-  return Array.isArray(shortfalls) ? (shortfalls as StockShortfall[]) : null
+  const missingStock = (data as { missingStock?: unknown }).missingStock
+  return Array.isArray(missingStock) ? (missingStock as MissingStockItem[]) : null
 }
 
 // ─── saldos a favor del cliente aplicados a una venta ────────────────────────
@@ -76,7 +76,7 @@ export interface SelectedCredit {
 
 // ─── 400 de cupo de crédito excedido (crear/confirmar/convertir COT) ──────────
 
-// Igual que shortfalls: el backend responde { message, credit }, credit al lado de message
+// Igual que missingStock: el backend responde { message, credit }, credit al lado de message
 export function parseCreditLimitError(err: unknown): CreditLimitExceededDetail | null {
   const data = (err as { response?: { data?: unknown } })?.response?.data
   if (typeof data !== 'object' || data === null) return null

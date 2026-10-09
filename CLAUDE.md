@@ -39,6 +39,7 @@ Identificadores en **inglés simple** (comentarios en español); el dueño del r
 - **El verbo dice lo que pasa**: `assert*` solo si lanza error; `find*`/`get*` si devuelve algo sin escribir; `calculate*` si calcula; `is*`/`has*` solo para booleanos.
 - **Un concepto, una palabra**: no nombrar lo mismo con verbos distintos en controller y service (`get`/`list`/`find`), ni usar la misma palabra para dos conceptos.
 - **Sin abreviaturas ni siglas** de tipo de documento en helpers genéricos (`round2`, `...Cm`); nombres específicos, no genéricos (`generatePdf`, no `generate`).
+- Los nombres de documentos y conceptos del negocio se quedan en español (`egreso`, `reciboCaja`, `preventa`): son dominio, no vocabulario a traducir.
 - Renombrar algo que viaja al frontend (rutas, campos JSON) exige cambiar ambos lados en el mismo PR.
 
 ## Documentation Maintenance

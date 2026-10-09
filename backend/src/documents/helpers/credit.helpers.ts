@@ -5,7 +5,7 @@ import { toCents } from '@/common/utils/money.util';
 
 type PrismaOrTx = PrismaService | Prisma.TransactionClient;
 
-export interface CustomerCreditSummary {
+export interface CreditLimitSummary {
   /** Todos en pesos. `creditLimit` null en la ficha del cliente ⇒ 0. */
   creditLimit: number;
   usedCredit: number;
@@ -16,7 +16,7 @@ export interface CustomerCreditSummary {
 export async function getCreditLimitSummary(
   client: PrismaOrTx,
   customerId: string,
-): Promise<CustomerCreditSummary> {
+): Promise<CreditLimitSummary> {
   const [customer, openAccounts] = await Promise.all([
     client.customer.findUnique({
       where: { id: customerId },

@@ -11,7 +11,7 @@ export interface AppliedCredit {
 }
 
 // Recorre los saldos en el orden recibido (más antiguo primero) asignando el mínimo entre saldo y lo que falta, hasta cubrir el total.
-export function proposeCreditApplication(credits: CreditBalance[], total: number): AppliedCredit[] {
+export function suggestCreditAmounts(credits: CreditBalance[], total: number): AppliedCredit[] {
   let remaining = Math.max(total, 0)
   const result: AppliedCredit[] = []
   for (const credit of credits) {
@@ -26,7 +26,7 @@ export function proposeCreditApplication(credits: CreditBalance[], total: number
 
 // Tope para un cambio manual del monto aplicado de un saldo a favor: no puede ser negativo, ni
 // pasar de su propio saldo, ni hacer que la suma de todos los saldos aplicados supere el total.
-export function clampCreditAmount(
+export function limitCreditAmount(
   next: number,
   creditBalance: number,
   total: number,
@@ -39,7 +39,7 @@ export function clampCreditAmount(
 
 // Recorte final de la lista de saldos aplicados para que su suma nunca supere el total (por si
 // el total bajó después de fijar los montos). Recorta desde el último.
-export function capCreditsToTotal(credits: AppliedCredit[], total: number): AppliedCredit[] {
+export function limitCreditsToTotal(credits: AppliedCredit[], total: number): AppliedCredit[] {
   let budget = Math.max(total, 0)
   const result: AppliedCredit[] = []
   for (const credit of credits) {

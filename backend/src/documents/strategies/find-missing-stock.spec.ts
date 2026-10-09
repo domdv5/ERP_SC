@@ -8,7 +8,7 @@ import { PvEffectStrategy } from './pv-effect.strategy';
 import { RemEffectStrategy } from './rem-effect.strategy';
 
 const tx = {} as Prisma.TransactionClient;
-const shortfall = {
+const missingItem = {
   productId: 'p1',
   code: 'PRD-1',
   available: 2,
@@ -26,7 +26,7 @@ const makeDocument = (overrides: Partial<DocumentWithItems> = {}) =>
     ...overrides,
   }) as unknown as DocumentWithItems;
 
-describe('findShortfalls', () => {
+describe('findMissingStock', () => {
   let batchSpy: jest.SpyInstance;
 
   beforeEach(() => {
@@ -37,7 +37,7 @@ describe('findShortfalls', () => {
         },
         'calculateMissingStock',
       )
-      .mockResolvedValue([shortfall]);
+      .mockResolvedValue([missingItem]);
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -50,8 +50,8 @@ describe('findShortfalls', () => {
   ])('%s excluye la reserva de la preventa origen', async (_, strategy) => {
     const document = makeDocument();
 
-    await expect(strategy.findShortfalls(tx, document)).resolves.toEqual([
-      shortfall,
+    await expect(strategy.findMissingStock(tx, document)).resolves.toEqual([
+      missingItem,
     ]);
     expect(batchSpy).toHaveBeenCalledWith(tx, 'wh-1', document.documentItems, {
       excludeDocumentId: 'pv-origen',
@@ -61,7 +61,7 @@ describe('findShortfalls', () => {
   it('POS sin documento origen no excluye ninguna reserva', async () => {
     const document = makeDocument({ sourceDocumentId: null });
 
-    await new PosEffectStrategy(prisma).findShortfalls(tx, document);
+    await new PosEffectStrategy(prisma).findMissingStock(tx, document);
 
     expect(batchSpy).toHaveBeenCalledWith(tx, 'wh-1', document.documentItems, {
       excludeDocumentId: undefined,
@@ -74,7 +74,7 @@ describe('findShortfalls', () => {
   ])('%s excluye su propia reserva', async (_, strategy) => {
     const document = makeDocument();
 
-    await strategy.findShortfalls(tx, document);
+    await strategy.findMissingStock(tx, document);
 
     expect(batchSpy).toHaveBeenCalledWith(tx, 'wh-1', document.documentItems, {
       excludeDocumentId: 'doc-1',
