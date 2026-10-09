@@ -13,7 +13,7 @@ export interface CustomerCreditSummary {
 }
 
 /** Cupo de crédito del cliente: `usedCredit` es el saldo pendiente de sus CxC abiertas; `creditLimit` null ⇒ cupo 0. */
-export async function getCustomerCreditSummary(
+export async function getCreditLimitSummary(
   client: PrismaOrTx,
   customerId: string,
 ): Promise<CustomerCreditSummary> {
@@ -56,7 +56,7 @@ export async function assertCreditWithinLimit(
   customerId: string,
   requestedTotal: number,
 ): Promise<void> {
-  const summary = await getCustomerCreditSummary(client, customerId);
+  const summary = await getCreditLimitSummary(client, customerId);
 
   if (toCents(requestedTotal) > toCents(summary.availableCredit)) {
     throw new BadRequestException({

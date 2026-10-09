@@ -1,6 +1,6 @@
 import { IsUUID } from 'class-validator';
 
-export class FindAvailableCreditsDto {
+export class FindAvailableSupplierCreditsDto {
   @IsUUID()
   supplierId!: string;
 }

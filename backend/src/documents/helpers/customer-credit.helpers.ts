@@ -111,7 +111,7 @@ export async function applyCustomerCredits(
 }
 
 /** Deshace las aplicaciones de saldo a favor al anular una venta: restaura balance/status de cada crédito y borra las filas de aplicación. */
-export async function revertCustomerCreditApplications(
+export async function undoCustomerCreditApplications(
   tx: Prisma.TransactionClient,
   saleDocumentId: string,
 ): Promise<void> {

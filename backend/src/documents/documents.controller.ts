@@ -53,15 +53,15 @@ export class DocumentsController {
   // Antes de @Get(':id') para que "customers" no se interprete como un id.
   @Get('customers/:customerId/credit')
   @Permissions('document.create.COT')
-  getCustomerCredit(@Param('customerId') customerId: string) {
-    return this.documentsService.getCustomerCreditSummary(customerId);
+  getCreditLimit(@Param('customerId') customerId: string) {
+    return this.documentsService.getCreditLimitSummary(customerId);
   }
 
   // No confundir con customers/:customerId/credit (cupo de crédito).
   @Get('customers/:customerId/available-credits')
   @Permissions('document.create.POS')
-  getAvailableCustomerCredits(@Param('customerId') customerId: string) {
-    return this.documentsService.listAvailableCustomerCredits(customerId);
+  findAvailableCustomerCredits(@Param('customerId') customerId: string) {
+    return this.documentsService.findAvailableCustomerCredits(customerId);
   }
 
   @Get(':id')

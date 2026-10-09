@@ -7,7 +7,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   FindAllAccountsPayableDto,
-  FindAvailableCreditsDto,
+  FindAvailableSupplierCreditsDto,
 } from './dto/index';
 
 const LIST_INCLUDE = {
@@ -254,8 +254,10 @@ export class AccountsPayableService {
   }
 
   /** Créditos de proveedor con saldo disponible para aplicar contra un pago. */
-  async findAvailableCredits(findAvailableCreditsDto: FindAvailableCreditsDto) {
-    const { supplierId } = findAvailableCreditsDto;
+  async findAvailableSupplierCredits(
+    findAvailableSupplierCreditsDto: FindAvailableSupplierCreditsDto,
+  ) {
+    const { supplierId } = findAvailableSupplierCreditsDto;
 
     return this.prisma.supplierCredit.findMany({
       where: { supplierId, status: 'available', balance: { gt: 0 } },
