@@ -9,13 +9,13 @@ import type {
   UpdateDocumentPayload,
   ReleaseItemsPayload,
   ConvertDocumentPayload,
-  CustomerCreditSummary,
+  CreditLimitSummary,
   ConfirmDocumentPayload,
   AvailableCustomerCreditsResponse,
   PendingOfficialPurchase,
   PendingOfficialPurchasesMeta,
   GetPendingOfficialPurchasesParams,
-  StockShortfall,
+  MissingStockItem,
 } from '@/types/document.types'
 
 export async function getDocuments(
@@ -28,8 +28,8 @@ export async function getDocuments(
   return res.data.data
 }
 
-export async function getStockShortfalls(id: string): Promise<StockShortfall[]> {
-  const res = await api.get<ApiResponse<StockShortfall[]>>(`/documents/${id}/stock-shortfalls`)
+export async function getMissingStock(id: string): Promise<MissingStockItem[]> {
+  const res = await api.get<ApiResponse<MissingStockItem[]>>(`/documents/${id}/missing-stock`)
   return res.data.data
 }
 
@@ -87,14 +87,14 @@ export async function deleteDocument(id: string): Promise<void> {
 
 // Cupo de crédito del cliente (para el modo Crédito del checkout). El backend devuelve todo
 // en cero si el cliente no existe, así que llamar solo con un cliente ya elegido.
-export async function getCustomerCredit(customerId: string): Promise<CustomerCreditSummary> {
-  const res = await api.get<ApiResponse<CustomerCreditSummary>>(
+export async function getCreditLimit(customerId: string): Promise<CreditLimitSummary> {
+  const res = await api.get<ApiResponse<CreditLimitSummary>>(
     `/documents/customers/${customerId}/credit`,
   )
   return res.data.data
 }
 
-// Saldos a favor (de DVV) disponibles y con saldo > 0; distinto de getCustomerCredit, que es el cupo de crédito.
+// Saldos a favor (de DVV) disponibles y con saldo > 0; distinto de getCreditLimit, que es el cupo de crédito.
 export async function getAvailableCustomerCredits(
   customerId: string,
 ): Promise<AvailableCustomerCreditsResponse> {

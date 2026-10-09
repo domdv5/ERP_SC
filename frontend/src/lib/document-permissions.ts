@@ -7,10 +7,10 @@ export function canVoidDocument(type: DocumentType, permissions: readonly string
   return !VOID_PERMISSION_TYPES.has(type) || permissions.includes(`document.void.${type}`)
 }
 
-// Tipos que validan disponible al confirmar (findShortfalls en el backend); el endpoint exige document.create.{TIPO}.
+// Tipos que validan disponible al confirmar (findMissingStock en el backend); el endpoint exige document.create.{TIPO}.
 const STOCK_CHECK_TYPES: ReadonlySet<DocumentType> = new Set(['POS', 'COT', 'PV', 'REM'])
 
-export function canCheckStockShortfalls(
+export function canCheckMissingStock(
   doc: { type: DocumentType; status: DocumentStatus },
   permissions: readonly string[],
 ): boolean {

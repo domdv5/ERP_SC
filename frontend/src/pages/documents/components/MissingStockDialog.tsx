@@ -1,20 +1,20 @@
 import { AlertTriangle, X } from 'lucide-react'
-import type { StockShortfall } from '@/pages/documents/pos-checkout.utils'
+import type { MissingStockItem } from '@/pages/documents/pos-checkout.utils'
 
-interface POSStockShortfallDialogProps {
-  shortfalls: StockShortfall[]
+interface MissingStockDialogProps {
+  missingStock: MissingStockItem[]
   onClose: () => void
   subtitle?: string
   closeLabel?: string
 }
 
 // Lista TODOS los productos en falta, no solo el primero. El documento ya quedó creado como borrador; cerrar solo oculta el aviso.
-export function POSStockShortfallDialog({
-  shortfalls,
+export function MissingStockDialog({
+  missingStock,
   onClose,
   subtitle = 'El borrador quedó guardado — ajusta las cantidades y confirma de nuevo',
   closeLabel = 'Entendido, ajustar cantidades',
-}: POSStockShortfallDialogProps) {
+}: MissingStockDialogProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -59,7 +59,7 @@ export function POSStockShortfallDialog({
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
-                {shortfalls.map((s) => (
+                {missingStock.map((s) => (
                   <tr key={s.productId}>
                     <td className="px-4 py-2.5 font-mono text-xs text-content">{s.code}</td>
                     <td className="px-4 py-2.5 text-right text-content-secondary">{s.available}</td>

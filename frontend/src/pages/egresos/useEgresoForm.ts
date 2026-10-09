@@ -6,12 +6,12 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { getEgresoOpenItems, createEgreso } from '@/services/egresos.service'
-import { proposeCreditApplication, clampCreditAmount } from '@/lib/credit-application'
+import { suggestCreditAmounts, limitCreditAmount } from '@/lib/credit-application'
 import { egresoFormSchema, type EgresoFormValues } from './egreso-form.schema'
 import {
-  previewCreditAllocation,
-  computeDineroAPagar,
-  clampPayableAmount,
+  previewCreditDistribution,
+  calculateAmountToPay,
+  limitPayableAmount,
 } from './egreso-form.utils'
 import type { CreateEgresoPayload } from '@/types'
 
@@ -111,7 +111,7 @@ export function useEgresoForm() {
       .reduce((sum, c) => sum + Math.max(0, Math.min(Number(c.amount) || 0, c.balance)), 0)
     const remaining = Math.max(totalAbonos - manuallyAppliedSum, 0)
 
-    const proposal = proposeCreditApplication(
+    const proposal = suggestCreditAmounts(
       current
         .filter((c) => !touched.has(c.supplierCreditId))
         .map((c) => ({ id: c.supplierCreditId, balance: c.balance })),
@@ -139,7 +139,7 @@ export function useEgresoForm() {
     )
     setValue(
       `credits.${index}.amount`,
-      clampCreditAmount(next, credit.balance, totalAbonos, othersSum),
+      limitCreditAmount(next, credit.balance, totalAbonos, othersSum),
     )
   }
 
@@ -147,7 +147,7 @@ export function useEgresoForm() {
     const index = watch('payables').findIndex((p) => p.accountPayableId === accountPayableId)
     if (index < 0) return
     const balance = watch(`payables.${index}.balance`)
-    setValue(`payables.${index}.amount`, clampPayableAmount(next, balance))
+    setValue(`payables.${index}.amount`, limitPayableAmount(next, balance))
   }
 
   function togglePayable(accountPayableId: string, selected: boolean) {
@@ -157,7 +157,7 @@ export function useEgresoForm() {
   }
 
   const totalCreditsApplied = watchedCredits.reduce((sum, c) => sum + (Number(c.amount) || 0), 0)
-  const dineroAPagar = computeDineroAPagar(totalAbonos, totalCreditsApplied)
+  const dineroAPagar = calculateAmountToPay(totalAbonos, totalCreditsApplied)
   const totalPayments = watchedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
   // No basta con que dineroAPagar === totalPayments: también hay que frenar si el saldo a favor ya supera los abonos
   const cuadraOk =
@@ -167,7 +167,7 @@ export function useEgresoForm() {
   // aplicado. El backend recalcula esto de verdad al crear el egreso.
   const creditAllocationPreview = useMemo(
     () =>
-      previewCreditAllocation(
+      previewCreditDistribution(
         selectedPayables.map((p) => ({
           accountPayableId: p.accountPayableId,
           amount: Number(p.amount) || 0,

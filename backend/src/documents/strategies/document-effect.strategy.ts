@@ -15,7 +15,7 @@ export type ConfirmContext = {
   appliedCustomerCredits?: { customerCreditId: string; amount: number }[];
 };
 
-export type StockShortfall = {
+export type MissingStockItem = {
   productId: string;
   code: string;
   available: number;
@@ -39,10 +39,10 @@ export interface DocumentEffectStrategy {
   ): Promise<void>;
 
   /** Faltantes de stock con la misma regla que confirm; solo los tipos que validan disponible al confirmar. */
-  findShortfalls?(
+  findMissingStock?(
     tx: Prisma.TransactionClient,
     document: DocumentWithItems,
-  ): Promise<StockShortfall[]>;
+  ): Promise<MissingStockItem[]>;
 }
 
 /** Contrato aparte para los tipos con reserva lógica de stock (preventas y remisiones): evita obligar a implementar la liberación en tipos que no reservan (compras, traslados...). */

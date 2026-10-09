@@ -11,7 +11,7 @@ const user = {
   permissions: ['document.create.POS', 'document.create.CM'],
 } as unknown as JwtPayload;
 
-const shortfalls = [
+const missingStock = [
   { productId: 'p1', code: 'PRD-1', available: 2, requested: 5 },
 ];
 
@@ -24,7 +24,7 @@ const makeDocument = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-describe('DocumentsService.findStockShortfalls', () => {
+describe('DocumentsService.findMissingStock', () => {
   const findUnique = jest.fn();
   const get = jest.fn();
   const prisma = { document: { findUnique } } as unknown as PrismaService;
@@ -40,7 +40,7 @@ describe('DocumentsService.findStockShortfalls', () => {
   it('lanza 404 si el documento no existe', async () => {
     findUnique.mockResolvedValue(null);
 
-    await expect(service.findStockShortfalls('x', user)).rejects.toThrow(
+    await expect(service.findMissingStock('x', user)).rejects.toThrow(
       NotFoundException,
     );
   });
@@ -50,30 +50,26 @@ describe('DocumentsService.findStockShortfalls', () => {
       makeDocument({ status: DocumentStatus.confirmed }),
     );
 
-    await expect(service.findStockShortfalls('doc-1', user)).resolves.toEqual(
-      [],
-    );
+    await expect(service.findMissingStock('doc-1', user)).resolves.toEqual([]);
     expect(get).not.toHaveBeenCalled();
   });
 
-  it('devuelve [] si la estrategia del tipo no implementa findShortfalls', async () => {
+  it('devuelve [] si la estrategia del tipo no implementa findMissingStock', async () => {
     findUnique.mockResolvedValue(makeDocument({ type: DocumentType.CM }));
     get.mockReturnValue({ type: DocumentType.CM });
 
-    await expect(service.findStockShortfalls('doc-1', user)).resolves.toEqual(
-      [],
-    );
+    await expect(service.findMissingStock('doc-1', user)).resolves.toEqual([]);
   });
 
   it('devuelve el resultado de la estrategia llamándola con (prisma, document)', async () => {
     const document = makeDocument();
-    const findShortfalls = jest.fn().mockResolvedValue(shortfalls);
+    const findMissingStock = jest.fn().mockResolvedValue(missingStock);
     findUnique.mockResolvedValue(document);
-    get.mockReturnValue({ type: DocumentType.POS, findShortfalls });
+    get.mockReturnValue({ type: DocumentType.POS, findMissingStock });
 
-    await expect(service.findStockShortfalls('doc-1', user)).resolves.toBe(
-      shortfalls,
+    await expect(service.findMissingStock('doc-1', user)).resolves.toBe(
+      missingStock,
     );
-    expect(findShortfalls).toHaveBeenCalledWith(prisma, document);
+    expect(findMissingStock).toHaveBeenCalledWith(prisma, document);
   });
 });

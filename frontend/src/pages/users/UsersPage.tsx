@@ -175,8 +175,8 @@ export default function UsersPage() {
       roleIds: data.roleIds,
       active: data.active,
     }
-    const pw = (data as { password?: string }).password
-    if (pw) payload.password = pw
+    const password = (data as { password?: string }).password
+    if (password) payload.password = password
     update({ id: editing.id, payload })
   }
 

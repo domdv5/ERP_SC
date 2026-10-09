@@ -19,7 +19,7 @@ export class PosEffectStrategy extends BaseEffectStrategy {
   }
 
   // Si viene de convertir una preventa, excluye su reserva o da un faltante falso.
-  findShortfalls(tx: Prisma.TransactionClient, document: DocumentWithItems) {
+  findMissingStock(tx: Prisma.TransactionClient, document: DocumentWithItems) {
     return this.calculateMissingStock(
       tx,
       this.requireWarehouse(document),
@@ -37,12 +37,12 @@ export class PosEffectStrategy extends BaseEffectStrategy {
     const warehouseId = this.requireWarehouse(document);
 
     // Revalida acá porque editar un borrador no re-corre create.
-    const shortfalls = await this.findShortfalls(tx, document);
+    const missingStock = await this.findMissingStock(tx, document);
 
-    if (shortfalls.length > 0) {
+    if (missingStock.length > 0) {
       throw new ConflictException({
         message: 'Stock insuficiente para uno o más productos',
-        shortfalls,
+        missingStock,
       });
     }
 

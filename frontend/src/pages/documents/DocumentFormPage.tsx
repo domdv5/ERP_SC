@@ -37,7 +37,7 @@ const TODAY = new Date().toISOString().slice(0, 10)
 
 // Sustantivo por tipo para títulos y botones: la remisión y la devolución en venta tienen
 // texto propio; el resto usa "operación".
-const TYPE_NOUN: Record<string, string> = {
+const TYPE_LABEL: Record<string, string> = {
   REM: 'remisión',
   DVV: 'devolución en venta',
   CMO: 'compra oficial',
@@ -47,7 +47,7 @@ const FIXED_TYPE_LABEL: Record<string, string> = {
   DVV: 'Devolución en venta',
   CMO: 'Compra oficial',
 }
-const nounFor = (t: string) => TYPE_NOUN[t] ?? 'operación'
+const typeLabelFor = (t: string) => TYPE_LABEL[t] ?? 'operación'
 
 // ─── main page ───────────────────────────────────────────────────────────────
 
@@ -610,7 +610,7 @@ export default function DocumentFormPage() {
         </div>
         <div>
           <h1 className="text-2xl text-content">
-            {isEditing ? `Editar ${nounFor(docType)}` : `Nueva ${nounFor(docType)}`}
+            {isEditing ? `Editar ${typeLabelFor(docType)}` : `Nueva ${typeLabelFor(docType)}`}
           </h1>
           <p className="text-content-muted text-sm mt-0.5 font-accent">
             {isEditing
@@ -1289,7 +1289,7 @@ export default function DocumentFormPage() {
             className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-xl gradient-action hover:opacity-90 transition-opacity disabled:opacity-60"
           >
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isEditing ? 'Guardar cambios' : `Crear ${nounFor(docType)}`}
+            {isEditing ? 'Guardar cambios' : `Crear ${typeLabelFor(docType)}`}
           </button>
         </div>
       </form>

@@ -29,7 +29,7 @@ import {
 
 import {
   getDocument,
-  getStockShortfalls,
+  getMissingStock,
   confirmDocument,
   voidDocument,
   deleteDocument,
@@ -40,7 +40,7 @@ import type { DocumentType } from '@/types/document.types'
 import { usePermission } from '@/hooks/usePermission'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
-import { canCheckStockShortfalls, canVoidDocument } from '@/lib/document-permissions'
+import { canCheckMissingStock, canVoidDocument } from '@/lib/document-permissions'
 import { useAuthStore } from '@/stores/auth.store'
 import {
   DOC_TYPE_BADGE,
@@ -50,7 +50,7 @@ import {
   DVV_REFUND_METHOD_OPTIONS,
 } from './document.constants'
 import { ReleaseItemsDialog } from './components/ReleaseItemsDialog'
-import { POSStockShortfallDialog } from './components/POSStockShortfallDialog'
+import { MissingStockDialog } from './components/MissingStockDialog'
 import { getPendingQuantity, hasPendingItems } from './pos-checkout.utils'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -202,7 +202,7 @@ export default function DocumentDetailPage() {
   const [voidOpen, setVoidOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [releaseOpen, setReleaseOpen] = useState(false)
-  const [shortfallsOpen, setShortfallsOpen] = useState(false)
+  const [missingStockOpen, setMissingStockOpen] = useState(false)
 
   const canReleasePV = usePermission('document.release.PV')
   const canConvertPV = usePermission('document.convert.PV')
@@ -224,12 +224,12 @@ export default function DocumentDetailPage() {
   })
 
   // Sin staleTime: el stock cambia por fuera del documento (ajustes, otras ventas); si falla no se muestra el chip
-  const { data: shortfalls = [] } = useQuery({
-    queryKey: ['document', id, 'stock-shortfalls'],
-    queryFn: () => getStockShortfalls(id!),
-    enabled: Boolean(id && doc && canCheckStockShortfalls(doc, userPermissions ?? [])),
+  const { data: missingStock = [] } = useQuery({
+    queryKey: ['document', id, 'missing-stock'],
+    queryFn: () => getMissingStock(id!),
+    enabled: Boolean(id && doc && canCheckMissingStock(doc, userPermissions ?? [])),
   })
-  const shortfallByProduct = new Map(shortfalls.map((s) => [s.productId, s]))
+  const missingStockByProduct = new Map(missingStock.map((s) => [s.productId, s]))
 
   // CMO/POSO: valores sin IVA, IVA 19% guardado aparte; no mueven inventario ni cuentas.
   const isOfficialType = doc?.type === 'CMO' || doc?.type === 'POSO'
@@ -511,14 +511,14 @@ export default function DocumentDetailPage() {
                 >
                   {statusInfo.label}
                 </span>
-                {shortfalls.length > 0 && (
+                {missingStock.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setShortfallsOpen(true)}
+                    onClick={() => setMissingStockOpen(true)}
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
                   >
                     <AlertTriangle className="w-3 h-3" />
-                    {shortfalls.length} sin stock
+                    {missingStock.length} sin stock
                   </button>
                 )}
                 {doc.type === 'CM' && doc.officialPurchase && (
@@ -893,13 +893,13 @@ export default function DocumentDetailPage() {
               </thead>
               <tbody className="divide-y divide-ui-divide">
                 {doc.documentItems.map((item) => {
-                  const shortfall = shortfallByProduct.get(item.productId)
+                  const missingItem = missingStockByProduct.get(item.productId)
                   return (
                     <tr
                       key={item.id}
                       className={cn(
                         'hover:bg-surface-raised transition-colors',
-                        shortfall && 'bg-red-500/5 shadow-[inset_3px_0_0_0] shadow-red-500',
+                        missingItem && 'bg-red-500/5 shadow-[inset_3px_0_0_0] shadow-red-500',
                       )}
                     >
                       <td className="px-5 py-3.5 font-mono text-xs text-content">
@@ -910,9 +910,9 @@ export default function DocumentDetailPage() {
                       </td>
                       <td className="px-5 py-3.5 text-content-muted text-xs">
                         {item.quantity.toLocaleString('es-CO')}
-                        {shortfall && (
+                        {missingItem && (
                           <span className="ml-1.5 text-red-500 font-medium">
-                            disp. {shortfall.available.toLocaleString('es-CO')}
+                            disp. {missingItem.available.toLocaleString('es-CO')}
                           </span>
                         )}
                       </td>
@@ -1210,10 +1210,10 @@ export default function DocumentDetailPage() {
         <ReleaseItemsDialog open={releaseOpen} doc={doc} onClose={() => setReleaseOpen(false)} />
       )}
 
-      {shortfallsOpen && shortfalls.length > 0 && (
-        <POSStockShortfallDialog
-          shortfalls={shortfalls}
-          onClose={() => setShortfallsOpen(false)}
+      {missingStockOpen && missingStock.length > 0 && (
+        <MissingStockDialog
+          missingStock={missingStock}
+          onClose={() => setMissingStockOpen(false)}
           subtitle="Pide el ajuste de inventario o ajusta las cantidades antes de confirmar"
           closeLabel="Entendido"
         />
