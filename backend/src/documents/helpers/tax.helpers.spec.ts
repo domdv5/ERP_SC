@@ -3,7 +3,7 @@ import { DocumentType } from '@/common/enums';
 import {
   OFFICIAL_TAX_TYPES,
   computeOfficialLine,
-  officialNetFloor,
+  getOfficialMinNetPrice,
   sumOfficialLines,
 } from './tax.helpers';
 
@@ -64,17 +64,17 @@ describe('computeOfficialLine', () => {
   });
 });
 
-describe('officialNetFloor', () => {
+describe('getOfficialMinNetPrice', () => {
   it('quita el IVA del precio mínimo cuando la división es exacta: 119.000 → 100.000', () => {
-    expect(officialNetFloor(119000)).toBe(100000);
+    expect(getOfficialMinNetPrice(119000)).toBe(100000);
   });
 
   it('redondea HACIA ARRIBA para no dejar vender por debajo del mínimo: 100 / 1,19 = 84,0336 → 84,04', () => {
-    expect(officialNetFloor(100)).toBe(84.04);
+    expect(getOfficialMinNetPrice(100)).toBe(84.04);
   });
 
   it('el piso redondeado hacia arriba nunca queda debajo del mínimo al volver a sumarle IVA', () => {
-    const floor = officialNetFloor(85800);
+    const floor = getOfficialMinNetPrice(85800);
 
     // 85.800 / 1,19 = 72.100,8403 → 72.100,85 (round normal daría 72.100,84)
     expect(floor).toBe(72100.85);
@@ -82,11 +82,11 @@ describe('officialNetFloor', () => {
   });
 
   it('acepta un Prisma.Decimal como precio mínimo', () => {
-    expect(officialNetFloor(new Prisma.Decimal('119000'))).toBe(100000);
+    expect(getOfficialMinNetPrice(new Prisma.Decimal('119000'))).toBe(100000);
   });
 
   it('con precio mínimo 0 el piso es 0', () => {
-    expect(officialNetFloor(0)).toBe(0);
+    expect(getOfficialMinNetPrice(0)).toBe(0);
   });
 });
 

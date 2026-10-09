@@ -190,7 +190,7 @@ export class AccountsPayableService {
   }
 
   /** Estado de cuenta completo del proveedor: todas sus CxP y saldos a favor, con totales. */
-  async statement(supplierId: string) {
+  async getSupplierStatement(supplierId: string) {
     const supplier = await this.prisma.supplier.findUnique({
       where: { id: supplierId },
       include: { thirdParty: { select: { id: true, name: true } } },

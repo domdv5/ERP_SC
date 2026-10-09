@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { DocumentType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
-import { officialNetFloor } from '@/documents/helpers/tax.helpers';
+import { getOfficialMinNetPrice } from '@/documents/helpers/tax.helpers';
 import type {
   ConfirmContext,
   DocumentWithItems,
@@ -29,7 +29,7 @@ export class PosoEffectStrategy extends BaseEffectStrategy {
       document.documentItems.map((item) => ({
         code: item.product.code,
         unitPrice: Number(item.unitPrice),
-        minSalePrice: officialNetFloor(item.product.minSalePrice),
+        minSalePrice: getOfficialMinNetPrice(item.product.minSalePrice),
       })),
     );
 

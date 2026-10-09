@@ -52,7 +52,7 @@ export abstract class AbstractReservationStrategy
 
   // Excluye su propia reserva: al reconfirmar no debe competir consigo misma.
   findShortfalls(tx: Prisma.TransactionClient, document: DocumentWithItems) {
-    return this.assertBatchAvailability(
+    return this.calculateMissingStock(
       tx,
       this.requireWarehouse(document),
       document.documentItems,

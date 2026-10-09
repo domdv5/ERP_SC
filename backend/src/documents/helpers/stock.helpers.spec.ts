@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { computeNewAvgCost, computeReversedAvgCost } from './stock.helpers';
+import { computeNewAvgCost, calculateAvgCostAfterVoid } from './stock.helpers';
 
 function fakeTx(globalStock: number | null) {
   const aggregate = jest.fn(async () => ({ _sum: { quantity: globalStock } }));
@@ -63,11 +63,11 @@ describe('computeNewAvgCost', () => {
   });
 });
 
-describe('computeReversedAvgCost', () => {
+describe('calculateAvgCostAfterVoid', () => {
   it('deshace la entrada: con 15 a $120 tras comprar 5 a $160 vuelve a $100', async () => {
     const { tx } = fakeTx(15);
 
-    const result = await computeReversedAvgCost(tx, 'prod-1', 120, 5, 160);
+    const result = await calculateAvgCostAfterVoid(tx, 'prod-1', 120, 5, 160);
 
     expect(result).toBeCloseTo(100, 10);
   });
@@ -88,7 +88,7 @@ describe('computeReversedAvgCost', () => {
     );
 
     const despues = fakeTx(stockAntes + cantidad);
-    const avgRevertido = await computeReversedAvgCost(
+    const avgRevertido = await calculateAvgCostAfterVoid(
       despues.tx,
       'prod-1',
       avgNuevo,
@@ -102,7 +102,7 @@ describe('computeReversedAvgCost', () => {
   it('si la compra era todo el stock (denominador 0) conserva el promedio actual', async () => {
     const { tx } = fakeTx(5);
 
-    const result = await computeReversedAvgCost(tx, 'prod-1', 160, 5, 160);
+    const result = await calculateAvgCostAfterVoid(tx, 'prod-1', 160, 5, 160);
 
     expect(result).toBe(160);
   });
@@ -110,7 +110,7 @@ describe('computeReversedAvgCost', () => {
   it('con stock menor a la cantidad a revertir (denominador negativo) conserva el promedio actual', async () => {
     const { tx } = fakeTx(3);
 
-    const result = await computeReversedAvgCost(tx, 'prod-1', 120, 5, 160);
+    const result = await calculateAvgCostAfterVoid(tx, 'prod-1', 120, 5, 160);
 
     expect(result).toBe(120);
   });
@@ -118,7 +118,7 @@ describe('computeReversedAvgCost', () => {
   it('sin filas de inventario (suma null) conserva el promedio actual', async () => {
     const { tx } = fakeTx(null);
 
-    const result = await computeReversedAvgCost(tx, 'prod-1', 120, 5, 160);
+    const result = await calculateAvgCostAfterVoid(tx, 'prod-1', 120, 5, 160);
 
     expect(result).toBe(120);
   });

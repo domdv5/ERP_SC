@@ -9,13 +9,13 @@ export interface PrintTotals {
   total: number;
 }
 
-function round2(value: number): number {
+function roundTo2Decimals(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
 /** IVA de una sola línea — columna "V.IVA" de la tabla de ítems del PDF. */
 export function computeItemIva(subtotal: Prisma.Decimal | number): number {
-  return round2(Number(subtotal) * PRINT_IVA_RATE);
+  return roundTo2Decimals(Number(subtotal) * PRINT_IVA_RATE);
 }
 
 export interface SaleUnitValues {
@@ -34,21 +34,23 @@ interface SaleItem {
 
 /** Separa un valor con IVA incluido: base + IVA suman exactamente el total. */
 export function splitIncludedIva(total: number): { base: number; iva: number } {
-  const base = round2(total / (1 + PRINT_IVA_RATE));
-  return { base, iva: round2(total - base) };
+  const base = roundTo2Decimals(total / (1 + PRINT_IVA_RATE));
+  return { base, iva: roundTo2Decimals(total - base) };
 }
 
 /** Ventas normales: el precio ya incluye IVA. POSO: precio sin IVA y taxAmount guardado por línea. */
 export function computeSaleUnitValues(item: SaleItem): SaleUnitValues {
   if (item.taxAmount !== null) {
     const unit = Number(item.unitPrice);
-    const unitIva = round2(Number(item.taxAmount) / item.quantity);
+    const unitIva = roundTo2Decimals(Number(item.taxAmount) / item.quantity);
 
     return {
       unit,
       unitIva,
-      unitTotal: round2(unit + unitIva),
-      lineTotal: round2(Number(item.subtotal) + Number(item.taxAmount)),
+      unitTotal: roundTo2Decimals(unit + unitIva),
+      lineTotal: roundTo2Decimals(
+        Number(item.subtotal) + Number(item.taxAmount),
+      ),
     };
   }
 
@@ -59,24 +61,24 @@ export function computeSaleUnitValues(item: SaleItem): SaleUnitValues {
     unit: base,
     unitIva: iva,
     unitTotal,
-    lineTotal: round2(Number(item.subtotal)),
+    lineTotal: roundTo2Decimals(Number(item.subtotal)),
   };
 }
 
 /** Totales de venta: total cobrado = Σ líneas; POSO usa el IVA guardado, el resto lo separa del total. */
 export function computeSalePrintTotals(items: SaleItem[]): PrintTotals {
   if (items.length > 0 && items.every((item) => item.taxAmount !== null)) {
-    const subtotal = round2(
+    const subtotal = roundTo2Decimals(
       items.reduce((sum, item) => sum + Number(item.subtotal), 0),
     );
-    const iva = round2(
+    const iva = roundTo2Decimals(
       items.reduce((sum, item) => sum + Number(item.taxAmount), 0),
     );
 
-    return { subtotal, iva, total: round2(subtotal + iva) };
+    return { subtotal, iva, total: roundTo2Decimals(subtotal + iva) };
   }
 
-  const total = round2(
+  const total = roundTo2Decimals(
     items.reduce((sum, item) => sum + Number(item.subtotal), 0),
   );
   const { base, iva } = splitIncludedIva(total);
@@ -88,10 +90,10 @@ export function computeSalePrintTotals(items: SaleItem[]): PrintTotals {
 export function computePrintTotals(
   items: { subtotal: Prisma.Decimal | number }[],
 ): PrintTotals {
-  const subtotal = round2(
+  const subtotal = roundTo2Decimals(
     items.reduce((sum, item) => sum + Number(item.subtotal), 0),
   );
-  const iva = round2(subtotal * PRINT_IVA_RATE);
+  const iva = roundTo2Decimals(subtotal * PRINT_IVA_RATE);
 
-  return { subtotal, iva, total: round2(subtotal + iva) };
+  return { subtotal, iva, total: roundTo2Decimals(subtotal + iva) };
 }

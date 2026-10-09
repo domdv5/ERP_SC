@@ -156,8 +156,8 @@ export class OfficialLedgerService {
             { id: 'asc' },
           ],
         }),
-        this.openingAggregate(productId, DocumentType.CMO, dateFrom),
-        this.openingAggregate(productId, DocumentType.POSO, dateFrom),
+        this.sumMovementsBeforeDate(productId, DocumentType.CMO, dateFrom),
+        this.sumMovementsBeforeDate(productId, DocumentType.POSO, dateFrom),
       ],
       // RepeatableRead: con READ COMMITTED cada consulta toma su propio snapshot y el saldo inicial podría no cuadrar con los movimientos.
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -197,7 +197,7 @@ export class OfficialLedgerService {
   }
 
   // Sin dateFrom el corte es la época Unix: no matchea nada y el saldo inicial queda en 0.
-  private openingAggregate(
+  private sumMovementsBeforeDate(
     productId: string,
     type: DocumentType,
     dateFrom?: string,

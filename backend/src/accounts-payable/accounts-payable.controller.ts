@@ -33,8 +33,8 @@ export class AccountsPayableController {
   // Mismo motivo de orden que "credits" arriba: "suppliers" no debe caer en :id.
   @Get('suppliers/:supplierId/statement')
   @Permissions('ap.read')
-  statement(@Param('supplierId') supplierId: string) {
-    return this.accountsPayableService.statement(supplierId);
+  getSupplierStatement(@Param('supplierId') supplierId: string) {
+    return this.accountsPayableService.getSupplierStatement(supplierId);
   }
 
   @Get(':id')

@@ -29,8 +29,8 @@ import {
 import {
   applyBinStockChange,
   applyStockChange,
-  computeReversedAvgCost,
-  resolveLastCostAfterVoidingCm,
+  calculateAvgCostAfterVoid,
+  findLastPurchaseCostAfterVoid,
 } from './helpers/stock.helpers';
 import { matchItemsByProduct } from './helpers/conversion.helpers';
 import { getCustomerCreditSummary } from './helpers/credit.helpers';
@@ -902,7 +902,7 @@ export class DocumentsService {
               where: { id: movement.productId },
             });
 
-            const reversedAvgCost = await computeReversedAvgCost(
+            const reversedAvgCost = await calculateAvgCostAfterVoid(
               tx,
               movement.productId,
               Number(product.avgCost),
@@ -917,7 +917,7 @@ export class DocumentsService {
             };
 
             if (document.type === DocumentType.CM) {
-              const resolvedLastCost = await resolveLastCostAfterVoidingCm(
+              const resolvedLastCost = await findLastPurchaseCostAfterVoid(
                 tx,
                 movement.productId,
                 id,
