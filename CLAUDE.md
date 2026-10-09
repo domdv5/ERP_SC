@@ -31,6 +31,16 @@ Un comentario es **1 línea**, en español, y solo existe si sin él el lector n
 - Antes de agregar un comentario, revisar si ya hay uno cerca diciendo lo mismo — no duplicar.
 - Esto es solo sobre comentarios — nunca justifica cambiar lógica, renombrar, o refactorizar de paso.
 
+## Naming Conventions
+
+Identificadores en **inglés simple** (comentarios en español); el dueño del repo lee inglés básico, así que un nombre que haya que traducir está mal elegido.
+
+- **Vocabulario básico**: `findMissingStock`, no `findShortfalls`; `undo`, no `revert`; nada de jerga contable o técnica rebuscada.
+- **El verbo dice lo que pasa**: `assert*` solo si lanza error; `find*`/`get*` si devuelve algo sin escribir; `calculate*` si calcula; `is*`/`has*` solo para booleanos.
+- **Un concepto, una palabra**: no nombrar lo mismo con verbos distintos en controller y service (`get`/`list`/`find`), ni usar la misma palabra para dos conceptos.
+- **Sin abreviaturas ni siglas** de tipo de documento en helpers genéricos (`round2`, `...Cm`); nombres específicos, no genéricos (`generatePdf`, no `generate`).
+- Renombrar algo que viaja al frontend (rutas, campos JSON) exige cambiar ambos lados en el mismo PR.
+
 ## Documentation Maintenance
 
 Cuando una tarea introduce una **decisión de arquitectura, regla de negocio, endpoint nuevo, o comportamiento no obvio** (no un simple CRUD o maquetación), el CLAUDE.md correspondiente debe quedar actualizado como parte de la misma tarea, no después:
