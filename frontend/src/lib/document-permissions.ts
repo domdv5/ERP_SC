@@ -1,10 +1,24 @@
-import type { DocumentType } from '@/types/document.types'
+import type { DocumentStatus, DocumentType } from '@/types/document.types'
 
 // Ventas que se anulan con document.void.{TIPO}; el resto de tipos sigue con su permiso de siempre.
 const VOID_PERMISSION_TYPES: ReadonlySet<DocumentType> = new Set(['POS', 'COT', 'POSO', 'REM'])
 
 export function canVoidDocument(type: DocumentType, permissions: readonly string[]): boolean {
   return !VOID_PERMISSION_TYPES.has(type) || permissions.includes(`document.void.${type}`)
+}
+
+// Tipos que validan disponible al confirmar (findShortfalls en el backend); el endpoint exige document.create.{TIPO}.
+const STOCK_CHECK_TYPES: ReadonlySet<DocumentType> = new Set(['POS', 'COT', 'PV', 'REM'])
+
+export function canCheckStockShortfalls(
+  doc: { type: DocumentType; status: DocumentStatus },
+  permissions: readonly string[],
+): boolean {
+  return (
+    doc.status === 'draft' &&
+    STOCK_CHECK_TYPES.has(doc.type) &&
+    permissions.includes(`document.create.${doc.type}`)
+  )
 }
 
 // Tipos que el usuario ve en el listado: crea (document.create.*) o anula (document.void.*), igual que el backend.

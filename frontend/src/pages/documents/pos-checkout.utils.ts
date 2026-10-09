@@ -1,5 +1,10 @@
 import { getDocument, getDocuments } from '@/services/documents.service'
-import type { CreditLimitExceededDetail, Document, DocumentItem } from '@/types/document.types'
+import type {
+  CreditLimitExceededDetail,
+  Document,
+  DocumentItem,
+  StockShortfall,
+} from '@/types/document.types'
 
 // ─── preventa pendiente (conversión PV → POS) ─────────────────────────────────
 
@@ -52,13 +57,7 @@ export function findPriceFloorViolations(
 
 // ─── 409 de stock insuficiente (POST /documents/:id/confirm, solo POS) ────────
 
-// El backend responde { message, shortfalls } al confirmar — shortfalls viaja al lado de message, no dentro
-export interface StockShortfall {
-  productId: string
-  code: string
-  available: number
-  requested: number
-}
+export type { StockShortfall }
 
 export function parseStockShortfallError(err: unknown): StockShortfall[] | null {
   const data = (err as { response?: { data?: unknown } })?.response?.data

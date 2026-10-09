@@ -29,6 +29,7 @@ import {
 
 import {
   getDocument,
+  getStockShortfalls,
   confirmDocument,
   voidDocument,
   deleteDocument,
@@ -39,7 +40,7 @@ import type { DocumentType } from '@/types/document.types'
 import { usePermission } from '@/hooks/usePermission'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
-import { canVoidDocument } from '@/lib/document-permissions'
+import { canCheckStockShortfalls, canVoidDocument } from '@/lib/document-permissions'
 import { useAuthStore } from '@/stores/auth.store'
 import {
   DOC_TYPE_BADGE,
@@ -49,6 +50,7 @@ import {
   DVV_REFUND_METHOD_OPTIONS,
 } from './document.constants'
 import { ReleaseItemsDialog } from './components/ReleaseItemsDialog'
+import { POSStockShortfallDialog } from './components/POSStockShortfallDialog'
 import { getPendingQuantity, hasPendingItems } from './pos-checkout.utils'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -200,6 +202,7 @@ export default function DocumentDetailPage() {
   const [voidOpen, setVoidOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [releaseOpen, setReleaseOpen] = useState(false)
+  const [shortfallsOpen, setShortfallsOpen] = useState(false)
 
   const canReleasePV = usePermission('document.release.PV')
   const canConvertPV = usePermission('document.convert.PV')
@@ -219,6 +222,14 @@ export default function DocumentDetailPage() {
     staleTime: 5 * 60 * 1000,
     enabled: Boolean(id),
   })
+
+  // Sin staleTime: el stock cambia por fuera del documento (ajustes, otras ventas); si falla no se muestra el chip
+  const { data: shortfalls = [] } = useQuery({
+    queryKey: ['document', id, 'stock-shortfalls'],
+    queryFn: () => getStockShortfalls(id!),
+    enabled: Boolean(id && doc && canCheckStockShortfalls(doc, userPermissions ?? [])),
+  })
+  const shortfallByProduct = new Map(shortfalls.map((s) => [s.productId, s]))
 
   // CMO/POSO: valores sin IVA, IVA 19% guardado aparte; no mueven inventario ni cuentas.
   const isOfficialType = doc?.type === 'CMO' || doc?.type === 'POSO'
@@ -500,6 +511,16 @@ export default function DocumentDetailPage() {
                 >
                   {statusInfo.label}
                 </span>
+                {shortfalls.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShortfallsOpen(true)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
+                  >
+                    <AlertTriangle className="w-3 h-3" />
+                    {shortfalls.length} sin stock
+                  </button>
+                )}
                 {doc.type === 'CM' && doc.officialPurchase && (
                   <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-400">
                     Con factura
@@ -871,52 +892,68 @@ export default function DocumentDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
-                {doc.documentItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-surface-raised transition-colors">
-                    <td className="px-5 py-3.5 font-mono text-xs text-content">
-                      {item.product.code}
-                    </td>
-                    <td className="px-5 py-3.5 text-content max-w-[280px]">
-                      <span className="truncate block">{item.product.description}</span>
-                    </td>
-                    <td className="px-5 py-3.5 text-content-muted text-xs">
-                      {item.quantity.toLocaleString('es-CO')}
-                    </td>
-                    {showObservaciones && (
-                      <td className="px-5 py-3.5 text-content-muted text-xs max-w-[200px]">
-                        <span className="truncate block">{item.observaciones || '—'}</span>
+                {doc.documentItems.map((item) => {
+                  const shortfall = shortfallByProduct.get(item.productId)
+                  return (
+                    <tr
+                      key={item.id}
+                      className={cn(
+                        'hover:bg-surface-raised transition-colors',
+                        shortfall && 'bg-red-500/5 shadow-[inset_3px_0_0_0] shadow-red-500',
+                      )}
+                    >
+                      <td className="px-5 py-3.5 font-mono text-xs text-content">
+                        {item.product.code}
                       </td>
-                    )}
-                    {isReservationType && (
-                      <>
-                        <td className="px-5 py-3.5 text-content-muted text-xs">
-                          {(item.releasedQuantity ?? 0).toLocaleString('es-CO')}
-                        </td>
-                        <td className="px-5 py-3.5 text-xs">
-                          {(() => {
-                            const pending = getPendingQuantity(item)
-                            return (
-                              <span className={pending > 0 ? 'text-content' : 'text-content-faint'}>
-                                {pending.toLocaleString('es-CO')}
-                              </span>
-                            )
-                          })()}
-                        </td>
-                      </>
-                    )}
-                    <td className="px-5 py-3.5 text-content-muted text-xs">
-                      {itemUnitCost(item) > 0 ? formatCOP(itemUnitCost(item)) : '—'}
-                    </td>
-                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs">
-                      {itemSubtotal(item) > 0 ? formatCOP(itemSubtotal(item)) : '—'}
-                    </td>
-                    {isOfficialType && (
+                      <td className="px-5 py-3.5 text-content max-w-[280px]">
+                        <span className="truncate block">{item.product.description}</span>
+                      </td>
                       <td className="px-5 py-3.5 text-content-muted text-xs">
-                        {itemTax(item) > 0 ? formatCOP(itemTax(item)) : '—'}
+                        {item.quantity.toLocaleString('es-CO')}
+                        {shortfall && (
+                          <span className="ml-1.5 text-red-500 font-medium">
+                            disp. {shortfall.available.toLocaleString('es-CO')}
+                          </span>
+                        )}
                       </td>
-                    )}
-                  </tr>
-                ))}
+                      {showObservaciones && (
+                        <td className="px-5 py-3.5 text-content-muted text-xs max-w-[200px]">
+                          <span className="truncate block">{item.observaciones || '—'}</span>
+                        </td>
+                      )}
+                      {isReservationType && (
+                        <>
+                          <td className="px-5 py-3.5 text-content-muted text-xs">
+                            {(item.releasedQuantity ?? 0).toLocaleString('es-CO')}
+                          </td>
+                          <td className="px-5 py-3.5 text-xs">
+                            {(() => {
+                              const pending = getPendingQuantity(item)
+                              return (
+                                <span
+                                  className={pending > 0 ? 'text-content' : 'text-content-faint'}
+                                >
+                                  {pending.toLocaleString('es-CO')}
+                                </span>
+                              )
+                            })()}
+                          </td>
+                        </>
+                      )}
+                      <td className="px-5 py-3.5 text-content-muted text-xs">
+                        {itemUnitCost(item) > 0 ? formatCOP(itemUnitCost(item)) : '—'}
+                      </td>
+                      <td className="px-5 py-3.5 text-content-secondary font-medium text-xs">
+                        {itemSubtotal(item) > 0 ? formatCOP(itemSubtotal(item)) : '—'}
+                      </td>
+                      {isOfficialType && (
+                        <td className="px-5 py-3.5 text-content-muted text-xs">
+                          {itemTax(item) > 0 ? formatCOP(itemTax(item)) : '—'}
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })}
               </tbody>
               <tfoot>
                 {isOfficialType ? (
@@ -1171,6 +1208,15 @@ export default function DocumentDetailPage() {
       {/* Release reserved items — preventas (PV) y remisiones (REM) confirmadas */}
       {isReservationType && (
         <ReleaseItemsDialog open={releaseOpen} doc={doc} onClose={() => setReleaseOpen(false)} />
+      )}
+
+      {shortfallsOpen && shortfalls.length > 0 && (
+        <POSStockShortfallDialog
+          shortfalls={shortfalls}
+          onClose={() => setShortfallsOpen(false)}
+          subtitle="Pide el ajuste de inventario o ajusta las cantidades antes de confirmar"
+          closeLabel="Entendido"
+        />
       )}
     </div>
   )

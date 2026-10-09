@@ -318,6 +318,14 @@ export interface ReleaseDocumentItemPayload {
   quantity: number
 }
 
+// El backend responde { message, shortfalls } al confirmar y GET /documents/:id/stock-shortfalls lo devuelve directo
+export interface StockShortfall {
+  productId: string
+  code: string
+  available: number
+  requested: number
+}
+
 export interface ReleaseItemsPayload {
   items: ReleaseDocumentItemPayload[]
   notes?: string

@@ -4,10 +4,17 @@ import type { StockShortfall } from '@/pages/documents/pos-checkout.utils'
 interface POSStockShortfallDialogProps {
   shortfalls: StockShortfall[]
   onClose: () => void
+  subtitle?: string
+  closeLabel?: string
 }
 
 // Lista TODOS los productos en falta, no solo el primero. El documento ya quedó creado como borrador; cerrar solo oculta el aviso.
-export function POSStockShortfallDialog({ shortfalls, onClose }: POSStockShortfallDialogProps) {
+export function POSStockShortfallDialog({
+  shortfalls,
+  onClose,
+  subtitle = 'El borrador quedó guardado — ajusta las cantidades y confirma de nuevo',
+  closeLabel = 'Entendido, ajustar cantidades',
+}: POSStockShortfallDialogProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -20,9 +27,7 @@ export function POSStockShortfallDialog({ shortfalls, onClose }: POSStockShortfa
             </div>
             <div>
               <h2 className="text-content font-semibold">Stock insuficiente</h2>
-              <p className="text-content-muted text-xs mt-0.5 font-accent">
-                El borrador quedó guardado — ajusta las cantidades y confirma de nuevo
-              </p>
+              <p className="text-content-muted text-xs mt-0.5 font-accent">{subtitle}</p>
             </div>
           </div>
           <button
@@ -48,6 +53,9 @@ export function POSStockShortfallDialog({ shortfalls, onClose }: POSStockShortfa
                   <th className="text-right text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-2.5">
                     Solicitado
                   </th>
+                  <th className="text-right text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-2.5">
+                    Falta
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
@@ -57,6 +65,9 @@ export function POSStockShortfallDialog({ shortfalls, onClose }: POSStockShortfa
                     <td className="px-4 py-2.5 text-right text-content-secondary">{s.available}</td>
                     <td className="px-4 py-2.5 text-right text-red-500 font-medium">
                       {s.requested}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-red-500 font-semibold">
+                      {s.requested - s.available}
                     </td>
                   </tr>
                 ))}
@@ -71,7 +82,7 @@ export function POSStockShortfallDialog({ shortfalls, onClose }: POSStockShortfa
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-white rounded-xl gradient-action hover:opacity-90 transition-opacity"
           >
-            Entendido, ajustar cantidades
+            {closeLabel}
           </button>
         </div>
       </div>
