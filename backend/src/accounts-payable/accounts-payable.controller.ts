@@ -2,7 +2,7 @@ import { Controller, Get, Param, Query } from '@nestjs/common';
 import { AccountsPayableService } from './accounts-payable.service';
 import {
   FindAllAccountsPayableDto,
-  FindAvailableCreditsDto,
+  FindAvailableSupplierCreditsDto,
 } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 
@@ -22,11 +22,11 @@ export class AccountsPayableController {
   // param :id (mismo riesgo documentado en CLAUDE.md para GET /auth/roles).
   @Get('credits')
   @Permissions('ap.read')
-  findAvailableCredits(
-    @Query() findAvailableCreditsDto: FindAvailableCreditsDto,
+  findAvailableSupplierCredits(
+    @Query() findAvailableSupplierCreditsDto: FindAvailableSupplierCreditsDto,
   ) {
-    return this.accountsPayableService.findAvailableCredits(
-      findAvailableCreditsDto,
+    return this.accountsPayableService.findAvailableSupplierCredits(
+      findAvailableSupplierCreditsDto,
     );
   }
 

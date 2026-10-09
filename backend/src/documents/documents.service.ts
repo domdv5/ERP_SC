@@ -21,7 +21,7 @@ import {
   ReleaseItemsDto,
   UpdateDocumentDto,
 } from './dto/index';
-import { revertCustomerCreditApplications } from './helpers/customer-credit.helpers';
+import { undoCustomerCreditApplications } from './helpers/customer-credit.helpers';
 import {
   assertAvailableForReservation,
   RESERVATION_TYPES,
@@ -33,7 +33,7 @@ import {
   findLastPurchaseCostAfterVoid,
 } from './helpers/stock.helpers';
 import { matchItemsByProduct } from './helpers/conversion.helpers';
-import { getCustomerCreditSummary } from './helpers/credit.helpers';
+import { getCreditLimitSummary } from './helpers/credit.helpers';
 import {
   computeOfficialLine,
   OFFICIAL_TAX_TYPES,
@@ -348,12 +348,12 @@ export class DocumentsService {
   }
 
   /** Cupo de crédito del cliente: límite, usado y disponible, en pesos. Lo usa la pantalla de venta a crédito. */
-  getCustomerCreditSummary(customerId: string) {
-    return getCustomerCreditSummary(this.prisma, customerId);
+  getCreditLimitSummary(customerId: string) {
+    return getCreditLimitSummary(this.prisma, customerId);
   }
 
   /** Saldos a favor del cliente disponibles para aplicar en una venta (distinto del cupo de crédito). */
-  async listAvailableCustomerCredits(customerId: string) {
+  async findAvailableCustomerCredits(customerId: string) {
     const credits = await this.prisma.customerCredit.findMany({
       where: { customerId, status: 'available', balance: { gt: 0 } },
       orderBy: { createdAt: 'asc' },
@@ -1080,7 +1080,7 @@ export class DocumentsService {
         // POS/COT anulada: restituye los saldos a favor que la venta había
         // aplicado (restaura el balance y borra las aplicaciones).
         if (document.appliedCustomerCredits.length > 0) {
-          await revertCustomerCreditApplications(tx, id);
+          await undoCustomerCreditApplications(tx, id);
         }
       },
       { timeout: 30000 },
