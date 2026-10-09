@@ -7,6 +7,7 @@ import type {
   ConfirmContext,
   DocumentEffectStrategy,
   DocumentWithItems,
+  StockShortfall,
 } from './document-effect.strategy';
 import {
   applyBinStockChange,
@@ -168,9 +169,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     warehouseId: string,
     items: { productId: string; quantity: number; product: { code: string } }[],
     options?: { excludeDocumentId?: string },
-  ): Promise<
-    { productId: string; code: string; available: number; requested: number }[]
-  > {
+  ): Promise<StockShortfall[]> {
     const productIds = items.map((item) => item.productId);
 
     const [reservedMap, inventoryRows] = await Promise.all([
@@ -189,12 +188,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
       inventoryRows.map((row) => [row.product_id, row.quantity]),
     );
 
-    const shortfalls: {
-      productId: string;
-      code: string;
-      available: number;
-      requested: number;
-    }[] = [];
+    const shortfalls: StockShortfall[] = [];
 
     for (const item of items) {
       const totalStock = stockByProduct.get(item.productId) ?? 0;

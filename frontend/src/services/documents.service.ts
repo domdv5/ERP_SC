@@ -15,6 +15,7 @@ import type {
   PendingOfficialPurchase,
   PendingOfficialPurchasesMeta,
   GetPendingOfficialPurchasesParams,
+  StockShortfall,
 } from '@/types/document.types'
 
 export async function getDocuments(
@@ -24,6 +25,11 @@ export async function getDocuments(
     '/documents',
     { params },
   )
+  return res.data.data
+}
+
+export async function getStockShortfalls(id: string): Promise<StockShortfall[]> {
+  const res = await api.get<ApiResponse<StockShortfall[]>>(`/documents/${id}/stock-shortfalls`)
   return res.data.data
 }
 

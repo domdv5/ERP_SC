@@ -15,6 +15,13 @@ export type ConfirmContext = {
   appliedCustomerCredits?: { customerCreditId: string; amount: number }[];
 };
 
+export type StockShortfall = {
+  productId: string;
+  code: string;
+  available: number;
+  requested: number;
+};
+
 /** Contrato de efectos por tipo de documento (patrón Strategy): un tipo nuevo solo agrega una clase registrada, sin tocar el service. */
 export interface DocumentEffectStrategy {
   /** Tipo de documento que maneja esta estrategia. */
@@ -30,6 +37,12 @@ export interface DocumentEffectStrategy {
     userId: string,
     context?: ConfirmContext,
   ): Promise<void>;
+
+  /** Faltantes de stock con la misma regla que confirm; solo los tipos que validan disponible al confirmar. */
+  findShortfalls?(
+    tx: Prisma.TransactionClient,
+    document: DocumentWithItems,
+  ): Promise<StockShortfall[]>;
 }
 
 /** Contrato aparte para los tipos con reserva lógica de stock (preventas y remisiones): evita obligar a implementar la liberación en tipos que no reservan (compras, traslados...). */

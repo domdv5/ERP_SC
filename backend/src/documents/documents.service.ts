@@ -550,6 +550,37 @@ export class DocumentsService {
     return this.withPvStatus(updated);
   }
 
+  /** Faltantes de stock de un borrador, con la misma regla que usa confirm(); [] si el tipo no valida stock. */
+  async findStockShortfalls(id: string, user: JwtPayload) {
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+      include: {
+        documentItems: { include: { product: true } },
+        thirdParty: { include: { supplier: true, customer: true } },
+      },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Documento no encontrado');
+    }
+
+    this.assertDocumentPermission(user, document.type);
+
+    if (
+      document.status !== DocumentStatus.draft ||
+      document.documentItems.length === 0 ||
+      !document.warehouseId
+    ) {
+      return [];
+    }
+
+    const strategy = this.effectsRegistry.get(document.type);
+    if (!strategy.findShortfalls) return [];
+
+    // Sin $transaction: el FOR UPDATE se libera al instante en autocommit y una lectura nunca retiene locks de inventario.
+    return strategy.findShortfalls(this.prisma, document);
+  }
+
   async confirm(
     id: string,
     dto: ConfirmDocumentDto | undefined,

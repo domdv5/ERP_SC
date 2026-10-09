@@ -76,6 +76,16 @@ export class CotEffectStrategy extends BaseEffectStrategy {
     await assertCreditWithinLimit(this.prisma, thirdParty.id, netTotal);
   }
 
+  // Si viene de convertir una preventa, excluye su reserva o da un faltante falso.
+  findShortfalls(tx: Prisma.TransactionClient, document: DocumentWithItems) {
+    return this.assertBatchAvailability(
+      tx,
+      this.requireWarehouse(document),
+      document.documentItems,
+      { excludeDocumentId: document.sourceDocumentId ?? undefined },
+    );
+  }
+
   async confirm(
     tx: Prisma.TransactionClient,
     document: DocumentWithItems,
@@ -84,13 +94,8 @@ export class CotEffectStrategy extends BaseEffectStrategy {
   ) {
     const warehouseId = this.requireWarehouse(document);
 
-    // Revalida acá porque editar un borrador no re-corre create; si viene de convertir una preventa, excluye su propia reserva o da un faltante falso.
-    const shortfalls = await this.assertBatchAvailability(
-      tx,
-      warehouseId,
-      document.documentItems,
-      { excludeDocumentId: document.sourceDocumentId ?? undefined },
-    );
+    // Revalida acá porque editar un borrador no re-corre create.
+    const shortfalls = await this.findShortfalls(tx, document);
 
     if (shortfalls.length > 0) {
       throw new ConflictException({

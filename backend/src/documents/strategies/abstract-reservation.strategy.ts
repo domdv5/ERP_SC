@@ -50,21 +50,24 @@ export abstract class AbstractReservationStrategy
     }
   }
 
+  // Excluye su propia reserva: al reconfirmar no debe competir consigo misma.
+  findShortfalls(tx: Prisma.TransactionClient, document: DocumentWithItems) {
+    return this.assertBatchAvailability(
+      tx,
+      this.requireWarehouse(document),
+      document.documentItems,
+      { excludeDocumentId: document.id },
+    );
+  }
+
   async confirm(
     tx: Prisma.TransactionClient,
     document: DocumentWithItems,
     _userId: string,
     _context?: ConfirmContext,
   ) {
-    const warehouseId = this.requireWarehouse(document);
-
     // Bloquea las filas de inventario al validar: dos confirmaciones del mismo producto a la vez quedan en fila.
-    const shortfalls = await this.assertBatchAvailability(
-      tx,
-      warehouseId,
-      document.documentItems,
-      { excludeDocumentId: document.id },
-    );
+    const shortfalls = await this.findShortfalls(tx, document);
 
     if (shortfalls.length > 0) {
       const s = shortfalls[0];
