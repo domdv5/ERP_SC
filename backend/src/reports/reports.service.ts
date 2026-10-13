@@ -119,7 +119,7 @@ export class ReportsService {
       JOIN product p ON p.id = s.product_id
       LEFT JOIN stock st ON st.product_id = s.product_id
       WHERE s.units > 0
-      ORDER BY s.units DESC, s.amount DESC
+      ORDER BY s.units DESC, s.amount DESC, p.code
       LIMIT ${limit}
     `;
 
@@ -133,7 +133,7 @@ export class ReportsService {
       JOIN product p ON p.id = st.product_id
       LEFT JOIN sold s ON s.product_id = st.product_id
       WHERE st.quantity > 0 AND p.deleted_at IS NULL
-      ORDER BY COALESCE(s.units, 0) ASC, st.quantity DESC
+      ORDER BY COALESCE(s.units, 0) ASC, st.quantity DESC, p.code
       LIMIT ${limit}
     `;
 
@@ -164,7 +164,7 @@ export class ReportsService {
           FROM accounts_payable ap JOIN third_parties t ON t.id = ap.supplier_id
           WHERE ap.status <> 'paid'
           GROUP BY t.id, t.name
-          ORDER BY balance DESC
+          ORDER BY balance DESC, t.name
           LIMIT ${limit}
         `,
         this.prisma.$queryRaw<ThirdPartyBalanceRow[]>`
@@ -173,7 +173,7 @@ export class ReportsService {
           FROM accounts_receivable ar JOIN third_parties t ON t.id = ar.client_id
           WHERE ar.status <> 'paid'
           GROUP BY t.id, t.name
-          ORDER BY balance DESC
+          ORDER BY balance DESC, t.name
           LIMIT ${limit}
         `,
       ],
