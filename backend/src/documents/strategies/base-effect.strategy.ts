@@ -172,17 +172,18 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
   ): Promise<MissingStockItem[]> {
     const productIds = items.map((item) => item.productId);
 
-    const [reservedMap, inventoryRows] = await Promise.all([
-      getReservedByProduct(tx, productIds, {
-        excludeDocumentId: options?.excludeDocumentId,
-      }),
-      tx.$queryRaw<{ product_id: string; quantity: number }[]>`
-        SELECT product_id, quantity FROM inventory
-        WHERE product_id = ANY(${productIds}::uuid[]) AND warehouse_id = ${warehouseId}::uuid
-        ORDER BY product_id
-        FOR UPDATE
-      `,
-    ]);
+    const inventoryRows = await tx.$queryRaw<
+      { product_id: string; quantity: number }[]
+    >`
+      SELECT product_id, quantity FROM inventory
+      WHERE product_id = ANY(${productIds}::uuid[]) AND warehouse_id = ${warehouseId}::uuid
+      ORDER BY product_id
+      FOR UPDATE
+    `;
+    // Reservas leídas tras el lock: una PV/REM que hizo commit mientras esperábamos ya queda contada.
+    const reservedMap = await getReservedByProduct(tx, productIds, {
+      excludeDocumentId: options?.excludeDocumentId,
+    });
 
     const stockByProduct = new Map(
       inventoryRows.map((row) => [row.product_id, row.quantity]),
