@@ -30,6 +30,7 @@ const AccountsPayableDetailPage = lazy(
 const AccountsPayableSupplierStatementPage = lazy(
   () => import('@/pages/accounts-payable/AccountsPayableSupplierStatementPage'),
 )
+const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'))
 const StockLookupPage = lazy(() => import('@/pages/stock-lookup/StockLookupPage'))
 const EgresosListPage = lazy(() => import('@/pages/egresos/EgresosListPage'))
 const EgresoDetailPage = lazy(() => import('@/pages/egresos/EgresoDetailPage'))
@@ -319,6 +320,16 @@ export const router = createBrowserRouter([
           <Lazy>
             <PermissionGuard permission="official.read">
               <OfficialLedgerProductPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'reports',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="report.read">
+              <ReportsPage />
             </PermissionGuard>
           </Lazy>
         ),
