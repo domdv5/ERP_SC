@@ -87,6 +87,9 @@ export async function seedPermissions(prisma: PrismaClient) {
 
       // Sistema — cierre contable / modo de solo lectura
       { code: 'system.manage', module: 'system' },
+
+      // Informes — solo admin
+      { code: 'report.read', module: 'reports' },
     ],
     skipDuplicates: true,
   });

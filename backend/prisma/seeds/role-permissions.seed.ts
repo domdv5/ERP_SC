@@ -62,6 +62,7 @@ export async function seedRolePermissions(prisma: PrismaClient) {
       'cash.read',
       'user.manage',
       'system.manage',
+      'report.read',
     ],
     purchasing: [
       'product.read',
