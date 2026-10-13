@@ -1253,6 +1253,25 @@ export class DocumentsService {
     }
 
     const derived = await this.prisma.$transaction(async (tx) => {
+      // Bloquea el origen y re-chequea: dos conversiones simultáneas pasarían ambas el chequeo de arriba.
+      const status = await this.lockDocumentStatus(tx, source.id);
+      if (status !== DocumentStatus.confirmed) {
+        throw new ConflictException(
+          'Solo se pueden convertir preventas o remisiones confirmadas',
+        );
+      }
+      const activeDerived = await tx.document.count({
+        where: {
+          sourceDocumentId: source.id,
+          status: { not: DocumentStatus.voided },
+        },
+      });
+      if (activeDerived > 0) {
+        throw new ConflictException(
+          'Este documento ya tiene una venta derivada activa. Anúlela antes de convertir de nuevo.',
+        );
+      }
+
       const number = await this.nextNumber(tx, dto.targetType);
       const total = this.computeTotal(validateCreateDto.items, dto.targetType);
 
@@ -1346,6 +1365,14 @@ export class DocumentsService {
     const strategy = this.effectsRegistry.getReservation(document.type);
 
     await this.prisma.$transaction(async (tx) => {
+      // Re-chequeo bajo lock: una anulación concurrente no puede colarse entre el chequeo de arriba y la liberación.
+      const status = await this.lockDocumentStatus(tx, id);
+      if (status !== DocumentStatus.confirmed) {
+        throw new ConflictException(
+          'Solo se pueden liberar reservas de documentos confirmados',
+        );
+      }
+
       await strategy.releaseItems(
         tx,
         document,
@@ -1481,6 +1508,14 @@ export class DocumentsService {
       (sum, item) => sum + this.computeItemSubtotal(item, type),
       0,
     );
+  }
+
+  /** Bloquea la fila del documento hasta el fin de la transacción y devuelve su estado actual. */
+  private async lockDocumentStatus(tx: Prisma.TransactionClient, id: string) {
+    const rows = await tx.$queryRaw<{ status: DocumentStatus }[]>`
+      SELECT status FROM document WHERE id = ${id}::uuid FOR UPDATE
+    `;
+    return rows[0]?.status;
   }
 
   private async nextNumber(tx: Prisma.TransactionClient, type: DocumentType) {
