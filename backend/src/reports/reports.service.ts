@@ -108,6 +108,15 @@ export class ReportsService {
         FROM inventory
         WHERE ${warehouseId}::uuid IS NULL OR warehouse_id = ${warehouseId}::uuid
         GROUP BY product_id
+      ),
+      top_ids AS (
+        SELECT s.product_id,
+          ROW_NUMBER() OVER (ORDER BY s.units DESC, s.amount DESC, p.code) AS rank
+        FROM sold s
+        JOIN product p ON p.id = s.product_id
+        WHERE s.units > 0
+        ORDER BY rank
+        LIMIT ${limit}
       )`;
 
     const top = this.prisma.$queryRaw<RotationRow[]>`
@@ -115,15 +124,14 @@ export class ReportsService {
       SELECT p.id AS "productId", p.code, p.description,
         s.units AS "unitsSold", s.amount AS "salesAmount",
         COALESCE(st.quantity, 0) AS stock
-      FROM sold s
-      JOIN product p ON p.id = s.product_id
-      LEFT JOIN stock st ON st.product_id = s.product_id
-      WHERE s.units > 0
-      ORDER BY s.units DESC, s.amount DESC, p.code
-      LIMIT ${limit}
+      FROM top_ids t
+      JOIN sold s ON s.product_id = t.product_id
+      JOIN product p ON p.id = t.product_id
+      LEFT JOIN stock st ON st.product_id = t.product_id
+      ORDER BY t.rank
     `;
 
-    // Menor rotación: solo productos con stock (lo que está quieto en bodega), incluidos los que no vendieron nada.
+    // Menor rotación: productos con stock (incluidos los que no vendieron nada) que no estén ya en mayor rotación.
     const bottom = this.prisma.$queryRaw<RotationRow[]>`
       ${soldAndStock}
       SELECT p.id AS "productId", p.code, p.description,
@@ -133,6 +141,7 @@ export class ReportsService {
       JOIN product p ON p.id = st.product_id
       LEFT JOIN sold s ON s.product_id = st.product_id
       WHERE st.quantity > 0 AND p.deleted_at IS NULL
+        AND st.product_id NOT IN (SELECT product_id FROM top_ids)
       ORDER BY COALESCE(s.units, 0) ASC, st.quantity DESC, p.code
       LIMIT ${limit}
     `;
