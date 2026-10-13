@@ -16,7 +16,7 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 
 - Los tests viven junto al archivo que prueban, con nombre `*.spec.ts` (Jest + ts-jest, el alias `@/` ya está mapeado en `package.json`).
 - Correr desde `backend/`: `pnpm test` (todo), `pnpm test:watch` (modo vigilancia), `pnpm test tax.helpers` (un solo archivo, por parte del nombre) o `pnpm test:cov` (cobertura).
-- Cobertura actual: solo helpers/utilidades puras — IVA y totales (`documents/helpers/tax.helpers`, `documents/print/helpers/pdf-totals.helper`), costo promedio (`documents/helpers/stock.helpers`: `computeNewAvgCost`/`calculateAvgCostAfterVoid`), estado de conversión PV/REM (`pv-status.helper`), `common/utils/money.util` y `date-range.util`, y el validador `IsValidChequeReference`; no hay tests de services, controllers ni e2e.
+- Cobertura actual: solo helpers/utilidades puras — IVA y totales (`documents/helpers/tax.helpers`, `documents/print/helpers/pdf-totals.helper`), costo promedio (`documents/helpers/stock.helpers`: `computeNewAvgCost`/`calculateAvgCostAfterVoid`), estado de conversión PV/REM (`pv-status.helper`), `common/utils/money.util` y `date-range.util`, el validador `IsValidChequeReference`, y `reports` (`helpers/resolve-report-range`, post-proceso de `ReportsService.getSalesBySeller` con `$queryRaw` mockeado); no hay tests de services, controllers ni e2e.
 
 ## Architecture
 
@@ -30,7 +30,7 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 - `bufferLogs: true` + `app.useLogger(app.get(Logger))` (nestjs-pino) — ver Logging abajo
 - Listens on `PORT` env var (default 3000)
 
-**AppModule** imports: `ConfigModule` (global, reads `.env`), `SequenceModule`, `AuthModule`, `PrismaModule`, `ThirdPartiesModule`, `ProductsModule`, `WarehousesModule`, `DocumentsModule`, `AccountsPayableModule`, `AccountsReceivableModule`, `EgresosModule`, `RecibosCajaModule`, `SystemConfigModule`, `OfficialLedgerModule`
+**AppModule** imports: `ConfigModule` (global, reads `.env`), `SequenceModule`, `AuthModule`, `PrismaModule`, `ThirdPartiesModule`, `ProductsModule`, `WarehousesModule`, `DocumentsModule`, `AccountsPayableModule`, `AccountsReceivableModule`, `EgresosModule`, `RecibosCajaModule`, `SystemConfigModule`, `OfficialLedgerModule`, `ReportsModule`
 
 **PrismaModule** is global — inject `PrismaService` anywhere without re-importing the module.
 
@@ -188,6 +188,16 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 - `GET /official-ledger` — resumen paginado por producto `{ productId, code, name, openingBalance, purchased, sold, closingBalance }`. Filtros: `dateFrom`/`dateTo` (`YYYY-MM-DD` sobre `document.date`, ambos inclusivos), `search` (código o descripción), `page`/`limit`. `openingBalance` = neto anterior a `dateFrom` (0 si no hay `dateFrom`); `closingBalance = opening + purchased − sold`. Se listan solo los productos con saldo inicial distinto de 0 o con movimiento en el rango (`HAVING`). `meta.totals` suma `openingBalance/purchased/sold/closingBalance` sobre **todo** el conjunto filtrado, no solo la página. Una sola consulta SQL cruda con `GROUP BY` y agregación condicional (sin N+1).
 - `GET /official-ledger/products/:productId` — `{ product, openingBalance, closingBalance, movements[] }`; cada movimiento `{ date, documentId, type, number, thirdPartyName, quantity (CMO +, POSO −), runningBalance }`, orden cronológico (`date`, `createdAt`). 404 si el producto no existe.
 - **Permiso**: `official.read` (module `accounts`) a nivel de clase, sembrado a `admin`, `accounts_admin`, `accounts_assistant`.
+
+**ReportsModule** — informes de solo lectura para el dashboard (2026-10-13), consultas agregadas en SQL (`$queryRaw`), sin escrituras:
+
+- `GET /reports/inventory` — unidades, valor a costo (`Σ quantity × avgCost`) y # de productos por bodega activa, más totales.
+- `GET /reports/rotation?from&to&warehouseId?&limit=10` — `{ top, bottom }`. Unidades netas vendidas (POS+COT − DVV confirmadas, por `Document.date`; POSO excluido por ser espejo de facturación oficial). `bottom` = productos con stock > 0 ordenados por menos unidades, incluye los de 0 ventas; `unitsSold` puede ser negativo si hubo más devoluciones que ventas.
+- `GET /reports/accounts?limit=10` — totales y saldo de CxP/CxC no pagadas + top proveedores/clientes por saldo.
+- `GET /reports/sales-by-seller?from&to` — ventas netas por vendedora = POS+COT − DVV por el `sellerId` de la propia DVV (la DVV no enlaza la venta original); las ventas y DVV sin vendedora van aparte en `unassignedSales`/`unassignedReturns` (el KPI de venta neta las incluye, igual que `trend`); `trend` diario con 0 en los días sin ventas.
+- **Rango de fechas** (`helpers/resolve-report-range.ts`): `from`/`to` `YYYY-MM-DD`; sin ellas, últimos 30 días terminando hoy (día de Bogotá); 400 si `from > to` o si el rango supera 366 días. `limit` 1..50 (default 10).
+- **Permiso** `report.read` (class-level), solo `admin`: los admins deben volver a iniciar sesión para que llegue en su JWT (tras `pnpm seed`).
+- **Sin caché en el backend por decisión**: el caché es solo del frontend (React Query `staleTime`).
 
 **SystemConfigModule** — modo de solo lectura (cierre contable mensual):
 

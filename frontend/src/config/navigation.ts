@@ -16,6 +16,7 @@ import {
   FileCheck2,
   Inbox,
   BookOpen,
+  ChartColumnBig,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -151,6 +152,10 @@ export const navGroups: NavGroup[] = [
         permission: 'official.read',
       },
     ],
+  },
+  {
+    label: 'Análisis',
+    items: [{ to: '/reports', label: 'Informes', icon: ChartColumnBig, permission: 'report.read' }],
   },
   {
     label: 'Administración',

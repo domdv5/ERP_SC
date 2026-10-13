@@ -39,6 +39,7 @@
 
 /* Light mode values (default) */
 :root {
+  color-scheme: light;
   --page:               #f9fafb;
   --surface:            #ffffff;
   --surface-raised:     #f9fafb;
@@ -54,6 +55,7 @@
 
 /* Dark mode values — applied when <html class="dark"> */
 .dark {
+  color-scheme: dark;
   --page:               #0d1210;
   --surface:            #1e2820;
   --surface-raised:     #141a17;
@@ -179,4 +181,22 @@
   [data-sonner-toaster] {
     --offset-top: 80px;
   }
+}
+
+/* Paleta de gráficos de Informes: verde de marca = serie principal, azul = por pagar, ámbar = alerta/negativo */
+:root {
+  --chart-primary: #07bc34;
+  --chart-primary-soft: rgba(7, 188, 52, 0.18);
+  --chart-payable: #3b82f6;
+  --chart-warning: #f59e0b;
+  --chart-neutral: #9ca3af;
+  --chart-grid: #e5e7eb;
+  --chart-axis: #6b7280;
+  --chart-cursor: rgba(17, 24, 39, 0.05);
+}
+
+.dark {
+  --chart-grid: rgba(255, 255, 255, 0.08);
+  --chart-axis: rgba(255, 255, 255, 0.6);
+  --chart-cursor: rgba(255, 255, 255, 0.06);
 }

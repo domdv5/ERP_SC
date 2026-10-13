@@ -16,6 +16,7 @@ import { EgresosModule } from '@/egresos/egresos.module';
 import { RecibosCajaModule } from '@/recibos-caja/recibos-caja.module';
 import { SystemConfigModule } from '@/system-config/system-config.module';
 import { OfficialLedgerModule } from '@/official-ledger/official-ledger.module';
+import { ReportsModule } from '@/reports/reports.module';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { ReadOnlyModeGuard } from '@/common/guards/read-only-mode.guard';
@@ -47,6 +48,7 @@ import { ReadOnlyModeGuard } from '@/common/guards/read-only-mode.guard';
     RecibosCajaModule,
     SystemConfigModule,
     OfficialLedgerModule,
+    ReportsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
