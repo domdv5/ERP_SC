@@ -6,6 +6,7 @@ dist/
 build/
 .next/
 out/
+*.tsbuildinfo
 
 # Logs
 logs/
@@ -25,11 +26,7 @@ coverage/
 
 # IDEs
 .idea/
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
 *.sublime-workspace
 
 # Environment files
@@ -45,23 +42,19 @@ coverage/
 .claude/settings.local.json
 .claude/skills/canvas-design/
 .agents/skills/canvas-design/
-.interface-design/
+.claude/skills/*/scripts/
 skills-lock.json
 .mcp.json
 
 # Scripts locales (no versionados)
-scripts/
+/scripts/
 
 # Prisma generated
 generated/prisma
 
 plans
 docs-strategies.txt
-TASKS.TXT
-.vscode
+TASKS.txt
 
-# Notas manuscritas internas, ya volcadas a task/
-task
 graphify-out
-.graphifyignore/u/
 .atl/
