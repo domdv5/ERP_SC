@@ -27,6 +27,7 @@ import {
 } from '@/components/shared'
 import type { Product } from '@/types'
 import { formatCOP } from '@/lib/format'
+import { invalidateProducts } from '@/lib/invalidation'
 
 // Las dos únicas bodegas que crea el seed son "Almacén" (tienda) y "Bodega" (bodega física).
 const getStockQuantity = (product: Product, warehouseName: string) =>
@@ -80,11 +81,7 @@ export default function ProductsPage() {
   const activeCount = data?.meta.activeCount ?? 0
   const inStockCount = data?.meta.inStockCount ?? 0
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['products'] })
-    // Clave de caché aparte, la del buscador de productos en documentos; "products" no la alcanza.
-    queryClient.invalidateQueries({ queryKey: ['products-search'] })
-  }
+  const invalidate = () => invalidateProducts(queryClient)
 
   const { mutate: create, isPending: isCreating } = useMutation({
     mutationFn: (payload: CreateProductPayload) => createProduct(payload),

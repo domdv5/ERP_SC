@@ -32,6 +32,7 @@ import type { ComboboxOption } from '@/components/shared'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
+import { invalidateAfterDocumentChange } from '@/lib/invalidation'
 import {
   addOfficialTax,
   computeOfficialTotals,
@@ -300,11 +301,7 @@ export default function POSCheckoutPage() {
         ? docNumber(converted.sourceDocument.type, converted.sourceDocument.number)
         : 'el documento de origen'
       setPendingPreventa(null)
-      // Refresca listado y detalle del origen: ya hay borrador de venta y el origen pasó a "en conversión".
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
-      if (converted.sourceDocument) {
-        queryClient.invalidateQueries({ queryKey: ['document', converted.sourceDocument.id] })
-      }
+      invalidateAfterDocumentChange(queryClient, [converted.id, converted.sourceDocument?.id])
       toast.success(
         `Venta creada a partir de ${sourceLabel}. Revisa los precios antes de confirmar.`,
       )
@@ -527,17 +524,7 @@ export default function POSCheckoutPage() {
   const isSubmitting = isCreating || isUpdating || isConfirming
 
   const invalidateAfterSale = (confirmed: Document) => {
-    queryClient.invalidateQueries({ queryKey: ['documents'] })
-    queryClient.invalidateQueries({ queryKey: ['products'] })
-    queryClient.invalidateQueries({ queryKey: ['products-search'] })
-    queryClient.invalidateQueries({ queryKey: ['product-by-code'] })
-    queryClient.invalidateQueries({ queryKey: ['products-search-pos'] })
-    queryClient.invalidateQueries({ queryKey: ['customer-credit'] })
-    queryClient.invalidateQueries({ queryKey: ['customer-available-credits'] })
-    queryClient.invalidateQueries({ queryKey: ['official-ledger'] })
-    if (confirmed.sourceDocument) {
-      queryClient.invalidateQueries({ queryKey: ['document', confirmed.sourceDocument.id] })
-    }
+    invalidateAfterDocumentChange(queryClient, [confirmed.id, confirmed.sourceDocument?.id])
   }
 
   // Pasa un error de cupo excedido al panel de error dedicado; devuelve true si lo manejó.
