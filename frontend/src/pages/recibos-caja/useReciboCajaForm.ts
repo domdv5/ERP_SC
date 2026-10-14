@@ -122,6 +122,7 @@ export function useReciboCajaForm() {
       const reciboCaja = await createReciboCajaMutateAsync(payload)
       queryClient.invalidateQueries({ queryKey: ['accounts-receivable'] })
       queryClient.invalidateQueries({ queryKey: ['recibos-caja'] })
+      queryClient.invalidateQueries({ queryKey: ['customer-credit'] })
       queryClient.invalidateQueries({ queryKey: ['recibos-caja-open-items', values.clientId] })
       toast.success(`Recibo de caja RC-${reciboCaja.number} registrado correctamente`)
       navigate(`/recibos-caja/${reciboCaja.id}`)

@@ -8,6 +8,7 @@ import { X, Unlock, Loader2 } from 'lucide-react'
 import { releaseItems } from '@/services/documents.service'
 import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
+import { invalidateAfterDocumentChange } from '@/lib/invalidation'
 import type { Document, ReleaseItemsPayload } from '@/types/document.types'
 
 // ─── schema ──────────────────────────────────────────────────────────────────
@@ -98,12 +99,7 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
   const { mutate: doRelease, isPending } = useMutation({
     mutationFn: (payload: ReleaseItemsPayload) => releaseItems(doc.id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
-      queryClient.invalidateQueries({ queryKey: ['document', doc.id] })
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-      // El buscador de productos usa una clave de caché aparte que "products" no alcanza; sin
-      // esto, el disponible que se ve en la siguiente operación queda viejo.
-      queryClient.invalidateQueries({ queryKey: ['products-search'] })
+      invalidateAfterDocumentChange(queryClient, [doc.id])
       toast.success('Stock liberado correctamente')
       onClose()
     },

@@ -11,6 +11,7 @@ import { getDocument, createDocument, updateDocument } from '@/services/document
 import { getWarehouses, getWarehouse } from '@/services/warehouses.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { invalidateAfterDocumentChange } from '@/lib/invalidation'
 import { Combobox } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
@@ -313,7 +314,7 @@ export default function DocumentFormPage() {
 
   // Carga el detalle de la bodega origen para la cascada zona/bulto (solo en traslados).
   const { data: sourceWarehouseDetail, isLoading: isLoadingSourceDetail } = useQuery({
-    queryKey: ['warehouse-detail', warehouseId],
+    queryKey: ['warehouses', warehouseId],
     queryFn: () => getWarehouse(warehouseId!),
     enabled: docType === 'T' && Boolean(warehouseId),
     staleTime: 5 * 60 * 1000,
@@ -321,7 +322,7 @@ export default function DocumentFormPage() {
 
   // Carga el detalle de la bodega destino para la cascada zona/bulto (solo en traslados).
   const { data: destWarehouseDetail, isLoading: isLoadingDestDetail } = useQuery({
-    queryKey: ['warehouse-detail', destWarehouseId],
+    queryKey: ['warehouses', destWarehouseId],
     queryFn: () => getWarehouse(destWarehouseId!),
     enabled: docType === 'T' && Boolean(destWarehouseId),
     staleTime: 5 * 60 * 1000,
@@ -454,9 +455,8 @@ export default function DocumentFormPage() {
 
   // ── mutations ─────────────────────────────────────────────────────────────
   const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['documents'] })
-    queryClient.invalidateQueries({ queryKey: ['official-purchases-pending'] })
-  }, [queryClient])
+    invalidateAfterDocumentChange(queryClient, [id])
+  }, [queryClient, id])
 
   const { mutate: create, isPending: isCreating } = useMutation({
     mutationFn: createDocument,
@@ -481,7 +481,6 @@ export default function DocumentFormPage() {
     }) => updateDocument(docId, payload),
     onSuccess: (doc) => {
       invalidate()
-      queryClient.invalidateQueries({ queryKey: ['document', id] })
       toast.success('Operación actualizada correctamente')
       navigate(`/documents/${doc.id}`)
     },

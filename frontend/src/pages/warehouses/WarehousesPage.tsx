@@ -76,15 +76,17 @@ export default function WarehousesPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const invalidateList = () => queryClient.invalidateQueries({ queryKey: ['warehouses'] })
+  const invalidateList = () => {
+    queryClient.invalidateQueries({ queryKey: ['warehouses'] })
+    queryClient.invalidateQueries({ queryKey: ['warehouses-count'] })
+  }
   const invalidateDetail = () => {
     if (warehouseId) queryClient.invalidateQueries({ queryKey: ['warehouses', warehouseId] })
   }
 
-  // Zona replicada a TODAS las bodegas por el backend; se invalida también `warehouse-detail` (cascada zona/bulto del form de traslados).
+  // Zona replicada a TODAS las bodegas por el backend; el prefijo `warehouses` alcanza listas y detalles (incluido el form de traslados).
   const invalidateAllWarehouses = () => {
     queryClient.invalidateQueries({ queryKey: ['warehouses'] })
-    queryClient.invalidateQueries({ queryKey: ['warehouse-detail'] })
   }
 
   // Los bultos solo existen en bodegas físicas; en un almacén de venta no se ofrece ninguna acción de bulto.

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User } from '@/types'
+import { queryClient } from '@/lib/queryClient'
 
 interface AuthState {
   user: User | null
@@ -20,7 +21,11 @@ export const useAuthStore = create<AuthState>()(
 
       setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
 
-      logout: () => set({ user: null, token: null, isAuthenticated: false }),
+      logout: () => {
+        // Sin esto el siguiente usuario de la misma pestaña ve datos cacheados del anterior
+        queryClient.clear()
+        set({ user: null, token: null, isAuthenticated: false })
+      },
 
       hasPermission: (permission) =>
         // Los permisos vienen del token que se decodifica al iniciar sesión, no de una

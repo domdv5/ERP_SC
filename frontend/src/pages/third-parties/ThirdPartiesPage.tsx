@@ -14,6 +14,7 @@ import {
 import { usePermission } from '@/hooks/usePermission'
 import { useAuthStore } from '@/stores/auth.store'
 import { canEditThirdParty } from '@/lib/third-party-permissions'
+import { invalidateThirdParties } from '@/lib/invalidation'
 import { ThirdPartyForm } from './components/ThirdPartyForm'
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
 import {
@@ -91,7 +92,7 @@ export default function ThirdPartiesPage() {
   const customerCount = data?.meta.customerCount ?? 0
   const supplierCount = data?.meta.supplierCount ?? 0
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['third-parties'] })
+  const invalidate = () => invalidateThirdParties(queryClient)
 
   // Refresca la caché de marcas del form de productos, si no el código de producto se arma con el nombre/número viejo.
   const invalidateBrands = () => queryClient.invalidateQueries({ queryKey: ['brands'] })

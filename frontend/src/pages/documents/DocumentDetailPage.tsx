@@ -42,6 +42,7 @@ import { cn, daysSince, formatDaysSince } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
 import { canCheckMissingStock, canVoidDocument } from '@/lib/document-permissions'
 import { useAuthStore } from '@/stores/auth.store'
+import { invalidateAfterDocumentChange } from '@/lib/invalidation'
 import {
   DOC_TYPE_BADGE,
   DOC_TYPE_ACCENT,
@@ -234,25 +235,7 @@ export default function DocumentDetailPage() {
   // CMO/POSO: valores sin IVA, IVA 19% guardado aparte; no mueven inventario ni cuentas.
   const isOfficialType = doc?.type === 'CMO' || doc?.type === 'POSO'
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['documents'] })
-    queryClient.invalidateQueries({ queryKey: ['document', id] })
-    queryClient.invalidateQueries({ queryKey: ['products'] })
-    // El buscador de productos usa una clave de caché aparte que "products" no alcanza; sin
-    // esto, el costo promedio que se ve en la siguiente operación queda viejo.
-    queryClient.invalidateQueries({ queryKey: ['products-search'] })
-    // Claves de caché propias del checkout de ventas: confirmar o anular una venta cambia el
-    // stock disponible, y sin esto el checkout lo sigue mostrando viejo hasta recargar.
-    queryClient.invalidateQueries({ queryKey: ['product-by-code'] })
-    queryClient.invalidateQueries({ queryKey: ['products-search-pos'] })
-    // Una compra crea su cuenta por pagar y una devolución crea o elimina la nota crédito al confirmar o anular.
-    queryClient.invalidateQueries({ queryKey: ['accounts-payable'] })
-    // Refresca el detalle de bodega: confirmar/anular un traslado cambia el stock de los bultos.
-    queryClient.invalidateQueries({ queryKey: ['warehouse-detail'] })
-    // Confirmar o anular una CMO/POSO cambia el libro oficial; una CM oficial entra o sale de la bandeja.
-    queryClient.invalidateQueries({ queryKey: ['official-ledger'] })
-    queryClient.invalidateQueries({ queryKey: ['official-purchases-pending'] })
-  }
+  const invalidate = () => invalidateAfterDocumentChange(queryClient, [id, doc?.sourceDocument?.id])
 
   const { mutate: doConfirm, isPending: isConfirming } = useMutation({
     mutationFn: () => confirmDocument(id!),
@@ -299,7 +282,7 @@ export default function DocumentDetailPage() {
   const { mutate: doDelete, isPending: isDeleting } = useMutation({
     mutationFn: () => deleteDocument(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      invalidateAfterDocumentChange(queryClient, [id, doc?.sourceDocument?.id])
       toast.success('Operación eliminada correctamente')
       navigate('/documents')
     },
@@ -312,7 +295,7 @@ export default function DocumentDetailPage() {
   const { mutate: doDuplicate, isPending: isDuplicating } = useMutation({
     mutationFn: () => duplicateDocument(id!),
     onSuccess: (newDoc) => {
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      invalidateAfterDocumentChange(queryClient)
       const newDocNumber = `${newDoc.type}-${String(newDoc.number).padStart(6, '0')}`
       toast.success(`Compra duplicada como ${newDocNumber}, editable como borrador.`)
       navigate(`/documents/${newDoc.id}/edit`)
