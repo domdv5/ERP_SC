@@ -98,6 +98,7 @@ export default function DocumentFormPage() {
   const fromCMId = searchParams.get('fromCM')
   const [sourceRef, setSourceRef] = useState<DocumentSourceRef | null>(null)
   const prefilledFromCMRef = useRef(false)
+  const idempotencyKeyRef = useRef(crypto.randomUUID())
 
   // Búsqueda de tercero: proveedor en compras y devoluciones, cliente en preventas y remisiones.
   const [tpSearch, setTpSearch] = useState('')
@@ -541,7 +542,7 @@ export default function DocumentFormPage() {
       const { type: _type, ...rest } = payload
       update({ docId: id, payload: rest })
     } else {
-      create(payload)
+      create({ ...payload, idempotencyKey: idempotencyKeyRef.current })
     }
   }
 

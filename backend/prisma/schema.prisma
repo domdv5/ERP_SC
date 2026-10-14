@@ -533,6 +533,8 @@ model Document {
   /// Quién convirtió el documento a una venta (solo preventas y remisiones) — null si no se convirtió
   convertedById         String?              @map("converted_by_id") @db.Uuid
   convertedAt           DateTime?            @map("converted_at") @db.Timestamptz
+  /// Clave del formulario al crear: un reintento con la misma clave devuelve el documento ya creado
+  idempotencyKey        String?              @unique @map("idempotency_key") @db.VarChar(100)
   createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz
 

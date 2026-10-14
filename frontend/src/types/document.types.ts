@@ -282,10 +282,12 @@ export interface CreateDocumentPayload {
   supplierInvoiceNumber?: string
   // Solo CMO: CM oficial confirmada de la que se precargó la compra; null al editar quita el vínculo.
   sourceDocumentId?: string | null
+  // Una por formulario abierto: si se reintenta tras un fallo de red, el backend devuelve el documento ya creado.
+  idempotencyKey?: string
   items: CreateDocumentItemPayload[]
 }
 
-export type UpdateDocumentPayload = Omit<CreateDocumentPayload, 'type'>
+export type UpdateDocumentPayload = Omit<CreateDocumentPayload, 'type' | 'idempotencyKey'>
 
 // Body opcional de confirm, solo POS/COT: aplica saldos a favor del cliente al confirmar.
 export interface ConfirmDocumentPayload {

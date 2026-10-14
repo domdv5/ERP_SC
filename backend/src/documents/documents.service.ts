@@ -35,6 +35,11 @@ import {
 import { matchItemsByProduct } from './helpers/conversion.helpers';
 import { getCreditLimitSummary } from './helpers/credit.helpers';
 import {
+  DUPLICATE_REQUEST_MESSAGE,
+  isIdempotencyKeyConflict,
+  isSameDocumentRequest,
+} from './helpers/idempotency.helpers';
+import {
   computeOfficialLine,
   OFFICIAL_TAX_TYPES,
   sumOfficialLines,
@@ -395,6 +400,7 @@ export class DocumentsService {
       officialPurchase,
       supplierInvoiceNumber,
       sourceDocumentId,
+      idempotencyKey,
       ...rest
     } = createDocumentDto;
 
@@ -404,6 +410,15 @@ export class DocumentsService {
       supplierInvoiceNumber,
       sourceDocumentId,
     });
+
+    if (idempotencyKey) {
+      const alreadyCreated = await this.findByIdempotencyKey(
+        idempotencyKey,
+        createDocumentDto,
+        user,
+      );
+      if (alreadyCreated) return alreadyCreated;
+    }
 
     // Falla si el tipo de documento todavía no está implementado.
     const strategy = this.effectsRegistry.get(type);
@@ -428,50 +443,84 @@ export class DocumentsService {
       warehouseId = rest.warehouseId;
     }
 
-    const document = await this.prisma.$transaction(async (tx) => {
-      const number = await this.nextNumber(tx, type);
-      const amounts = this.computeAmounts(items, type);
+    const createInTransaction = () =>
+      this.prisma.$transaction(async (tx) => {
+        const number = await this.nextNumber(tx, type);
+        const amounts = this.computeAmounts(items, type);
 
-      return tx.document.create({
-        data: {
-          type,
-          number,
-          date: new Date(date),
-          thirdPartyId,
-          sellerId,
-          userId: user.sub,
-          status: DocumentStatus.draft,
-          total: amounts.total,
-          taxTotal: amounts.taxTotal,
-          notes,
-          warehouseId,
-          destWarehouseId,
-          destBinId,
-          sourceBinId,
-          adjustmentReason,
-          adjustmentReasonOther,
-          paymentMethod: paymentMethod ?? null,
-          refundMethod: refundMethod ?? null,
-          officialPurchase: officialPurchase ?? false,
-          supplierInvoiceNumber: supplierInvoiceNumber?.trim() || null,
-          sourceDocumentId: sourceDocumentId ?? null,
-          documentItems: {
-            create: items.map((item, index) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              unitCost: item.unitCost ?? 0,
-              unitPrice: item.unitPrice ?? 0,
-              subtotal: amounts.lines[index].subtotal,
-              taxAmount: amounts.lines[index].taxAmount,
-              observaciones: item.observaciones ?? null,
-            })),
+        return tx.document.create({
+          data: {
+            type,
+            number,
+            date: new Date(date),
+            thirdPartyId,
+            sellerId,
+            userId: user.sub,
+            status: DocumentStatus.draft,
+            total: amounts.total,
+            taxTotal: amounts.taxTotal,
+            notes,
+            warehouseId,
+            destWarehouseId,
+            destBinId,
+            sourceBinId,
+            adjustmentReason,
+            adjustmentReasonOther,
+            paymentMethod: paymentMethod ?? null,
+            refundMethod: refundMethod ?? null,
+            officialPurchase: officialPurchase ?? false,
+            supplierInvoiceNumber: supplierInvoiceNumber?.trim() || null,
+            sourceDocumentId: sourceDocumentId ?? null,
+            idempotencyKey: idempotencyKey ?? null,
+            documentItems: {
+              create: items.map((item, index) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                unitCost: item.unitCost ?? 0,
+                unitPrice: item.unitPrice ?? 0,
+                subtotal: amounts.lines[index].subtotal,
+                taxAmount: amounts.lines[index].taxAmount,
+                observaciones: item.observaciones ?? null,
+              })),
+            },
           },
-        },
-        include: DETAIL_INCLUDE,
+          include: DETAIL_INCLUDE,
+        });
       });
-    });
+
+    let document: Awaited<ReturnType<typeof createInTransaction>>;
+    try {
+      document = await createInTransaction();
+    } catch (error) {
+      // Carrera real entre dos pedidos con la misma clave: el @unique revienta con P2002 después de que ambos pasaron la búsqueda.
+      if (idempotencyKey && isIdempotencyKeyConflict(error)) {
+        const winner = await this.findByIdempotencyKey(
+          idempotencyKey,
+          createDocumentDto,
+          user,
+        );
+        if (winner) return winner;
+      }
+      throw error;
+    }
 
     return this.withPvStatus(document);
+  }
+
+  private async findByIdempotencyKey(
+    idempotencyKey: string,
+    dto: CreateDocumentDto,
+    user: JwtPayload,
+  ) {
+    const existing = await this.prisma.document.findUnique({
+      where: { idempotencyKey },
+      include: DETAIL_INCLUDE,
+    });
+    if (!existing) return null;
+    if (!isSameDocumentRequest(dto, existing, user.sub)) {
+      throw new ConflictException(DUPLICATE_REQUEST_MESSAGE);
+    }
+    return this.withPvStatus(existing);
   }
 
   async update(

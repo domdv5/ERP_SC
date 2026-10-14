@@ -133,6 +133,11 @@ export class CreateDocumentDto {
   @Type(() => AppliedCustomerCreditDto)
   customerCredits?: AppliedCustomerCreditDto[];
 
+  // La genera el frontend al abrir el formulario; un reintento con la misma clave no duplica si el pedido coincide (ver DocumentsService.create).
+  @IsOptional()
+  @IsUUID()
+  idempotencyKey?: string;
+
   @IsArray()
   @ArrayNotEmpty()
   @ValidateNested({ each: true })

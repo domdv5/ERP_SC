@@ -547,6 +547,7 @@ export default function POSCheckoutPage() {
 
   // ── mutaciones de guardado/confirmación ───────────────────────────────────
   const [missingStock, setMissingStock] = useState<MissingStockItem[] | null>(null)
+  const idempotencyKeyRef = useRef(crypto.randomUUID())
 
   const { mutateAsync: createMutateAsync, isPending: isCreating } = useMutation({
     mutationFn: createDocument,
@@ -578,7 +579,7 @@ export default function POSCheckoutPage() {
   }
 
   async function handleConfirm() {
-    if (!canConfirm) return
+    if (!canConfirm || isSubmitting) return
     setCreditError(null)
 
     const items = cartItems.map((i) => ({
@@ -607,6 +608,7 @@ export default function POSCheckoutPage() {
         doc = await createMutateAsync({
           type: docType,
           ...payload,
+          idempotencyKey: idempotencyKeyRef.current,
           customerCredits: isCredit && selectedCredits.length ? selectedCredits : undefined,
         })
         setDraftId(doc.id)
