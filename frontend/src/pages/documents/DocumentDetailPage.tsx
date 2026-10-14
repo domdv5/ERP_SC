@@ -406,6 +406,7 @@ export default function DocumentDetailPage() {
     doc.type === 'COT' ||
     doc.type === 'DVV' ||
     doc.type === 'POSO'
+  const isSaleType = doc.type === 'POS' || doc.type === 'COT' || doc.type === 'POSO'
   const itemTax = (item: (typeof doc.documentItems)[number]) => Number(item.taxAmount ?? 0)
   const itemUnitCost = (item: (typeof doc.documentItems)[number]) =>
     isPriceBasedType
@@ -560,7 +561,13 @@ export default function DocumentDetailPage() {
             {isDraft && (
               <>
                 <button
-                  onClick={() => navigate(`/documents/${doc.id}/edit`)}
+                  onClick={() =>
+                    navigate(
+                      isSaleType
+                        ? `/documents/pos/new?draft=${doc.id}`
+                        : `/documents/${doc.id}/edit`,
+                    )
+                  }
                   className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors"
                 >
                   <Pencil className="w-4 h-4" />

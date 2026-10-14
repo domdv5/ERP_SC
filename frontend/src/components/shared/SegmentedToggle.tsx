@@ -5,6 +5,7 @@ interface SegmentedToggleProps {
   onChange: (checked: boolean) => void
   uncheckedLabel: string
   checkedLabel: string
+  disabled?: boolean
 }
 
 // Toggle de dos opciones tipo "pill" (ej. Activos / Inactivos)
@@ -13,14 +14,21 @@ export function SegmentedToggle({
   onChange,
   uncheckedLabel,
   checkedLabel,
+  disabled = false,
 }: SegmentedToggleProps) {
   return (
-    <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-surface-raised border border-ui-border">
+    <div
+      className={cn(
+        'inline-flex items-center gap-1 p-1 rounded-xl bg-surface-raised border border-ui-border',
+        disabled && 'opacity-60 cursor-not-allowed',
+      )}
+    >
       <button
         type="button"
+        disabled={disabled}
         onClick={() => onChange(false)}
         className={cn(
-          'px-4 py-1.5 rounded-lg text-sm font-medium transition-all',
+          'px-4 py-1.5 rounded-lg text-sm font-medium transition-all disabled:cursor-not-allowed',
           !checked
             ? 'text-white shadow-sm gradient-action'
             : 'text-content-muted hover:text-content',
@@ -30,9 +38,10 @@ export function SegmentedToggle({
       </button>
       <button
         type="button"
+        disabled={disabled}
         onClick={() => onChange(true)}
         className={cn(
-          'px-4 py-1.5 rounded-lg text-sm font-medium transition-all',
+          'px-4 py-1.5 rounded-lg text-sm font-medium transition-all disabled:cursor-not-allowed',
           checked
             ? 'text-white shadow-sm gradient-action'
             : 'text-content-muted hover:text-content',

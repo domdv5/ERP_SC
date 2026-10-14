@@ -99,11 +99,14 @@ export default function POSCheckoutPage() {
   const [searchParams] = useSearchParams()
   // Entrada desde "Convertir a venta" en el detalle de una preventa o remisión. Se acepta un
   // parámetro genérico y también los nombres antiguos (?fromPV= era el único antes de la remisión).
-  const fromSourceId =
-    searchParams.get('fromPV') ||
-    searchParams.get('fromREM') ||
-    searchParams.get('fromDocId') ||
-    undefined
+  // Entrada desde "Editar" en el detalle de un borrador de venta; tiene prioridad sobre ?fromX.
+  const resumeDraftId = searchParams.get('draft') || undefined
+  const fromSourceId = resumeDraftId
+    ? undefined
+    : searchParams.get('fromPV') ||
+      searchParams.get('fromREM') ||
+      searchParams.get('fromDocId') ||
+      undefined
 
   // Reusa el form genérico solo para el input de escaneo; el resto de sus campos no se usan, la venta se arma aparte.
   const { control, register, watch, setValue, getValues } = useForm<FormValues>({
@@ -270,6 +273,60 @@ export default function POSCheckoutPage() {
     setPendingPreventa(fromSourceDoc)
   }, [fromSourceDoc])
 
+  // Carga en el checkout un documento de venta ya creado (conversión o borrador retomado).
+  function hydrateFromDocument(doc: Document) {
+    setDraftId(doc.id)
+    setDraftNumber(doc.number)
+    setMode(doc.type === 'COT' ? 'COT' : 'POS')
+    setOfficial(doc.type === 'POSO')
+    setThirdPartyId(doc.thirdParty?.id ?? '')
+    setTpSelectedName(doc.thirdParty?.name ?? '')
+    setSellerId(doc.seller?.id ?? '')
+    setSellerSelectedName(doc.seller?.name ?? '')
+    replace(
+      doc.documentItems.map((item) => ({
+        productId: item.productId,
+        productCode: item.product.code,
+        productDesc: item.product.description,
+        quantity: item.quantity,
+        unitCost: undefined,
+        unitPrice: item.unitPrice,
+        observaciones: undefined,
+      })),
+    )
+    setSourceDocument(doc.sourceDocument)
+  }
+
+  // Retoma un borrador de venta (?draft=<id>) como si se hubiera creado en esta pantalla.
+  const { data: resumeDoc, isError: isResumeError } = useQuery({
+    queryKey: ['document', resumeDraftId],
+    queryFn: () => getDocument(resumeDraftId!),
+    enabled: Boolean(resumeDraftId),
+    staleTime: 5 * 60 * 1000,
+  })
+  const resumedRef = useRef(false)
+
+  useEffect(() => {
+    if (!resumeDraftId) return
+    if (isResumeError) {
+      toast.error('No se pudo cargar el borrador')
+      navigate('/documents', { replace: true })
+      return
+    }
+    if (!resumeDoc || resumedRef.current) return
+    resumedRef.current = true
+    const isSaleDraft =
+      resumeDoc.status === 'draft' && ['POS', 'COT', 'POSO'].includes(resumeDoc.type)
+    if (!isSaleDraft) {
+      toast.error('Solo se pueden retomar borradores de venta')
+      navigate(`/documents/${resumeDoc.id}`, { replace: true })
+      return
+    }
+    hydrateFromDocument(resumeDoc)
+    setPaymentMethod(resumeDoc.paymentMethod ?? '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeDoc, isResumeError, resumeDraftId])
+
   // Convertir a contado exige forma de pago (botón deshabilitado sin ella); a crédito puede devolver error de cupo.
   const { mutate: doConvert, isPending: isConverting } = useMutation({
     mutationFn: (pvId: string) =>
@@ -278,25 +335,7 @@ export default function POSCheckoutPage() {
         paymentMethod: isCredit ? undefined : paymentMethod || undefined,
       }),
     onSuccess: (converted) => {
-      setDraftId(converted.id)
-      setDraftNumber(converted.number)
-      setMode(converted.type as SaleMode)
-      setThirdPartyId(converted.thirdParty?.id ?? '')
-      setTpSelectedName(converted.thirdParty?.name ?? '')
-      setSellerId(converted.seller?.id ?? '')
-      setSellerSelectedName(converted.seller?.name ?? '')
-      replace(
-        converted.documentItems.map((item) => ({
-          productId: item.productId,
-          productCode: item.product.code,
-          productDesc: item.product.description,
-          quantity: item.quantity,
-          unitCost: undefined,
-          unitPrice: item.unitPrice,
-          observaciones: undefined,
-        })),
-      )
-      setSourceDocument(converted.sourceDocument)
+      hydrateFromDocument(converted)
       const sourceLabel = converted.sourceDocument
         ? docNumber(converted.sourceDocument.type, converted.sourceDocument.number)
         : 'el documento de origen'
@@ -599,6 +638,10 @@ export default function POSCheckoutPage() {
     }
   }
 
+  if (resumeDraftId && !draftId) {
+    return <div className="h-64 rounded-2xl bg-surface-raised animate-pulse" />
+  }
+
   return (
     <div className="space-y-6 pb-10">
       {/* Encabezado */}
@@ -638,6 +681,13 @@ export default function POSCheckoutPage() {
         )}
       </div>
 
+      {draftId && (
+        <p className="text-content-muted text-sm font-accent">
+          El tipo de venta se elige antes de convertir o guardar. Para cambiarlo, elimina el
+          borrador.
+        </p>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* ── Columna principal ─────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-6">
@@ -654,6 +704,7 @@ export default function POSCheckoutPage() {
                 {canCreatePOSO && (
                   <SegmentedToggle
                     checked={official}
+                    disabled={Boolean(draftId)}
                     onChange={(checked) => {
                       if (draftId || sourceDocument) return
                       setOfficial(checked)
@@ -682,6 +733,7 @@ export default function POSCheckoutPage() {
                 {canCreateCOT && !official && (
                   <SegmentedToggle
                     checked={isCredit}
+                    disabled={Boolean(draftId)}
                     onChange={(checked) => {
                       if (!draftId) setMode(checked ? 'COT' : 'POS')
                     }}
