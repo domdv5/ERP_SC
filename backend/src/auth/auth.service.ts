@@ -70,6 +70,13 @@ export class AuthService {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) throw new UnauthorizedException('Credenciales inválidas');
 
+    // Después de la contraseña: solo quien ya la sabe se entera de que el usuario existe y está desactivado.
+    if (!user.active) {
+      throw new UnauthorizedException(
+        'Tu usuario está desactivado. Pide al administrador que lo active.',
+      );
+    }
+
     const permissions = Array.from(
       new Set(
         user.userRoles.flatMap((userRole) =>

@@ -8,15 +8,17 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { IS_PUBLIC_KEY } from '@/common/decorators/public.decorator';
 import { RequestWithUser } from '@/common/types';
+import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
+    private readonly prisma: PrismaService,
   ) {}
 
-  canActivate(context: ExecutionContext) {
+  async canActivate(context: ExecutionContext) {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -37,12 +39,25 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Formato de token inválido');
     }
 
+    let payload: RequestWithUser['user'];
     try {
-      const payload = this.jwtService.verify(token);
-      request.user = payload as RequestWithUser['user'];
-      return true;
+      payload = this.jwtService.verify(token);
     } catch {
       throw new UnauthorizedException('Token inválido o expirado');
     }
+
+    // Desactivar o borrar un usuario corta su acceso en el pedido siguiente, sin esperar a que venza el token.
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { active: true },
+    });
+    if (!user?.active) {
+      throw new UnauthorizedException(
+        'Tu sesión ya no es válida. Inicia sesión de nuevo.',
+      );
+    }
+
+    request.user = payload;
+    return true;
   }
 }

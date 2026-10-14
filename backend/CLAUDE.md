@@ -234,7 +234,11 @@ Logging estructurado con `nestjs-pino` (`LoggerModule.forRootAsync` en `AppModul
 
 ### Authentication & Authorization
 
-JWT includes the user's full permission set (loaded from Role → RolePermission → Permission at login time). Guards check against this in-token permissions array — no per-request DB lookup needed.
+JWT includes the user's full permission set (loaded from Role → RolePermission → Permission at login time). Guards check against this in-token permissions array — no per-request DB lookup for permissions.
+
+**Usuarios desactivados (2026-10-14)**: el login rechaza a un usuario con `active: false` (401 `"Tu usuario está desactivado. Pide al administrador que lo active."`, solo después de validar la contraseña). `JwtAuthGuard` hace en cada pedido un `findUnique` por id (`select: { active }`): si el usuario se desactivó o se borró, 401 `"Tu sesión ya no es válida. Inicia sesión de nuevo."` sin esperar a que venza el token (el 401 hace que el frontend cierre la sesión). Los permisos siguen saliendo del token: un cambio de rol se ve recién en el próximo login. El SSE `@Public()` de `system/status/stream` no pasa por este guard. **Contraseña**: mínimo 6 caracteres al crear o cambiarla (`CreateAuthDto`, igual que `UserForm` del frontend); `LoginAuthDto` es una clase propia sin mínimo para que las contraseñas viejas cortas sigan entrando.
+
+**Cabeceras de seguridad**: `helmet` en `main.ts` con `crossOriginResourcePolicy: 'cross-origin'` (el frontend vive en otro origen).
 
 RBAC roles defined in seed: `admin`, `purchasing`, `warehouse`, `preventa`, `billing`, `accounts_admin`, `accounts_assistant`. The last two both get full `ar.*`/`ap.*` (CxC + CxP) plus `egreso.read`/`egreso.create`/`recibo.read`/`recibo.create` — they are hierarchical, not module-scoped: `accounts_admin` additionally has `user.manage` and `system.manage`, `accounts_assistant` does not. `admin` also gets the full `egreso.*`/`recibo.*` pair, same as `accounts_admin`/`accounts_assistant`.
 

@@ -1,7 +1,12 @@
-import { OmitType } from '@nestjs/mapped-types';
-import { CreateAuthDto } from './create-auth.dto';
+import { IsNotEmpty, IsString } from 'class-validator';
 
-export class LoginAuthDto extends OmitType(CreateAuthDto, [
-  'name',
-  'roleIds',
-] as const) {}
+// Sin largo mínimo: hay contraseñas creadas antes de exigirlo y tienen que poder entrar.
+export class LoginAuthDto {
+  @IsString()
+  @IsNotEmpty()
+  username!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password!: string;
+}
