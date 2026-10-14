@@ -17,7 +17,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401) {
+    // El 401 del propio login es "credenciales inválidas": lo muestra la pantalla de login, sin recargar.
+    const isLoginRequest = error.config?.url === '/auth/login'
+    if (error.response?.status === 401 && !isLoginRequest) {
       // Reload duro (no navigate): limpia todo el estado en memoria en vez de dejar componentes con datos obsoletos.
       useAuthStore.getState().logout()
       window.location.href = '/login'

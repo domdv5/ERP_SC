@@ -36,8 +36,15 @@ export default function LoginPage() {
       toast.success(`Bienvenido, ${user.name}`)
       navigate('/dashboard')
     },
-    onError: () => {
-      toast.error('Usuario o contraseña incorrectos')
+    onError: (err: unknown) => {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      // Un 401 con otro texto es el usuario desactivado; el resto mantiene el mensaje genérico.
+      toast.error(
+        status === 401 && msg && msg !== 'Credenciales inválidas'
+          ? msg
+          : 'Usuario o contraseña incorrectos',
+      )
     },
   })
 

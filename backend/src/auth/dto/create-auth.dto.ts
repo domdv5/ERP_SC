@@ -6,6 +6,7 @@ import {
   ArrayNotEmpty,
   IsOptional,
   IsBoolean,
+  MinLength,
 } from 'class-validator';
 
 export class CreateAuthDto {
@@ -17,7 +18,10 @@ export class CreateAuthDto {
   @IsNotEmpty()
   username!: string;
 
-  @IsNotEmpty()
+  @IsString()
+  @MinLength(6, {
+    message: 'La contraseña debe tener al menos 6 caracteres',
+  })
   password!: string;
 
   @IsArray()
