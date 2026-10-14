@@ -174,8 +174,7 @@ export default function DocumentFormPage() {
     }
     // Un borrador de venta no se edita acá (sin cliente/vendedora/forma de pago/cupo en este form genérico); se retoma desde el checkout.
     if (existingDoc.type === 'POS' || existingDoc.type === 'COT' || existingDoc.type === 'POSO') {
-      toast.error('Las ventas se editan desde el checkout, no desde este formulario')
-      navigate(`/documents/${existingDoc.id}`)
+      navigate(`/documents/pos/new?draft=${existingDoc.id}`, { replace: true })
       return
     }
     setTpSelectedName(existingDoc.thirdParty?.name ?? '')
