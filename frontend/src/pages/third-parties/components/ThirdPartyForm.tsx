@@ -31,6 +31,7 @@ const schema = z
     withholdingAgentType: z.string().optional(),
     taxRegime: z.string().optional(),
     isSeller: z.boolean().optional(),
+    isReceiver: z.boolean().optional(),
     isCustomer: z.boolean().optional(),
     isSupplier: z.boolean().optional(),
     creditLimit: z.coerce.number().min(0, 'No puede ser negativo').optional(),
@@ -78,11 +79,11 @@ const schema = z
       if (!data.brands?.length)
         ctx.addIssue({ code: 'custom', path: ['brands'], message: 'Agrega al menos una marca' })
     }
-    if (!data.isCustomer && !data.isSupplier && !data.isSeller) {
+    if (!data.isCustomer && !data.isSupplier && !data.isSeller && !data.isReceiver) {
       ctx.addIssue({
         code: 'custom',
         path: ['isCustomer'],
-        message: 'Selecciona al menos un rol: cliente, proveedor o vendedor',
+        message: 'Selecciona al menos un rol: cliente, proveedor, vendedor o recibe mercancía',
       })
     }
   })
@@ -192,6 +193,7 @@ function flattenDefaults(tp: ThirdParty): Partial<FormValues> {
     withholdingAgentType: tp.withholdingAgentType ?? '',
     taxRegime: tp.taxRegime ?? '',
     isSeller: tp.isSeller ?? false,
+    isReceiver: tp.isReceiver ?? false,
     isCustomer: tp.customer != null,
     isSupplier: tp.supplier != null,
     // El monto llega como texto; se pasa a número para el input con separador de miles.
@@ -224,8 +226,9 @@ export function ThirdPartyForm({
   const canCustomer = canAssignThirdPartyRole('customer', permissions)
   const canSupplier = canAssignThirdPartyRole('supplier', permissions)
   const canSeller = canAssignThirdPartyRole('seller', permissions)
+  const canReceiver = canAssignThirdPartyRole('receiver', permissions)
   // Quien solo puede asignar cliente (ej. billing) crea terceros con ese tipo ya marcado.
-  const onlyCustomer = canCustomer && !canSupplier && !canSeller
+  const onlyCustomer = canCustomer && !canSupplier && !canSeller && !canReceiver
 
   const emptyValues = (): FormValues => ({
     personType: 'natural',
@@ -234,6 +237,7 @@ export function ThirdPartyForm({
     isCustomer: onlyCustomer,
     isSupplier: false,
     isSeller: false,
+    isReceiver: false,
     brands: [],
   })
 
@@ -381,7 +385,7 @@ export function ThirdPartyForm({
                     className={cn(
                       'py-2.5 rounded-xl text-sm font-medium border transition-all',
                       personType === type
-                        ? 'text-white border-transparent shadow-sm gradient-dark'
+                        ? 'border-brand-secondary bg-brand-secondary/10 text-brand-secondary-dark'
                         : 'border-ui-border-medium text-content-muted bg-surface hover:border-ui-border',
                     )}
                   >
@@ -462,6 +466,13 @@ export function ThirdPartyForm({
                     checked={!!watch('isSeller')}
                     onChange={(v) => setValue('isSeller', v)}
                     label="Vendedor"
+                  />
+                )}
+                {canReceiver && (
+                  <Toggle
+                    checked={!!watch('isReceiver')}
+                    onChange={(v) => setValue('isReceiver', v)}
+                    label="Recibe mercancía"
                   />
                 )}
               </div>

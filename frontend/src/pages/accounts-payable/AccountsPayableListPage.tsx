@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDebounce } from 'use-debounce'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { Wallet, Clock, CheckCircle2, RefreshCw } from 'lucide-react'
+import { TrendingDown, Clock, CheckCircle2, RefreshCw } from 'lucide-react'
 import { getAccountsPayable } from '@/services/accounts-payable.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import {
@@ -139,7 +139,7 @@ export default function AccountsPayableListPage() {
     {
       label: 'Saldo total',
       value: formatCOP(Number(balanceTotal)),
-      icon: Wallet,
+      icon: TrendingDown,
       bg: 'bg-brand-primary/10',
       fg: 'text-brand-primary dark:text-content',
     },
@@ -246,7 +246,7 @@ export default function AccountsPayableListPage() {
 
         {hasInvalidDateRange && (
           <EmptyState
-            icon={Wallet}
+            icon={TrendingDown}
             title="Rango de fechas inválido"
             description='"Desde" no puede ser posterior a "Hasta"'
           />
@@ -262,7 +262,7 @@ export default function AccountsPayableListPage() {
 
         {!hasInvalidDateRange && !isLoading && !isError && items.length === 0 && (
           <EmptyState
-            icon={Wallet}
+            icon={TrendingDown}
             title={
               hasActiveFilters
                 ? 'Sin resultados para estos filtros'
@@ -285,6 +285,7 @@ export default function AccountsPayableListPage() {
                     'Proveedor',
                     'Documento',
                     'Fecha compra',
+                    'Recibido por',
                     'Monto total',
                     'Pagado',
                     'Saldo a favor aplicado',
@@ -336,6 +337,9 @@ export default function AccountsPayableListPage() {
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
                       {formatDate(account.document.date)}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                      {account.document.receiver?.name ?? '—'}
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                       {formatCOP(Number(account.totalAmount))}

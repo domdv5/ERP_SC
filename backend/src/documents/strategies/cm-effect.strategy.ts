@@ -13,6 +13,7 @@ export class CmEffectStrategy extends BaseEffectStrategy {
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
     await this.assertValidSupplier(createDocumentDto.thirdPartyId);
+    await this.assertValidReceiver(createDocumentDto.receiverId);
     this.assertOfficialInvoice(
       createDocumentDto.officialPurchase,
       createDocumentDto.supplierInvoiceNumber,
@@ -44,6 +45,8 @@ export class CmEffectStrategy extends BaseEffectStrategy {
         'El documento requiere un proveedor válido',
       );
     }
+
+    await this.assertValidReceiver(document.receiverId);
 
     this.assertOfficialInvoice(
       document.officialPurchase,
@@ -101,6 +104,25 @@ export class CmEffectStrategy extends BaseEffectStrategy {
         status: 'pending',
       },
     });
+  }
+
+  private async assertValidReceiver(receiverId?: string | null) {
+    if (!receiverId) {
+      throw new BadRequestException(
+        'La compra requiere indicar quién recibió la mercancía',
+      );
+    }
+
+    const receiver = await this.prisma.thirdParty.findUnique({
+      where: { id: receiverId },
+      select: { isReceiver: true, isActive: true },
+    });
+
+    if (!receiver?.isReceiver || !receiver.isActive) {
+      throw new BadRequestException(
+        'La persona que recibió la mercancía no es válida',
+      );
+    }
   }
 
   private assertOfficialInvoice(

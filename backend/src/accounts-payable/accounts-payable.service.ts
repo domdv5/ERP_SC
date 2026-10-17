@@ -12,14 +12,30 @@ import {
 
 const LIST_INCLUDE = {
   supplier: { include: { thirdParty: { select: { id: true, name: true } } } },
-  document: { select: { id: true, type: true, number: true, date: true } },
+  document: {
+    select: {
+      id: true,
+      type: true,
+      number: true,
+      date: true,
+      receiver: { select: { id: true, name: true } },
+    },
+  },
   // Solo el monto: alcanza para sumar creditApplied sin traer el objeto completo.
   creditApplications: { select: { amount: true } },
 } satisfies Prisma.AccountsPayableInclude;
 
 const DETAIL_INCLUDE = {
   supplier: { include: { thirdParty: { select: { id: true, name: true } } } },
-  document: { select: { id: true, type: true, number: true, date: true } },
+  document: {
+    select: {
+      id: true,
+      type: true,
+      number: true,
+      date: true,
+      receiver: { select: { id: true, name: true } },
+    },
+  },
   payablePayments: { orderBy: { paymentDate: 'desc' } },
   creditApplications: {
     include: {

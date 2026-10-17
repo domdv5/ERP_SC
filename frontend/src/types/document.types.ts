@@ -122,6 +122,8 @@ export interface Document extends DocumentListItem {
   convertedAt?: string | null
   // Preventas y remisiones: vendedora responsable, distinta del cliente.
   seller: DocumentThirdParty | null
+  // Solo compras (CM): quién recibió la mercancía.
+  receiver?: DocumentThirdParty | null
   // Solo en devoluciones en venta (DVV): modalidad de la devolución.
   refundMethod?: DvvRefundMethod | null
   // Solo en DVV con modalidad "saldo a favor" o "cambio de producto": las notas de saldo a
@@ -260,6 +262,8 @@ export interface CreateDocumentPayload {
   thirdPartyId?: string
   // Solo preventas y remisiones: vendedora responsable, a nivel de documento.
   sellerId?: string
+  // Solo compras (CM), obligatorio: quién recibió la mercancía.
+  receiverId?: string
   warehouseId?: string
   sourceBinId?: string
   destWarehouseId?: string

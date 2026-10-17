@@ -90,6 +90,7 @@ const DETAIL_INCLUDE = {
     },
   },
   seller: { select: { id: true, name: true } },
+  receiver: { select: { id: true, name: true } },
   user: { select: { id: true, name: true } },
   confirmedBy: { select: { id: true, name: true } },
   voidedBy: { select: { id: true, name: true } },
@@ -154,6 +155,7 @@ const PRINT_INCLUDE = {
   },
   user: { select: { id: true, name: true } },
   seller: { select: { id: true, name: true } },
+  receiver: { select: { id: true, name: true } },
 } satisfies Prisma.DocumentInclude;
 
 export type DocumentForPrint = Prisma.DocumentGetPayload<{
@@ -389,6 +391,7 @@ export class DocumentsService {
       items,
       thirdPartyId,
       sellerId,
+      receiverId,
       destWarehouseId,
       destBinId,
       sourceBinId,
@@ -455,6 +458,7 @@ export class DocumentsService {
             date: new Date(date),
             thirdPartyId,
             sellerId,
+            receiverId: type === DocumentType.CM ? receiverId : undefined,
             userId: user.sub,
             status: DocumentStatus.draft,
             total: amounts.total,
@@ -549,6 +553,7 @@ export class DocumentsService {
       date,
       customerCredits: _customerCredits,
       supplierInvoiceNumber,
+      receiverId,
       ...rest
     } = updateDocumentDto;
 
@@ -582,6 +587,8 @@ export class DocumentsService {
         where: { id },
         data: {
           ...rest,
+          ...(document.type === DocumentType.CM &&
+            receiverId !== undefined && { receiverId }),
           updatedById: user.sub,
           ...(date && { date: new Date(date) }),
           ...(supplierInvoiceNumber !== undefined && {

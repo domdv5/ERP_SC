@@ -42,6 +42,28 @@ describe('missingThirdPartyRoles al crear (sin tercero actual)', () => {
   });
 });
 
+describe('missingThirdPartyRoles con el rol recibe mercancía', () => {
+  it('billing no puede crear un tercero que recibe mercancía', () => {
+    expect(missingThirdPartyRoles(BILLING, null, { isReceiver: true })).toEqual(
+      ['receiver'],
+    );
+  });
+
+  it('quien tiene el permiso del rol puede crearlo', () => {
+    expect(
+      missingThirdPartyRoles([...BILLING, 'thirdparty.role.receiver'], null, {
+        isReceiver: true,
+      }),
+    ).toEqual([]);
+  });
+
+  it('billing no puede editar un tercero que ya recibe mercancía', () => {
+    expect(missingThirdPartyRoles(BILLING, { isReceiver: true }, {})).toEqual([
+      'receiver',
+    ]);
+  });
+});
+
 describe('missingThirdPartyRoles al editar', () => {
   const customer = { isCustomer: true, isSupplier: false, isSeller: false };
   const supplier = { isCustomer: false, isSupplier: true, isSeller: false };

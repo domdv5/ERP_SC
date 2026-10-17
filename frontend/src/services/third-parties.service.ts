@@ -22,6 +22,7 @@ export interface GetThirdPartiesParams {
   isCustomer?: boolean
   isSupplier?: boolean
   isSeller?: boolean
+  isReceiver?: boolean
   isActive?: boolean
 }
 

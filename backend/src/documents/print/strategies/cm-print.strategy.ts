@@ -10,6 +10,9 @@ export class CmPrintStrategy implements DocumentPrintStrategy {
   readonly documentLabel = 'COMPRA';
 
   buildDefinition(document: DocumentForPrint) {
-    return buildPurchaseDocumentDefinition(document, { title: 'COMPRA' });
+    return buildPurchaseDocumentDefinition(document, {
+      title: 'COMPRA',
+      showReceiver: true,
+    });
   }
 }

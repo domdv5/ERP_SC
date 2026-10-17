@@ -22,6 +22,7 @@ const ROLE_LABELS: Record<ThirdPartyRole, string> = {
   customer: 'cliente',
   supplier: 'proveedor',
   seller: 'vendedor',
+  receiver: 'recibe mercancía',
 };
 
 @Injectable()
@@ -36,6 +37,7 @@ export class ThirdPartiesService {
       isCustomer,
       isSupplier,
       isSeller,
+      isReceiver,
       isActive,
     } = findAllThirdPartiesDto;
     const skip = (page - 1) * limit;
@@ -45,6 +47,7 @@ export class ThirdPartiesService {
       ...(isCustomer !== undefined && { isCustomer }),
       ...(isSupplier !== undefined && { isSupplier }),
       ...(isSeller !== undefined && { isSeller }),
+      ...(isReceiver !== undefined && { isReceiver }),
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
@@ -98,9 +101,14 @@ export class ThirdPartiesService {
       ...thirdPartyData
     } = createThirdPartyDto;
 
-    if (!isCustomer && !isSupplier && !thirdPartyData.isSeller) {
+    if (
+      !isCustomer &&
+      !isSupplier &&
+      !thirdPartyData.isSeller &&
+      !thirdPartyData.isReceiver
+    ) {
       throw new BadRequestException(
-        'El tercero debe tener al menos un rol: cliente, proveedor o vendedor.',
+        'El tercero debe tener al menos un rol: cliente, proveedor, vendedor o recibe mercancía.',
       );
     }
 
@@ -240,19 +248,21 @@ export class ThirdPartiesService {
         },
       });
 
-      // Valida sobre el estado ya mergeado, pero solo si el PATCH tocó isCustomer/isSupplier/isSeller — no bloquea legacy sin roles en ediciones no relacionadas.
+      // Valida sobre el estado ya mergeado, pero solo si el PATCH tocó isCustomer/isSupplier/isSeller/isReceiver — no bloquea legacy sin roles en ediciones no relacionadas.
       const rolesTouched =
         isCustomer !== undefined ||
         isSupplier !== undefined ||
-        updateThirdPartyDto.isSeller !== undefined;
+        updateThirdPartyDto.isSeller !== undefined ||
+        updateThirdPartyDto.isReceiver !== undefined;
       if (
         rolesTouched &&
         !updated.isCustomer &&
         !updated.isSupplier &&
-        !updated.isSeller
+        !updated.isSeller &&
+        !updated.isReceiver
       ) {
         throw new BadRequestException(
-          'El tercero debe tener al menos un rol: cliente, proveedor o vendedor.',
+          'El tercero debe tener al menos un rol: cliente, proveedor, vendedor o recibe mercancía.',
         );
       }
 
@@ -305,7 +315,12 @@ export class ThirdPartiesService {
   ) {
     const current = await this.prisma.thirdParty.findUnique({
       where: { id },
-      select: { isCustomer: true, isSupplier: true, isSeller: true },
+      select: {
+        isCustomer: true,
+        isSupplier: true,
+        isSeller: true,
+        isReceiver: true,
+      },
     });
     if (!current) {
       throw new NotFoundException('Tercero no encontrado.');

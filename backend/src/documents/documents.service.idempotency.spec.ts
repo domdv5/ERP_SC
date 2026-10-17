@@ -7,6 +7,7 @@ import { SequenceService } from '@/common/sequence/sequence.service';
 import { DocumentsService } from './documents.service';
 import { DocumentEffectsRegistry } from './strategies/document-effects.registry';
 import { CreateDocumentDto } from './dto/index';
+import { isSameDocumentRequest } from './helpers/idempotency.helpers';
 
 const user = {
   sub: 'u1',
@@ -39,6 +40,7 @@ const makeExisting = (overrides: Record<string, unknown> = {}) => ({
   userId: 'u1',
   thirdPartyId: 'c1',
   sellerId: 's1',
+  receiverId: null,
   date: new Date('2026-10-14'),
   paymentMethod: 'efectivo',
   refundMethod: null,
@@ -109,6 +111,12 @@ describe('DocumentsService.create: clave para no duplicar al reintentar', () => 
     expect(tx.document.create).toHaveBeenCalledTimes(1);
     expect(prisma.document.findUnique).not.toHaveBeenCalled();
     expect(tx.document.create.mock.calls[0][0].data.idempotencyKey).toBeNull();
+  });
+
+  it('en un tipo distinto de compra no guarda receiverId', async () => {
+    await service.create(makeDto({ receiverId: 'r1' }), user);
+
+    expect(tx.document.create.mock.calls[0][0].data.receiverId).toBeUndefined();
   });
 
   it('con una clave nueva crea el documento y guarda la clave', async () => {
@@ -225,5 +233,24 @@ describe('DocumentsService.create: clave para no duplicar al reintentar', () => 
     await expect(
       service.create(makeDto({ idempotencyKey: KEY }), user),
     ).rejects.toThrow(new ConflictException(DUPLICATE_MESSAGE));
+  });
+});
+
+describe('isSameDocumentRequest: receiverId en la compra', () => {
+  const cmDto = (receiverId: string) =>
+    makeDto({ type: DocumentType.CM, receiverId });
+  const cmExisting = (receiverId: string | null) =>
+    makeExisting({ type: DocumentType.CM, receiverId });
+
+  it('es el mismo pedido si receiverId coincide', () => {
+    expect(
+      isSameDocumentRequest(cmDto('r1'), cmExisting('r1') as never, 'u1'),
+    ).toBe(true);
+  });
+
+  it('es otro pedido si receiverId cambia', () => {
+    expect(
+      isSameDocumentRequest(cmDto('r2'), cmExisting('r1') as never, 'u1'),
+    ).toBe(false);
   });
 });

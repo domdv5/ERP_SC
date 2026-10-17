@@ -12,6 +12,7 @@ export type ExistingDocumentForIdempotency = {
   date: Date;
   thirdPartyId: string | null;
   sellerId: string | null;
+  receiverId: string | null;
   paymentMethod: string | null;
   refundMethod: string | null;
   notes: string | null;
@@ -54,6 +55,7 @@ function signature(doc: ExistingDocumentForIdempotency): string {
     doc.date.toISOString().slice(0, 10),
     doc.thirdPartyId ?? null,
     doc.sellerId ?? null,
+    doc.receiverId ?? null,
     doc.paymentMethod ?? null,
     doc.refundMethod ?? null,
     doc.notes ?? null,
@@ -82,6 +84,8 @@ export function isSameDocumentRequest(
     date: new Date(dto.date),
     thirdPartyId: dto.thirdPartyId ?? null,
     sellerId: dto.sellerId ?? null,
+    // Solo la compra guarda quién recibió; en los demás tipos el campo se ignora.
+    receiverId: dto.type === 'CM' ? (dto.receiverId ?? null) : null,
     paymentMethod: dto.paymentMethod ?? null,
     refundMethod: dto.refundMethod ?? null,
     notes: dto.notes ?? null,
