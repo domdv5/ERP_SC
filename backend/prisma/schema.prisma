@@ -498,7 +498,7 @@ model Document {
   number                String               @db.VarChar(30)
   date                  DateTime             @db.Date
   thirdPartyId          String?              @map("third_party_id") @db.Uuid
-  /// Vendedor asignado — solo preventas (PV); ThirdParty con isSeller=true
+  /// Vendedora de la venta (PV, REM, POS, COT; la conversión la copia); ThirdParty con isSeller=true
   sellerId              String?              @map("seller_id") @db.Uuid
   /// Quién recibió la mercancía — obligatorio solo en CM nuevas; ThirdParty con isReceiver=true
   receiverId            String?              @map("receiver_id") @db.Uuid
@@ -551,10 +551,10 @@ model Document {
   voidedBy         User?       @relation("DocumentVoidedBy", fields: [voidedById], references: [id])
   updatedBy        User?       @relation("DocumentUpdatedBy", fields: [updatedById], references: [id])
   convertedBy      User?       @relation("DocumentConvertedBy", fields: [convertedById], references: [id])
-  warehouse        Warehouse?  @relation("DocumentWarehouse", fields: [warehouseId], references: [id])
-  destWarehouse    Warehouse?  @relation("DocumentDestWarehouse", fields: [destWarehouseId], references: [id])
-  sourceBin        Bin?        @relation("DocumentSourceBin", fields: [sourceBinId], references: [id])
-  destBin          Bin?        @relation("DocumentDestBin", fields: [destBinId], references: [id])
+  warehouse        Warehouse?  @relation("DocumentWarehouse", fields: [warehouseId], references: [id], onDelete: Restrict)
+  destWarehouse    Warehouse?  @relation("DocumentDestWarehouse", fields: [destWarehouseId], references: [id], onDelete: Restrict)
+  sourceBin        Bin?        @relation("DocumentSourceBin", fields: [sourceBinId], references: [id], onDelete: Restrict)
+  destBin          Bin?        @relation("DocumentDestBin", fields: [destBinId], references: [id], onDelete: Restrict)
   sourceDocument   Document?   @relation("DocumentSource", fields: [sourceDocumentId], references: [id])
   derivedDocuments Document[]  @relation("DocumentSource")
 
@@ -569,9 +569,22 @@ model Document {
   appliedCustomerCredits CustomerCreditApplication[] @relation("CustomerCreditSaleApplication")
 
   @@unique([type, number])
-  @@index([type, status])
+  // Listado e informes filtran por tipo + estado + rango de fecha.
+  @@index([type, status, date])
   @@index([date])
+  @@index([createdAt])
   @@index([thirdPartyId])
+  @@index([sellerId])
+  @@index([receiverId])
+  @@index([userId])
+  @@index([warehouseId])
+  @@index([destWarehouseId])
+  @@index([sourceBinId])
+  @@index([destBinId])
+  @@index([confirmedById])
+  @@index([voidedById])
+  @@index([updatedById])
+  @@index([convertedById])
   // Reverse lookup de derivedDocuments (Prisma no indexa FKs en PostgreSQL);
   // corre en cada fila de la lista de documentos y en cada detalle de PV.
   @@index([sourceDocumentId])
