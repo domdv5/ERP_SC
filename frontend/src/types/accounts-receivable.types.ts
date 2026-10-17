@@ -87,3 +87,34 @@ export interface GetAccountsReceivableParams {
   dateFrom?: string
   dateTo?: string
 }
+
+export interface ClientStatementTotals {
+  totalDebt: string
+  totalPaid: string
+  totalBalance: string
+  availableCredit: string
+}
+
+export interface ClientCreditApplication {
+  id: string
+  amount: string
+  appliedAt: string
+  saleDocument: AccountsReceivableDocument
+}
+
+export interface ClientCredit {
+  id: string
+  amount: string
+  balance: string
+  status: 'available' | 'used'
+  createdAt: string
+  sourceDocument: AccountsReceivableDocument | null
+  applications: ClientCreditApplication[]
+}
+
+export interface ClientStatement {
+  client: { id: string; name: string }
+  totals: ClientStatementTotals
+  receivables: AccountsReceivable[]
+  credits: ClientCredit[]
+}

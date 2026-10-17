@@ -197,4 +197,67 @@ export class AccountsReceivableService {
       history: buildHistory(accountReceivable),
     };
   }
+
+  /** Estado de cuenta completo del cliente: todas sus CxC y saldos a favor, con totales. */
+  async getClientStatement(clientId: string) {
+    const client = await this.prisma.customer.findUnique({
+      where: { id: clientId },
+      include: { thirdParty: { select: { id: true, name: true } } },
+    });
+
+    if (!client) {
+      throw new NotFoundException('Cliente no encontrado');
+    }
+
+    const [rawReceivables, rawCredits] = await Promise.all([
+      this.prisma.accountsReceivable.findMany({
+        where: { clientId },
+        include: LIST_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.customerCredit.findMany({
+        where: { customerId: clientId },
+        include: {
+          sourceDocument: {
+            select: { id: true, type: true, number: true, date: true },
+          },
+          applications: {
+            include: {
+              saleDocument: {
+                select: { id: true, type: true, number: true, date: true },
+              },
+            },
+            orderBy: { appliedAt: 'desc' },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const receivables = rawReceivables.map(withDerivedFields);
+
+    const totalDebt = receivables.reduce(
+      (sum, receivable) => sum.plus(receivable.totalAmount),
+      new Prisma.Decimal(0),
+    );
+    const totalPaid = receivables.reduce(
+      (sum, receivable) => sum.plus(receivable.paidAmount),
+      new Prisma.Decimal(0),
+    );
+    const availableCredit = rawCredits
+      .filter((credit) => credit.status === 'available')
+      .reduce((sum, credit) => sum.plus(credit.balance), new Prisma.Decimal(0));
+
+    return {
+      client: { id: client.thirdParty.id, name: client.thirdParty.name },
+      totals: {
+        totalDebt,
+        totalPaid,
+        totalBalance: totalDebt.minus(totalPaid),
+        availableCredit,
+      },
+      receivables,
+      credits: rawCredits,
+    };
+  }
 }

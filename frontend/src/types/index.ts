@@ -81,6 +81,10 @@ export type {
   AccountsReceivableDetail,
   AccountsReceivableHistoryEntry,
   AccountsReceivableMeta,
+  ClientStatement,
+  ClientStatementTotals,
+  ClientCredit,
+  ClientCreditApplication,
   GetAccountsReceivableParams,
 } from './accounts-receivable.types'
 export type {

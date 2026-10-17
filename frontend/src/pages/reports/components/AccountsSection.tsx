@@ -50,6 +50,7 @@ function BalancePanel({ label, paidLabel, totals, color }: BalancePanelProps) {
 export function AccountsSection() {
   const navigate = useNavigate()
   const canOpenSupplier = useAuthStore((s) => s.hasPermission('ap.read'))
+  const canOpenClient = useAuthStore((s) => s.hasPermission('ar.read'))
   const { data, isLoading, isError, refetch } = useAccountsReport()
 
   const renderBalanceTooltip = (row: ThirdPartyBalanceRow) => (
@@ -127,7 +128,11 @@ export function AccountsSection() {
 
         <ReportCard
           title="Clientes con mayor saldo"
-          subtitle="¿Quién nos debe más? Es donde conviene priorizar el cobro."
+          subtitle={
+            canOpenClient
+              ? '¿Quién nos debe más? Clic en una barra abre su estado de cuenta.'
+              : '¿Quién nos debe más? Es donde conviene priorizar el cobro.'
+          }
           isLoading={isLoading}
           isError={isError}
           onRetry={retry}
@@ -141,6 +146,11 @@ export function AccountsSection() {
             getLabel={(row) => row.name}
             getValue={(row) => row.balance}
             renderTooltip={renderBalanceTooltip}
+            onBarClick={
+              canOpenClient
+                ? (row) => navigate(`/accounts-receivable/clients/${row.thirdPartyId}`)
+                : undefined
+            }
             ariaLabel="Gráfico de barras con los clientes de mayor saldo por cobrar"
             formatTick={formatCompact}
             labelWidth={140}
