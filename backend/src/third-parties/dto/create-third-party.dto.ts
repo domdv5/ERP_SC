@@ -81,6 +81,10 @@ export class CreateThirdPartyDto {
 
   @IsOptional()
   @IsBoolean()
+  isReceiver?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   isCustomer?: boolean;
 
   @IsOptional()

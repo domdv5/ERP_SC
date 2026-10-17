@@ -18,6 +18,8 @@ export interface AccountsPayableDocument {
   // El backend ya lo manda con ceros a la izquierda (ej. "000009"); pasa por docNumber() igual.
   number: string
   date: string
+  // Solo lo mandan las cuentas por pagar (no egresos); null en compras anteriores a este campo.
+  receiver?: { id: string; name: string } | null
 }
 
 // Decimal de Prisma llega como string en el JSON; se tipa `string` a propósito para no mentir que ya es number.

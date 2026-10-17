@@ -312,9 +312,15 @@ export default function AccountsReceivableListPage() {
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
                           {account.client.thirdParty.name[0]?.toUpperCase() ?? '?'}
                         </div>
-                        <span className="font-medium text-content">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/accounts-receivable/clients/${account.client.id}`)
+                          }}
+                          className="font-medium text-brand-secondary hover:underline text-left"
+                        >
                           {account.client.thirdParty.name}
-                        </span>
+                        </button>
                       </div>
                     </td>
                     <td className="px-5 py-3.5">

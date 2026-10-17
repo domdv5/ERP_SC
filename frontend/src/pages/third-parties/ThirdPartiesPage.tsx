@@ -45,6 +45,11 @@ const ROLE_BADGES = [
     label: 'Vendedor',
     color: 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400',
   },
+  {
+    key: 'isReceiver',
+    label: 'Recibe mercancía',
+    color: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
+  },
 ]
 
 export default function ThirdPartiesPage() {
@@ -58,7 +63,9 @@ export default function ThirdPartiesPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [showInactive, setShowInactive] = useState(false)
-  const [roleFilter, setRoleFilter] = useState<'all' | 'customer' | 'supplier' | 'seller'>('all')
+  const [roleFilter, setRoleFilter] = useState<
+    'all' | 'customer' | 'supplier' | 'seller' | 'receiver'
+  >('all')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ThirdParty | null>(null)
   const [deleting, setDeleting] = useState<ThirdParty | null>(null)
@@ -81,6 +88,7 @@ export default function ThirdPartiesPage() {
         isCustomer: roleFilter === 'customer' ? true : undefined,
         isSupplier: roleFilter === 'supplier' ? true : undefined,
         isSeller: roleFilter === 'seller' ? true : undefined,
+        isReceiver: roleFilter === 'receiver' ? true : undefined,
       }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
@@ -227,7 +235,9 @@ export default function ThirdPartiesPage() {
             <select
               value={roleFilter}
               onChange={(e) =>
-                setRoleFilter(e.target.value as 'all' | 'customer' | 'supplier' | 'seller')
+                setRoleFilter(
+                  e.target.value as 'all' | 'customer' | 'supplier' | 'seller' | 'receiver',
+                )
               }
               className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
             >
@@ -235,6 +245,7 @@ export default function ThirdPartiesPage() {
               <option value="customer">Clientes</option>
               <option value="supplier">Proveedores</option>
               <option value="seller">Vendedores</option>
+              <option value="receiver">Reciben mercancía</option>
             </select>
           </div>
         </div>
@@ -266,15 +277,7 @@ export default function ThirdPartiesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {[
-                    'Nombre',
-                    'Tipo',
-                    'Tipo Doc.',
-                    'N° Documento',
-                    'Contacto',
-                    'Roles',
-                    'Acciones',
-                  ].map((h) => (
+                  {['Nombre', 'Tipo', 'Tipo Doc.', 'N° Documento', 'Roles', 'Acciones'].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -325,7 +328,6 @@ export default function ThirdPartiesPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-content-muted text-xs">{t.documentNumber}</td>
-                      <td className="px-5 py-3.5 text-content-muted text-xs">{t.phone ?? '—'}</td>
                       <td className="px-5 py-3.5">
                         <div className="flex gap-1 flex-wrap">
                           {ROLE_BADGES.filter(({ key }) => t[key as keyof ThirdParty]).map(

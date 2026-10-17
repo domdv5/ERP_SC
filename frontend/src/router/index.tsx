@@ -18,6 +18,9 @@ const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
 const AccountsReceivableListPage = lazy(
   () => import('@/pages/accounts-receivable/AccountsReceivableListPage'),
 )
+const AccountsReceivableClientStatementPage = lazy(
+  () => import('@/pages/accounts-receivable/AccountsReceivableClientStatementPage'),
+)
 const AccountsReceivableDetailPage = lazy(
   () => import('@/pages/accounts-receivable/AccountsReceivableDetailPage'),
 )
@@ -190,6 +193,16 @@ export const router = createBrowserRouter([
           <Lazy>
             <PermissionGuard permission="ar.read">
               <AccountsReceivableListPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'accounts-receivable/clients/:clientId',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="ar.read">
+              <AccountsReceivableClientStatementPage />
             </PermissionGuard>
           </Lazy>
         ),

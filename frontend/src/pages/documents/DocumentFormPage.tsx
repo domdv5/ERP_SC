@@ -117,6 +117,9 @@ export default function DocumentFormPage() {
   const [sellerSearch, setSellerSearch] = useState('')
   const [debouncedSellerSearch] = useDebounce(sellerSearch, 400)
   const [sellerSelectedName, setSellerSelectedName] = useState('')
+  const [receiverSearch, setReceiverSearch] = useState('')
+  const [debouncedReceiverSearch] = useDebounce(receiverSearch, 400)
+  const [receiverSelectedName, setReceiverSelectedName] = useState('')
 
   // Datos del producto al momento de escanearlo; availableStock queda vacío al reabrir un borrador (mostrar el "actual" engañaría, ya está reservando).
   const [scannedProductInfo, setScannedProductInfo] = useState<
@@ -180,6 +183,7 @@ export default function DocumentFormPage() {
     }
     setTpSelectedName(existingDoc.thirdParty?.name ?? '')
     setSellerSelectedName(existingDoc.seller?.name ?? '')
+    setReceiverSelectedName(existingDoc.receiver?.name ?? '')
     setSelectedSupplierBrandIds(existingDoc.thirdParty?.supplier?.brands.map((b) => b.id) ?? [])
     setSelectedSupplierDiscountNotes(existingDoc.thirdParty?.supplier?.discountNotes ?? undefined)
     setSourceRef(existingDoc.type === 'CMO' ? existingDoc.sourceDocument : null)
@@ -199,6 +203,7 @@ export default function DocumentFormPage() {
       date: existingDoc.date.slice(0, 10),
       thirdPartyId: existingDoc.thirdParty?.id ?? undefined,
       sellerId: existingDoc.seller?.id ?? undefined,
+      receiverId: existingDoc.receiver?.id ?? undefined,
       warehouseId: existingDoc.warehouse?.id ?? undefined,
       sourceBinId: existingDoc.sourceBin?.id ?? undefined,
       destWarehouseId: existingDoc.destWarehouse?.id ?? undefined,
@@ -234,6 +239,7 @@ export default function DocumentFormPage() {
   const needsSupplier = docType === 'CM' || docType === 'DVC' || docType === 'CMO'
   const needsCustomer = docType === 'PV' || docType === 'REM' || docType === 'DVV'
   const needsSeller = docType === 'PV' || docType === 'REM'
+  const needsReceiver = docType === 'CM'
 
   const hasTpSearch = debouncedTpSearch.length >= 1
 
@@ -310,6 +316,21 @@ export default function DocumentFormPage() {
       }),
     staleTime: 2 * 60 * 1000,
     enabled: needsSeller && hasSellerSearch,
+  })
+
+  const hasReceiverSearch = debouncedReceiverSearch.length >= 1
+
+  const { data: receiverData, isLoading: isLoadingReceiver } = useQuery({
+    queryKey: ['third-parties-search-receiver', debouncedReceiverSearch],
+    queryFn: () =>
+      getThirdParties({
+        search: debouncedReceiverSearch || undefined,
+        page: 1,
+        limit: 30,
+        isReceiver: true,
+      }),
+    staleTime: 2 * 60 * 1000,
+    enabled: needsReceiver && hasReceiverSearch,
   })
 
   // Carga el detalle de la bodega origen para la cascada zona/bulto (solo en traslados).
@@ -453,6 +474,21 @@ export default function DocumentFormPage() {
         ]
       : sellerOptions
 
+  const receiverOptions: ComboboxOption[] = (receiverData?.items ?? []).map((tp: ThirdParty) => ({
+    id: tp.id,
+    label: tp.name,
+  }))
+
+  const currentReceiverId = watch('receiverId') ?? ''
+
+  const receiverDisplayOptions: ComboboxOption[] =
+    currentReceiverId && !debouncedReceiverSearch
+      ? [
+          { id: currentReceiverId, label: receiverSelectedName },
+          ...receiverOptions.filter((o) => o.id !== currentReceiverId),
+        ]
+      : receiverOptions
+
   // ── mutations ─────────────────────────────────────────────────────────────
   const invalidate = useCallback(() => {
     invalidateAfterDocumentChange(queryClient, [id])
@@ -500,6 +536,7 @@ export default function DocumentFormPage() {
       thirdPartyId: values.thirdPartyId || undefined,
       sellerId:
         values.type === 'PV' || values.type === 'REM' ? values.sellerId || undefined : undefined,
+      receiverId: values.type === 'CM' ? values.receiverId || undefined : undefined,
       warehouseId: values.type === 'T' ? values.warehouseId || undefined : undefined,
       sourceBinId: values.sourceBinId || undefined,
       destWarehouseId: values.destWarehouseId || undefined,
@@ -674,6 +711,7 @@ export default function DocumentFormPage() {
                         field.onChange(e)
                         setValue('thirdPartyId', undefined)
                         setValue('sellerId', undefined)
+                        setValue('receiverId', undefined)
                         setValue('warehouseId', undefined)
                         setValue('sourceBinId', undefined)
                         setValue('destWarehouseId', undefined)
@@ -684,6 +722,7 @@ export default function DocumentFormPage() {
                         setValue('supplierInvoiceNumber', undefined)
                         setTpSelectedName('')
                         setSellerSelectedName('')
+                        setReceiverSelectedName('')
                         setSelectedSupplierBrandIds([])
                         setSelectedSupplierDiscountNotes(undefined)
                         replace([])
@@ -793,6 +832,33 @@ export default function DocumentFormPage() {
                       placeholder="Selecciona una vendedora..."
                       searchValue={sellerSearch}
                       onSearchChange={setSellerSearch}
+                    />
+                  )}
+                />
+              </div>
+            )}
+
+            {/* Recibido por — solo compras */}
+            {needsReceiver && (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-content-secondary">
+                  Recibido por <span className="text-red-500">*</span>
+                </label>
+                <Controller
+                  name="receiverId"
+                  control={control}
+                  render={({ field }) => (
+                    <Combobox
+                      value={field.value ?? ''}
+                      onChange={(selectedId, option) => {
+                        field.onChange(selectedId)
+                        setReceiverSelectedName(option.label)
+                      }}
+                      options={receiverDisplayOptions}
+                      isLoading={isLoadingReceiver}
+                      placeholder="Selecciona quién recibió la mercancía..."
+                      searchValue={receiverSearch}
+                      onSearchChange={setReceiverSearch}
                     />
                   )}
                 />

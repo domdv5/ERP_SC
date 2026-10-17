@@ -17,11 +17,14 @@ function formatDate(date: Date | string): string {
 export function buildHeader(
   document: DocumentForPrint,
   title: string,
-  opts: { showSeller?: boolean } = {},
+  opts: { showSeller?: boolean; showReceiver?: boolean } = {},
 ): DynamicContent {
   return (): Content => {
     const thirdParty = document.thirdParty;
     const sellerName = opts.showSeller ? document.seller?.name : undefined;
+    const receiverName = opts.showReceiver
+      ? document.receiver?.name
+      : undefined;
 
     return {
       margin: [30, 20, 30, 10],
@@ -94,6 +97,15 @@ export function buildHeader(
               ? [
                   {
                     text: `Vendedor: ${sellerName}`,
+                    fontSize: 8,
+                    alignment: 'right' as const,
+                  },
+                ]
+              : []),
+            ...(receiverName
+              ? [
+                  {
+                    text: `Recibido por: ${receiverName}`,
                     fontSize: 8,
                     alignment: 'right' as const,
                   },

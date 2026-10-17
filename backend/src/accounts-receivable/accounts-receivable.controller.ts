@@ -15,6 +15,13 @@ export class AccountsReceivableController {
     return this.accountsReceivableService.findAll(findAllAccountsReceivableDto);
   }
 
+  // "clients" debe declararse antes de :id para que no lo capture como id.
+  @Get('clients/:clientId/statement')
+  @Permissions('ar.read')
+  getClientStatement(@Param('clientId') clientId: string) {
+    return this.accountsReceivableService.getClientStatement(clientId);
+  }
+
   @Get(':id')
   @Permissions('ar.read')
   findOne(@Param('id') id: string) {

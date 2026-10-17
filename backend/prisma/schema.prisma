@@ -69,6 +69,7 @@ model ThirdParty {
   address              String?
   isActive             Boolean               @default(true) @map("is_active")
   isSeller             Boolean               @default(false) @map("is_seller")
+  isReceiver           Boolean               @default(false) @map("is_receiver")
   isCustomer           Boolean               @default(false) @map("is_customer")
   isSupplier           Boolean               @default(false) @map("is_supplier")
   personType           String                @map("person_type") @db.VarChar(10)
@@ -88,6 +89,7 @@ model ThirdParty {
   supplier           Supplier?
   documents          Document[]
   sellerDocuments    Document[]           @relation("DocumentSeller")
+  receivedDocuments  Document[]           @relation("DocumentReceiver")
   soldToCustomers    Customer[]           @relation("SellerThirdParty")
   accountsReceivable AccountsReceivable[] @relation("SellerAR")
   equivalenceTables  EquivalenceTable[]
@@ -97,6 +99,7 @@ model ThirdParty {
   @@index([isCustomer])
   @@index([isSupplier])
   @@index([isSeller])
+  @@index([isReceiver])
   @@index([createdAt])
   @@map("third_parties")
 }
@@ -497,6 +500,8 @@ model Document {
   thirdPartyId          String?              @map("third_party_id") @db.Uuid
   /// Vendedor asignado — solo preventas (PV); ThirdParty con isSeller=true
   sellerId              String?              @map("seller_id") @db.Uuid
+  /// Quién recibió la mercancía — obligatorio solo en CM nuevas; ThirdParty con isReceiver=true
+  receiverId            String?              @map("receiver_id") @db.Uuid
   userId                String               @map("user_id") @db.Uuid
   status                DocumentStatus       @default(draft)
   total                 Decimal              @default(0) @db.Decimal(16, 2)
@@ -540,6 +545,7 @@ model Document {
 
   thirdParty       ThirdParty? @relation(fields: [thirdPartyId], references: [id])
   seller           ThirdParty? @relation("DocumentSeller", fields: [sellerId], references: [id])
+  receiver         ThirdParty? @relation("DocumentReceiver", fields: [receiverId], references: [id])
   user             User        @relation(fields: [userId], references: [id])
   confirmedBy      User?       @relation("DocumentConfirmedBy", fields: [confirmedById], references: [id])
   voidedBy         User?       @relation("DocumentVoidedBy", fields: [voidedById], references: [id])

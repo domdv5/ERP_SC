@@ -4,6 +4,7 @@ import type {
   AccountsReceivable,
   AccountsReceivableDetail,
   AccountsReceivableMeta,
+  ClientStatement,
   GetAccountsReceivableParams,
 } from '@/types'
 
@@ -18,5 +19,12 @@ export async function getAccountsReceivable(
 
 export async function getAccountReceivable(id: string): Promise<AccountsReceivableDetail> {
   const res = await api.get<ApiResponse<AccountsReceivableDetail>>(`/accounts-receivable/${id}`)
+  return res.data.data
+}
+
+export async function getClientStatement(clientId: string): Promise<ClientStatement> {
+  const res = await api.get<ApiResponse<ClientStatement>>(
+    `/accounts-receivable/clients/${clientId}/statement`,
+  )
   return res.data.data
 }

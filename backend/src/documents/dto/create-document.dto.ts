@@ -65,6 +65,11 @@ export class CreateDocumentDto {
   @IsUUID()
   sellerId?: string;
 
+  // Solo se exige en compras (CM); debe ser un tercero con el rol de recibe mercancía.
+  @IsOptional()
+  @IsUUID()
+  receiverId?: string;
+
   // Solo se envía en traslados; el resto de tipos siempre opera sobre la tienda
   // activa, que resuelve el service.
   @IsOptional()

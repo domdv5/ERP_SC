@@ -34,6 +34,7 @@ export const formSchema = z
     thirdPartyId: z.string().optional(),
     // Preventas y remisiones: vendedora responsable de la operación.
     sellerId: z.string().optional(),
+    receiverId: z.string().optional(),
     warehouseId: z.string().optional(),
     sourceBinId: z.string().optional(),
     destWarehouseId: z.string().optional(),
@@ -107,6 +108,13 @@ export const formSchema = z
           path: ['sellerId'],
         })
       }
+    }
+    if (data.type === 'CM' && !data.receiverId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Indica quién recibió la mercancía',
+        path: ['receiverId'],
+      })
     }
     // Devolución en venta: cliente y modalidad obligatorios. No cuelga del bloque PV/REM porque
     // la DVV no lleva vendedora.

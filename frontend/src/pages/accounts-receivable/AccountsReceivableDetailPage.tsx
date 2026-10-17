@@ -9,6 +9,7 @@ import {
   Landmark,
   Hash,
   User,
+  Receipt,
 } from 'lucide-react'
 import { getAccountReceivable } from '@/services/accounts-receivable.service'
 import { cn } from '@/lib/utils'
@@ -117,20 +118,30 @@ export default function AccountsReceivableDetailPage() {
 
       {/* Header card */}
       <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
-            {account.client.thirdParty.name[0]?.toUpperCase() ?? '?'}
-          </div>
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl text-content">{account.client.thirdParty.name}</h1>
-              <StatusBadge status={account.status} />
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
+              {account.client.thirdParty.name[0]?.toUpperCase() ?? '?'}
             </div>
-            <p className="text-content-muted text-sm mt-1 font-accent">
-              Documento {docNumber(account.document.type, account.document.number)} &middot;{' '}
-              {DOCUMENT_TYPE_LABELS[account.document.type] ?? account.document.type}
-            </p>
+            <div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl text-content">{account.client.thirdParty.name}</h1>
+                <StatusBadge status={account.status} />
+              </div>
+              <p className="text-content-muted text-sm mt-1 font-accent">
+                Documento {docNumber(account.document.type, account.document.number)} &middot;{' '}
+                {DOCUMENT_TYPE_LABELS[account.document.type] ?? account.document.type}
+              </p>
+            </div>
           </div>
+
+          <button
+            onClick={() => navigate(`/accounts-receivable/clients/${account.client.id}`)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-secondary hover:underline shrink-0"
+          >
+            <Receipt className="w-4 h-4" />
+            Ver estado de cuenta del cliente
+          </button>
         </div>
 
         {/* Meta grid */}

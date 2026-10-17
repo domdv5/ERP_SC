@@ -813,6 +813,19 @@ export default function DocumentDetailPage() {
             </div>
           )}
 
+          {/* Recibido por — compras (CM) */}
+          {doc.type === 'CM' && doc.receiver && (
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <UserCog className="w-4 h-4 text-content-muted" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint font-accent">Recibido por</p>
+                <p className="text-sm text-content">{doc.receiver.name}</p>
+              </div>
+            </div>
+          )}
+
           {/* Warehouse(s) */}
           {doc.type === 'T' ? (
             <div className="flex items-start gap-3 col-span-2">

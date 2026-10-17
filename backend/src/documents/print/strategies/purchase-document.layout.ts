@@ -11,14 +11,16 @@ import { computePrintTotals } from '../helpers/pdf-totals.helper';
 /** Diseño compartido entre compra y devolución a proveedor: ambas usan el mismo encabezado, tabla, totales y pie; solo cambia el título. */
 export function buildPurchaseDocumentDefinition(
   document: DocumentForPrint,
-  opts: { title: string },
+  opts: { title: string; showReceiver?: boolean },
 ): TDocumentDefinitions {
   const totals = computePrintTotals(document.documentItems);
 
   return {
     pageSize: 'LETTER',
     pageMargins: [30, 110, 30, 60],
-    header: buildHeader(document, opts.title),
+    header: buildHeader(document, opts.title, {
+      showReceiver: opts.showReceiver,
+    }),
     footer: buildFooter(document),
     content: [buildItemsTable(document.documentItems), buildTotalsBox(totals)],
     defaultStyle: { font: 'Roboto', fontSize: 8 },

@@ -1,15 +1,17 @@
-export type ThirdPartyRole = 'customer' | 'supplier' | 'seller'
+export type ThirdPartyRole = 'customer' | 'supplier' | 'seller' | 'receiver'
 
 export interface ThirdPartyRoleFlags {
   isCustomer?: boolean
   isSupplier?: boolean
   isSeller?: boolean
+  isReceiver?: boolean
 }
 
 const ROLE_FLAGS: ReadonlyArray<[ThirdPartyRole, keyof ThirdPartyRoleFlags]> = [
   ['customer', 'isCustomer'],
   ['supplier', 'isSupplier'],
   ['seller', 'isSeller'],
+  ['receiver', 'isReceiver'],
 ]
 
 export function canAssignThirdPartyRole(

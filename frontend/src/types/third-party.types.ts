@@ -33,6 +33,7 @@ export interface ThirdParty {
   withholdingAgentType?: WithholdingAgentType | null
   taxRegime?: TaxRegime | null
   isSeller?: boolean
+  isReceiver?: boolean
   isCustomer?: boolean
   isSupplier?: boolean
   isActive: boolean
@@ -55,6 +56,7 @@ export interface CreateThirdPartyPayload {
   withholdingAgentType?: WithholdingAgentType | null
   taxRegime?: TaxRegime | null
   isSeller?: boolean
+  isReceiver?: boolean
   isCustomer?: boolean
   isSupplier?: boolean
   creditLimit?: number
