@@ -10,7 +10,9 @@ import {
   deleteThirdParty,
   reactivateThirdParty,
   renameBrand,
+  updateCustomerBranch,
 } from '@/services/third-parties.service'
+import type { CustomerBranchInput } from '@/types'
 import { usePermission } from '@/hooks/usePermission'
 import { useAuthStore } from '@/stores/auth.store'
 import { canEditThirdParty } from '@/lib/third-party-permissions'
@@ -143,6 +145,13 @@ export default function ThirdPartiesPage() {
       invalidateBrands()
     },
     onError: () => toast.error('Error al renombrar la marca'),
+  })
+
+  const { mutateAsync: updateBranch } = useMutation({
+    mutationFn: ({ branchId, data }: { branchId: string; data: CustomerBranchInput }) =>
+      updateCustomerBranch(editing!.id, branchId, data),
+    onSuccess: () => invalidate(),
+    onError: () => toast.error('Error al guardar la sucursal'),
   })
 
   const { mutate: remove, isPending: isDeleting } = useMutation({
@@ -415,6 +424,7 @@ export default function ThirdPartiesPage() {
           update({ id: editing!.id, payload: data as Parameters<typeof updateThirdParty>[1] })
         }
         onRenameBrand={(brandId, name) => rename({ brandId, name })}
+        onUpdateBranch={(branchId, data) => updateBranch({ branchId, data })}
         isPending={isUpdating}
         defaultValues={editing ?? undefined}
       />

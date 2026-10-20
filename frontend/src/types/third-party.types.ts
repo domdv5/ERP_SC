@@ -4,8 +4,22 @@ export type WithholdingAgentType =
   'ninguno' | 'gran_contribuyente' | 'autorretenedor_renta' | 'agente_retencion_iva'
 export type TaxRegime = 'ordinario' | 'rst' | 'no_aplica'
 
+export interface CustomerBranch {
+  id: string
+  name: string
+  address?: string | null
+  phone?: string | null
+}
+
+export interface CustomerBranchInput {
+  name: string
+  address?: string
+  phone?: string
+}
+
 export interface Customer {
   id: string
+  branches?: CustomerBranch[]
   creditLimit?: number
   discount?: number
   sellerId?: string
@@ -65,6 +79,7 @@ export interface CreateThirdPartyPayload {
   internalNumber?: number
   discountNotes?: string
   brands?: string[]
+  branches?: CustomerBranchInput[]
 }
 
 export type UpdateThirdPartyPayload = Partial<CreateThirdPartyPayload>

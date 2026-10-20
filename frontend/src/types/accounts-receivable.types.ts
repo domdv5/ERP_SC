@@ -20,6 +20,8 @@ export interface AccountsReceivableDocument {
   // El backend ya lo manda con ceros a la izquierda (ej. "000009"); pasa por docNumber() igual.
   number: string
   date: string
+  // Solo ventas de clientes con sucursales.
+  customerBranch?: { id: string; name: string } | null
 }
 
 // Decimal de Prisma llega como string en el JSON; se tipa `string` a propósito para no mentir que ya es number.
@@ -82,6 +84,7 @@ export interface GetAccountsReceivableParams {
   limit?: number
   status?: AccountsReceivableStatus
   clientId?: string
+  customerBranchId?: string
   search?: string
   // Formato YYYY-MM-DD (el que da un <input type="date">); filtra sobre document.date
   dateFrom?: string
@@ -112,9 +115,19 @@ export interface ClientCredit {
   applications: ClientCreditApplication[]
 }
 
+// branchId null = CxC sin sucursal. Se calcula sobre todas las CxC del cliente, sin importar el filtro.
+export interface ClientBranchTotal {
+  branchId: string | null
+  name: string
+  totalDebt: string
+  totalPaid: string
+  totalBalance: string
+}
+
 export interface ClientStatement {
   client: { id: string; name: string }
   totals: ClientStatementTotals
+  branchTotals: ClientBranchTotal[]
   receivables: AccountsReceivable[]
   credits: ClientCredit[]
 }

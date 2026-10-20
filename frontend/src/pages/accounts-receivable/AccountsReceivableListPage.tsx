@@ -5,6 +5,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { TrendingUp, Clock, CheckCircle2, RefreshCw } from 'lucide-react'
 import { getAccountsReceivable } from '@/services/accounts-receivable.service'
 import { getThirdParties } from '@/services/third-parties.service'
+import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import {
   Combobox,
   StatsGrid,
@@ -36,6 +37,7 @@ export default function AccountsReceivableListPage() {
   const [clientId, setClientId] = useState('')
   const [clientSearch, setClientSearch] = useState('')
   const [clientSelectedName, setClientSelectedName] = useState('')
+  const [branchId, setBranchId] = useState('')
   const [statusFilter, setStatusFilter] = useState<AccountsReceivableStatus | ''>('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -45,17 +47,19 @@ export default function AccountsReceivableListPage() {
 
   const [prevFilters, setPrevFilters] = useState({
     clientId,
+    branchId,
     statusFilter,
     dateFrom,
     dateTo,
   })
   if (
     prevFilters.clientId !== clientId ||
+    prevFilters.branchId !== branchId ||
     prevFilters.statusFilter !== statusFilter ||
     prevFilters.dateFrom !== dateFrom ||
     prevFilters.dateTo !== dateTo
   ) {
-    setPrevFilters({ clientId, statusFilter, dateFrom, dateTo })
+    setPrevFilters({ clientId, branchId, statusFilter, dateFrom, dateTo })
     setPage(1)
   }
 
@@ -74,6 +78,8 @@ export default function AccountsReceivableListPage() {
     enabled: hasClientSearch,
   })
 
+  const { branches: clientBranches } = useCustomerBranches(clientId || undefined)
+
   const clientOptions: ComboboxOption[] = (clientData?.items ?? []).map((tp: ThirdParty) => ({
     id: tp.id,
     label: tp.name,
@@ -90,10 +96,11 @@ export default function AccountsReceivableListPage() {
   const hasInvalidDateRange = Boolean(dateFrom && dateTo && dateFrom > dateTo)
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['accounts-receivable', clientId, statusFilter, dateFrom, dateTo, page],
+    queryKey: ['accounts-receivable', clientId, branchId, statusFilter, dateFrom, dateTo, page],
     queryFn: () =>
       getAccountsReceivable({
         clientId: clientId || undefined,
+        customerBranchId: branchId || undefined,
         status: statusFilter || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
@@ -159,7 +166,7 @@ export default function AccountsReceivableListPage() {
     },
   ]
 
-  const hasActiveFilters = Boolean(clientId || statusFilter || dateFrom || dateTo)
+  const hasActiveFilters = Boolean(clientId || branchId || statusFilter || dateFrom || dateTo)
 
   return (
     <div className="space-y-6">
@@ -187,6 +194,7 @@ export default function AccountsReceivableListPage() {
                 value={clientId}
                 onChange={(id, option) => {
                   setClientId(id)
+                  setBranchId('')
                   setClientSelectedName(option.label)
                 }}
                 options={clientDisplayOptions}
@@ -210,6 +218,21 @@ export default function AccountsReceivableListPage() {
             </button>
           </div>
           <div className="px-5 pb-4 flex flex-wrap gap-3">
+            {/* Con una sucursal elegida el selector sigue visible aunque la lista esté recargando, para no ocultar un filtro activo */}
+            {clientId && (clientBranches.length > 0 || branchId) && (
+              <select
+                value={branchId}
+                onChange={(e) => setBranchId(e.target.value)}
+                className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+              >
+                <option value="">Todas las sucursales</option>
+                {clientBranches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as AccountsReceivableStatus | '')}
@@ -283,6 +306,7 @@ export default function AccountsReceivableListPage() {
                 <tr className="border-b border-ui-border">
                   {[
                     'Cliente',
+                    'Sucursal',
                     'Documento',
                     'Fecha venta',
                     'Monto total',
@@ -322,6 +346,9 @@ export default function AccountsReceivableListPage() {
                           {account.client.thirdParty.name}
                         </button>
                       </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-content-muted text-xs">
+                      {account.document.customerBranch?.name ?? '—'}
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex flex-col">

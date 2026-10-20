@@ -22,9 +22,13 @@ export async function getAccountReceivable(id: string): Promise<AccountsReceivab
   return res.data.data
 }
 
-export async function getClientStatement(clientId: string): Promise<ClientStatement> {
+export async function getClientStatement(
+  clientId: string,
+  customerBranchId?: string,
+): Promise<ClientStatement> {
   const res = await api.get<ApiResponse<ClientStatement>>(
     `/accounts-receivable/clients/${clientId}/statement`,
+    { params: { customerBranchId } },
   )
   return res.data.data
 }

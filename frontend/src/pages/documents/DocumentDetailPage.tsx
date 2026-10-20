@@ -717,6 +717,12 @@ export default function DocumentDetailPage() {
                       : 'Tercero'}
                 </p>
                 <p className="text-sm text-content">{doc.thirdParty.name}</p>
+                {doc.customerBranch && (
+                  <p className="text-xs text-content-muted mt-0.5">
+                    Sucursal: {doc.customerBranch.name}
+                    {doc.customerBranch.address ? ` · ${doc.customerBranch.address}` : ''}
+                  </p>
+                )}
               </div>
             </div>
           )}

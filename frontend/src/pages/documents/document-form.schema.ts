@@ -32,6 +32,7 @@ export const formSchema = z
     ] as const),
     date: z.string().min(1, 'La fecha es requerida'),
     thirdPartyId: z.string().optional(),
+    customerBranchId: z.string().optional(),
     // Preventas y remisiones: vendedora responsable de la operación.
     sellerId: z.string().optional(),
     receiverId: z.string().optional(),
