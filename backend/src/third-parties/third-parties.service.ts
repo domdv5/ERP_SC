@@ -8,6 +8,7 @@ import { Customer, Prisma, Supplier } from '@prisma/client';
 import {
   CreateThirdPartyDto,
   FindAllThirdPartiesDto,
+  UpdateCustomerBranchDto,
   UpdateThirdPartyDto,
 } from './dto/index';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -24,6 +25,10 @@ const ROLE_LABELS: Record<ThirdPartyRole, string> = {
   seller: 'vendedor',
   receiver: 'recibe mercancía',
 };
+
+const ACTIVE_BRANCHES_INCLUDE = {
+  branches: { where: { active: true }, orderBy: { name: 'asc' } },
+} satisfies Prisma.CustomerInclude;
 
 @Injectable()
 export class ThirdPartiesService {
@@ -61,7 +66,7 @@ export class ThirdPartiesService {
         this.prisma.thirdParty.findMany({
           where,
           include: {
-            customer: true,
+            customer: { include: ACTIVE_BRANCHES_INCLUDE },
             supplier: { include: { brands: { where: { active: true } } } },
           },
           skip,
@@ -97,6 +102,7 @@ export class ThirdPartiesService {
       sellerId,
       internalNumber,
       brands,
+      branches,
       discountNotes,
       ...thirdPartyData
     } = createThirdPartyDto;
@@ -134,8 +140,18 @@ export class ThirdPartiesService {
       let supplier: Supplier | null = null;
 
       if (isCustomer) {
+        // Las sucursales nunca se borran (los documentos las referencian por id);
+        // solo se crean o se editan vía updateBranch().
         customer = await tx.customer.create({
-          data: { id: thirdParty.id, creditLimit, discount, sellerId },
+          data: {
+            id: thirdParty.id,
+            creditLimit,
+            discount,
+            sellerId,
+            ...(branches?.length && {
+              branches: { createMany: { data: branches } },
+            }),
+          },
         });
       }
 
@@ -171,6 +187,20 @@ export class ThirdPartiesService {
     return this.prisma.brand.update({
       where: { id: brandId, supplierId },
       data: { name },
+    });
+  }
+
+  async updateBranch(
+    customerId: string,
+    branchId: string,
+    dto: UpdateCustomerBranchDto,
+    user: JwtPayload,
+  ) {
+    await this.assertCanEdit(customerId, {}, user);
+
+    return this.prisma.customerBranch.update({
+      where: { id: branchId, customerId },
+      data: dto,
     });
   }
 
@@ -211,6 +241,7 @@ export class ThirdPartiesService {
       sellerId,
       internalNumber,
       brands,
+      branches,
       discountNotes,
       ...thirdPartyData
     } = updateThirdPartyDto;
@@ -287,9 +318,20 @@ export class ThirdPartiesService {
         });
       }
 
+      if (isCustomer && branches !== undefined) {
+        // Las sucursales nunca se eliminan, solo se agregan o editan; skipDuplicates protege contra nombre duplicado.
+        await tx.customerBranch.createMany({
+          data: branches.map((branch) => ({ ...branch, customerId: id })),
+          skipDuplicates: true,
+        });
+      }
+
       return tx.thirdParty.findUniqueOrThrow({
         where: { id },
-        include: { customer: true, supplier: { include: { brands: true } } },
+        include: {
+          customer: { include: ACTIVE_BRANCHES_INCLUDE },
+          supplier: { include: { brands: true } },
+        },
       });
     });
   }
