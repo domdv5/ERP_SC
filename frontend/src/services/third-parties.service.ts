@@ -4,6 +4,7 @@ import type {
   ThirdParty,
   CreateThirdPartyPayload,
   UpdateThirdPartyPayload,
+  CustomerBranchInput,
 } from '@/types'
 
 export interface ThirdPartyMeta {
@@ -36,6 +37,11 @@ export async function getThirdParties(
   return res.data.data
 }
 
+export async function getThirdParty(id: string): Promise<ThirdParty> {
+  const res = await api.get<ApiResponse<ThirdParty>>(`/third-parties/${id}`)
+  return res.data.data
+}
+
 export async function createThirdParty(payload: CreateThirdPartyPayload): Promise<ThirdParty> {
   const res = await api.post<ApiResponse<ThirdParty>>('/third-parties', payload)
   return res.data.data
@@ -55,6 +61,14 @@ export async function renameBrand(
   name: string,
 ): Promise<void> {
   await api.patch(`/third-parties/${thirdPartyId}/brands/${brandId}`, { name })
+}
+
+export async function updateCustomerBranch(
+  thirdPartyId: string,
+  branchId: string,
+  data: CustomerBranchInput,
+): Promise<void> {
+  await api.patch(`/third-parties/${thirdPartyId}/branches/${branchId}`, data)
 }
 
 export async function deleteThirdParty(id: string): Promise<void> {

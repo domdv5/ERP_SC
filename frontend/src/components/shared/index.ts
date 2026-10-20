@@ -1,6 +1,7 @@
 export { Combobox } from './Combobox'
 export type { ComboboxOption } from './Combobox'
 export { CatalogComboboxField } from './CatalogComboboxField'
+export { CustomerBranchSelect } from './CustomerBranchSelect'
 export { CreditsPanel } from './CreditsPanel'
 export type { CreditsPanelCredit } from './CreditsPanel'
 export { EmptyState } from './EmptyState'

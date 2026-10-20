@@ -22,6 +22,12 @@ export interface DocumentThirdParty {
   supplier?: { brands: { id: string; name: string }[]; discountNotes?: string | null } | null
 }
 
+export interface DocumentCustomerBranch {
+  id: string
+  name: string
+  address?: string | null
+}
+
 export interface DocumentUser {
   id: number
   name: string
@@ -98,6 +104,8 @@ export interface DocumentListItem {
   adjustmentReasonOther?: string | null
   notes: string | null
   thirdParty: DocumentThirdParty | null
+  // Solo ventas (PV, REM, COT, POS, DVV) de clientes con sucursales.
+  customerBranch?: DocumentCustomerBranch | null
   user: DocumentUser
   warehouse: DocumentWarehouse | null
   destWarehouse: DocumentWarehouse | null
@@ -260,6 +268,8 @@ export interface CreateDocumentPayload {
   type: DocumentType
   date: string
   thirdPartyId?: string
+  // Solo ventas de clientes con sucursales (obligatoria); null al editar la quita.
+  customerBranchId?: string | null
   // Solo preventas y remisiones: vendedora responsable, a nivel de documento.
   sellerId?: string
   // Solo compras (CM), obligatorio: quién recibió la mercancía.

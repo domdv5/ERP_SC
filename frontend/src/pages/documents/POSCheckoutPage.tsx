@@ -27,7 +27,8 @@ import {
 } from '@/services/documents.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import { getProducts, getProductByCode } from '@/services/products.service'
-import { Combobox, SegmentedToggle, CreditsPanel } from '@/components/shared'
+import { Combobox, SegmentedToggle, CreditsPanel, CustomerBranchSelect } from '@/components/shared'
+import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import type { ComboboxOption } from '@/components/shared'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
@@ -118,6 +119,7 @@ export default function POSCheckoutPage() {
   // ── cliente ────────────────────────────────────────────────────────────────
   const [thirdPartyId, setThirdPartyId] = useState('')
   const [tpSelectedName, setTpSelectedName] = useState('')
+  const [customerBranchId, setCustomerBranchId] = useState('')
   const [tpSearch, setTpSearch] = useState('')
   const [debouncedTpSearch] = useDebounce(tpSearch, 400)
   const hasTpSearch = debouncedTpSearch.length >= 1
@@ -187,6 +189,9 @@ export default function POSCheckoutPage() {
   // Venta oficial (POSO): solo contado, valores sin IVA, sin stock ni saldos a favor; se bloquea con borrador en curso.
   const [official, setOfficial] = useState(false)
   const isCredit = mode === 'COT'
+  const { branches: customerBranches, isLoading: isLoadingBranches } =
+    useCustomerBranches(thirdPartyId)
+  const needsBranch = customerBranches.length > 0
   const docType: DocumentType = official ? 'POSO' : mode
   const accent = DOC_TYPE_ACCENT[docType]
 
@@ -212,6 +217,7 @@ export default function POSCheckoutPage() {
   async function handleCustomerSelected(id: string, label: string) {
     setThirdPartyId(id)
     setTpSelectedName(label)
+    setCustomerBranchId('')
     setPendingPreventa(null)
     // La conversión PV/REM→venta no existe para POSO: no se busca preventa activa en modo oficial.
     if (official) return
@@ -281,6 +287,7 @@ export default function POSCheckoutPage() {
     setOfficial(doc.type === 'POSO')
     setThirdPartyId(doc.thirdParty?.id ?? '')
     setTpSelectedName(doc.thirdParty?.name ?? '')
+    setCustomerBranchId(doc.customerBranch?.id ?? '')
     setSellerId(doc.seller?.id ?? '')
     setSellerSelectedName(doc.seller?.name ?? '')
     replace(
@@ -534,6 +541,8 @@ export default function POSCheckoutPage() {
 
   const missingItems: string[] = []
   if (!thirdPartyId) missingItems.push('Selecciona un cliente')
+  if (thirdPartyId && isLoadingBranches) missingItems.push('Cargando sucursales del cliente...')
+  if (needsBranch && !customerBranchId) missingItems.push('Selecciona la sucursal del cliente')
   if (!sellerId) missingItems.push('Selecciona una vendedora')
   if (!isCredit && !paymentMethod) missingItems.push('Selecciona una forma de pago')
   if (!hasValidItems) missingItems.push('Agrega al menos un producto con cantidad válida')
@@ -593,6 +602,8 @@ export default function POSCheckoutPage() {
     const payload: UpdateDocumentPayload = {
       date: TODAY,
       thirdPartyId,
+      // null suelta una sucursal vieja del borrador si el cliente ya no la requiere.
+      customerBranchId: needsBranch ? customerBranchId : null,
       sellerId,
       // La venta a crédito no lleva forma de pago; la de contado la exige (ya validado arriba).
       paymentMethod: isCredit ? undefined : (paymentMethod as PaymentMethod),
@@ -767,6 +778,14 @@ export default function POSCheckoutPage() {
                   <p className="text-xs text-content-faint font-accent">
                     Buscando preventas activas...
                   </p>
+                )}
+                {thirdPartyId && (
+                  <CustomerBranchSelect
+                    branches={customerBranches}
+                    value={customerBranchId}
+                    onChange={setCustomerBranchId}
+                    isLoading={isLoadingBranches}
+                  />
                 )}
               </div>
 

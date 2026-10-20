@@ -2,6 +2,8 @@ export type {
   ThirdParty,
   CreateThirdPartyPayload,
   UpdateThirdPartyPayload,
+  CustomerBranch,
+  CustomerBranchInput,
   PersonType,
   DocumentType as ThirdPartyDocumentType,
 } from './third-party.types'

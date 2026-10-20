@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { ArrowLeft, Wallet, CreditCard, FileText, History, PiggyBank } from 'lucide-react'
 import { getClientStatement } from '@/services/accounts-receivable.service'
 import { cn } from '@/lib/utils'
@@ -27,6 +28,7 @@ const creditStatusBadgeFor = (status: string) =>
 export default function AccountsReceivableClientStatementPage() {
   const { clientId } = useParams<{ clientId: string }>()
   const navigate = useNavigate()
+  const [branchId, setBranchId] = useState('')
 
   const {
     data: statement,
@@ -34,8 +36,9 @@ export default function AccountsReceivableClientStatementPage() {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ['accounts-receivable', 'clients', clientId, 'statement'],
-    queryFn: () => getClientStatement(clientId!),
+    queryKey: ['accounts-receivable', 'clients', clientId, 'statement', branchId],
+    queryFn: () => getClientStatement(clientId!, branchId || undefined),
+    placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
     enabled: Boolean(clientId),
   })
@@ -90,7 +93,8 @@ export default function AccountsReceivableClientStatementPage() {
     )
   }
 
-  const { client, totals, receivables, credits } = statement
+  const { client, totals, receivables, credits, branchTotals } = statement
+  const hasBranches = branchTotals.some((b) => b.branchId !== null)
   const totalDebt = Number(totals.totalDebt)
   const totalPaid = Number(totals.totalPaid)
   const totalBalance = Number(totals.totalBalance)
@@ -172,13 +176,75 @@ export default function AccountsReceivableClientStatementPage() {
         </div>
       </div>
 
+      {/* Resumen por sucursal */}
+      {hasBranches && (
+        <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-ui-border">
+            <h2 className="text-content font-semibold">Resumen por sucursal</h2>
+            <p className="text-content-muted text-xs mt-0.5 font-accent">
+              Suma de todas las cuentas del cliente, sin importar el filtro
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-ui-border">
+                  {['Sucursal', 'Deuda', 'Pagado', 'Saldo'].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ui-divide">
+                {branchTotals.map((branch) => (
+                  <tr key={branch.branchId ?? 'none'}>
+                    <td className="px-5 py-3.5 text-content font-medium">{branch.name}</td>
+                    <td className="px-5 py-3.5 text-content-secondary text-xs whitespace-nowrap">
+                      {formatCOP(Number(branch.totalDebt))}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                      {formatCOP(Number(branch.totalPaid))}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                      {formatCOP(Number(branch.totalBalance))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Receivables table */}
       <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-ui-border">
-          <h2 className="text-content font-semibold">Cuentas por cobrar</h2>
-          <p className="text-content-muted text-xs mt-0.5 font-accent">
-            {receivables.length} {receivables.length === 1 ? 'documento' : 'documentos'}
-          </p>
+        <div className="px-6 py-4 border-b border-ui-border flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-content font-semibold">Cuentas por cobrar</h2>
+            <p className="text-content-muted text-xs mt-0.5 font-accent">
+              {receivables.length} {receivables.length === 1 ? 'documento' : 'documentos'}
+            </p>
+          </div>
+          {hasBranches && (
+            <select
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+              className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+            >
+              <option value="">Todas las sucursales</option>
+              {branchTotals
+                .filter((b) => b.branchId !== null)
+                .map((b) => (
+                  <option key={b.branchId} value={b.branchId!}>
+                    {b.name}
+                  </option>
+                ))}
+            </select>
+          )}
         </div>
 
         {receivables.length === 0 ? (
@@ -191,7 +257,15 @@ export default function AccountsReceivableClientStatementPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Documento', 'Fecha', 'Total', 'Pagado', 'Saldo', 'Estado'].map((h) => (
+                  {[
+                    'Documento',
+                    ...(hasBranches ? ['Sucursal'] : []),
+                    'Fecha',
+                    'Total',
+                    'Pagado',
+                    'Saldo',
+                    'Estado',
+                  ].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -219,6 +293,11 @@ export default function AccountsReceivableClientStatementPage() {
                         </span>
                       </div>
                     </td>
+                    {hasBranches && (
+                      <td className="px-5 py-3.5 text-content-muted text-xs">
+                        {receivable.document.customerBranch?.name ?? '—'}
+                      </td>
+                    )}
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
                       {formatDate(receivable.document.date)}
                     </td>

@@ -2,19 +2,28 @@ import { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { X, Plus, Trash2, Lock } from 'lucide-react'
+import { X, Plus, Trash2, Lock, Pencil, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { canAssignThirdPartyRole } from '@/lib/third-party-permissions'
 import { useAuthStore } from '@/stores/auth.store'
 import { ThousandsInput } from '@/components/shared'
-import type { ThirdParty } from '@/types'
+import type { ThirdParty, CustomerBranchInput } from '@/types'
 import {
   WITHHOLDING_AGENT_TYPE_OPTIONS,
   TAX_REGIME_OPTIONS,
   IVA_RESPONSIBLE_OPTIONS,
 } from '@/pages/third-parties/third-parties.constants'
+
+const branchSchema = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+})
+
+const EMPTY_BRANCH = { name: '', address: '', phone: '' }
 
 const schema = z
   .object({
@@ -39,6 +48,7 @@ const schema = z
     internalNumber: z.coerce.number().int().min(1, 'Debe ser mayor a 0').optional(),
     discountNotes: z.string().max(500, 'Máximo 500 caracteres').optional(),
     brands: z.array(z.string()).optional(),
+    branches: z.array(branchSchema).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.personType === 'natural') {
@@ -95,6 +105,7 @@ interface ThirdPartyFormProps {
   onClose: () => void
   onSubmit: (data: FormValues) => void
   onRenameBrand?: (brandId: string, newName: string) => Promise<void>
+  onUpdateBranch?: (branchId: string, data: CustomerBranchInput) => Promise<unknown>
   isPending: boolean
   defaultValues?: ThirdParty
 }
@@ -202,6 +213,13 @@ function flattenDefaults(tp: ThirdParty): Partial<FormValues> {
     internalNumber: tp.supplier?.internalNumber,
     discountNotes: tp.supplier?.discountNotes ?? undefined,
     brands: tp.supplier?.brands?.map((b) => b.name) ?? [],
+    branches:
+      tp.customer?.branches?.map((b) => ({
+        id: b.id,
+        name: b.name,
+        address: b.address ?? '',
+        phone: b.phone ?? '',
+      })) ?? [],
   }
 }
 
@@ -210,6 +228,7 @@ export function ThirdPartyForm({
   onClose,
   onSubmit,
   onRenameBrand,
+  onUpdateBranch,
   isPending,
   defaultValues,
 }: ThirdPartyFormProps) {
@@ -219,6 +238,9 @@ export function ThirdPartyForm({
   const [brandIds, setBrandIds] = useState<Map<string, string>>(
     () => new Map(defaultValues?.supplier?.brands?.map((b) => [b.name, b.id]) ?? []),
   )
+  const [branchDraft, setBranchDraft] = useState(EMPTY_BRANCH)
+  const [editingBranch, setEditingBranch] = useState<number | null>(null)
+  const [branchEdit, setBranchEdit] = useState(EMPTY_BRANCH)
   const cancelRenameRef = useRef(false)
   const isEdit = !!defaultValues
 
@@ -239,6 +261,7 @@ export function ThirdPartyForm({
     isSeller: false,
     isReceiver: false,
     brands: [],
+    branches: [],
   })
 
   const { register, handleSubmit, watch, setValue, reset, control } = useForm<FormValues>({
@@ -257,6 +280,8 @@ export function ThirdPartyForm({
       })
       setBrandIds(new Map(defaultValues?.supplier?.brands?.map((b) => [b.name, b.id]) ?? []))
       setEditingBrand(null)
+      setEditingBranch(null)
+      setBranchDraft(EMPTY_BRANCH)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, defaultValues, reset, onlyCustomer])
@@ -265,6 +290,7 @@ export function ThirdPartyForm({
   const isCustomer = watch('isCustomer')
   const isSupplier = watch('isSupplier')
   const brands = watch('brands') ?? []
+  const branches = watch('branches') ?? []
   const firstName = watch('firstName')
   const lastName = watch('lastName')
 
@@ -295,6 +321,72 @@ export function ThirdPartyForm({
     )
   }
 
+  function hasBranchName(name: string, skipIndex?: number) {
+    return branches.some(
+      (b, i) => i !== skipIndex && b.name.trim().toLowerCase() === name.toLowerCase(),
+    )
+  }
+
+  function addBranch() {
+    const name = branchDraft.name.trim()
+    if (!name) return
+    if (hasBranchName(name)) {
+      toast.error('Ya existe una sucursal con ese nombre')
+      return
+    }
+    setValue(
+      'branches',
+      [...branches, { name, address: branchDraft.address.trim(), phone: branchDraft.phone.trim() }],
+      { shouldDirty: true },
+    )
+    setBranchDraft(EMPTY_BRANCH)
+  }
+
+  function removeBranch(index: number) {
+    if (branches[index]?.id) {
+      toast.info('Las sucursales guardadas no se pueden eliminar porque pueden tener ventas.')
+      return
+    }
+    setValue(
+      'branches',
+      branches.filter((_, i) => i !== index),
+      { shouldDirty: true },
+    )
+  }
+
+  function startBranchEdit(index: number) {
+    const b = branches[index]
+    setEditingBranch(index)
+    setBranchEdit({ name: b.name, address: b.address ?? '', phone: b.phone ?? '' })
+  }
+
+  async function confirmBranchEdit(index: number) {
+    const name = branchEdit.name.trim()
+    if (!name) {
+      toast.error('La sucursal necesita un nombre')
+      return
+    }
+    if (hasBranchName(name, index)) {
+      toast.error('Ya existe una sucursal con ese nombre')
+      return
+    }
+    const data = { name, address: branchEdit.address.trim(), phone: branchEdit.phone.trim() }
+    const branchId = branches[index].id
+    if (branchId && onUpdateBranch) {
+      try {
+        await onUpdateBranch(branchId, data)
+      } catch {
+        return
+      }
+    }
+    setValue(
+      'branches',
+      branches.map((b, i) => (i === index ? { ...b, ...data } : b)),
+      { shouldDirty: true },
+    )
+    setEditingBranch(null)
+  }
+
   function startRename(brand: string) {
     setEditingBrand(brand)
     setEditingValue(brand)
@@ -306,8 +398,12 @@ export function ThirdPartyForm({
     const finalName =
       data.personType === 'natural' ? data.name?.trim() || derivedName : (data.name ?? '').trim()
     const newBrands = (data.brands ?? []).filter((n) => !brandIds.has(n))
+    const newBranches = (data.branches ?? [])
+      .filter((b) => !b.id)
+      .map(({ name, address, phone }) => ({ name, address, phone }))
     onSubmit({
       ...data,
+      branches: data.isCustomer && newBranches.length ? newBranches : undefined,
       name: finalName,
       brands: newBrands.length ? newBrands : undefined,
       ivaResponsible:
@@ -511,6 +607,114 @@ export function ThirdPartyForm({
                       placeholder="0.00"
                     />
                   </Field>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-content-secondary mb-1">
+                    Sucursales
+                  </label>
+                  <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 mb-2">
+                    <Input
+                      value={branchDraft.name}
+                      onChange={(e) => setBranchDraft((d) => ({ ...d, name: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addBranch()
+                        }
+                      }}
+                      placeholder="Nombre de la sucursal"
+                    />
+                    <Input
+                      value={branchDraft.address}
+                      onChange={(e) => setBranchDraft((d) => ({ ...d, address: e.target.value }))}
+                      placeholder="Dirección"
+                    />
+                    <Input
+                      value={branchDraft.phone}
+                      onChange={(e) => setBranchDraft((d) => ({ ...d, phone: e.target.value }))}
+                      placeholder="Teléfono"
+                    />
+                    <button
+                      type="button"
+                      onClick={addBranch}
+                      className="px-3 py-2 rounded-lg text-white bg-brand-primary hover:bg-brand-primary-light transition-colors flex items-center gap-1 text-sm shrink-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {branches.map((branch, index) =>
+                      editingBranch === index ? (
+                        <div
+                          key={branch.id ?? `new-${index}`}
+                          className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2"
+                        >
+                          <Input
+                            value={branchEdit.name}
+                            onChange={(e) => setBranchEdit((d) => ({ ...d, name: e.target.value }))}
+                            placeholder="Nombre"
+                          />
+                          <Input
+                            value={branchEdit.address}
+                            onChange={(e) =>
+                              setBranchEdit((d) => ({ ...d, address: e.target.value }))
+                            }
+                            placeholder="Dirección"
+                          />
+                          <Input
+                            value={branchEdit.phone}
+                            onChange={(e) =>
+                              setBranchEdit((d) => ({ ...d, phone: e.target.value }))
+                            }
+                            placeholder="Teléfono"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => confirmBranchEdit(index)}
+                            className="px-3 py-2 rounded-lg text-white gradient-action flex items-center"
+                            title="Guardar sucursal"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          key={branch.id ?? `new-${index}`}
+                          className="flex items-center gap-3 px-3 py-2 bg-surface border border-ui-border-medium rounded-lg text-sm"
+                        >
+                          <span className="font-medium text-content">{branch.name}</span>
+                          <span className="flex-1 truncate text-xs text-content-muted">
+                            {[branch.address, branch.phone].filter(Boolean).join(' · ')}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => startBranchEdit(index)}
+                            className="text-content-faint hover:text-brand-secondary transition-colors"
+                            title="Editar sucursal"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeBranch(index)}
+                            className={cn(
+                              'transition-colors',
+                              branch.id
+                                ? 'text-content-faint cursor-not-allowed'
+                                : 'text-content-faint hover:text-red-500',
+                            )}
+                            title={branch.id ? 'No se puede eliminar' : 'Quitar sucursal'}
+                          >
+                            {branch.id ? (
+                              <Lock className="w-3.5 h-3.5" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      ),
+                    )}
+                  </div>
                 </div>
               </div>
             )}

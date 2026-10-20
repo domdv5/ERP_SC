@@ -12,7 +12,8 @@ import { getWarehouses, getWarehouse } from '@/services/warehouses.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { invalidateAfterDocumentChange } from '@/lib/invalidation'
-import { Combobox } from '@/components/shared'
+import { Combobox, CustomerBranchSelect } from '@/components/shared'
+import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
@@ -208,6 +209,7 @@ export default function DocumentFormPage() {
       sourceBinId: existingDoc.sourceBin?.id ?? undefined,
       destWarehouseId: existingDoc.destWarehouse?.id ?? undefined,
       destBinId: existingDoc.destBin?.id ?? undefined,
+      customerBranchId: existingDoc.customerBranch?.id ?? undefined,
       adjustmentReason: existingDoc.adjustmentReason ?? undefined,
       adjustmentReasonOther: existingDoc.adjustmentReasonOther ?? undefined,
       refundMethod: existingDoc.refundMethod ?? undefined,
@@ -449,6 +451,9 @@ export default function DocumentFormPage() {
   }))
 
   const currentTpId = watch('thirdPartyId') ?? ''
+  const { branches: customerBranches, isLoading: isLoadingBranches } = useCustomerBranches(
+    needsCustomer ? currentTpId : undefined,
+  )
 
   const tpDisplayOptions: ComboboxOption[] =
     currentTpId && !debouncedTpSearch
@@ -530,10 +535,23 @@ export default function DocumentFormPage() {
 
   // ── submit ────────────────────────────────────────────────────────────────
   const onSubmit = (values: FormValues) => {
+    if (needsCustomer && values.thirdPartyId) {
+      if (isLoadingBranches) {
+        toast.error('Espera a que carguen las sucursales del cliente')
+        return
+      }
+      if (customerBranches.length > 0 && !values.customerBranchId) {
+        toast.error('Selecciona la sucursal del cliente')
+        return
+      }
+    }
+    const branchId = needsCustomer && customerBranches.length > 0 ? values.customerBranchId : ''
     const payload = {
       type: values.type,
       date: values.date,
       thirdPartyId: values.thirdPartyId || undefined,
+      // Al editar, null suelta la sucursal vieja si el cliente cambió a uno sin sucursales.
+      customerBranchId: needsCustomer ? branchId || (isEditing ? null : undefined) : undefined,
       sellerId:
         values.type === 'PV' || values.type === 'REM' ? values.sellerId || undefined : undefined,
       receiverId: values.type === 'CM' ? values.receiverId || undefined : undefined,
@@ -771,6 +789,7 @@ export default function DocumentFormPage() {
                       onChange={(selectedId, option) => {
                         field.onChange(selectedId)
                         setTpSelectedName(option.label)
+                        setValue('customerBranchId', undefined)
 
                         const tp = tpData?.items.find((t: ThirdParty) => t.id === selectedId)
                         setSelectedSupplierBrandIds(tp?.supplier?.brands.map((b) => b.id) ?? [])
@@ -809,6 +828,21 @@ export default function DocumentFormPage() {
                   </div>
                 )}
               </div>
+            )}
+
+            {needsCustomer && currentTpId && (
+              <Controller
+                name="customerBranchId"
+                control={control}
+                render={({ field }) => (
+                  <CustomerBranchSelect
+                    branches={customerBranches}
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    isLoading={isLoadingBranches}
+                  />
+                )}
+              />
             )}
 
             {/* Vendedora — solo preventas y remisiones */}
