@@ -10,13 +10,30 @@ import { FindAllAccountsReceivableDto } from './dto/index';
 const LIST_INCLUDE = {
   client: { include: { thirdParty: { select: { id: true, name: true } } } },
   seller: { select: { id: true, name: true } },
-  document: { select: { id: true, type: true, number: true, date: true } },
+  document: {
+    select: {
+      id: true,
+      type: true,
+      number: true,
+      date: true,
+      customerBranchId: true,
+      customerBranch: { select: { id: true, name: true } },
+    },
+  },
 } satisfies Prisma.AccountsReceivableInclude;
 
 const DETAIL_INCLUDE = {
   client: { include: { thirdParty: { select: { id: true, name: true } } } },
   seller: { select: { id: true, name: true } },
-  document: { select: { id: true, type: true, number: true, date: true } },
+  document: {
+    select: {
+      id: true,
+      type: true,
+      number: true,
+      date: true,
+      customerBranch: { select: { id: true, name: true } },
+    },
+  },
   receivablePayments: { orderBy: { paymentDate: 'desc' } },
   reciboCajaAllocations: {
     include: {
@@ -112,6 +129,52 @@ function buildHistory(accountReceivable: DetailRow) {
   );
 }
 
+type BranchReceivable = Pick<ListRow, 'totalAmount' | 'paidAmount'> & {
+  document: { customerBranchId: string | null };
+};
+
+/** Una fila por sucursal del cliente más "Sin sucursal" (branchId null) solo si hay CxC sin sucursal. */
+function buildBranchTotals(
+  branches: { id: string; name: string }[],
+  receivables: BranchReceivable[],
+) {
+  const totalsFor = (
+    branchId: string | null,
+    name: string,
+  ): {
+    branchId: string | null;
+    name: string;
+    totalDebt: Prisma.Decimal;
+    totalPaid: Prisma.Decimal;
+    totalBalance: Prisma.Decimal;
+  } => {
+    const rows = receivables.filter(
+      (receivable) => receivable.document.customerBranchId === branchId,
+    );
+    const totalDebt = rows.reduce(
+      (sum, receivable) => sum.plus(receivable.totalAmount),
+      new Prisma.Decimal(0),
+    );
+    const totalPaid = rows.reduce(
+      (sum, receivable) => sum.plus(receivable.paidAmount),
+      new Prisma.Decimal(0),
+    );
+    return {
+      branchId,
+      name,
+      totalDebt,
+      totalPaid,
+      totalBalance: totalDebt.minus(totalPaid),
+    };
+  };
+
+  const rows = branches.map((branch) => totalsFor(branch.id, branch.name));
+  if (receivables.some((r) => r.document.customerBranchId === null)) {
+    rows.push(totalsFor(null, 'Sin sucursal'));
+  }
+  return rows;
+}
+
 @Injectable()
 export class AccountsReceivableService {
   constructor(private readonly prisma: PrismaService) {}
@@ -122,6 +185,7 @@ export class AccountsReceivableService {
       limit = 20,
       status,
       clientId,
+      customerBranchId,
       search,
       dateFrom,
       dateTo,
@@ -142,8 +206,13 @@ export class AccountsReceivableService {
           thirdParty: { name: { contains: search, mode: 'insensitive' } },
         },
       }),
-      ...((dateFrom || dateTo) && {
-        document: { date: dateRangeFilter(dateFrom, dateTo) },
+      ...((dateFrom || dateTo || customerBranchId) && {
+        document: {
+          ...((dateFrom || dateTo) && {
+            date: dateRangeFilter(dateFrom, dateTo),
+          }),
+          ...(customerBranchId && { customerBranchId }),
+        },
       }),
     };
 
@@ -198,8 +267,8 @@ export class AccountsReceivableService {
     };
   }
 
-  /** Estado de cuenta completo del cliente: todas sus CxC y saldos a favor, con totales. */
-  async getClientStatement(clientId: string) {
+  /** Estado de cuenta completo del cliente: sus CxC (todas o de una sucursal) y saldos a favor, con totales; branchTotals siempre cubre todas las CxC. */
+  async getClientStatement(clientId: string, customerBranchId?: string) {
     const client = await this.prisma.customer.findUnique({
       where: { id: clientId },
       include: { thirdParty: { select: { id: true, name: true } } },
@@ -209,7 +278,7 @@ export class AccountsReceivableService {
       throw new NotFoundException('Cliente no encontrado');
     }
 
-    const [rawReceivables, rawCredits] = await Promise.all([
+    const [allReceivables, rawCredits, branches] = await Promise.all([
       this.prisma.accountsReceivable.findMany({
         where: { clientId },
         include: LIST_INCLUDE,
@@ -232,9 +301,23 @@ export class AccountsReceivableService {
         },
         orderBy: { createdAt: 'desc' },
       }),
+      this.prisma.customerBranch.findMany({
+        where: { customerId: clientId },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      }),
     ]);
 
-    const receivables = rawReceivables.map(withDerivedFields);
+    const branchTotals = buildBranchTotals(branches, allReceivables);
+
+    // Los saldos a favor son del cliente (no de una sucursal), así que el filtro solo recorta las CxC.
+    const receivables = allReceivables
+      .filter(
+        (receivable) =>
+          !customerBranchId ||
+          receivable.document.customerBranchId === customerBranchId,
+      )
+      .map(withDerivedFields);
 
     const totalDebt = receivables.reduce(
       (sum, receivable) => sum.plus(receivable.totalAmount),
@@ -256,6 +339,7 @@ export class AccountsReceivableService {
         totalBalance: totalDebt.minus(totalPaid),
         availableCredit,
       },
+      branchTotals,
       receivables,
       credits: rawCredits,
     };

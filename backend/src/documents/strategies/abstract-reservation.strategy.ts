@@ -48,6 +48,11 @@ export abstract class AbstractReservationStrategy
     if (!seller?.isSeller) {
       throw new BadRequestException('El vendedor asignado no es válido');
     }
+
+    await this.assertValidCustomerBranch(
+      thirdPartyId,
+      createDocumentDto.customerBranchId,
+    );
   }
 
   // Excluye su propia reserva: al reconfirmar no debe competir consigo misma.
@@ -66,6 +71,11 @@ export abstract class AbstractReservationStrategy
     _userId: string,
     _context?: ConfirmContext,
   ) {
+    await this.assertValidCustomerBranch(
+      document.thirdPartyId,
+      document.customerBranchId,
+    );
+
     // Bloquea las filas de inventario al validar: dos confirmaciones del mismo producto a la vez quedan en fila.
     const missingStock = await this.findMissingStock(tx, document);
 

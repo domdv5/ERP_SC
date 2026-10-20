@@ -66,6 +66,32 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     }
   }
 
+  /** Cliente con sucursales activas: la venta debe ir a una de ellas; sin sucursales, no admite ninguna. */
+  protected async assertValidCustomerBranch(
+    customerId?: string | null,
+    customerBranchId?: string | null,
+  ) {
+    const branches = customerId
+      ? await this.prisma.customerBranch.findMany({
+          where: { customerId, active: true },
+          select: { id: true },
+        })
+      : [];
+
+    if (customerBranchId) {
+      if (!branches.some((branch) => branch.id === customerBranchId)) {
+        throw new BadRequestException('La sucursal no pertenece al cliente');
+      }
+      return;
+    }
+
+    if (branches.length > 0) {
+      throw new BadRequestException(
+        'La venta requiere indicar la sucursal del cliente',
+      );
+    }
+  }
+
   /** Reglas de creación de una venta de contado (POS y POS oficial): cliente, vendedor, forma de pago y piso de precio. */
   protected async validateCashSale(
     createDocumentDto: CreateDocumentDto,

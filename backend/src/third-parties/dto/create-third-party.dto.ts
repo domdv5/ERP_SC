@@ -15,8 +15,10 @@ import {
   MaxLength,
   Min,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+import { CustomerBranchDto } from './customer-branch.dto';
 import { TaxRegime, WithholdingAgentType } from '@/common/enums';
 
 export class CreateThirdPartyDto {
@@ -109,6 +111,14 @@ export class CreateThirdPartyDto {
   @IsOptional()
   @IsUUID()
   sellerId?: string;
+
+  // Solo se agregan; una sucursal ya guardada se edita por PATCH :id/branches/:branchId.
+  @ValidateIf((o) => o.isCustomer === true)
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CustomerBranchDto)
+  branches?: CustomerBranchDto[];
 
   // Campos de proveedor
   @ValidateIf((o) => o.isSupplier === true)

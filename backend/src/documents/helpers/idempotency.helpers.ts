@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import type { CreateDocumentDto } from '../dto/index';
+import { BRANCH_TYPES } from './customer-branch.helpers';
 
 export const DUPLICATE_REQUEST_MESSAGE =
   'Esta operación ya se registró con datos distintos. Recarga la página y revisa el listado de operaciones.';
@@ -13,6 +14,7 @@ export type ExistingDocumentForIdempotency = {
   thirdPartyId: string | null;
   sellerId: string | null;
   receiverId: string | null;
+  customerBranchId: string | null;
   paymentMethod: string | null;
   refundMethod: string | null;
   notes: string | null;
@@ -56,6 +58,7 @@ function signature(doc: ExistingDocumentForIdempotency): string {
     doc.thirdPartyId ?? null,
     doc.sellerId ?? null,
     doc.receiverId ?? null,
+    doc.customerBranchId ?? null,
     doc.paymentMethod ?? null,
     doc.refundMethod ?? null,
     doc.notes ?? null,
@@ -86,6 +89,10 @@ export function isSameDocumentRequest(
     sellerId: dto.sellerId ?? null,
     // Solo la compra guarda quién recibió; en los demás tipos el campo se ignora.
     receiverId: dto.type === 'CM' ? (dto.receiverId ?? null) : null,
+    // Solo las ventas guardan la sucursal; en los demás tipos el campo se ignora.
+    customerBranchId: BRANCH_TYPES.has(dto.type)
+      ? (dto.customerBranchId ?? null)
+      : null,
     paymentMethod: dto.paymentMethod ?? null,
     refundMethod: dto.refundMethod ?? null,
     notes: dto.notes ?? null,

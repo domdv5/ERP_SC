@@ -117,8 +117,28 @@ model Customer {
   accountsReceivable AccountsReceivable[]
   customerCredits    CustomerCredit[]
   recibosCaja        ReciboCaja[]
+  branches           CustomerBranch[]
 
   @@map("customers")
+}
+
+// ─── Customer branch ──────────────────────────────────────────────────────────
+
+model CustomerBranch {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  customerId String   @map("customer_id") @db.Uuid
+  name       String   @db.VarChar(100)
+  address    String?  @db.VarChar(300)
+  phone      String?  @db.VarChar(50)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  customer  Customer   @relation(fields: [customerId], references: [id])
+  documents Document[]
+
+  @@unique([customerId, name])
+  @@map("customer_branch")
 }
 
 // ─── Supplier ─────────────────────────────────────────────────────────────────
@@ -502,6 +522,8 @@ model Document {
   sellerId              String?              @map("seller_id") @db.Uuid
   /// Quién recibió la mercancía — obligatorio solo en CM nuevas; ThirdParty con isReceiver=true
   receiverId            String?              @map("receiver_id") @db.Uuid
+  /// Sucursal del cliente a la que se factura — solo PV, REM, COT, POS, DVV; obligatoria si el cliente tiene sucursales activas
+  customerBranchId      String?              @map("customer_branch_id") @db.Uuid
   userId                String               @map("user_id") @db.Uuid
   status                DocumentStatus       @default(draft)
   total                 Decimal              @default(0) @db.Decimal(16, 2)
@@ -543,20 +565,21 @@ model Document {
   createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz
 
-  thirdParty       ThirdParty? @relation(fields: [thirdPartyId], references: [id])
-  seller           ThirdParty? @relation("DocumentSeller", fields: [sellerId], references: [id])
-  receiver         ThirdParty? @relation("DocumentReceiver", fields: [receiverId], references: [id])
-  user             User        @relation(fields: [userId], references: [id])
-  confirmedBy      User?       @relation("DocumentConfirmedBy", fields: [confirmedById], references: [id])
-  voidedBy         User?       @relation("DocumentVoidedBy", fields: [voidedById], references: [id])
-  updatedBy        User?       @relation("DocumentUpdatedBy", fields: [updatedById], references: [id])
-  convertedBy      User?       @relation("DocumentConvertedBy", fields: [convertedById], references: [id])
-  warehouse        Warehouse?  @relation("DocumentWarehouse", fields: [warehouseId], references: [id], onDelete: Restrict)
-  destWarehouse    Warehouse?  @relation("DocumentDestWarehouse", fields: [destWarehouseId], references: [id], onDelete: Restrict)
-  sourceBin        Bin?        @relation("DocumentSourceBin", fields: [sourceBinId], references: [id], onDelete: Restrict)
-  destBin          Bin?        @relation("DocumentDestBin", fields: [destBinId], references: [id], onDelete: Restrict)
-  sourceDocument   Document?   @relation("DocumentSource", fields: [sourceDocumentId], references: [id])
-  derivedDocuments Document[]  @relation("DocumentSource")
+  thirdParty       ThirdParty?     @relation(fields: [thirdPartyId], references: [id])
+  seller           ThirdParty?     @relation("DocumentSeller", fields: [sellerId], references: [id])
+  receiver         ThirdParty?     @relation("DocumentReceiver", fields: [receiverId], references: [id])
+  customerBranch   CustomerBranch? @relation(fields: [customerBranchId], references: [id], onDelete: Restrict)
+  user             User            @relation(fields: [userId], references: [id])
+  confirmedBy      User?           @relation("DocumentConfirmedBy", fields: [confirmedById], references: [id])
+  voidedBy         User?           @relation("DocumentVoidedBy", fields: [voidedById], references: [id])
+  updatedBy        User?           @relation("DocumentUpdatedBy", fields: [updatedById], references: [id])
+  convertedBy      User?           @relation("DocumentConvertedBy", fields: [convertedById], references: [id])
+  warehouse        Warehouse?      @relation("DocumentWarehouse", fields: [warehouseId], references: [id], onDelete: Restrict)
+  destWarehouse    Warehouse?      @relation("DocumentDestWarehouse", fields: [destWarehouseId], references: [id], onDelete: Restrict)
+  sourceBin        Bin?            @relation("DocumentSourceBin", fields: [sourceBinId], references: [id], onDelete: Restrict)
+  destBin          Bin?            @relation("DocumentDestBin", fields: [destBinId], references: [id], onDelete: Restrict)
+  sourceDocument   Document?       @relation("DocumentSource", fields: [sourceDocumentId], references: [id])
+  derivedDocuments Document[]      @relation("DocumentSource")
 
   documentItems          DocumentItem[]
   inventoryMovements     InventoryMovement[]
@@ -576,6 +599,7 @@ model Document {
   @@index([thirdPartyId])
   @@index([sellerId])
   @@index([receiverId])
+  @@index([customerBranchId])
   @@index([userId])
   @@index([warehouseId])
   @@index([destWarehouseId])

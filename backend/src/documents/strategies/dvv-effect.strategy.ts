@@ -14,6 +14,10 @@ export class DvvEffectStrategy extends BaseEffectStrategy {
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
     await this.assertValidCustomer(createDocumentDto.thirdPartyId);
+    await this.assertValidCustomerBranch(
+      createDocumentDto.thirdPartyId,
+      createDocumentDto.customerBranchId,
+    );
 
     if (
       !createDocumentDto.refundMethod ||
@@ -40,6 +44,10 @@ export class DvvEffectStrategy extends BaseEffectStrategy {
     // Editar un borrador no re-corre validateCreate, así que se revalida cliente
     // y modalidad contra el estado definitivo (mismo motivo que EAI/T).
     await this.assertValidCustomer(document.thirdPartyId);
+    await this.assertValidCustomerBranch(
+      document.thirdPartyId,
+      document.customerBranchId,
+    );
 
     if (
       !document.refundMethod ||

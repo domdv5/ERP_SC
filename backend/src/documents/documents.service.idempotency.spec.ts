@@ -254,3 +254,81 @@ describe('isSameDocumentRequest: receiverId en la compra', () => {
     ).toBe(false);
   });
 });
+
+describe('isSameDocumentRequest: customerBranchId en las ventas', () => {
+  const saleDto = (customerBranchId?: string) =>
+    makeDto({ type: DocumentType.COT, customerBranchId });
+  const saleExisting = (customerBranchId: string | null) =>
+    makeExisting({ type: DocumentType.COT, customerBranchId });
+
+  it('es el mismo pedido si la sucursal coincide', () => {
+    expect(
+      isSameDocumentRequest(saleDto('b1'), saleExisting('b1') as never, 'u1'),
+    ).toBe(true);
+  });
+
+  it('es otro pedido si la sucursal cambia', () => {
+    expect(
+      isSameDocumentRequest(saleDto('b2'), saleExisting('b1') as never, 'u1'),
+    ).toBe(false);
+  });
+
+  it('en un tipo que no es venta ignora la sucursal del pedido', () => {
+    expect(
+      isSameDocumentRequest(
+        makeDto({ type: DocumentType.CM, customerBranchId: 'b1' }),
+        makeExisting({
+          type: DocumentType.CM,
+          customerBranchId: null,
+        }) as never,
+        'u1',
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('DocumentsService.create: customerBranchId solo en ventas', () => {
+  const tx = { document: { create: jest.fn() } };
+  const prisma = {
+    document: { findUnique: jest.fn() },
+    warehouse: { findFirst: jest.fn() },
+    $transaction: jest.fn((fn: (client: typeof tx) => unknown) => fn(tx)),
+  };
+  const registry = { get: jest.fn(() => ({ validateCreate: jest.fn() })) };
+  const sequence = { next: jest.fn().mockResolvedValue('000001') };
+  const service = new DocumentsService(
+    prisma as unknown as PrismaService,
+    registry as unknown as DocumentEffectsRegistry,
+    sequence as unknown as SequenceService,
+  );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    prisma.warehouse.findFirst.mockResolvedValue({ id: 'store-1' });
+    tx.document.create.mockResolvedValue(makeExisting({ id: 'new-doc' }));
+  });
+
+  it('guarda la sucursal en una venta', async () => {
+    await service.create(makeDto({ customerBranchId: 'b1' }), user);
+
+    expect(tx.document.create.mock.calls[0][0].data.customerBranchId).toBe(
+      'b1',
+    );
+  });
+
+  it('descarta la sucursal en un tipo que no es venta', async () => {
+    const cmUser = {
+      sub: 'u1',
+      permissions: ['document.create.CM'],
+    } as unknown as JwtPayload;
+
+    await service.create(
+      makeDto({ type: DocumentType.CM, customerBranchId: 'b1' }),
+      cmUser,
+    );
+
+    expect(
+      tx.document.create.mock.calls[0][0].data.customerBranchId,
+    ).toBeNull();
+  });
+});

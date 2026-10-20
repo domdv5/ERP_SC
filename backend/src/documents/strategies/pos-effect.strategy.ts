@@ -16,6 +16,10 @@ export class PosEffectStrategy extends BaseEffectStrategy {
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
     await this.validateCashSale(createDocumentDto);
+    await this.assertValidCustomerBranch(
+      createDocumentDto.thirdPartyId,
+      createDocumentDto.customerBranchId,
+    );
   }
 
   // Si viene de convertir una preventa, excluye su reserva o da un faltante falso.
@@ -35,6 +39,11 @@ export class PosEffectStrategy extends BaseEffectStrategy {
     context?: ConfirmContext,
   ) {
     const warehouseId = this.requireWarehouse(document);
+
+    await this.assertValidCustomerBranch(
+      document.thirdPartyId,
+      document.customerBranchId,
+    );
 
     // Revalida acá porque editar un borrador no re-corre create.
     const missingStock = await this.findMissingStock(tx, document);

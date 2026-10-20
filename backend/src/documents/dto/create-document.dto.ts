@@ -70,6 +70,11 @@ export class CreateDocumentDto {
   @IsUUID()
   receiverId?: string;
 
+  // Solo en ventas (PV, REM, COT, POS, DVV); obligatoria si el cliente tiene sucursales activas.
+  @IsOptional()
+  @IsUUID()
+  customerBranchId?: string;
+
   // Solo se envía en traslados; el resto de tipos siempre opera sobre la tienda
   // activa, que resuelve el service.
   @IsOptional()

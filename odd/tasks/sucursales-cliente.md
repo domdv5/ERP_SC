@@ -1,0 +1,30 @@
+# Sucursales del cliente
+
+Un cliente puede tener sucursales (réplica del patrón proveedor → marcas, relación 1:N, sin tabla intermedia); cada venta queda registrada a una sucursal y CxC se puede ver consolidado o por sucursal. Branch `feat/customer-branches`.
+Migración aditiva autorizada por el usuario (2026-10-20). Sin permisos nuevos en el seed RBAC.
+
+## Specs
+- S1 — Tabla nueva `CustomerBranch` (`customer_branch`): `id`, `customerId` (FK a `customers`), `name` (obligatorio, varchar 100), `address` (opcional), `phone` (opcional), `active` (default `true`), `createdAt`, `updatedAt`. Nombre único por cliente (`@@unique([customerId, name])`). Usuario: "una tabla intermedia en bd apra relacionar clientes con sucursulas" → se modela 1:N como `Brand`, porque una sucursal pertenece a un solo cliente.
+- S2 — Las sucursales se crean y editan desde el form del tercero (sección **"Sucursales"**, visible solo si el tercero es Cliente), igual que las marcas del proveedor: se agregan al crear/editar el tercero y una ya guardada se edita (nombre/dirección/teléfono) con `PATCH /third-parties/:id/branches/:branchId`, mismo permiso que `renameBrand`. Nunca se borran (los documentos las referencian por id). El detalle del tercero devuelve `customer.branches` (solo activas).
+- S3 — `Document.customerBranchId` (columna `customer_branch_id`, nullable, FK a `customer_branch`). Se guarda solo en ventas: `PV`, `REM`, `COT`, `POS`, `DVV`. Los demás tipos (incluido `POSO`) no lo guardan.
+- S4 — Regla (backend, en `validateCreate` y de nuevo en `confirm` de esos 5 tipos): cliente con al menos una sucursal activa y sin `customerBranchId` → 400 `La venta requiere indicar la sucursal del cliente`; `customerBranchId` que no existe, está inactiva o es de otro cliente → 400 `La sucursal no pertenece al cliente`. Cliente sin sucursales activas: `customerBranchId` debe venir vacío (si viene, mismo 400 `La sucursal no pertenece al cliente`). Usuario eligió "Obligatoria".
+- S5 — Convertir PV/REM a COT/POS copia `customerBranchId` del documento origen.
+- S6 — `customerBranchId` entra en la firma de idempotencia (`isSameDocumentRequest`).
+- S7 — Detalle del documento y PDF de venta muestran la sucursal (nombre y dirección si tiene) junto al cliente.
+- S8 — CxC: `GET /accounts-receivable` acepta filtro `customerBranchId` (filtra por la sucursal del documento) y cada fila trae la sucursal (`document.customerBranch` con `id`, `name`). `GET /accounts-receivable/clients/:clientId/statement` acepta `?customerBranchId=` opcional (sin él = consolidado de todas) y devuelve además `branchTotals`: por cada sucursal del cliente (más una fila "Sin sucursal" si hay CxC sin sucursal) `totalDebt`, `totalPaid`, `totalBalance`. Usuario: "sacar ya sea un reporte consolidado de todas las susucrulas o bien saber cuanto se debe por suscursal".
+- S9 — Documentos y CxC existentes quedan con sucursal nula y siguen válidos.
+- S10 — Frontend venta (`DocumentFormPage`, tipos de S3): al elegir un cliente con sucursales aparece el selector **"Sucursal"** con sus sucursales activas, obligatorio; cliente sin sucursales → no aparece. Cambiar de cliente limpia la sucursal. Usuario: "al momento de seleccioanr un cliente que tiene sucursales se cargue ese selector con las suscursal de el y entonces que esa factura quede registrada a la sucursal del cleinte que se selecciono".
+- S11 — Frontend CxC: filtro "Sucursal" en el listado (cuando hay cliente elegido) y en el estado de cuenta del cliente ("Todas" = consolidado), más un resumen por sucursal en el estado de cuenta.
+- S12 — Recibos de caja y saldos a favor quedan a nivel cliente, sin cambios. País/departamento/ciudad del cliente es otra funcionalidad aparte (no en esta rama).
+
+## Tasks
+- T1 — Schema + migración manual aditiva + generate (S1, S3, S9). Route: inline. Commit: —
+- T2 — Regla de validación de sucursal (helper `assertValidCustomerBranch` en `BaseEffectStrategy`) + specs (S4). Route: inline. Commit: —
+- T3 — Backend: DTOs/service de terceros (crear/editar sucursales), wiring de la validación en PV/REM/COT/POS/DVV, conversión, idempotencia, includes detalle/print, PDF, CxC (filtro + statement), specs, backend/CLAUDE.md (S2–S9, S12). Route: nestjs-code-crafter. Commit: —
+- T4 — Frontend: sección Sucursales en ThirdPartyForm, selector en DocumentFormPage, detalle, CxC filtro + resumen, tipos, frontend/CLAUDE.md (S2, S7, S10, S11). Route: react-code-crafter. Commit: —
+- T5 — Verificación: `pnpm test` + build backend, `tsc` frontend, prueba de la API contra la BD de desarrollo. Route: inline. Commit: —
+
+## Log
+- L1 (usuario, 2026-10-20): "mira encesito implmentar una funcionaldiad que toca variso frentes, es basicamente una replica del tema de proveedores y marcass, pero en este caso seria exclusivamenet con clienntes y sucursulas, por lo que encesito una tabla intermedia en bd apra relacionar clientes con sucursulas, asi mismo en la seccion de venta al facturar se necesti poder facturar a caulqueir sucurssal del ciente, entonces pensaba yo como una especie de selector que al momento de seleccioanr un cliente que tiene sucursales se cargue ese selector con las suscursal de el y entonces que esa factura quede registrada a la sucursal del cleinte que se selecciono, asi mismo toca el reporte de cuentas por cobrar, si un cliente tiene varia sucurusla el sistema debe poder sacar ya sea un reporte consolidado de todas las susucrulas o bien saber cuanto se debe por suscursal"
+- L2 (usuario, 2026-10-20): datos de sucursal: "es este caso otra funcionadlidad que se necesita pero si quisiera que fuera aparte para que cuando tenga yo que revisar no sea demasido, pero a la hora de crear un cliente se hace encesario, el pais, el departamento y la ciudad" → sucursal con nombre + dirección + teléfono; ubicación del cliente va aparte. Documentos: "tengo dudas de cual seria le mjor opcion" → recomendación aceptada: todas las ventas (PV, REM, COT, POS, DVV). Obligatoria: "Obligatoria". Recibos/saldos a favor: "No, a nivel cliente".
+- L3 (usuario, 2026-10-20): diseño explicado de punta a punta → "Sí, arrancá" (incluye migración).

@@ -13,6 +13,7 @@ import { ThirdPartiesService } from './third-parties.service';
 import {
   CreateThirdPartyDto,
   FindAllThirdPartiesDto,
+  UpdateCustomerBranchDto,
   UpdateThirdPartyDto,
 } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
@@ -26,6 +27,12 @@ export class ThirdPartiesController {
   @Permissions('thirdparty.read')
   findAll(@Query() findAllThirdPartiesDto: FindAllThirdPartiesDto) {
     return this.thirdPartiesService.findAll(findAllThirdPartiesDto);
+  }
+
+  @Get(':id')
+  @Permissions('thirdparty.read')
+  findOne(@Param('id') id: string) {
+    return this.thirdPartiesService.findOne(id);
   }
 
   @Post()
@@ -56,6 +63,17 @@ export class ThirdPartiesController {
     @Req() req: RequestWithUser,
   ) {
     return this.thirdPartiesService.renameBrand(id, brandId, name, req.user);
+  }
+
+  @Patch(':id/branches/:branchId')
+  @Permissions('thirdparty.update')
+  updateBranch(
+    @Param('id') id: string,
+    @Param('branchId') branchId: string,
+    @Body() dto: UpdateCustomerBranchDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.thirdPartiesService.updateBranch(id, branchId, dto, req.user);
   }
 
   @Delete(':id')
