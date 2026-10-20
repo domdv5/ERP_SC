@@ -218,7 +218,8 @@ export default function AccountsReceivableListPage() {
             </button>
           </div>
           <div className="px-5 pb-4 flex flex-wrap gap-3">
-            {clientId && clientBranches.length > 0 && (
+            {/* Con una sucursal elegida el selector sigue visible aunque la lista esté recargando, para no ocultar un filtro activo */}
+            {clientId && (clientBranches.length > 0 || branchId) && (
               <select
                 value={branchId}
                 onChange={(e) => setBranchId(e.target.value)}
