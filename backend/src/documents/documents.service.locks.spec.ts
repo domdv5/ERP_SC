@@ -17,6 +17,7 @@ const makeSource = () => ({
   status: DocumentStatus.confirmed,
   thirdPartyId: 'c1',
   sellerId: 's1',
+  customerBranchId: 'br-1',
   documentItems: [
     {
       productId: 'p1',
@@ -131,6 +132,16 @@ describe('DocumentsService: lock del documento antes de liberar o convertir', ()
         },
       });
       expect(tx.document.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('copia la sucursal del origen al documento derivado', async () => {
+      tx.$queryRaw.mockResolvedValue([{ status: DocumentStatus.confirmed }]);
+
+      await service.convert('pv-1', convertDto as never, user);
+
+      expect(tx.document.create.mock.calls[0][0].data.customerBranchId).toBe(
+        'br-1',
+      );
     });
   });
 });

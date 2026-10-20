@@ -38,6 +38,11 @@ export class CotEffectStrategy extends BaseEffectStrategy {
       throw new BadRequestException('La venta requiere un vendedor');
     }
 
+    await this.assertValidCustomerBranch(
+      thirdPartyId,
+      createDocumentDto.customerBranchId,
+    );
+
     const seller = await this.prisma.thirdParty.findUnique({
       where: { id: sellerId },
     });
@@ -93,6 +98,11 @@ export class CotEffectStrategy extends BaseEffectStrategy {
     context?: ConfirmContext,
   ) {
     const warehouseId = this.requireWarehouse(document);
+
+    await this.assertValidCustomerBranch(
+      document.thirdPartyId,
+      document.customerBranchId,
+    );
 
     // Revalida acá porque editar un borrador no re-corre create.
     const missingStock = await this.findMissingStock(tx, document);

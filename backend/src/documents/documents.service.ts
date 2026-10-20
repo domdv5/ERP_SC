@@ -33,6 +33,7 @@ import {
   findLastPurchaseCostAfterVoid,
 } from './helpers/stock.helpers';
 import { matchItemsByProduct } from './helpers/conversion.helpers';
+import { BRANCH_TYPES } from './helpers/customer-branch.helpers';
 import { getCreditLimitSummary } from './helpers/credit.helpers';
 import {
   DUPLICATE_REQUEST_MESSAGE,
@@ -91,6 +92,7 @@ const DETAIL_INCLUDE = {
   },
   seller: { select: { id: true, name: true } },
   receiver: { select: { id: true, name: true } },
+  customerBranch: { select: { id: true, name: true, address: true } },
   user: { select: { id: true, name: true } },
   confirmedBy: { select: { id: true, name: true } },
   voidedBy: { select: { id: true, name: true } },
@@ -156,6 +158,7 @@ const PRINT_INCLUDE = {
   user: { select: { id: true, name: true } },
   seller: { select: { id: true, name: true } },
   receiver: { select: { id: true, name: true } },
+  customerBranch: { select: { id: true, name: true, address: true } },
 } satisfies Prisma.DocumentInclude;
 
 export type DocumentForPrint = Prisma.DocumentGetPayload<{
@@ -392,6 +395,7 @@ export class DocumentsService {
       thirdPartyId,
       sellerId,
       receiverId,
+      customerBranchId,
       destWarehouseId,
       destBinId,
       sourceBinId,
@@ -459,6 +463,9 @@ export class DocumentsService {
             thirdPartyId,
             sellerId,
             receiverId: type === DocumentType.CM ? receiverId : undefined,
+            customerBranchId: BRANCH_TYPES.has(type)
+              ? (customerBranchId ?? null)
+              : null,
             userId: user.sub,
             status: DocumentStatus.draft,
             total: amounts.total,
@@ -554,6 +561,7 @@ export class DocumentsService {
       customerCredits: _customerCredits,
       supplierInvoiceNumber,
       receiverId,
+      customerBranchId,
       ...rest
     } = updateDocumentDto;
 
@@ -589,6 +597,8 @@ export class DocumentsService {
           ...rest,
           ...(document.type === DocumentType.CM &&
             receiverId !== undefined && { receiverId }),
+          ...(BRANCH_TYPES.has(document.type) &&
+            customerBranchId !== undefined && { customerBranchId }),
           updatedById: user.sub,
           ...(date && { date: new Date(date) }),
           ...(supplierInvoiceNumber !== undefined && {
@@ -1287,6 +1297,7 @@ export class DocumentsService {
       date: new Date().toISOString(),
       thirdPartyId: source.thirdPartyId ?? undefined,
       sellerId: source.sellerId ?? undefined,
+      customerBranchId: source.customerBranchId ?? undefined,
       paymentMethod,
       items: pendingItems.map(({ item, pending }) => ({
         productId: item.productId,
@@ -1338,6 +1349,7 @@ export class DocumentsService {
           date: new Date(),
           thirdPartyId: source.thirdPartyId,
           sellerId: source.sellerId,
+          customerBranchId: source.customerBranchId,
           userId: user.sub,
           status: DocumentStatus.draft,
           total,

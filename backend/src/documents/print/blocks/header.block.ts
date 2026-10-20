@@ -17,10 +17,15 @@ function formatDate(date: Date | string): string {
 export function buildHeader(
   document: DocumentForPrint,
   title: string,
-  opts: { showSeller?: boolean; showReceiver?: boolean } = {},
+  opts: {
+    showSeller?: boolean;
+    showReceiver?: boolean;
+    showBranch?: boolean;
+  } = {},
 ): DynamicContent {
   return (): Content => {
     const thirdParty = document.thirdParty;
+    const branch = opts.showBranch ? document.customerBranch : undefined;
     const sellerName = opts.showSeller ? document.seller?.name : undefined;
     const receiverName = opts.showReceiver
       ? document.receiver?.name
@@ -75,6 +80,25 @@ export function buildHeader(
               fontSize: 8,
               alignment: 'right',
             },
+            ...(branch
+              ? [
+                  {
+                    text: `Sucursal: ${branch.name}`,
+                    bold: true,
+                    fontSize: 8,
+                    alignment: 'right' as const,
+                  },
+                  ...(branch.address
+                    ? [
+                        {
+                          text: branch.address,
+                          fontSize: 8,
+                          alignment: 'right' as const,
+                        },
+                      ]
+                    : []),
+                ]
+              : []),
             ...(thirdParty?.address
               ? [
                   {

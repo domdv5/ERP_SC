@@ -18,7 +18,10 @@ export function buildSaleDocumentDefinition(
   return {
     pageSize: 'LETTER',
     pageMargins: [30, 120, 30, opts.showLegalLegend ? 85 : 60],
-    header: buildHeader(document, opts.title, { showSeller: true }),
+    header: buildHeader(document, opts.title, {
+      showSeller: true,
+      showBranch: true,
+    }),
     footer: buildSaleFooter(document, opts.showLegalLegend),
     content: [
       buildSaleItemsTable(document.documentItems),

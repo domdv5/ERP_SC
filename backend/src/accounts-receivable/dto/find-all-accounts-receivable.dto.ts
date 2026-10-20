@@ -33,6 +33,10 @@ export class FindAllAccountsReceivableDto {
   clientId?: string;
 
   @IsOptional()
+  @IsUUID()
+  customerBranchId?: string;
+
+  @IsOptional()
   @IsString()
   search?: string;
 
