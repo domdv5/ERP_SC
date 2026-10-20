@@ -7,4 +7,5 @@ export const BRANCH_TYPES: ReadonlySet<DocumentType> = new Set([
   DocumentType.COT,
   DocumentType.POS,
   DocumentType.DVV,
+  DocumentType.POSO,
 ]);

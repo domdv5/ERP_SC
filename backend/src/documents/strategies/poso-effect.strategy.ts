@@ -9,16 +9,20 @@ import type {
   DocumentWithItems,
 } from './document-effect.strategy';
 
-/** POS oficial: solo alimenta el libro de control oficial; no valida ni mueve stock, ni crea cuentas, ni aplica saldos a favor. */
+/** POS oficial: solo alimenta el libro de control oficial; no valida ni mueve stock, ni crea cuentas, ni aplica saldos a favor. Sí exige la sucursal del cliente. */
 @Injectable()
 export class PosoEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.POSO;
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
     await this.validateCashSale(createDocumentDto, { pricesExcludeTax: true });
+    await this.assertValidCustomerBranch(
+      createDocumentDto.thirdPartyId,
+      createDocumentDto.customerBranchId,
+    );
   }
 
-  confirm(
+  async confirm(
     _tx: Prisma.TransactionClient,
     document: DocumentWithItems,
     _userId: string,
@@ -39,6 +43,9 @@ export class PosoEffectStrategy extends BaseEffectStrategy {
       );
     }
 
-    return Promise.resolve();
+    await this.assertValidCustomerBranch(
+      document.thirdPartyId,
+      document.customerBranchId,
+    );
   }
 }

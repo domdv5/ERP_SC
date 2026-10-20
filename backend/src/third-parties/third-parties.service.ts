@@ -91,6 +91,20 @@ export class ThirdPartiesService {
     };
   }
 
+  async findOne(id: string) {
+    const thirdParty = await this.prisma.thirdParty.findUnique({
+      where: { id },
+      include: {
+        customer: { include: ACTIVE_BRANCHES_INCLUDE },
+        supplier: { include: { brands: { where: { active: true } } } },
+      },
+    });
+    if (!thirdParty) {
+      throw new NotFoundException('Tercero no encontrado.');
+    }
+    return thirdParty;
+  }
+
   async create(createThirdPartyDto: CreateThirdPartyDto, user: JwtPayload) {
     this.assertRolePermissions(user, null, createThirdPartyDto, 'registrar');
 

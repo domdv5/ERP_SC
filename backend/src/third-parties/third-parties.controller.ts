@@ -29,6 +29,12 @@ export class ThirdPartiesController {
     return this.thirdPartiesService.findAll(findAllThirdPartiesDto);
   }
 
+  @Get(':id')
+  @Permissions('thirdparty.read')
+  findOne(@Param('id') id: string) {
+    return this.thirdPartiesService.findOne(id);
+  }
+
   @Post()
   @Permissions('thirdparty.create')
   create(
