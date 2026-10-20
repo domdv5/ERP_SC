@@ -60,7 +60,7 @@ Además, si el commit incluye algún `.ts` de `backend/`, el hook corre **todas*
 
 **CI** (`.github/workflows/ci.yml`): en cada PR a `main` y en cada push a `main` (el merge del PR incluido), GitHub Actions instala el backend, genera el cliente Prisma (con una `DATABASE_URL` ficticia — el backend no tiene `postinstall` que lo genere y `prisma.config.ts` exige la variable), corre `pnpm test` y `pnpm run build`. Es la red que no se puede saltar con `--no-verify`. No hay CD: todavía no existe servidor de producción.
 
-**Regla de rama `proteger-main`** (ruleset en GitHub, decisión del usuario 2026-10-07): todo cambio a `main` entra por PR, hotfix incluido, y el PR no se puede mergear si `backend-tests` falla. El administrador solo puede saltarla al mergear un PR (emergencia real), no con push directo.
+**Regla de rama `proteger-main`** (ruleset en GitHub, decisión del usuario 2026-10-07): todo cambio a `main` entra por PR, hotfix incluido, y el PR no se puede mergear si `backend-tests` falla. Excepción (2026-10-19): el rol Repository admin tiene bypass "Always allow" y puede hacer push directo a `main` (se saltea PR y CI previo; CI corre igual después del push). Usarlo para cambios triviales (docs, config); cambios de lógica siguen por PR. Borrar `main` y force-push siguen bloqueados para todos.
 
 **Activación** — `git config core.hooksPath .githooks` es una config local de git, no se propaga sola. Cualquier clon nuevo del repo (o worktree nuevo) necesita correrlo una vez para que el hook funcione; si no está activo, los commits no fallan, simplemente no corren Prettier automáticamente.
 
