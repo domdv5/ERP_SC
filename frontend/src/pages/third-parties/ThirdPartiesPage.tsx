@@ -210,7 +210,7 @@ export default function ThirdPartiesPage() {
         {canCreate && (
           <button
             onClick={() => setFormOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
+            className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
           >
             <Plus className="w-4 h-4" />
             Nuevo tercero
@@ -229,8 +229,8 @@ export default function ThirdPartiesPage() {
       <StatsGrid cards={statCards} isLoading={isLoading} />
 
       {/* Table */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
-        <div className="border-b border-ui-border">
+      <div className="card-hard overflow-hidden">
+        <div className="border-b-2 border-ui-border-medium">
           <TableToolbar
             search={search}
             onSearchChange={setSearch}
@@ -248,7 +248,7 @@ export default function ThirdPartiesPage() {
                   e.target.value as 'all' | 'customer' | 'supplier' | 'seller' | 'receiver',
                 )
               }
-              className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+              className="input-hard text-sm px-3 py-1.5"
             >
               <option value="all">Todos los roles</option>
               <option value="customer">Clientes</option>
@@ -285,7 +285,7 @@ export default function ThirdPartiesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ui-border">
+                <tr className="border-b-2 border-ui-border-medium">
                   {['Nombre', 'Tipo', 'Tipo Doc.', 'N° Documento', 'Roles', 'Acciones'].map((h) => (
                     <th
                       key={h}
@@ -322,7 +322,7 @@ export default function ThirdPartiesPage() {
                       <td className="px-5 py-3.5">
                         <span
                           className={cn(
-                            'px-2 py-0.5 rounded-full text-xs font-medium',
+                            'pill-stamp',
                             t.personType === 'natural'
                               ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
                               : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400',
@@ -341,13 +341,7 @@ export default function ThirdPartiesPage() {
                         <div className="flex gap-1 flex-wrap">
                           {ROLE_BADGES.filter(({ key }) => t[key as keyof ThirdParty]).map(
                             ({ key, label, color }) => (
-                              <span
-                                key={key}
-                                className={cn(
-                                  'px-2 py-0.5 rounded-full text-xs font-medium',
-                                  color,
-                                )}
-                              >
+                              <span key={key} className={cn('pill-stamp', color)}>
                                 {label}
                               </span>
                             ),

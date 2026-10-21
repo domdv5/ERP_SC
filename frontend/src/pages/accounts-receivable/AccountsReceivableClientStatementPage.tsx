@@ -16,13 +16,13 @@ const CREDIT_STATUS_BADGE: Record<string, { label: string; className: string }> 
   },
   used: {
     label: 'Agotado',
-    className: 'bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400',
+    className: 'bg-surface-hover text-content-muted',
   },
 }
 const creditStatusBadgeFor = (status: string) =>
   CREDIT_STATUS_BADGE[status] ?? {
     label: status,
-    className: 'bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400',
+    className: 'bg-surface-hover text-content-muted',
   }
 
 export default function AccountsReceivableClientStatementPage() {
@@ -51,7 +51,7 @@ export default function AccountsReceivableClientStatementPage() {
           <div className="w-8 h-8 rounded-lg bg-surface-hover animate-pulse" />
           <div className="w-48 h-7 rounded-lg bg-surface-hover animate-pulse" />
         </div>
-        <div className="bg-surface rounded-2xl border border-ui-border p-6 space-y-4">
+        <div className="card-hard p-6 space-y-4">
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
@@ -60,7 +60,7 @@ export default function AccountsReceivableClientStatementPage() {
             />
           ))}
         </div>
-        <div className="bg-surface rounded-2xl border border-ui-border p-6 space-y-3">
+        <div className="card-hard p-6 space-y-3">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-10 rounded-lg bg-surface-hover animate-pulse" />
           ))}
@@ -79,7 +79,7 @@ export default function AccountsReceivableClientStatementPage() {
           <ArrowLeft className="w-4 h-4" />
           Volver a cuentas por cobrar
         </button>
-        <div className="bg-surface rounded-2xl border border-ui-border p-8 text-center">
+        <div className="card-hard p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar el estado de cuenta</p>
           <button
@@ -112,7 +112,7 @@ export default function AccountsReceivableClientStatementPage() {
       </button>
 
       {/* Header card */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6">
+      <div className="card-hard p-6">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
             {client.name[0]?.toUpperCase() ?? '?'}
@@ -178,8 +178,8 @@ export default function AccountsReceivableClientStatementPage() {
 
       {/* Resumen por sucursal */}
       {hasBranches && (
-        <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-ui-border">
+        <div className="card-hard overflow-hidden">
+          <div className="px-6 py-4 border-b-2 border-ui-border-medium">
             <h2 className="text-content font-semibold">Resumen por sucursal</h2>
             <p className="text-content-muted text-xs mt-0.5 font-accent">
               Suma de todas las cuentas del cliente, sin importar el filtro
@@ -188,7 +188,7 @@ export default function AccountsReceivableClientStatementPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ui-border">
+                <tr className="border-b-2 border-ui-border-medium">
                   {['Sucursal', 'Deuda', 'Pagado', 'Saldo'].map((h) => (
                     <th
                       key={h}
@@ -221,7 +221,7 @@ export default function AccountsReceivableClientStatementPage() {
       )}
 
       {/* Receivables table */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+      <div className="card-hard overflow-hidden">
         <div className="px-6 py-4 border-b border-ui-border flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-content font-semibold">Cuentas por cobrar</h2>
@@ -233,7 +233,7 @@ export default function AccountsReceivableClientStatementPage() {
             <select
               value={branchId}
               onChange={(e) => setBranchId(e.target.value)}
-              className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+              className="input-hard text-sm px-3 py-1.5"
             >
               <option value="">Todas las sucursales</option>
               {branchTotals
@@ -256,7 +256,7 @@ export default function AccountsReceivableClientStatementPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ui-border">
+                <tr className="border-b-2 border-ui-border-medium">
                   {[
                     'Documento',
                     ...(hasBranches ? ['Sucursal'] : []),
@@ -322,8 +322,8 @@ export default function AccountsReceivableClientStatementPage() {
       </div>
 
       {/* Client credits */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-ui-border">
+      <div className="card-hard overflow-hidden">
+        <div className="px-6 py-4 border-b-2 border-ui-border-medium">
           <h2 className="text-content font-semibold">Saldos a favor</h2>
           <p className="text-content-muted text-xs mt-0.5 font-accent">
             {credits.length} {credits.length === 1 ? 'nota registrada' : 'notas registradas'}
@@ -360,12 +360,7 @@ export default function AccountsReceivableClientStatementPage() {
                         </p>
                       </div>
                     </div>
-                    <span
-                      className={cn(
-                        'px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap',
-                        badge.className,
-                      )}
-                    >
+                    <span className={cn('pill-stamp whitespace-nowrap', badge.className)}>
                       {badge.label}
                     </span>
                   </div>

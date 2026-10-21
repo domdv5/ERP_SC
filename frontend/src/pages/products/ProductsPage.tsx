@@ -158,7 +158,7 @@ export default function ProductsPage() {
         {canCreate && (
           <button
             onClick={() => setFormOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
+            className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
           >
             <Plus className="w-4 h-4" />
             Nuevo producto
@@ -177,8 +177,8 @@ export default function ProductsPage() {
       <StatsGrid cards={statCards} isLoading={isLoading} />
 
       {/* Tabla */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
-        <div className="border-b border-ui-border">
+      <div className="card-hard overflow-hidden">
+        <div className="border-b-2 border-ui-border-medium">
           <TableToolbar
             search={search}
             onSearchChange={setSearch}
@@ -192,7 +192,7 @@ export default function ProductsPage() {
             <select
               value={brandId}
               onChange={(e) => setBrandId(e.target.value)}
-              className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+              className="input-hard text-sm px-3 py-1.5"
             >
               <option value="">Todas las marcas</option>
               {brands.map((b) => (
@@ -230,7 +230,7 @@ export default function ProductsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ui-border">
+                <tr className="border-b-2 border-ui-border-medium">
                   {[
                     { label: 'Código', align: 'text-left' },
                     { label: 'Descripción', align: 'text-left' },
@@ -265,7 +265,7 @@ export default function ProductsPage() {
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-action">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-brand-primary text-xs font-bold shrink-0 gradient-action">
                           <Package className="w-4 h-4" />
                         </div>
                         <div>

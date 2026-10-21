@@ -56,14 +56,14 @@ export default function StockLookupPage() {
   if (isLoading) {
     content = (
       <div className="space-y-4 animate-pulse">
-        <div className="bg-surface rounded-2xl border border-ui-border p-5 flex items-center gap-4">
+        <div className="card-hard p-5 flex items-center gap-4">
           <div className="w-11 h-11 rounded-xl bg-surface-hover shrink-0" />
           <div className="flex-1 space-y-2">
             <div className="h-3 w-32 bg-surface-hover rounded" />
             <div className="h-4 w-56 bg-surface-hover rounded" />
           </div>
         </div>
-        <div className="bg-surface rounded-2xl border border-ui-border overflow-hidden">
+        <div className="card-hard overflow-hidden">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
@@ -84,14 +84,14 @@ export default function StockLookupPage() {
     content = (
       <div className="space-y-4">
         <ProductSummaryCard product={data.product} totalBinQuantity={data.totalBinQuantity} />
-        <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+        <div className="card-hard overflow-hidden">
           <LocationsTable locations={data.locations} />
         </div>
       </div>
     )
   } else {
     content = (
-      <div className="flex flex-col items-center justify-center py-20 text-center bg-surface rounded-2xl border border-ui-border shadow-sm">
+      <div className="flex flex-col items-center justify-center py-20 text-center card-hard">
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 gradient-dark">
           <MapPinned className="w-7 h-7 text-white/60" />
         </div>
@@ -114,7 +114,7 @@ export default function StockLookupPage() {
         </p>
       </div>
 
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-5">
+      <div className="card-hard p-5">
         <label className="block text-xs font-semibold text-content-faint uppercase tracking-wider mb-1.5">
           Código de producto
         </label>
@@ -128,9 +128,7 @@ export default function StockLookupPage() {
             placeholder="Escanear o escribir código..."
             autoComplete="off"
             className={cn(
-              'w-full pl-9 pr-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint',
-              'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
-              'border-ui-border-medium',
+              'input-hard w-full pl-9 pr-3 py-2 text-sm placeholder:text-content-faint',
             )}
           />
         </div>

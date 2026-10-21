@@ -80,7 +80,7 @@ function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       className={cn(
-        'w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
+        'input-hard w-full px-3 py-2 text-sm placeholder:text-content-faint',
         className,
       )}
       {...props}
@@ -148,9 +148,9 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
-      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+      <div className="relative bg-surface rounded-2xl border-2 border-ui-border-medium shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-ui-border gradient-dark">
           <div>
@@ -301,19 +301,11 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-ui-border flex justify-end gap-3 bg-surface-raised">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-content-secondary bg-surface border border-ui-border-medium rounded-lg hover:bg-surface-raised transition-colors"
-            >
+          <div className="px-6 py-4 border-t-2 border-ui-border-medium flex justify-end gap-3 bg-surface-raised">
+            <button type="button" onClick={onClose} className="btn-secondary px-4 py-2 text-sm">
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="px-5 py-2 text-sm font-medium text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-50 gradient-action"
-            >
+            <button type="submit" disabled={isPending} className="btn-primary px-5 py-2 text-sm">
               {isPending ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear usuario'}
             </button>
           </div>

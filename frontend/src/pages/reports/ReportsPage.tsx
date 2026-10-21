@@ -75,7 +75,7 @@ export default function ReportsPage() {
             onClick={handleRefresh}
             disabled={isRefreshing}
             aria-label="Actualizar informes"
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Actualizar

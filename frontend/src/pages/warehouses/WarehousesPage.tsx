@@ -222,7 +222,7 @@ export default function WarehousesPage() {
         {canManage && (
           <button
             onClick={() => setFormOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl gradient-action hover:opacity-90 active:scale-[0.98] transition-all"
+            className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
           >
             <Plus className="w-4 h-4" />
             Nueva bodega

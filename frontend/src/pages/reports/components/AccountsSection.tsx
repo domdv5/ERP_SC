@@ -21,7 +21,7 @@ function BalancePanel({ label, paidLabel, totals, color }: BalancePanelProps) {
   return (
     <div className="rounded-xl border border-ui-border bg-surface-raised p-4 min-w-0">
       <p className="text-content-muted text-xs">{label}</p>
-      <p className="text-content text-2xl font-semibold mt-1 truncate tabular-nums">
+      <p className="text-content text-2xl font-display mt-1 truncate tabular-nums">
         {formatCOP(totals.balance)}
       </p>
       <div

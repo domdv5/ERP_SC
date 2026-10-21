@@ -21,8 +21,7 @@ interface ReportFiltersProps {
   onWarehouseChange: (warehouseId: string | null) => void
 }
 
-const DATE_INPUT_CLASS =
-  'bg-surface-raised border border-ui-border-medium rounded-lg px-2.5 py-1.5 text-sm text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary'
+const DATE_INPUT_CLASS = 'input-hard px-2.5 py-1.5 text-sm'
 
 export function ReportFilters({
   range,
@@ -34,14 +33,14 @@ export function ReportFilters({
   const rangeError = getRangeError(range)
 
   return (
-    <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-4 space-y-3">
+    <div className="card-hard p-4 space-y-3">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="flex items-center gap-2 flex-wrap">
           <CalendarRange className="w-4 h-4 text-content-faint" aria-hidden="true" />
           <div
             role="group"
             aria-label="Período"
-            className="inline-flex items-center gap-1 p-1 rounded-xl bg-surface-raised border border-ui-border"
+            className="inline-flex items-center gap-1 p-1 rounded-md bg-surface-raised border-2 border-ui-border-medium"
           >
             {PRESET_OPTIONS.map((option) => (
               <button
@@ -52,9 +51,9 @@ export function ReportFilters({
                   onRangeChange({ preset: option.value, ...resolvePreset(option.value) })
                 }
                 className={cn(
-                  'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+                  'px-3 py-1.5 rounded-sm text-sm font-medium transition-colors',
                   range.preset === option.value
-                    ? 'text-white shadow-sm gradient-action'
+                    ? 'text-brand-primary font-semibold gradient-action'
                     : 'text-content-muted hover:text-content',
                 )}
               >

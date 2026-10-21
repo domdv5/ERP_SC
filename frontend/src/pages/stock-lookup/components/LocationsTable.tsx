@@ -21,7 +21,7 @@ export function LocationsTable({ locations }: LocationsTableProps) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-ui-border">
+          <tr className="border-b-2 border-ui-border-medium">
             {[
               { label: 'Bodega', align: 'text-left' },
               { label: 'Zona', align: 'text-left' },

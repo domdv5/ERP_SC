@@ -39,10 +39,7 @@ export function ReportCard({
   return (
     <section
       aria-busy={isLoading || isRefreshing}
-      className={cn(
-        'bg-surface rounded-2xl border border-ui-border shadow-sm p-5 flex flex-col',
-        className,
-      )}
+      className={cn('card-hard p-5 flex flex-col', className)}
     >
       <header className="flex items-start justify-between gap-3 mb-4">
         <div className="min-w-0">

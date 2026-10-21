@@ -133,7 +133,7 @@ function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputEleme
   return (
     <input
       className={cn(
-        'w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
+        'input-hard w-full px-3 py-2 text-sm placeholder:text-content-faint',
         className,
       )}
       {...props}
@@ -143,13 +143,7 @@ function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputEleme
 
 function Select({ className, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select
-      className={cn(
-        'w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
-        className,
-      )}
-      {...props}
-    >
+    <select className={cn('input-hard w-full px-3 py-2 text-sm', className)} {...props}>
       {children}
     </select>
   )
@@ -442,9 +436,9 @@ export function ThirdPartyForm({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
-      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="relative bg-surface rounded-2xl border-2 border-ui-border-medium shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-ui-border gradient-dark">
           <div>
@@ -637,7 +631,7 @@ export function ThirdPartyForm({
                     <button
                       type="button"
                       onClick={addBranch}
-                      className="px-3 py-2 rounded-lg text-white bg-brand-primary hover:bg-brand-primary-light transition-colors flex items-center gap-1 text-sm shrink-0"
+                      className="btn-secondary px-3 py-2 flex items-center gap-1 text-sm shrink-0"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -671,7 +665,7 @@ export function ThirdPartyForm({
                           <button
                             type="button"
                             onClick={() => confirmBranchEdit(index)}
-                            className="px-3 py-2 rounded-lg text-white gradient-action flex items-center"
+                            className="btn-primary px-3 py-2 flex items-center"
                             title="Guardar sucursal"
                           >
                             <Check className="w-4 h-4" />
@@ -733,7 +727,7 @@ export function ThirdPartyForm({
                     {...register('discountNotes')}
                     rows={3}
                     placeholder="Ej: 10% en compras mayores a $500.000, descuento especial en referencias X e Y..."
-                    className="w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all resize-none"
+                    className="input-hard w-full px-3 py-2 text-sm placeholder:text-content-faint resize-none"
                   />
                 </Field>
                 <div>
@@ -755,7 +749,7 @@ export function ThirdPartyForm({
                     <button
                       type="button"
                       onClick={addBrand}
-                      className="px-3 py-2 rounded-lg text-white bg-brand-primary hover:bg-brand-primary-light transition-colors flex items-center gap-1 text-sm shrink-0"
+                      className="btn-secondary px-3 py-2 flex items-center gap-1 text-sm shrink-0"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -868,19 +862,11 @@ export function ThirdPartyForm({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-ui-border flex justify-end gap-3 bg-surface-raised">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-content-secondary bg-surface border border-ui-border-medium rounded-lg hover:bg-surface-raised transition-colors"
-            >
+          <div className="px-6 py-4 border-t-2 border-ui-border-medium flex justify-end gap-3 bg-surface-raised">
+            <button type="button" onClick={onClose} className="btn-secondary px-4 py-2 text-sm">
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="px-5 py-2 text-sm font-medium text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-50 gradient-action"
-            >
+            <button type="submit" disabled={isPending} className="btn-primary px-5 py-2 text-sm">
               {isPending ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear tercero'}
             </button>
           </div>

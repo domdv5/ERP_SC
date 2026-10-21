@@ -53,24 +53,15 @@ export default function LoginPage() {
       {/* Left panel — branding */}
       <div className="hidden lg:flex flex-col justify-between w-1/2 p-12 relative overflow-hidden bg-brand-primary">
         {/* Decorative circles */}
-        <div
-          className="absolute -top-24 -left-24 w-96 h-96 rounded-full opacity-10"
-          style={{ background: 'radial-gradient(circle, #07bc34, transparent)' }}
-        />
-        <div
-          className="absolute -bottom-32 -right-16 w-80 h-80 rounded-full opacity-10"
-          style={{ background: 'radial-gradient(circle, #07bc34, transparent)' }}
-        />
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full opacity-5"
-          style={{ background: 'radial-gradient(circle, #07bc34, transparent)' }}
-        />
+        <div className="absolute -top-16 -left-16 w-72 h-72 border-2 border-brand-secondary/20 rotate-12" />
+        <div className="absolute -bottom-20 -right-12 w-64 h-64 border-2 border-brand-secondary/20 -rotate-6" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-brand-secondary/10 rotate-45" />
 
         <div className="relative flex items-center gap-3">
           <img
             src="/Logo.svg"
             alt="EloSC"
-            className="w-10 h-10 rounded-xl object-cover shadow-2xl shrink-0"
+            className="w-10 h-10 object-cover border-2 border-white/30 shrink-0"
           />
           <span className="text-white font-bold text-xl tracking-wide">EloSC</span>
         </div>
@@ -92,54 +83,58 @@ export default function LoginPage() {
       {/* Right panel — login form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <div className="glass rounded-2xl p-8 shadow-2xl">
+          <div className="glass rounded-2xl p-8">
             <div className="mb-8">
-              <h2 className="text-2xl text-white mb-1">Iniciar sesión</h2>
-              <p className="text-white/40 text-sm font-accent">
+              <h2 className="text-2xl text-content mb-1">Iniciar sesión</h2>
+              <p className="text-content-muted text-sm font-accent">
                 Ingresa tus credenciales para continuar
               </p>
             </div>
 
             <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-5">
               <div>
-                <label className="block text-white/70 text-sm font-medium mb-1.5">Usuario</label>
+                <label className="block text-content-secondary text-sm font-medium mb-1.5">
+                  Usuario
+                </label>
                 <input
                   {...register('username')}
                   type="text"
                   placeholder="usuario"
-                  className="w-full px-4 py-3 rounded-xl text-white placeholder-white/20 border border-white/10 bg-white/[0.07] focus:outline-none focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 transition-colors text-sm"
+                  className="input-hard w-full px-4 py-3 text-sm placeholder:text-content-faint"
                 />
                 {errors.username && (
-                  <p className="text-red-400 text-xs mt-1">{errors.username.message}</p>
+                  <p className="text-red-500 text-xs mt-1">{errors.username.message}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-white/70 text-sm font-medium mb-1.5">Contraseña</label>
+                <label className="block text-content-secondary text-sm font-medium mb-1.5">
+                  Contraseña
+                </label>
                 <div className="relative">
                   <input
                     {...register('password')}
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 pr-11 rounded-xl text-white placeholder-white/20 border border-white/10 bg-white/[0.07] focus:outline-none focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 transition-colors text-sm"
+                    className="input-hard w-full px-4 py-3 pr-11 text-sm placeholder:text-content-faint"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-content-faint hover:text-content transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>
+                  <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
                 )}
               </div>
 
               <button
                 type="submit"
                 disabled={isPending}
-                className="w-full py-3 rounded-xl font-semibold text-white text-sm transition-all duration-200 hover:opacity-90 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2 gradient-action"
+                className="btn-primary w-full py-3 text-sm mt-2"
               >
                 {isPending ? 'Iniciando sesión...' : 'Iniciar sesión'}
               </button>
