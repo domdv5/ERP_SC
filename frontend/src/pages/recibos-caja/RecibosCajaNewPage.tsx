@@ -46,7 +46,7 @@ function ConfirmDialog({
       <div className="absolute inset-0 bg-black/60" onClick={onCancel} />
       <div className="relative z-10 bg-surface rounded-2xl border-2 border-ui-border-medium shadow-2xl p-6 w-full max-w-md mx-4">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center gradient-action shrink-0 mt-0.5">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center selected-ink shrink-0 mt-0.5">
             <Wallet className="w-5 h-5 text-brand-primary" />
           </div>
           <div>

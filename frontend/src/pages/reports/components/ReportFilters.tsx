@@ -51,10 +51,10 @@ export function ReportFilters({
                   onRangeChange({ preset: option.value, ...resolvePreset(option.value) })
                 }
                 className={cn(
-                  'px-3 py-1.5 rounded-sm text-sm font-medium transition-colors',
+                  'px-3 py-1.5 rounded-sm border-2 text-sm font-medium transition-colors',
                   range.preset === option.value
-                    ? 'text-brand-primary font-semibold gradient-action'
-                    : 'text-content-muted hover:text-content',
+                    ? 'font-semibold selected-ink'
+                    : 'border-transparent text-content-muted hover:text-content',
                 )}
               >
                 {option.label}

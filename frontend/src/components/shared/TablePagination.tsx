@@ -51,7 +51,7 @@ export function TablePagination({ page, totalPages, total, onPageChange }: Table
               className={cn(
                 'px-2.5 py-1 text-xs rounded-md border-2 font-semibold transition-colors',
                 page === n
-                  ? 'text-brand-primary gradient-action border-hard shadow-xs press press-sm'
+                  ? 'selected-ink shadow-xs press press-sm'
                   : 'border-transparent text-content-muted hover:bg-surface-hover hover:border-ui-border-medium',
               )}
             >

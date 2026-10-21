@@ -19,7 +19,7 @@ function getNavLinkClass(isActive: boolean) {
   return cn(
     'flex items-center gap-3 px-3 py-2.5 rounded-md border-2 text-sm font-medium transition-colors duration-100',
     isActive
-      ? 'nav-active text-brand-primary'
+      ? 'nav-active'
       : 'border-transparent text-content-secondary hover:text-content hover:bg-surface-hover hover:border-ui-border-medium',
   )
 }
@@ -97,7 +97,7 @@ function WarehousesSidebarItem() {
                 className={cn(
                   'flex items-center gap-2 px-2 py-1.5 rounded-md border-2 text-xs font-medium transition-colors duration-100',
                   isItemActive
-                    ? 'nav-active text-brand-primary'
+                    ? 'nav-active'
                     : 'border-transparent text-content-muted hover:text-content hover:bg-surface-hover hover:border-ui-border-medium',
                 )}
               >
@@ -264,7 +264,7 @@ export function Sidebar() {
               : 'border-transparent hover:bg-surface-hover hover:border-ui-border-medium',
           )}
         >
-          <div className="w-7 h-7 rounded-md flex items-center justify-center text-brand-primary text-xs font-black shrink-0 gradient-action border-2 border-hard">
+          <div className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-black shrink-0 selected-ink">
             {user?.name?.[0]?.toUpperCase() ?? 'U'}
           </div>
           <div className="flex-1 min-w-0 text-left">

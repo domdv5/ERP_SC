@@ -79,7 +79,7 @@ export default function OfficialLedgerProductPage() {
     <div className="space-y-6 pb-10">
       {backButton}
 
-      <div className="card-hard p-6 border-l-4 border-l-brand-secondary">
+      <div className="card-hard p-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl text-content">{data?.product.name ?? 'Producto'}</h1>

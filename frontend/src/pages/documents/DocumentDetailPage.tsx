@@ -471,7 +471,7 @@ export default function DocumentDetailPage() {
       )}
 
       {/* Header card — borde de acento izquierdo + ícono por tipo (misma paleta que DOC_TYPE_BADGE) */}
-      <div className={cn('card-hard p-6 border-l-4', accentInfo.border)}>
+      <div className="card-hard p-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-4">
             <div
@@ -1152,8 +1152,8 @@ export default function DocumentDetailPage() {
         onConfirm={doConfirm}
         onCancel={() => setConfirmOpen(false)}
         icon={
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center gradient-action shrink-0">
-            <CheckCircle2 className="w-5 h-5 text-brand-primary" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center selected-ink shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
         }
       />

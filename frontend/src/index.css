@@ -63,6 +63,8 @@
   --surface-raised:     #f9fafb;
   --surface-hover:      #f3f4f6;
   --hard-shadow:        #141a17;
+  --ink-bg:             #141a17;
+  --ink-fg:             #07bc34;
   --ui-border:          #3a443f;
   --ui-border-medium:   #141a17;
   --ui-divide:          #e5e7eb;
@@ -79,9 +81,11 @@
   --surface:            #1e2820;
   --surface-raised:     #141a17;
   --surface-hover:      #1f2b24;
-  --hard-shadow:        #8b968f;
-  --ui-border:          rgba(255, 255, 255, 0.32);
-  --ui-border-medium:   rgba(255, 255, 255, 0.6);
+  --hard-shadow:        #000000;
+  --ink-bg:             #f9fafb;
+  --ink-fg:             #141a17;
+  --ui-border:          rgba(255, 255, 255, 0.4);
+  --ui-border-medium:   rgba(255, 255, 255, 0.75);
   --ui-divide:          rgba(255, 255, 255, 0.1);
   --content:            #f9fafb;
   --content-secondary:  #e5e7eb;
@@ -165,19 +169,27 @@
   /* Dark surface: empty state icons, sidebar elements */
   .gradient-dark {
     background: #141a17;
-    border: 2px solid var(--hard-shadow);
+    border: 2px solid var(--ui-border-medium);
   }
 
   /* User avatar */
   .gradient-user {
     background: #141a17;
-    border: 2px solid var(--hard-shadow);
+    border: 2px solid var(--ui-border-medium);
+  }
+
+  /* Opción elegida (toggles, paginación, avatar): bloque tinta, no verde; claro = negro con texto verde, oscuro = superficie clara con texto oscuro */
+  .selected-ink {
+    background: var(--ink-bg);
+    color: var(--ink-fg);
+    border: 2px solid var(--ui-border-medium);
   }
 
   /* Sidebar active nav item */
   .nav-active {
-    background: #07bc34;
-    border-color: var(--hard-shadow);
+    background: var(--ink-bg);
+    color: var(--ink-fg);
+    border-color: var(--ui-border-medium);
     box-shadow: 2px 2px 0 0 var(--hard-shadow);
   }
 
@@ -200,9 +212,9 @@
     --press-offset: 2px;
   }
 
-  /* Borde del color de la sombra dura (negro en claro, gris en oscuro) */
+  /* Borde duro visible en ambos temas (la sombra negra pura se pierde como borde en oscuro) */
   .border-hard {
-    border-color: var(--hard-shadow);
+    border-color: var(--ui-border-medium);
   }
 }
 
@@ -213,7 +225,7 @@
     background: #07bc34;
     color: #141a17;
     font-weight: 600;
-    border: 2px solid var(--hard-shadow);
+    border: 2px solid var(--ui-border-medium);
     border-radius: 2px;
     box-shadow: 3px 3px 0 0 var(--hard-shadow);
     transition: transform 80ms linear, box-shadow 80ms linear, background-color 80ms linear;
@@ -233,7 +245,7 @@
     background: var(--surface);
     color: var(--content);
     font-weight: 600;
-    border: 2px solid var(--hard-shadow);
+    border: 2px solid var(--ui-border-medium);
     border-radius: 2px;
     box-shadow: 2px 2px 0 0 var(--hard-shadow);
     transition: transform 80ms linear, box-shadow 80ms linear, background-color 80ms linear;
@@ -253,7 +265,7 @@
     background: #dc2626;
     color: #ffffff;
     font-weight: 600;
-    border: 2px solid var(--hard-shadow);
+    border: 2px solid var(--ui-border-medium);
     border-radius: 2px;
     box-shadow: 3px 3px 0 0 var(--hard-shadow);
     transition: transform 80ms linear, box-shadow 80ms linear, background-color 80ms linear;
@@ -271,7 +283,10 @@
   .btn-primary:disabled,
   .btn-secondary:disabled,
   .btn-danger:disabled {
-    opacity: 0.5;
+    background: var(--surface-hover);
+    color: var(--content-muted);
+    border-color: var(--ui-border);
+    box-shadow: none;
     cursor: not-allowed;
   }
 

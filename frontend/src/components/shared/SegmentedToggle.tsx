@@ -29,9 +29,7 @@ export function SegmentedToggle({
         onClick={() => onChange(false)}
         className={cn(
           'px-4 py-1.5 rounded-sm border-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed',
-          !checked
-            ? 'text-brand-primary gradient-action border-hard'
-            : 'border-transparent text-content-muted hover:text-content',
+          !checked ? 'selected-ink' : 'border-transparent text-content-muted hover:text-content',
         )}
       >
         {uncheckedLabel}
@@ -42,9 +40,7 @@ export function SegmentedToggle({
         onClick={() => onChange(true)}
         className={cn(
           'px-4 py-1.5 rounded-sm border-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed',
-          checked
-            ? 'text-brand-primary gradient-action border-hard'
-            : 'border-transparent text-content-muted hover:text-content',
+          checked ? 'selected-ink' : 'border-transparent text-content-muted hover:text-content',
         )}
       >
         {checkedLabel}

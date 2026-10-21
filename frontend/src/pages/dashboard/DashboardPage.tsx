@@ -18,15 +18,18 @@ import { getProducts } from '@/services/products.service'
 import { getWarehouses } from '@/services/warehouses.service'
 import { getDocuments } from '@/services/documents.service'
 
-// Clases literales para que Tailwind las detecte; el primer KPI operativo es el tile grande y los demás se reparten según cuántos haya.
+// Clases literales para que Tailwind las detecte; el primer KPI es el tile grande y cada fila (2 cols en móvil, 5 en lg) queda completa.
 const OPERATIONAL_TILE_SPANS: Record<number, string[]> = {
-  1: ['col-span-2 lg:col-span-4'],
-  2: ['col-span-2 lg:row-span-2', 'col-span-2 lg:row-span-2'],
-  3: ['col-span-2 lg:row-span-2', 'col-span-2', 'col-span-2'],
-  4: ['col-span-2 lg:row-span-2', 'col-span-1', 'col-span-1', 'col-span-2'],
+  1: ['col-span-2 lg:col-span-5'],
+  2: ['col-span-1 lg:col-span-3', 'col-span-1 lg:col-span-2'],
+  3: ['col-span-2 lg:col-span-3', 'col-span-1 lg:col-span-1', 'col-span-1 lg:col-span-1'],
+  4: [
+    'col-span-2 lg:col-span-2',
+    'col-span-1 lg:col-span-1',
+    'col-span-1 lg:col-span-1',
+    'col-span-2 lg:col-span-1',
+  ],
 }
-
-const FINANCIAL_TILE_SPAN = 'col-span-2 lg:row-span-2'
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user)
@@ -105,6 +108,18 @@ export default function DashboardPage() {
   ]
 
   const operationalCards = [
+    ...(canReadDocuments
+      ? [
+          {
+            label: 'Documentos',
+            value: loadingDocuments ? null : String(documentsData?.meta.total ?? '—'),
+            icon: FileText,
+            iconBg: 'bg-teal-500/10',
+            iconColor: 'text-teal-600 dark:text-teal-400',
+            path: '/documents',
+          },
+        ]
+      : []),
     {
       label: 'Productos',
       value: loadingProducts ? null : String(productsData?.meta.total ?? '—'),
@@ -137,18 +152,6 @@ export default function DashboardPage() {
           },
         ]
       : []),
-    ...(canReadDocuments
-      ? [
-          {
-            label: 'Documentos',
-            value: loadingDocuments ? null : String(documentsData?.meta.total ?? '—'),
-            icon: FileText,
-            iconBg: 'bg-teal-500/10',
-            iconColor: 'text-teal-600 dark:text-teal-400',
-            path: '/documents',
-          },
-        ]
-      : []),
   ]
 
   return (
@@ -167,36 +170,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Bento grid: financieras y primer KPI operativo son los tiles grandes */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 lg:auto-rows-[minmax(7.5rem,auto)] gap-4 grid-flow-dense">
-        {financialCards.map(
-          ({ label, subtitle, icon: Icon, iconBg, iconColor, dotColor, path, context }) => (
-            <div
-              key={label}
-              onClick={() => navigate(path)}
-              className={`card-hard press p-6 group cursor-pointer flex flex-col ${FINANCIAL_TILE_SPAN}`}
-            >
-              <div className="flex items-start justify-between mb-5">
-                <div className={`w-10 h-10 rounded-md flex items-center justify-center ${iconBg}`}>
-                  <Icon className={`w-5 h-5 ${iconColor}`} />
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-content-faint group-hover:text-content-muted group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-              </div>
-              <p className="font-display font-black text-5xl leading-none text-content tabular-nums mb-2">
-                —
-              </p>
-              <p className="text-sm font-medium text-content-secondary">{label}</p>
-              <p className="text-xs text-content-faint mt-0.5 font-accent">{subtitle}</p>
-              <div className="mt-auto pt-4 border-t-2 border-ui-border flex items-center gap-1.5">
-                <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-                <span className="font-mono text-[11px] uppercase tracking-wider text-content-faint">
-                  {context}
-                </span>
-              </div>
-            </div>
-          ),
-        )}
-
+      {/* Bento grid: los KPI con cifras reales son los tiles grandes; los módulos en desarrollo van compactos */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 lg:auto-rows-[minmax(6.5rem,auto)] gap-4">
         {operationalCards.map(({ label, value, icon: Icon, iconBg, iconColor, path }, index) => {
           const isLead = index === 0
           return (
@@ -232,28 +207,61 @@ export default function DashboardPage() {
             </div>
           )
         })}
+      </div>
 
-        {/* Activity */}
-        <div className="card-hard col-span-2 lg:col-span-4">
-          <div className="px-5 py-4 border-b-2 border-ui-border flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-content-faint" />
-              <h2 className="text-sm text-content">Actividad reciente</h2>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-content-faint">
-              <Clock className="w-3 h-3" />
-              <span>Hoy</span>
-            </div>
+      {financialCards.length > 0 && (
+        <div
+          className={`grid grid-cols-1 gap-4 ${financialCards.length === 2 ? 'md:grid-cols-2' : ''}`}
+        >
+          {financialCards.map(
+            ({ label, subtitle, icon: Icon, iconBg, iconColor, dotColor, path, context }) => (
+              <div
+                key={label}
+                onClick={() => navigate(path)}
+                className={`card-hard press p-4 group cursor-pointer flex items-center gap-4`}
+              >
+                <div
+                  className={`w-9 h-9 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}
+                >
+                  <Icon className={`w-4 h-4 ${iconColor}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-content-secondary truncate">{label}</p>
+                  <p className="text-xs text-content-faint font-accent truncate">{subtitle}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                  <span className="hidden sm:inline font-mono text-[11px] uppercase tracking-wider text-content-faint">
+                    {context}
+                  </span>
+                </div>
+                <ArrowUpRight className="w-3.5 h-3.5 text-content-faint group-hover:text-content-muted transition-colors shrink-0" />
+              </div>
+            ),
+          )}
+        </div>
+      )}
+
+      {/* Activity */}
+      <div className="card-hard">
+        <div className="px-5 py-4 border-b-2 border-ui-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-content-faint" />
+            <h2 className="text-sm text-content">Actividad reciente</h2>
           </div>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-10 h-10 rounded-md flex items-center justify-center mb-3 gradient-dark">
-              <Activity className="w-5 h-5 text-white/50" />
-            </div>
-            <p className="text-content-muted text-sm">No hay actividad reciente</p>
-            <p className="text-content-faint text-xs mt-1 font-accent">
-              Los movimientos aparecerán aquí
-            </p>
+          <div className="flex items-center gap-1.5 text-xs text-content-faint">
+            <Clock className="w-3 h-3" />
+            <span>Hoy</span>
           </div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-10 h-10 rounded-md flex items-center justify-center mb-3 gradient-dark">
+            <Activity className="w-5 h-5 text-white/50" />
+          </div>
+          <p className="text-content-muted text-sm">No hay actividad reciente</p>
+          <p className="text-content-faint text-xs mt-1 font-accent">
+            Los movimientos aparecerán aquí
+          </p>
         </div>
       </div>
     </div>
