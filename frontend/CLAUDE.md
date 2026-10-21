@@ -165,7 +165,7 @@ All colors and gradients are tokenized — **never use hardcoded hex values** in
 - `glass` — now a **solid** theme surface with 2px border (login panel); text inside must use semantic tokens, not `text-white`
 - `text-gradient-brand` — plain green text
 
-**Patterns:** modal overlays are `bg-black/60` (no blur) with a `border-2 border-ui-border-medium shadow-2xl` panel; section/table-head separators use `border-b-2 border-ui-border-medium`; big totals and KPIs use `font-display tabular-nums`. The dashboard is a bento grid (`grid-flow-dense`, col spans picked from literal class maps per number of permitted tiles, so missing permissions never leave holes): tiles with real numbers (Documentos first) are the prominent ones, CxC/CxP "módulo en desarrollo" are compact one-row tiles. Document cards no longer carry the per-type colored `border-l-4`.
+**Patterns:** modal overlays are `bg-black/60` (no blur) with a `border-2 border-ui-border-medium shadow-2xl` panel; section/table-head separators use `border-b-2 border-ui-border-medium`; big totals and KPIs use `font-display tabular-nums`. The dashboard uses two grids: KPI tiles with real numbers (`lg:grid-cols-5`, Documentos first and widest; col spans picked from literal class maps per number of permitted tiles, so missing permissions never leave holes) and, below, CxC/CxP "módulo en desarrollo" as compact tiles. The main card of the document form, POS checkout and document detail keeps a per-type colored `border-l-[6px]` (`DOC_TYPE_ACCENT[type].border`, same color as the header icon) — it tells the user which document type they are on, don't remove it.
 
 ## Typography
 

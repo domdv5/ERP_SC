@@ -471,7 +471,7 @@ export default function DocumentDetailPage() {
       )}
 
       {/* Header card — borde de acento izquierdo + ícono por tipo (misma paleta que DOC_TYPE_BADGE) */}
-      <div className="card-hard p-6">
+      <div className={cn('card-hard p-6 border-l-[6px]', accentInfo.border)}>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-4">
             <div

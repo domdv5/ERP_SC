@@ -705,7 +705,7 @@ export default function POSCheckoutPage() {
         {/* ── Columna principal ─────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-6">
           {/* Datos de la venta */}
-          <div className="card-hard p-6 space-y-5">
+          <div className={cn('card-hard p-6 space-y-5 border-l-[6px]', accent.border)}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ui-divide pb-3">
               <h2 className="text-base text-content">Datos de la venta</h2>
               <div className="flex flex-wrap items-center gap-3">

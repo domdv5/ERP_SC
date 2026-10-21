@@ -473,10 +473,10 @@ export function ThirdPartyForm({
                     type="button"
                     onClick={() => setValue('personType', type)}
                     className={cn(
-                      'py-2.5 rounded-xl text-sm font-medium border transition-all',
+                      'py-2.5 rounded-md text-sm font-medium border-2 transition-colors',
                       personType === type
-                        ? 'border-brand-secondary bg-brand-secondary/10 text-brand-secondary-dark'
-                        : 'border-ui-border-medium text-content-muted bg-surface hover:border-ui-border',
+                        ? 'selected-ink'
+                        : 'border-ui-border-medium text-content-muted bg-surface hover:bg-surface-hover',
                     )}
                   >
                     {type === 'natural' ? 'Persona Natural' : 'Persona Jurídica'}

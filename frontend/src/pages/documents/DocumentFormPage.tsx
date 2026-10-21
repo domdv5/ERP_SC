@@ -689,7 +689,7 @@ export default function DocumentFormPage() {
         className="space-y-6"
       >
         {/* ── Datos generales — borde de acento izquierdo según el tipo, ancla visual del form ── */}
-        <div className="card-hard p-6 space-y-5">
+        <div className={cn('card-hard p-6 space-y-5 border-l-[6px]', accent.border)}>
           <h2 className="text-base text-content border-b border-ui-divide pb-3">
             Información general
           </h2>
