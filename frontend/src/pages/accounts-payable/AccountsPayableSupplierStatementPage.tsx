@@ -79,10 +79,7 @@ export default function AccountsPayableSupplierStatementPage() {
         <div className="card-hard p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar el estado de cuenta</p>
-          <button
-            onClick={() => refetch()}
-            className="text-sm text-brand-secondary hover:underline"
-          >
+          <button onClick={() => refetch()} className="text-sm link-plain">
             Intentar de nuevo
           </button>
         </div>
@@ -303,7 +300,7 @@ export default function AccountsPayableSupplierStatementPage() {
                           {application.egreso ? (
                             <button
                               onClick={() => navigate(`/egresos/${application.egreso!.id}`)}
-                              className="flex items-center gap-1 text-brand-secondary hover:underline"
+                              className="flex items-center gap-1 link-plain"
                             >
                               <Landmark className="w-3 h-3" />
                               {docNumber('EG', application.egreso.number)}

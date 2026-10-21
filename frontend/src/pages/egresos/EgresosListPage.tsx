@@ -218,7 +218,7 @@ export default function EgresosListPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 avatar-outline">
                           {egreso.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
                         </div>
                         <button
@@ -226,7 +226,7 @@ export default function EgresosListPage() {
                             e.stopPropagation()
                             navigate(`/accounts-payable/suppliers/${egreso.supplier.id}`)
                           }}
-                          className="font-medium text-brand-secondary hover:underline text-left"
+                          className="font-medium link-plain text-left"
                         >
                           {egreso.supplier.thirdParty.name}
                         </button>

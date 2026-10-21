@@ -89,10 +89,7 @@ export default function AccountsReceivableDetailPage() {
         <div className="card-hard p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar la cuenta por cobrar</p>
-          <button
-            onClick={() => refetch()}
-            className="text-sm text-brand-secondary hover:underline"
-          >
+          <button onClick={() => refetch()} className="text-sm link-plain">
             Intentar de nuevo
           </button>
         </div>
@@ -137,7 +134,7 @@ export default function AccountsReceivableDetailPage() {
 
           <button
             onClick={() => navigate(`/accounts-receivable/clients/${account.client.id}`)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-secondary hover:underline shrink-0"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium link-plain shrink-0"
           >
             <Receipt className="w-4 h-4" />
             Ver estado de cuenta del cliente
@@ -268,7 +265,7 @@ export default function AccountsReceivableDetailPage() {
                         {entry.source === 'recibo_caja' && (
                           <button
                             onClick={() => navigate(`/recibos-caja/${entry.reciboCaja.id}`)}
-                            className="flex items-center gap-1.5 font-mono text-xs text-brand-secondary hover:underline"
+                            className="flex items-center gap-1.5 font-mono text-xs link-plain"
                           >
                             <Landmark className="w-3.5 h-3.5" />
                             {docNumber('RC', entry.reciboCaja.number)}

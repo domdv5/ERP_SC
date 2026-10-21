@@ -82,10 +82,7 @@ export default function AccountsReceivableClientStatementPage() {
         <div className="card-hard p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar el estado de cuenta</p>
-          <button
-            onClick={() => refetch()}
-            className="text-sm text-brand-secondary hover:underline"
-          >
+          <button onClick={() => refetch()} className="text-sm link-plain">
             Intentar de nuevo
           </button>
         </div>

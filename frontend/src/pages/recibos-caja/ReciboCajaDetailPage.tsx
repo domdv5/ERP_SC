@@ -61,10 +61,7 @@ export default function ReciboCajaDetailPage() {
         <div className="bg-surface rounded-2xl border border-ui-border p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar el recibo de caja</p>
-          <button
-            onClick={() => refetch()}
-            className="text-sm text-brand-secondary hover:underline"
-          >
+          <button onClick={() => refetch()} className="text-sm link-plain">
             Intentar de nuevo
           </button>
         </div>
@@ -226,7 +223,7 @@ export default function ReciboCajaDetailPage() {
                   <td className="px-5 py-3.5">
                     <Link
                       to={`/documents/${allocation.accountReceivable.documentId}`}
-                      className="font-mono text-xs font-medium text-brand-secondary hover:underline"
+                      className="font-mono text-xs font-medium link-plain"
                     >
                       {docNumber(
                         allocation.accountReceivable.document.type,

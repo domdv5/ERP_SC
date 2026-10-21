@@ -82,7 +82,7 @@
   --surface-raised:     #141a17;
   --surface-hover:      #1f2b24;
   --hard-shadow:        #000000;
-  --ink-bg:             #f9fafb;
+  --ink-bg:             #c9d1cc;
   --ink-fg:             #141a17;
   --ui-border:          rgba(255, 255, 255, 0.4);
   --ui-border-medium:   rgba(255, 255, 255, 0.75);
@@ -176,6 +176,23 @@
   .gradient-user {
     background: #141a17;
     border: 2px solid var(--ui-border-medium);
+  }
+
+  /* Cuadro de iniciales en listados: contorno sin relleno, igual en claro y oscuro */
+  .avatar-outline {
+    background: transparent;
+    color: var(--content);
+    border: 2px solid var(--ui-border-medium);
+  }
+
+  /* Enlace de nombre/código: hereda el color del texto y se subraya al pasar el mouse */
+  .link-plain {
+    color: inherit;
+  }
+
+  .link-plain:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 
   /* Opción elegida (toggles, paginación, avatar): bloque tinta, no verde; claro = negro con texto verde, oscuro = superficie clara con texto oscuro */

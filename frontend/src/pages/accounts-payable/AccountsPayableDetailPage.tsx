@@ -93,10 +93,7 @@ export default function AccountsPayableDetailPage() {
         <div className="card-hard p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar la cuenta por pagar</p>
-          <button
-            onClick={() => refetch()}
-            className="text-sm text-brand-secondary hover:underline"
-          >
+          <button onClick={() => refetch()} className="text-sm link-plain">
             Intentar de nuevo
           </button>
         </div>
@@ -142,7 +139,7 @@ export default function AccountsPayableDetailPage() {
 
           <button
             onClick={() => navigate(`/accounts-payable/suppliers/${account.supplier.id}`)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-secondary hover:underline shrink-0"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium link-plain shrink-0"
           >
             <Receipt className="w-4 h-4" />
             Ver estado de cuenta del proveedor
@@ -278,7 +275,7 @@ export default function AccountsPayableDetailPage() {
                         {entry.source === 'egreso' && (
                           <button
                             onClick={() => navigate(`/egresos/${entry.egreso.id}`)}
-                            className="flex items-center gap-1.5 font-mono text-xs text-brand-secondary hover:underline"
+                            className="flex items-center gap-1.5 font-mono text-xs link-plain"
                           >
                             <Landmark className="w-3.5 h-3.5" />
                             {docNumber('EG', entry.egreso.number)}

@@ -333,7 +333,7 @@ export default function AccountsReceivableListPage() {
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 avatar-outline">
                           {account.client.thirdParty.name[0]?.toUpperCase() ?? '?'}
                         </div>
                         <button
@@ -341,7 +341,7 @@ export default function AccountsReceivableListPage() {
                             e.stopPropagation()
                             navigate(`/accounts-receivable/clients/${account.client.id}`)
                           }}
-                          className="font-medium text-brand-secondary hover:underline text-left"
+                          className="font-medium link-plain text-left"
                         >
                           {account.client.thirdParty.name}
                         </button>

@@ -61,10 +61,7 @@ export default function EgresoDetailPage() {
         <div className="bg-surface rounded-2xl border border-ui-border p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar el egreso</p>
-          <button
-            onClick={() => refetch()}
-            className="text-sm text-brand-secondary hover:underline"
-          >
+          <button onClick={() => refetch()} className="text-sm link-plain">
             Intentar de nuevo
           </button>
         </div>
@@ -94,7 +91,7 @@ export default function EgresoDetailPage() {
             <p className="text-content-muted text-sm mt-1 font-accent">
               <button
                 onClick={() => navigate(`/accounts-payable/suppliers/${egreso.supplier.id}`)}
-                className="text-brand-secondary hover:underline font-medium"
+                className="link-plain font-medium"
               >
                 {egreso.supplier.thirdParty.name}
               </button>{' '}
@@ -241,7 +238,7 @@ export default function EgresoDetailPage() {
                     <td className="px-5 py-3.5">
                       <Link
                         to={`/accounts-payable/${allocation.accountPayableId}`}
-                        className="font-mono text-xs font-medium text-brand-secondary hover:underline"
+                        className="font-mono text-xs font-medium link-plain"
                       >
                         {docNumber(
                           allocation.accountPayable.document.type,
@@ -297,7 +294,7 @@ export default function EgresoDetailPage() {
                     <td className="px-5 py-3.5">
                       <Link
                         to={`/documents/${application.supplierCredit.sourceDocument.id}`}
-                        className="font-mono text-xs font-medium text-brand-secondary hover:underline"
+                        className="font-mono text-xs font-medium link-plain"
                       >
                         {docNumber(
                           application.supplierCredit.sourceDocument.type,

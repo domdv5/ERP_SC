@@ -360,10 +360,7 @@ export default function DocumentDetailPage() {
         <div className="bg-surface rounded-2xl border border-ui-border p-8 text-center">
           <FileText className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar la operación</p>
-          <button
-            onClick={() => refetch()}
-            className="text-sm text-brand-secondary hover:underline"
-          >
+          <button onClick={() => refetch()} className="text-sm link-plain">
             Intentar de nuevo
           </button>
         </div>
@@ -730,7 +727,7 @@ export default function DocumentDetailPage() {
                 <button
                   type="button"
                   onClick={() => navigate(`/documents/${doc.sourceDocument!.id}`)}
-                  className="text-sm text-brand-secondary hover:underline font-mono"
+                  className="text-sm link-plain font-mono"
                 >
                   {docNumber(doc.sourceDocument.type, doc.sourceDocument.number)}
                 </button>
@@ -753,7 +750,7 @@ export default function DocumentDetailPage() {
                         key={cmo.id}
                         type="button"
                         onClick={() => navigate(`/documents/${cmo.id}`)}
-                        className="text-sm text-brand-secondary hover:underline font-mono text-left"
+                        className="text-sm link-plain font-mono text-left"
                       >
                         {docNumber(cmo.type, cmo.number)}
                         <span className="font-sans text-content-muted">
@@ -1076,7 +1073,7 @@ export default function DocumentDetailPage() {
                           key={app.id}
                           type="button"
                           onClick={() => navigate(`/documents/${app.saleDocumentId}`)}
-                          className="flex items-center gap-2 text-sm text-brand-secondary hover:underline"
+                          className="flex items-center gap-2 text-sm link-plain"
                         >
                           <ArrowRight className="w-3.5 h-3.5" />
                           {formatCOP(app.amount)} · {formatDate(app.appliedAt)}
@@ -1124,7 +1121,7 @@ export default function DocumentDetailPage() {
                     onClick={() =>
                       navigate(`/documents/${applied.customerCredit.sourceDocument.id}`)
                     }
-                    className="flex items-center gap-1.5 text-sm text-brand-secondary hover:underline"
+                    className="flex items-center gap-1.5 text-sm link-plain"
                   >
                     Origen{' '}
                     {docNumber(

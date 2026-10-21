@@ -47,7 +47,7 @@ function UserAvatar({ name }: { name: string }) {
     .map((n) => n[0]?.toUpperCase() ?? '')
     .join('')
   return (
-    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
+    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 avatar-outline">
       {initials}
     </div>
   )

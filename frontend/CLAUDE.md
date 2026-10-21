@@ -160,7 +160,9 @@ All colors and gradients are tokenized — **never use hardcoded hex values** in
 - `press` — translates by `--press-offset` (3px default; `card-hard` sets 4px) and drops the shadow on `:active`; `press-sm` for 2px shadows
 - `border-hard` — border in the `--hard-shadow` color
 - `gradient-action` / `gradient-brand` / `gradient-dark` / `gradient-user` — now **flat** colors (names kept because many files consume them); `gradient-dark`/`gradient-user` add a 2px `ui-border-medium` border so they don't vanish in dark mode; `gradient-action` is no longer used for selection or decoration
-- `selected-ink` — selected option (SegmentedToggle, active pagination page, report period buttons) and decorative icon squares/avatars: ink block (light: `#141a17` + green text; dark: near-white + dark text) + 2px border. Not green; do not add `text-brand-primary`/`gradient-action`
+- `selected-ink` — selected option (SegmentedToggle, active pagination page, report period buttons) and decorative icon squares/avatars: ink block (light: `#141a17` + green text; dark: light gray `#c9d1cc` + dark text) + 2px border. Not green; do not add `text-brand-primary`/`gradient-action`
+- `avatar-outline` — initials square in list rows: transparent, 2px `ui-border-medium` border, `text-content` letter (same in both themes)
+- `link-plain` — name/code links: inherits text color, underline on hover (never green text for links)
 - `nav-active` — sidebar active NavLink: same ink block + 2px solid shadow (needs `border-2` on the link)
 - `glass` — now a **solid** theme surface with 2px border (login panel); text inside must use semantic tokens, not `text-white`
 - `text-gradient-brand` — plain green text
