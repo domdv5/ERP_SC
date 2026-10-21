@@ -687,7 +687,7 @@ export default function POSCheckoutPage() {
           </p>
         </div>
         {sourceDocument && (
-          <span className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-pink-100 text-pink-700 dark:bg-pink-500/20 dark:text-pink-400">
+          <span className="ml-auto pill-stamp bg-pink-100 text-pink-700 dark:bg-pink-500/20 dark:text-pink-400">
             <ArrowRightLeft className="w-3.5 h-3.5" />
             Convertida desde {docNumber(sourceDocument.type, sourceDocument.number)}
           </span>
@@ -705,12 +705,7 @@ export default function POSCheckoutPage() {
         {/* ── Columna principal ─────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-6">
           {/* Datos de la venta */}
-          <div
-            className={cn(
-              'bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-5 border-l-4',
-              accent.border,
-            )}
-          >
+          <div className={cn('card-hard p-6 space-y-5 border-l-4', accent.border)}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ui-divide pb-3">
               <h2 className="text-base text-content">Datos de la venta</h2>
               <div className="flex flex-wrap items-center gap-3">
@@ -818,7 +813,7 @@ export default function POSCheckoutPage() {
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="w-full sm:w-64 px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+                    className="input-hard w-full sm:w-64 px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
                   >
                     <option value="">Selecciona una forma de pago</option>
                     {PAYMENT_METHOD_OPTIONS.map((opt) => (
@@ -892,7 +887,7 @@ export default function POSCheckoutPage() {
 
             {/* Error de cupo devuelto por el backend (dos ventas compitiendo por el cupo, o al convertir). */}
             {creditError && (
-              <div className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 p-4">
+              <div className="rounded-xl border-2 border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 p-4">
                 <p className="text-sm text-red-700 dark:text-red-400 font-medium">
                   {creditError.message}
                 </p>
@@ -985,7 +980,7 @@ export default function POSCheckoutPage() {
                         ? 'Selecciona una forma de pago primero'
                         : undefined
                     }
-                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white rounded-lg gradient-action hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="btn-primary flex items-center gap-2 px-3 py-1.5 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isConverting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     Convertir a esta venta
@@ -1003,7 +998,7 @@ export default function POSCheckoutPage() {
           )}
 
           {/* Productos */}
-          <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+          <div className="card-hard overflow-hidden">
             <div className="px-6 py-4 border-b border-ui-divide">
               <h2 className="text-base text-content">Productos</h2>
               <p className="text-xs text-content-faint font-accent mt-0.5">
@@ -1098,7 +1093,7 @@ export default function POSCheckoutPage() {
 
         {/* ── Resumen (sticky) ──────────────────────────────────────────── */}
         <div className="lg:sticky lg:top-6 space-y-4">
-          <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-4">
+          <div className="card-hard p-6 space-y-4">
             <div>
               <p className="text-xs text-content-faint font-accent uppercase tracking-wider">
                 {official
@@ -1109,7 +1104,9 @@ export default function POSCheckoutPage() {
                       : 'Total a pagar en efectivo'
                     : 'Total a pagar'}
               </p>
-              <p className="text-4xl text-content mt-1 font-mono">{formatCOP(totalToPay)}</p>
+              <p className="text-4xl text-content mt-1 font-display tabular-nums">
+                {formatCOP(totalToPay)}
+              </p>
               {official && (
                 <div className="mt-2 space-y-0.5 text-xs font-accent">
                   <div className="flex items-center justify-between text-content-muted">
@@ -1157,7 +1154,7 @@ export default function POSCheckoutPage() {
                 void handleConfirm()
               }}
               disabled={!canConfirm || isSubmitting}
-              className="w-full flex items-center justify-center gap-2 px-5 py-3 text-sm font-medium text-white rounded-xl gradient-action hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="btn-primary w-full flex items-center justify-center gap-2 px-5 py-3 text-sm disabled:opacity-50"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               Confirmar venta
@@ -1165,7 +1162,7 @@ export default function POSCheckoutPage() {
             <button
               type="button"
               onClick={() => navigate('/documents')}
-              className="w-full px-4 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors"
+              className="btn-secondary w-full px-4 py-2 text-sm"
             >
               Cancelar
             </button>

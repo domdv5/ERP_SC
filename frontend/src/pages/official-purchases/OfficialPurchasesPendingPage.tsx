@@ -108,7 +108,7 @@ export default function OfficialPurchasesPendingPage() {
         </p>
       </div>
 
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+      <div className="card-hard overflow-hidden">
         <div className="border-b border-ui-border">
           <TableToolbar
             search={search}
@@ -141,7 +141,7 @@ export default function OfficialPurchasesPendingPage() {
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
                 max={dateTo || undefined}
-                className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                className="input-hard text-sm border-ui-border-medium px-3 py-1.5 text-content transition-all"
               />
             </label>
             <label className="flex items-center gap-1.5 text-xs text-content-muted">
@@ -151,7 +151,7 @@ export default function OfficialPurchasesPendingPage() {
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
                 min={dateFrom || undefined}
-                className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                className="input-hard text-sm border-ui-border-medium px-3 py-1.5 text-content transition-all"
               />
             </label>
           </div>
@@ -243,7 +243,7 @@ export default function OfficialPurchasesPendingPage() {
                           e.stopPropagation()
                           navigate(`/documents/new?type=CMO&fromCM=${purchase.id}`)
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg gradient-action hover:opacity-90 transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100 whitespace-nowrap"
+                        className="btn-primary inline-flex items-center gap-1.5 px-3 py-1.5 text-xs opacity-0 group-hover:opacity-100 focus-visible:opacity-100 whitespace-nowrap"
                       >
                         <FileCheck2 className="w-3.5 h-3.5" />
                         Crear compra oficial

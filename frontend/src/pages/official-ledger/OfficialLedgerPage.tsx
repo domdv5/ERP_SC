@@ -97,7 +97,7 @@ export default function OfficialLedgerPage() {
 
       <StatsGrid cards={statCards} isLoading={isLoading} />
 
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+      <div className="card-hard overflow-hidden">
         <div className="border-b border-ui-border">
           <TableToolbar
             search={search}
@@ -116,7 +116,7 @@ export default function OfficialLedgerPage() {
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
                 max={dateTo || undefined}
-                className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                className="input-hard text-sm border-ui-border-medium px-3 py-1.5 text-content transition-all"
               />
             </label>
             <label className="flex items-center gap-1.5 text-xs text-content-muted">
@@ -126,7 +126,7 @@ export default function OfficialLedgerPage() {
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
                 min={dateFrom || undefined}
-                className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                className="input-hard text-sm border-ui-border-medium px-3 py-1.5 text-content transition-all"
               />
             </label>
           </div>

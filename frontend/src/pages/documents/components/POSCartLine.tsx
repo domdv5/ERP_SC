@@ -55,7 +55,7 @@ export function POSCartLine({
             min={1}
             step={1}
             {...register(`items.${index}.quantity`)}
-            className="w-full px-2.5 py-1.5 text-sm text-center rounded-lg border bg-surface-raised text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all border-ui-border-medium"
+            className="input-hard w-full px-2.5 py-1.5 text-sm text-center text-content transition-all border-ui-border-medium"
           />
         </td>
 

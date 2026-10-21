@@ -17,9 +17,9 @@ export function MissingStockDialog({
 }: MissingStockDialogProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
-      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
+      <div className="relative bg-surface rounded-2xl border-2 border-ui-border-medium shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
         <div className="flex items-center justify-between px-6 py-4 border-b border-ui-border bg-red-500/10 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-red-500/15 shrink-0">
@@ -77,11 +77,7 @@ export function MissingStockDialog({
         </div>
 
         <div className="px-6 py-4 border-t border-ui-border bg-surface-raised flex justify-end shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-white rounded-xl gradient-action hover:opacity-90 transition-opacity"
-          >
+          <button type="button" onClick={onClose} className="btn-primary px-4 py-2 text-sm">
             {closeLabel}
           </button>
         </div>

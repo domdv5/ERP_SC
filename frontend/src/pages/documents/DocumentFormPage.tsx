@@ -689,12 +689,7 @@ export default function DocumentFormPage() {
         className="space-y-6"
       >
         {/* ── Datos generales — borde de acento izquierdo según el tipo, ancla visual del form ── */}
-        <div
-          className={cn(
-            'bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-5 border-l-4',
-            accent.border,
-          )}
-        >
+        <div className={cn('card-hard p-6 space-y-5 border-l-4', accent.border)}>
           <h2 className="text-base text-content border-b border-ui-divide pb-3">
             Información general
           </h2>
@@ -746,8 +741,8 @@ export default function DocumentFormPage() {
                         replace([])
                       }}
                       className={cn(
-                        'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all',
-                        'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary',
+                        'input-hard w-full px-3 py-2 text-sm text-content transition-all',
+
                         isEditing ? 'opacity-60 cursor-not-allowed' : 'border-ui-border-medium',
                       )}
                     >
@@ -770,7 +765,7 @@ export default function DocumentFormPage() {
               <input
                 type="date"
                 {...register('date')}
-                className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+                className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
               />
             </div>
 
@@ -913,7 +908,7 @@ export default function DocumentFormPage() {
                       <select
                         value={field.value ?? ''}
                         onChange={(e) => field.onChange(e.target.value)}
-                        className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+                        className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
                       >
                         <option value="">Selecciona bodega origen</option>
                         {warehouses.map((w: Warehouse) => (
@@ -942,7 +937,7 @@ export default function DocumentFormPage() {
                             setSelectedSourceZoneId(e.target.value)
                             setValue('sourceBinId', undefined)
                           }}
-                          className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                          className="input-hard w-full px-3 py-2 text-sm border-ui-border-medium text-content transition-all"
                         >
                           <option value="">Selecciona una zona</option>
                           {sourceZones.map((z) => (
@@ -967,8 +962,8 @@ export default function DocumentFormPage() {
                             onChange={(e) => field.onChange(e.target.value)}
                             disabled={!selectedSourceZoneId}
                             className={cn(
-                              'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all',
-                              'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary',
+                              'input-hard w-full px-3 py-2 text-sm text-content transition-all',
+
                               !selectedSourceZoneId && 'opacity-50 cursor-not-allowed',
                               'border-ui-border-medium',
                             )}
@@ -997,7 +992,7 @@ export default function DocumentFormPage() {
                       <select
                         value={field.value ?? ''}
                         onChange={(e) => field.onChange(e.target.value)}
-                        className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+                        className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
                       >
                         <option value="">Selecciona bodega destino</option>
                         {warehouses
@@ -1028,7 +1023,7 @@ export default function DocumentFormPage() {
                             setSelectedZoneId(e.target.value)
                             setValue('destBinId', undefined)
                           }}
-                          className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                          className="input-hard w-full px-3 py-2 text-sm border-ui-border-medium text-content transition-all"
                         >
                           <option value="">Selecciona una zona</option>
                           {destZones.map((z) => (
@@ -1053,8 +1048,8 @@ export default function DocumentFormPage() {
                             onChange={(e) => field.onChange(e.target.value)}
                             disabled={!selectedZoneId}
                             className={cn(
-                              'w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all',
-                              'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary',
+                              'input-hard w-full px-3 py-2 text-sm text-content transition-all',
+
                               !selectedZoneId && 'opacity-50 cursor-not-allowed',
                               'border-ui-border-medium',
                             )}
@@ -1083,7 +1078,7 @@ export default function DocumentFormPage() {
                 </label>
                 <select
                   {...register('adjustmentReason')}
-                  className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+                  className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
                 >
                   <option value="">Selecciona un motivo</option>
                   {EAI_ADJUSTMENT_REASON_OPTIONS.map((opt) => (
@@ -1119,7 +1114,7 @@ export default function DocumentFormPage() {
                     maxLength={50}
                     placeholder="Ej. FV-12345"
                     {...register('supplierInvoiceNumber')}
-                    className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                    className="input-hard w-full px-3 py-2 text-sm border-ui-border-medium text-content placeholder:text-content-faint transition-all"
                   />
                 </div>
               )}
@@ -1157,7 +1152,7 @@ export default function DocumentFormPage() {
               </label>
               <select
                 {...register('refundMethod')}
-                className="w-full sm:w-72 px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+                className="input-hard w-full sm:w-72 px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
               >
                 <option value="">Selecciona una modalidad</option>
                 {DVV_REFUND_METHOD_OPTIONS.map((opt) => (
@@ -1180,7 +1175,7 @@ export default function DocumentFormPage() {
                 maxLength={300}
                 placeholder="Describe el motivo real del ajuste..."
                 {...register('adjustmentReasonOther')}
-                className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                className="input-hard w-full px-3 py-2 text-sm border-ui-border-medium text-content placeholder:text-content-faint transition-all"
               />
             </div>
           )}
@@ -1192,13 +1187,13 @@ export default function DocumentFormPage() {
               rows={2}
               {...register('notes')}
               placeholder="Observaciones opcionales..."
-              className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all resize-none"
+              className="input-hard w-full px-3 py-2 text-sm border-ui-border-medium text-content placeholder:text-content-faint transition-all resize-none"
             />
           </div>
         </div>
 
         {/* ── Editor de ítems ──────────────────────────────────────────── */}
-        <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+        <div className="card-hard overflow-hidden">
           <div className="px-6 py-4 border-b border-ui-divide flex items-center justify-between">
             <div>
               <h2 className="text-base text-content">Ítems</h2>
@@ -1219,7 +1214,7 @@ export default function DocumentFormPage() {
                   observaciones: undefined,
                 })
               }
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white rounded-lg gradient-action hover:opacity-90 transition-opacity"
+              className="btn-primary flex items-center gap-2 px-3 py-1.5 text-sm"
             >
               <Plus className="w-4 h-4" />
               Agregar ítem
@@ -1378,14 +1373,14 @@ export default function DocumentFormPage() {
           <button
             type="button"
             onClick={() => navigate(isEditing ? `/documents/${id}` : '/documents')}
-            className="px-4 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors"
+            className="btn-secondary px-4 py-2 text-sm"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={isPending}
-            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-xl gradient-action hover:opacity-90 transition-opacity disabled:opacity-60"
+            className="btn-primary flex items-center gap-2 px-5 py-2 text-sm disabled:opacity-60"
           >
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             {isEditing ? 'Guardar cambios' : `Crear ${typeLabelFor(docType)}`}

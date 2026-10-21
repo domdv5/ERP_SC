@@ -144,7 +144,7 @@ export default function DocumentsPage() {
           {canCreateOperation && (
             <button
               onClick={() => navigate('/documents/new')}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
+              className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
             >
               <Plus className="w-4 h-4" />
               Nueva operación
@@ -156,7 +156,7 @@ export default function DocumentsPage() {
       <StatsGrid cards={statCards} isLoading={isLoading} />
 
       {/* Table card */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+      <div className="card-hard overflow-hidden">
         {/* Toolbar row */}
         <div className="border-b border-ui-border">
           <TableToolbar
@@ -173,7 +173,7 @@ export default function DocumentsPage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as DocumentType | '')}
-              className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+              className="input-hard text-sm border-ui-border-medium px-3 py-1.5 text-content transition-all"
             >
               {visibleTypeOptions.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -184,7 +184,7 @@ export default function DocumentsPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as DocumentStatus | '')}
-              className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+              className="input-hard text-sm border-ui-border-medium px-3 py-1.5 text-content transition-all"
             >
               {ALL_STATUSES.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -275,12 +275,7 @@ export default function DocumentsPage() {
 
                       {/* Type */}
                       <td className="px-5 py-3.5">
-                        <span
-                          className={cn(
-                            'px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap',
-                            typeInfo.className,
-                          )}
-                        >
+                        <span className={cn('pill-stamp whitespace-nowrap', typeInfo.className)}>
                           {typeInfo.label}
                         </span>
                       </td>
@@ -307,21 +302,11 @@ export default function DocumentsPage() {
                       {/* Status */}
                       <td className="px-5 py-3.5">
                         <div className="flex flex-col items-start gap-1">
-                          <span
-                            className={cn(
-                              'px-2 py-0.5 rounded-full text-xs font-medium',
-                              statusInfo.className,
-                            )}
-                          >
+                          <span className={cn('pill-stamp', statusInfo.className)}>
                             {statusInfo.label}
                           </span>
                           {convChip && (
-                            <span
-                              className={cn(
-                                'inline-flex px-2 py-0.5 rounded-full text-xs font-medium',
-                                convChip.className,
-                              )}
-                            >
+                            <span className={cn('pill-stamp', convChip.className)}>
                               {convChip.label}
                             </span>
                           )}

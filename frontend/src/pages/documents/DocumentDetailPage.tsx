@@ -156,8 +156,8 @@ function ConfirmDialog({
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative z-10 bg-surface rounded-2xl border border-ui-border shadow-xl p-6 w-full max-w-md mx-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onCancel} />
+      <div className="relative z-10 bg-surface rounded-2xl border-2 border-ui-border-medium shadow-2xl p-6 w-full max-w-md mx-4">
         <div className="flex items-start gap-4">
           <div className="shrink-0 mt-0.5">{icon}</div>
           <div>
@@ -170,7 +170,7 @@ function ConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={isPending}
-            className="px-4 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors disabled:opacity-60"
+            className="btn-secondary px-4 py-2 text-sm disabled:opacity-60"
           >
             Cancelar
           </button>
@@ -179,7 +179,7 @@ function ConfirmDialog({
             onClick={onConfirm}
             disabled={isPending}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-opacity disabled:opacity-60',
+              'flex items-center gap-2 px-4 py-2 text-sm disabled:opacity-60',
               confirmClass,
             )}
           >
@@ -460,7 +460,7 @@ export default function DocumentDetailPage() {
 
       {/* Voided banner */}
       {isVoided && (
-        <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-red-500/10 border border-red-500/20">
+        <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-red-500/10 border-2 border-red-500/40">
           <XCircle className="w-5 h-5 text-red-500 shrink-0" />
           <p className="text-sm text-red-600 dark:text-red-400 font-medium">
             {isOfficialType
@@ -471,12 +471,7 @@ export default function DocumentDetailPage() {
       )}
 
       {/* Header card — borde de acento izquierdo + ícono por tipo (misma paleta que DOC_TYPE_BADGE) */}
-      <div
-        className={cn(
-          'bg-surface rounded-2xl border border-ui-border shadow-sm p-6 border-l-4',
-          accentInfo.border,
-        )}
-      >
+      <div className={cn('card-hard p-6 border-l-4', accentInfo.border)}>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-4">
             <div
@@ -490,41 +485,25 @@ export default function DocumentDetailPage() {
             <div>
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl text-content font-mono">{docRef}</h1>
-                <span
-                  className={cn('px-2.5 py-1 rounded-full text-xs font-medium', typeInfo.className)}
-                >
-                  {typeInfo.label}
-                </span>
-                <span
-                  className={cn(
-                    'px-2.5 py-1 rounded-full text-xs font-medium',
-                    statusInfo.className,
-                  )}
-                >
-                  {statusInfo.label}
-                </span>
+                <span className={cn('pill-stamp', typeInfo.className)}>{typeInfo.label}</span>
+                <span className={cn('pill-stamp', statusInfo.className)}>{statusInfo.label}</span>
                 {missingStock.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setMissingStockOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
+                    className="pill-stamp bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
                   >
                     <AlertTriangle className="w-3 h-3" />
                     {missingStock.length} sin stock
                   </button>
                 )}
                 {doc.type === 'CM' && doc.officialPurchase && (
-                  <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-400">
+                  <span className="pill-stamp bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-400">
                     Con factura
                   </span>
                 )}
                 {pvConvBadge && (
-                  <span
-                    className={cn(
-                      'inline-flex px-2.5 py-1 rounded-full text-xs font-medium',
-                      pvConvBadge.className,
-                    )}
-                  >
+                  <span className={cn('pill-stamp', pvConvBadge.className)}>
                     {pvConvBadge.label}
                   </span>
                 )}
@@ -568,21 +547,21 @@ export default function DocumentDetailPage() {
                         : `/documents/${doc.id}/edit`,
                     )
                   }
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors"
+                  className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm"
                 >
                   <Pencil className="w-4 h-4" />
                   Editar
                 </button>
                 <button
                   onClick={() => setDeleteOpen(true)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-500/30 rounded-xl hover:bg-red-500/10 transition-colors"
+                  className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400"
                 >
                   <Trash2 className="w-4 h-4" />
                   Eliminar
                 </button>
                 <button
                   onClick={() => setConfirmOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl gradient-action hover:opacity-90 transition-opacity"
+                  className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Confirmar
@@ -593,7 +572,7 @@ export default function DocumentDetailPage() {
               <button
                 onClick={() => doDuplicate()}
                 disabled={isDuplicating}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isDuplicating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -606,7 +585,7 @@ export default function DocumentDetailPage() {
             {isConfirmed && isReservationType && canRelease && (
               <button
                 onClick={() => setReleaseOpen(true)}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors"
+                className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm"
               >
                 <Unlock className="w-4 h-4" />
                 Liberar Stock
@@ -627,7 +606,7 @@ export default function DocumentDetailPage() {
                     ? undefined
                     : 'Este documento ya no tiene cantidad pendiente por convertir'
                 }
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
               >
                 <ShoppingCart className="w-4 h-4" />
                 Convertir a venta
@@ -639,7 +618,7 @@ export default function DocumentDetailPage() {
               <button
                 type="button"
                 onClick={() => navigate(`/documents/${pvActiveDerived.id}`)}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors"
+                className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm"
               >
                 <ShoppingCart className="w-4 h-4" />
                 Ver venta {docNumber(pvActiveDerived.type, pvActiveDerived.number)}
@@ -649,7 +628,7 @@ export default function DocumentDetailPage() {
               <button
                 onClick={() => doPrint()}
                 disabled={isPrinting}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPrinting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -664,7 +643,7 @@ export default function DocumentDetailPage() {
               canVoidDocument(doc.type, userPermissions ?? []) && (
                 <button
                   onClick={() => setVoidOpen(true)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-500/30 rounded-xl hover:bg-red-500/10 transition-colors"
+                  className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400"
                 >
                   <XCircle className="w-4 h-4" />
                   Anular
@@ -879,7 +858,7 @@ export default function DocumentDetailPage() {
       </div>
 
       {/* Items table */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+      <div className="card-hard overflow-hidden">
         <div className="px-6 py-4 border-b border-ui-divide">
           <h2 className="text-base text-content">
             Ítems
@@ -1056,7 +1035,7 @@ export default function DocumentDetailPage() {
       {/* Saldo a favor generado — solo devoluciones en venta con modalidad que deja saldo
           (nada en "devolución de dinero"). */}
       {doc.type === 'DVV' && doc.customerCredits && doc.customerCredits.length > 0 && (
-        <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+        <div className="card-hard overflow-hidden">
           <div className="px-6 py-4 border-b border-ui-divide">
             <h2 className="text-base text-content">Saldo a favor generado</h2>
             <p className="text-xs text-content-faint font-accent mt-0.5">
@@ -1085,12 +1064,7 @@ export default function DocumentDetailPage() {
                       <p className="text-xs text-content-faint font-accent">Disponible</p>
                       <p className="text-sm text-content font-mono">{formatCOP(credit.balance)}</p>
                     </div>
-                    <span
-                      className={cn(
-                        'px-2.5 py-1 rounded-full text-xs font-medium',
-                        creditBadge.className,
-                      )}
-                    >
+                    <span className={cn('pill-stamp', creditBadge.className)}>
                       {creditBadge.label}
                     </span>
                   </div>
@@ -1121,7 +1095,7 @@ export default function DocumentDetailPage() {
       {(doc.type === 'POS' || doc.type === 'COT') &&
         doc.appliedCustomerCredits &&
         doc.appliedCustomerCredits.length > 0 && (
-          <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+          <div className="card-hard overflow-hidden">
             <div className="px-6 py-4 border-b border-ui-divide">
               <h2 className="text-base text-content">Saldo a favor aplicado</h2>
               <p className="text-xs text-content-faint font-accent mt-0.5">
@@ -1173,13 +1147,13 @@ export default function DocumentDetailPage() {
         title="Confirmar operación"
         description={`Al confirmar ${docRef}, ${isOfficialType ? 'quedará registrada en el libro de control oficial; no se mueve inventario ni cuentas.' : 'se ejecutarán los movimientos de inventario correspondientes.'} Esta acción no se puede deshacer directamente (solo anulando la operación después).`}
         confirmLabel="Confirmar operación"
-        confirmClass="gradient-action"
+        confirmClass="btn-primary"
         isPending={isConfirming}
         onConfirm={doConfirm}
         onCancel={() => setConfirmOpen(false)}
         icon={
           <div className="w-10 h-10 rounded-xl flex items-center justify-center gradient-action shrink-0">
-            <CheckCircle2 className="w-5 h-5 text-white" />
+            <CheckCircle2 className="w-5 h-5 text-brand-primary" />
           </div>
         }
       />
@@ -1194,7 +1168,7 @@ export default function DocumentDetailPage() {
             : `Al anular ${docRef}, todos los movimientos de inventario generados por esta operación serán revertidos. Esta acción afecta el stock y no se puede deshacer.`
         }
         confirmLabel="Anular operación"
-        confirmClass="bg-red-600 hover:bg-red-700"
+        confirmClass="btn-danger"
         isPending={isVoiding}
         onConfirm={doVoid}
         onCancel={() => setVoidOpen(false)}
@@ -1211,7 +1185,7 @@ export default function DocumentDetailPage() {
         title="Eliminar operación"
         description={`¿Estás seguro de eliminar el borrador ${docRef}? Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar borrador"
-        confirmClass="bg-red-600 hover:bg-red-700"
+        confirmClass="btn-danger"
         isPending={isDeleting}
         onConfirm={doDelete}
         onCancel={() => setDeleteOpen(false)}

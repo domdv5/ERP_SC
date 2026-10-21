@@ -99,7 +99,7 @@ export default function EgresosListPage() {
         {canCreate && (
           <button
             onClick={() => navigate('/egresos/new')}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] gradient-action"
+            className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
           >
             <Plus className="w-4 h-4" />
             Nuevo egreso
@@ -108,7 +108,7 @@ export default function EgresosListPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+      <div className="card-hard overflow-hidden">
         <div className="border-b border-ui-border">
           <TableToolbar
             search={search}
@@ -151,7 +151,7 @@ export default function EgresosListPage() {
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                className="input-hard text-sm border-ui-border-medium px-3 py-1.5 text-content transition-all"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export default function EgresosListPage() {
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                className="input-hard text-sm border-ui-border-medium px-3 py-1.5 text-content transition-all"
               />
             </div>
           </div>

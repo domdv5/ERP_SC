@@ -84,7 +84,7 @@ export default function EgresoDetailPage() {
       </button>
 
       {/* Header card */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6">
+      <div className="card-hard p-6">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
             {egreso.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
@@ -142,7 +142,7 @@ export default function EgresoDetailPage() {
       </div>
 
       {/* Formas de pago */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+      <div className="card-hard overflow-hidden">
         <div className="px-6 py-4 border-b border-ui-border">
           <h2 className="text-content font-semibold">Formas de pago</h2>
           <p className="text-content-muted text-xs mt-0.5 font-accent">
@@ -208,7 +208,7 @@ export default function EgresoDetailPage() {
       </div>
 
       {/* Cuentas por pagar abonadas */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+      <div className="card-hard overflow-hidden">
         <div className="px-6 py-4 border-b border-ui-border">
           <h2 className="text-content font-semibold">Cuentas por pagar abonadas</h2>
           <p className="text-content-muted text-xs mt-0.5 font-accent">
@@ -268,7 +268,7 @@ export default function EgresoDetailPage() {
 
       {/* Saldos a favor usados */}
       {egreso.creditApplications.length > 0 && (
-        <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+        <div className="card-hard overflow-hidden">
           <div className="px-6 py-4 border-b border-ui-border">
             <h2 className="text-content font-semibold">Saldos a favor usados</h2>
             <p className="text-content-muted text-xs mt-0.5 font-accent">
@@ -318,7 +318,7 @@ export default function EgresoDetailPage() {
 
       {/* Notas */}
       {egreso.notes && (
-        <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6">
+        <div className="card-hard p-6">
           <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-content-faint mb-2">
             <StickyNote className="w-3.5 h-3.5" />
             Notas
