@@ -142,13 +142,28 @@ All colors and gradients are tokenized — **never use hardcoded hex values** in
 - `bg-brand-primary-dark` — `#0d1210` (page background on login)
 - Opacity modifiers work natively: `bg-brand-secondary/10`, `bg-brand-primary/15`
 
-**Gradient utilities** (use as className, never as inline `style`):
-- `gradient-action` — green CTA: buttons, active pagination
-- `gradient-dark` — dark surface: empty state icons
-- `gradient-user` — user avatars: dark-to-green
-- `nav-active` — sidebar active NavLink
-- `glass` — glassmorphism for dark panel forms
-- `text-gradient-brand` — green gradient text for hero copy
+**Visual style — refined industrial neo-brutalism** (2026-10-21, `feat/brutalist-style`): hard visible borders instead of soft shadows, solid offset shadows with zero blur, near-square corners, big Prompt numbers, green `#07bc34` only as a sharp accent (user complained before of "mucho verde"), no glassmorphism or `backdrop-blur`. Most of it comes from `index.css`, not from each component:
+- `@theme` overrides Tailwind v4's `--radius-*` (2–8px; `rounded-2xl` = 6px) and `--shadow-*` (`shadow-sm` = `3px 3px 0 0 var(--hard-shadow)` … `shadow-2xl` = 8px), so every existing `rounded-*`/`shadow-*` class is already brutalist. `rounded-full` is untouched.
+- `--hard-shadow` flips per theme (`#141a17` light, `#8b968f` gray in dark — never green). `--ui-border` / `--ui-border-medium` are hard lines; `--ui-divide` stays soft so table rows remain readable.
+- `body` uses `tabular-nums` globally; `font-mono` = JetBrains Mono (document codes, consecutives, SKUs, KPI labels).
+
+**Component classes** (`@layer components` in `index.css`, so Tailwind classes added by the page — padding, size, color — override them). None sets padding or font size:
+- `btn-primary` — green flat CTA, dark text (never `text-white` on green: ~2.5:1 contrast), 2px border, 3px shadow, press on `:active`
+- `btn-secondary` — theme surface, 2px border, 2px shadow
+- `btn-danger` — red flat destructive action
+- `card-hard` — card/panel: surface, 2px `ui-border-medium` border, 4px shadow. `overflow-hidden` on the card itself is fine (it clips content, not the card's own shadow), but a hard-shadow child inside an `overflow-hidden` parent gets clipped
+- `input-hard` — input/select/textarea with 2px border; sharp green focus (no `focus:ring-*/30` glow); `aria-invalid='true'` turns the border red
+- `pill-stamp` — stamp-like badge (uppercase 10px, tracking, 1px `currentColor` border); the page adds its color classes with dark variants
+
+**Utilities** (use as className, never as inline `style`):
+- `press` — translates by `--press-offset` (3px default; `card-hard` sets 4px) and drops the shadow on `:active`; `press-sm` for 2px shadows
+- `border-hard` — border in the `--hard-shadow` color
+- `gradient-action` / `gradient-brand` / `gradient-dark` / `gradient-user` — now **flat** colors (names kept because many files consume them); `gradient-dark`/`gradient-user` add a 2px border so they don't vanish in dark mode
+- `nav-active` — sidebar active NavLink (flat green tint + 4px left border, no shadow)
+- `glass` — now a **solid** theme surface with 2px border (login panel); text inside must use semantic tokens, not `text-white`
+- `text-gradient-brand` — plain green text
+
+**Patterns:** modal overlays are `bg-black/60` (no blur) with a `border-2 border-ui-border-medium shadow-2xl` panel; section/table-head separators use `border-b-2 border-ui-border-medium`; big totals and KPIs use `font-display tabular-nums`. The dashboard is a bento grid (`grid-flow-dense`, col/row spans picked from literal class maps per number of permitted tiles, so missing permissions never leave holes).
 
 ## Typography
 
@@ -159,6 +174,7 @@ Fonts loaded in `index.html` from Google Fonts. Applied globally via `@layer bas
 | Prompt | Black 900 | h1–h6 (automatic) | — |
 | Barlow | Regular 400 | Body text (default) | `font-sans` |
 | Barlow | Medium Italic 500 | Subtitles, supporting text | `font-accent` |
+| JetBrains Mono | 500 / 700 | Document codes, consecutives, SKUs, KPI labels | `font-mono` |
 
 **Rule:** Do not add `font-bold` to headings — Prompt Black is applied automatically. Use `font-accent` for subtitle/description text (e.g., page subtitles, date labels, placeholder descriptions).
 

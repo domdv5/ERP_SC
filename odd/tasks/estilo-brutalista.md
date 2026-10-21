@@ -15,11 +15,13 @@ Solo frontend (estilos). Sin cambios de lógica, rutas ni datos. El usuario no r
 - S9 — `frontend/CLAUDE.md` (Design Tokens, Typography, Shared Components) queda actualizado con el estilo nuevo.
 
 ## Tasks
-- T1 — Tokens globales en `index.css`: radios, sombras sólidas, bordes, utilidades `gradient-*`/`nav-active`/`glass` planas, cifras tabulares, fuente mono (S3, S5, S7, S8). Route: react-code-crafter. Commit: — (sin commit, esperando revisión visual) ✅
-- T2 — Layout y compartidos: Sidebar, Header, StatsGrid, TableToolbar, TablePagination, SegmentedToggle, EmptyState/ErrorState, Combobox, overlays de modales, botones con efecto de presión (S1, S3, S4, S5). Route: react-code-crafter. Commit: —
-- T3 — Pasada por páginas (listados, formularios, detalles, POS, CxC/CxP, informes, login) corrigiendo lo que T1/T2 no cubran + códigos de documento en mono (S1, S3, S4). Route: react-code-crafter. Commit: —
-- T4 — Dashboard bento grid (S6). Route: react-code-crafter. Commit: —
-- T5 — `frontend/CLAUDE.md` + `tsc`/build del frontend + CodeTour (S9). Route: inline. Commit: —
+- T1 — Tokens globales en `index.css`: radios, sombras sólidas, bordes, utilidades `gradient-*`/`nav-active`/`glass` planas, cifras tabulares, fuente mono (S3, S5, S7, S8). Route: react-code-crafter. Commit: 7d4ae6f ✅
+- T2 — Layout y compartidos: Sidebar, Header, StatsGrid, TableToolbar, TablePagination, SegmentedToggle, EmptyState/ErrorState, Combobox, overlays de modales, botones con efecto de presión (S1, S3, S4, S5). Route: react-code-crafter. Commit: 562dddc ✅
+- T3a — Pasada por páginas: documents, egresos, recibos-caja, official-ledger, official-purchases (S1, S3, S4, S5). Route: react-code-crafter. Commit: 6a3f248 ✅
+- T3b — Pasada por páginas: products, third-parties, users, warehouses, accounts-receivable, accounts-payable, reports, stock-lookup, auth, coming-soon, test (S1, S3, S4, S5). Route: react-code-crafter. Commit: dba0d5a ✅
+- T3 (detalle original) — Pasada por páginas (listados, formularios, detalles, POS, CxC/CxP, informes, login) corrigiendo lo que T1/T2 no cubran + códigos de documento en mono (S1, S3, S4). Route: partido en T3a/T3b. ✅
+- T4 — Dashboard bento grid (S6). Route: react-code-crafter. Commit: 21f910f ✅
+- T5 — `frontend/CLAUDE.md` + `tsc`/build del frontend + CodeTour (S9). Route: inline. Commit: ver Log L10 ✅ (CodeTour omitido: el usuario no revisa, L8)
 
 ## Log
 - L1 (usuario, 2026-10-21): "antes de eso, estuve analizando el diseño de l aplicativo y la verdad se ve my bonito y moderno pero sinero que el ahce falta un punch algo que genere identidad y que no sea tan generico entonces vi algo como estilod e diseño o algo asi que son: brutalismo, minimalismo, neofuturismo, glassmorphismo, maximalismo, clayformismo,liquid glass, bento grid, ui espacial etc etc, entonces quisiera darle ese punch con aglo de eso, me iamgoimo qeu seria con shadcn o algoa si"
@@ -30,3 +32,5 @@ Solo frontend (estilos). Sin cambios de lógica, rutas ni datos. El usuario no r
 - L6 (exploración): no hay componentes `Button`/`Card` (`components/ui/` vacío); estilos repetidos inline: `rounded-2xl` 131×/45 archivos, `rounded-lg` 239×/52, `shadow-sm` 70×/31, `gradient-action` 41×/29, `border-ui-border` 326×/60. Palanca: redefinir variables de tema de Tailwind v4.
 - L7 (T1): tsc + build OK. Pendiente para T2/T3: `text-white` sobre verde plano (~2,5:1) → `text-brand-primary`; login `.glass` ahora superficie del tema; `nav-active` con `shadow-lg` sobra; sombras recortadas por `overflow-hidden`; `.press` asume sombra de 3px.
 - L8 (usuario, 2026-10-21): "sigue con todo y para estos cambiso nom hace falta que yo los revise"
+- L9 (T2): utilidades nuevas `.btn-primary/.btn-secondary/.btn-danger/.card-hard/.input-hard/.pill-stamp` (movidas a `@layer components` para que las clases Tailwind de cada página les ganen), `.press`/`.press-sm`/`.border-hard`. Corte de slice tras 562dddc (~435 líneas): T3a, T3b y T4 van en commits propios; la entrega (un PR o PRs encadenados) la decide el usuario.
+- L10 (T3/T4/T5): tsc + build OK; `card-hard` fija `--press-offset: 4px`; frontend/CLAUDE.md actualizado (estilo, clases de componente, utilidades, mono). Sin verificación visual en navegador. Pendiente menor: códigos de documento dentro de frases siguen en fuente normal; checkboxes con `focus:ring-*/30`; chips `rounded-full` de marcas.
