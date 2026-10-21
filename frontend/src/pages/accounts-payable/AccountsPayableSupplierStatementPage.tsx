@@ -15,13 +15,13 @@ const CREDIT_STATUS_BADGE: Record<string, { label: string; className: string }> 
   },
   used: {
     label: 'Agotado',
-    className: 'bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400',
+    className: 'bg-surface-hover text-content-muted',
   },
 }
 const creditStatusBadgeFor = (status: string) =>
   CREDIT_STATUS_BADGE[status] ?? {
     label: status,
-    className: 'bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400',
+    className: 'bg-surface-hover text-content-muted',
   }
 
 export default function AccountsPayableSupplierStatementPage() {
@@ -48,7 +48,7 @@ export default function AccountsPayableSupplierStatementPage() {
           <div className="w-8 h-8 rounded-lg bg-surface-hover animate-pulse" />
           <div className="w-48 h-7 rounded-lg bg-surface-hover animate-pulse" />
         </div>
-        <div className="bg-surface rounded-2xl border border-ui-border p-6 space-y-4">
+        <div className="card-hard p-6 space-y-4">
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
@@ -57,7 +57,7 @@ export default function AccountsPayableSupplierStatementPage() {
             />
           ))}
         </div>
-        <div className="bg-surface rounded-2xl border border-ui-border p-6 space-y-3">
+        <div className="card-hard p-6 space-y-3">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-10 rounded-lg bg-surface-hover animate-pulse" />
           ))}
@@ -76,13 +76,10 @@ export default function AccountsPayableSupplierStatementPage() {
           <ArrowLeft className="w-4 h-4" />
           Volver a cuentas por pagar
         </button>
-        <div className="bg-surface rounded-2xl border border-ui-border p-8 text-center">
+        <div className="card-hard p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar el estado de cuenta</p>
-          <button
-            onClick={() => refetch()}
-            className="text-sm text-brand-secondary hover:underline"
-          >
+          <button onClick={() => refetch()} className="text-sm link-plain">
             Intentar de nuevo
           </button>
         </div>
@@ -108,7 +105,7 @@ export default function AccountsPayableSupplierStatementPage() {
       </button>
 
       {/* Header card */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6">
+      <div className="card-hard p-6">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
             {supplier.name[0]?.toUpperCase() ?? '?'}
@@ -173,8 +170,8 @@ export default function AccountsPayableSupplierStatementPage() {
       </div>
 
       {/* Payables table */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-ui-border">
+      <div className="card-hard overflow-hidden">
+        <div className="px-6 py-4 border-b-2 border-ui-border-medium">
           <h2 className="text-content font-semibold">Cuentas por pagar</h2>
           <p className="text-content-muted text-xs mt-0.5 font-accent">
             {payables.length} {payables.length === 1 ? 'documento' : 'documentos'}
@@ -190,7 +187,7 @@ export default function AccountsPayableSupplierStatementPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ui-border">
+                <tr className="border-b-2 border-ui-border-medium">
                   {['Documento', 'Fecha', 'Total', 'Pagado', 'Saldo', 'Estado'].map((h) => (
                     <th
                       key={h}
@@ -242,8 +239,8 @@ export default function AccountsPayableSupplierStatementPage() {
       </div>
 
       {/* Supplier credits */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-ui-border">
+      <div className="card-hard overflow-hidden">
+        <div className="px-6 py-4 border-b-2 border-ui-border-medium">
           <h2 className="text-content font-semibold">Saldos a favor</h2>
           <p className="text-content-muted text-xs mt-0.5 font-accent">
             {credits.length} {credits.length === 1 ? 'nota registrada' : 'notas registradas'}
@@ -280,12 +277,7 @@ export default function AccountsPayableSupplierStatementPage() {
                         </p>
                       </div>
                     </div>
-                    <span
-                      className={cn(
-                        'px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap',
-                        badge.className,
-                      )}
-                    >
+                    <span className={cn('pill-stamp whitespace-nowrap', badge.className)}>
                       {badge.label}
                     </span>
                   </div>
@@ -308,7 +300,7 @@ export default function AccountsPayableSupplierStatementPage() {
                           {application.egreso ? (
                             <button
                               onClick={() => navigate(`/egresos/${application.egreso!.id}`)}
-                              className="flex items-center gap-1 text-brand-secondary hover:underline"
+                              className="flex items-center gap-1 link-plain"
                             >
                               <Landmark className="w-3 h-3" />
                               {docNumber('EG', application.egreso.number)}

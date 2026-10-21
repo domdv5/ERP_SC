@@ -72,7 +72,7 @@ export const ThousandsInput = forwardRef<HTMLInputElement, ThousandsInputProps>(
           onChange(numericValue)
         }}
         className={cn(
-          'w-full px-3 py-2 text-sm border border-ui-border-medium rounded-lg bg-surface text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all disabled:opacity-60 disabled:cursor-not-allowed',
+          'w-full px-3 py-2 text-sm border-2 border-ui-border-medium rounded-md bg-surface text-content font-mono placeholder:text-content-faint focus:outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary transition-colors disabled:opacity-60 disabled:cursor-not-allowed',
           className,
         )}
       />

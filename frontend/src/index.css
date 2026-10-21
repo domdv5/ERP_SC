@@ -16,6 +16,16 @@
   /* Fonts — Tailwind v4 convention */
   --font-sans:    "Barlow", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Prompt", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Radios casi rectos (estilo brutalista); rounded-full no se toca */
+  --radius-xs:  2px;
+  --radius-sm:  2px;
+  --radius-md:  2px;
+  --radius-lg:  3px;
+  --radius-xl:  4px;
+  --radius-2xl: 6px;
+  --radius-3xl: 8px;
 }
 
 /*
@@ -35,6 +45,14 @@
   --color-content-secondary:  var(--content-secondary);
   --color-content-muted:      var(--content-muted);
   --color-content-faint:      var(--content-faint);
+
+  /* Sombras sólidas desplazadas, sin blur */
+  --shadow-xs:  2px 2px 0 0 var(--hard-shadow);
+  --shadow-sm:  3px 3px 0 0 var(--hard-shadow);
+  --shadow-md:  4px 4px 0 0 var(--hard-shadow);
+  --shadow-lg:  5px 5px 0 0 var(--hard-shadow);
+  --shadow-xl:  6px 6px 0 0 var(--hard-shadow);
+  --shadow-2xl: 8px 8px 0 0 var(--hard-shadow);
 }
 
 /* Light mode values (default) */
@@ -44,9 +62,12 @@
   --surface:            #ffffff;
   --surface-raised:     #f9fafb;
   --surface-hover:      #f3f4f6;
-  --ui-border:          #f3f4f6;
-  --ui-border-medium:   #e5e7eb;
-  --ui-divide:          #f9fafb;
+  --hard-shadow:        #141a17;
+  --ink-bg:             #141a17;
+  --ink-fg:             #07bc34;
+  --ui-border:          #3a443f;
+  --ui-border-medium:   #141a17;
+  --ui-divide:          #e5e7eb;
   --content:            #111827;
   --content-secondary:  #374151;
   --content-muted:      #6b7280;
@@ -60,9 +81,12 @@
   --surface:            #1e2820;
   --surface-raised:     #141a17;
   --surface-hover:      #1f2b24;
-  --ui-border:          rgba(255, 255, 255, 0.08);
-  --ui-border-medium:   rgba(255, 255, 255, 0.12);
-  --ui-divide:          rgba(255, 255, 255, 0.05);
+  --hard-shadow:        #000000;
+  --ink-bg:             #c9d1cc;
+  --ink-fg:             #141a17;
+  --ui-border:          rgba(255, 255, 255, 0.4);
+  --ui-border-medium:   rgba(255, 255, 255, 0.75);
+  --ui-divide:          rgba(255, 255, 255, 0.1);
   --content:            #f9fafb;
   --content-secondary:  #e5e7eb;
   --content-muted:      rgba(255, 255, 255, 0.6);
@@ -103,6 +127,7 @@
   body {
     font-family: var(--font-sans);
     font-weight: 400;
+    font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -125,47 +150,214 @@
 }
 
 @layer utilities {
-  /* Glassmorphism — dark panels */
+  /* Superficie sólida con borde duro (antes glassmorphism) */
   .glass {
-    backdrop-filter: blur(20px);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: var(--surface);
+    border: 2px solid var(--ui-border-medium);
   }
 
-  /* Gradient presets — eliminates repeated inline styles */
+  /* Presets planos (antes gradientes); se conservan los nombres de clase */
   .gradient-brand {
-    background: linear-gradient(135deg, #141a17 0%, #1f2b24 50%, #07bc34 100%);
+    background: #141a17;
   }
 
   /* Green CTA: buttons, active states, pagination */
   .gradient-action {
-    background: linear-gradient(135deg, #07bc34, #059928);
+    background: #07bc34;
   }
 
   /* Dark surface: empty state icons, sidebar elements */
   .gradient-dark {
-    background: linear-gradient(135deg, #141a17, #1f2b24);
+    background: #141a17;
+    border: 2px solid var(--ui-border-medium);
   }
 
-  /* User avatar: dark-to-green */
+  /* User avatar */
   .gradient-user {
-    background: linear-gradient(135deg, #141a17, #07bc34);
+    background: #141a17;
+    border: 2px solid var(--ui-border-medium);
+  }
+
+  /* Cuadro de iniciales en listados: contorno sin relleno, igual en claro y oscuro */
+  .avatar-outline {
+    background: transparent;
+    color: var(--content);
+    border: 2px solid var(--ui-border-medium);
+  }
+
+  /* Enlace de nombre/código: hereda el color del texto y se subraya al pasar el mouse */
+  .link-plain {
+    color: inherit;
+  }
+
+  .link-plain:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Opción elegida (toggles, paginación, avatar): bloque tinta, no verde; claro = negro con texto verde, oscuro = superficie clara con texto oscuro */
+  .selected-ink {
+    background: var(--ink-bg);
+    color: var(--ink-fg);
+    border: 2px solid var(--ui-border-medium);
   }
 
   /* Sidebar active nav item */
   .nav-active {
-    background: linear-gradient(135deg, rgba(7,188,52,0.2), rgba(7,188,52,0.1));
-    border-left: 3px solid #07bc34;
+    background: var(--ink-bg);
+    color: var(--ink-fg);
+    border-color: var(--ui-border-medium);
+    box-shadow: 2px 2px 0 0 var(--hard-shadow);
   }
 
-  /* Text gradient for hero copy */
   .text-gradient-brand {
-    background: linear-gradient(135deg, #07bc34, #09d93c);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #07bc34;
   }
 
+  /* Efecto de presión: baja por el desplazamiento de la sombra (--press-offset, 3px por defecto) */
+  .press {
+    transition: transform 80ms linear, box-shadow 80ms linear;
+  }
+
+  .press:active:not(:disabled) {
+    transform: translate(var(--press-offset, 3px), var(--press-offset, 3px));
+    box-shadow: 0 0 0 0 var(--hard-shadow);
+  }
+
+  /* Variante para sombras chicas (shadow-xs, 2px) */
+  .press-sm {
+    --press-offset: 2px;
+  }
+
+  /* Borde duro visible en ambos temas (la sombra negra pura se pierde como borde en oscuro) */
+  .border-hard {
+    border-color: var(--ui-border-medium);
+  }
+}
+
+/* Capa components: las clases de Tailwind que agregue cada página (padding, color, borde) le ganan a estas */
+@layer components {
+  /* Botón principal: verde plano, texto oscuro, borde duro, sombra sólida y presión; no fija padding ni tamaño de texto */
+  .btn-primary {
+    background: #07bc34;
+    color: #141a17;
+    font-weight: 600;
+    border: 2px solid var(--ui-border-medium);
+    border-radius: 2px;
+    box-shadow: 3px 3px 0 0 var(--hard-shadow);
+    transition: transform 80ms linear, box-shadow 80ms linear, background-color 80ms linear;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: #09d93c;
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 0 var(--hard-shadow);
+  }
+
+  /* Botón secundario: superficie del tema con borde duro y sombra sólida chica */
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--content);
+    font-weight: 600;
+    border: 2px solid var(--ui-border-medium);
+    border-radius: 2px;
+    box-shadow: 2px 2px 0 0 var(--hard-shadow);
+    transition: transform 80ms linear, box-shadow 80ms linear, background-color 80ms linear;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--surface-hover);
+  }
+
+  .btn-secondary:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 0 0 0 0 var(--hard-shadow);
+  }
+
+  /* Botón destructivo: rojo plano con texto blanco, mismo borde y sombra que btn-primary */
+  .btn-danger {
+    background: #dc2626;
+    color: #ffffff;
+    font-weight: 600;
+    border: 2px solid var(--ui-border-medium);
+    border-radius: 2px;
+    box-shadow: 3px 3px 0 0 var(--hard-shadow);
+    transition: transform 80ms linear, box-shadow 80ms linear, background-color 80ms linear;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: #b91c1c;
+  }
+
+  .btn-danger:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 0 var(--hard-shadow);
+  }
+
+  .btn-primary:disabled,
+  .btn-secondary:disabled,
+  .btn-danger:disabled {
+    background: var(--surface-hover);
+    color: var(--content-muted);
+    border-color: var(--ui-border);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  .btn-primary:focus-visible,
+  .btn-secondary:focus-visible,
+  .btn-danger:focus-visible {
+    outline: 2px solid #07bc34;
+    outline-offset: 2px;
+  }
+
+  /* Tarjeta/panel: superficie del tema, borde duro de 2px y sombra sólida; no usar dentro de overflow-hidden */
+  .card-hard {
+    background: var(--surface);
+    border: 2px solid var(--ui-border-medium);
+    border-radius: 4px;
+    box-shadow: 4px 4px 0 0 var(--hard-shadow);
+    --press-offset: 4px;
+  }
+
+  /* Input/select/textarea: borde duro de 2px; foco con borde y aro verde nítidos (sin glow) */
+  .input-hard {
+    background: var(--surface-raised);
+    color: var(--content);
+    border: 2px solid var(--ui-border-medium);
+    border-radius: 2px;
+  }
+
+  .input-hard:focus {
+    outline: none;
+    border-color: #07bc34;
+    box-shadow: 0 0 0 1px #07bc34;
+  }
+
+  .input-hard[aria-invalid='true'] {
+    border-color: #ef4444;
+  }
+
+  /* Pill tipo sello: mayúsculas chicas con tracking y borde duro de 1px del color del texto; el color lo pone la página */
+  .pill-stamp {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
   /* Barlow Medium Italic — subtitles and accent text */
   .font-accent {
     font-family: "Barlow", sans-serif;

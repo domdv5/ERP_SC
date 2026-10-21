@@ -61,10 +61,7 @@ export default function EgresoDetailPage() {
         <div className="bg-surface rounded-2xl border border-ui-border p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar el egreso</p>
-          <button
-            onClick={() => refetch()}
-            className="text-sm text-brand-secondary hover:underline"
-          >
+          <button onClick={() => refetch()} className="text-sm link-plain">
             Intentar de nuevo
           </button>
         </div>
@@ -84,7 +81,7 @@ export default function EgresoDetailPage() {
       </button>
 
       {/* Header card */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6">
+      <div className="card-hard p-6">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
             {egreso.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
@@ -94,7 +91,7 @@ export default function EgresoDetailPage() {
             <p className="text-content-muted text-sm mt-1 font-accent">
               <button
                 onClick={() => navigate(`/accounts-payable/suppliers/${egreso.supplier.id}`)}
-                className="text-brand-secondary hover:underline font-medium"
+                className="link-plain font-medium"
               >
                 {egreso.supplier.thirdParty.name}
               </button>{' '}
@@ -142,7 +139,7 @@ export default function EgresoDetailPage() {
       </div>
 
       {/* Formas de pago */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+      <div className="card-hard overflow-hidden">
         <div className="px-6 py-4 border-b border-ui-border">
           <h2 className="text-content font-semibold">Formas de pago</h2>
           <p className="text-content-muted text-xs mt-0.5 font-accent">
@@ -208,7 +205,7 @@ export default function EgresoDetailPage() {
       </div>
 
       {/* Cuentas por pagar abonadas */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+      <div className="card-hard overflow-hidden">
         <div className="px-6 py-4 border-b border-ui-border">
           <h2 className="text-content font-semibold">Cuentas por pagar abonadas</h2>
           <p className="text-content-muted text-xs mt-0.5 font-accent">
@@ -241,7 +238,7 @@ export default function EgresoDetailPage() {
                     <td className="px-5 py-3.5">
                       <Link
                         to={`/accounts-payable/${allocation.accountPayableId}`}
-                        className="font-mono text-xs font-medium text-brand-secondary hover:underline"
+                        className="font-mono text-xs font-medium link-plain"
                       >
                         {docNumber(
                           allocation.accountPayable.document.type,
@@ -268,7 +265,7 @@ export default function EgresoDetailPage() {
 
       {/* Saldos a favor usados */}
       {egreso.creditApplications.length > 0 && (
-        <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+        <div className="card-hard overflow-hidden">
           <div className="px-6 py-4 border-b border-ui-border">
             <h2 className="text-content font-semibold">Saldos a favor usados</h2>
             <p className="text-content-muted text-xs mt-0.5 font-accent">
@@ -297,7 +294,7 @@ export default function EgresoDetailPage() {
                     <td className="px-5 py-3.5">
                       <Link
                         to={`/documents/${application.supplierCredit.sourceDocument.id}`}
-                        className="font-mono text-xs font-medium text-brand-secondary hover:underline"
+                        className="font-mono text-xs font-medium link-plain"
                       >
                         {docNumber(
                           application.supplierCredit.sourceDocument.type,
@@ -318,7 +315,7 @@ export default function EgresoDetailPage() {
 
       {/* Notas */}
       {egreso.notes && (
-        <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6">
+        <div className="card-hard p-6">
           <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-content-faint mb-2">
             <StickyNote className="w-3.5 h-3.5" />
             Notas

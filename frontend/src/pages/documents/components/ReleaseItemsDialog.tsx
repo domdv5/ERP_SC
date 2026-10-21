@@ -122,9 +122,9 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
-      <div className="relative bg-surface rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative bg-surface rounded-2xl border-2 border-ui-border-medium shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-ui-border gradient-dark shrink-0">
           <div className="flex items-center gap-3">
@@ -201,8 +201,8 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
                             disabled={!watchedItems?.[index]?.checked}
                             {...register(`items.${index}.quantity`)}
                             className={cn(
-                              'w-24 px-2.5 py-1.5 text-sm rounded-lg border bg-surface text-content',
-                              'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
+                              'input-hard w-24 px-2.5 py-1.5 text-sm text-content',
+                              'transition-all',
                               'disabled:opacity-50 disabled:cursor-not-allowed',
                               'border-ui-border-medium',
                             )}
@@ -223,24 +223,20 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
                 rows={2}
                 {...register('notes')}
                 placeholder="Observaciones de la liberación..."
-                className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised border-ui-border-medium text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all resize-none"
+                className="input-hard w-full px-3 py-2 text-sm border-ui-border-medium text-content placeholder:text-content-faint transition-all resize-none"
               />
             </div>
           </div>
 
           {/* Footer */}
           <div className="px-6 py-4 border-t border-ui-border flex justify-end gap-3 bg-surface-raised shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-content-secondary bg-surface border border-ui-border-medium rounded-lg hover:bg-surface-raised transition-colors"
-            >
+            <button type="button" onClick={onClose} className="btn-secondary px-4 py-2 text-sm">
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-50 gradient-action"
+              className="btn-primary flex items-center gap-2 px-5 py-2 text-sm disabled:opacity-50"
             >
               {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Liberar

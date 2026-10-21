@@ -43,11 +43,11 @@ function ConfirmDialog({
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative z-10 bg-surface rounded-2xl border border-ui-border shadow-xl p-6 w-full max-w-md mx-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onCancel} />
+      <div className="relative z-10 bg-surface rounded-2xl border-2 border-ui-border-medium shadow-2xl p-6 w-full max-w-md mx-4">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center gradient-action shrink-0 mt-0.5">
-            <HandCoins className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center selected-ink shrink-0 mt-0.5">
+            <HandCoins className="w-5 h-5" />
           </div>
           <div>
             <h3 className="text-base text-content mb-2">{title}</h3>
@@ -59,7 +59,7 @@ function ConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={isPending}
-            className="px-4 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors disabled:opacity-60"
+            className="btn-secondary px-4 py-2 text-sm disabled:opacity-60"
           >
             Cancelar
           </button>
@@ -67,7 +67,7 @@ function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={isPending}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl gradient-action transition-opacity disabled:opacity-60"
+            className="btn-primary flex items-center gap-2 px-4 py-2 text-sm disabled:opacity-60"
           >
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             {confirmLabel}
@@ -235,7 +235,7 @@ export default function EgresoNewPage() {
         {/* ── Columna principal ─────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-6">
           {/* Proveedor + fecha */}
-          <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-4">
+          <div className="card-hard p-6 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-content-secondary">
@@ -268,14 +268,14 @@ export default function EgresoNewPage() {
                 <input
                   type="date"
                   {...register('date')}
-                  className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+                  className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
                 />
               </div>
             </div>
           </div>
 
           {!hasSupplier && (
-            <div className="bg-surface rounded-2xl border border-ui-border shadow-sm">
+            <div className="card-hard">
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 gradient-dark">
                   <HandCoins className="w-7 h-7 text-white/60" />
@@ -291,7 +291,7 @@ export default function EgresoNewPage() {
           )}
 
           {hasSupplier && isLoadingOpenItems && (
-            <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-3">
+            <div className="card-hard p-6 space-y-3">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="h-12 rounded-lg bg-surface-hover animate-pulse" />
               ))}
@@ -301,7 +301,7 @@ export default function EgresoNewPage() {
           {hasSupplier && !isLoadingOpenItems && (
             <>
               {/* Cuentas por pagar abiertas */}
-              <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+              <div className="card-hard overflow-hidden">
                 <div className="px-6 py-4 border-b border-ui-border">
                   <h2 className="text-content font-semibold">Cuentas por pagar abiertas</h2>
                   <p className="text-content-muted text-xs mt-0.5 font-accent">
@@ -408,7 +408,7 @@ export default function EgresoNewPage() {
               />
 
               {/* Formas de pago */}
-              <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+              <div className="card-hard overflow-hidden">
                 <div className="px-6 py-4 border-b border-ui-border flex items-center justify-between">
                   <div>
                     <h2 className="text-content font-semibold">Formas de pago</h2>
@@ -454,7 +454,7 @@ export default function EgresoNewPage() {
                           </label>
                           <select
                             {...register(`payments.${index}.method`)}
-                            className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+                            className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
                           >
                             <option value="">Selecciona...</option>
                             {Object.entries(EGRESO_PAYMENT_METHOD_LABELS).map(([value, label]) => (
@@ -492,7 +492,7 @@ export default function EgresoNewPage() {
                           <input
                             {...register(`payments.${index}.reference`)}
                             placeholder="Opcional"
-                            className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+                            className="input-hard w-full px-3 py-2 text-sm text-content placeholder:text-content-faint transition-all border-ui-border-medium"
                           />
                         </div>
 
@@ -503,7 +503,7 @@ export default function EgresoNewPage() {
                           <input
                             {...register(`payments.${index}.bank`)}
                             placeholder="Opcional"
-                            className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium"
+                            className="input-hard w-full px-3 py-2 text-sm text-content placeholder:text-content-faint transition-all border-ui-border-medium"
                           />
                         </div>
 
@@ -522,13 +522,13 @@ export default function EgresoNewPage() {
               </div>
 
               {/* Notas */}
-              <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-1.5">
+              <div className="card-hard p-6 space-y-1.5">
                 <label className="block text-sm font-medium text-content-secondary">Notas</label>
                 <textarea
                   {...register('notes')}
                   rows={3}
                   placeholder="Observaciones opcionales sobre este egreso..."
-                  className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint transition-all focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary border-ui-border-medium resize-none"
+                  className="input-hard w-full px-3 py-2 text-sm text-content placeholder:text-content-faint transition-all border-ui-border-medium resize-none"
                 />
               </div>
             </>
@@ -537,12 +537,14 @@ export default function EgresoNewPage() {
 
         {/* ── Resumen (sticky) ──────────────────────────────────────────── */}
         <div className="lg:sticky lg:top-6 space-y-4">
-          <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6 space-y-4">
+          <div className="card-hard p-6 space-y-4">
             <div>
               <p className="text-xs text-content-faint font-accent uppercase tracking-wider">
                 Dinero a pagar
               </p>
-              <p className="text-4xl text-content mt-1 font-mono">{formatCOP(dineroAPagar)}</p>
+              <p className="text-4xl text-content mt-1 font-display tabular-nums">
+                {formatCOP(dineroAPagar)}
+              </p>
               <div className="mt-2 space-y-0.5 text-xs font-accent">
                 <div className="flex items-center justify-between text-content-muted">
                   <span>Total abonos</span>
@@ -582,7 +584,7 @@ export default function EgresoNewPage() {
                 void openConfirm()
               }}
               disabled={!cuadraOk || !hasSelectedPayable || isSubmitting}
-              className="w-full flex items-center justify-center gap-2 px-5 py-3 text-sm font-medium text-white rounded-xl gradient-action hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="btn-primary w-full flex items-center justify-center gap-2 px-5 py-3 text-sm disabled:opacity-50"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               Registrar egreso
@@ -590,7 +592,7 @@ export default function EgresoNewPage() {
             <button
               type="button"
               onClick={() => navigate('/egresos')}
-              className="w-full px-4 py-2 text-sm font-medium text-content-secondary border border-ui-border-medium rounded-xl hover:bg-surface-hover transition-colors"
+              className="btn-secondary w-full px-4 py-2 text-sm"
             >
               Cancelar
             </button>

@@ -19,7 +19,7 @@ export function SegmentedToggle({
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-1 p-1 rounded-xl bg-surface-raised border border-ui-border',
+        'inline-flex items-center gap-1 p-1 rounded-md bg-surface-raised border-2 border-ui-border-medium',
         disabled && 'opacity-60 cursor-not-allowed',
       )}
     >
@@ -28,10 +28,8 @@ export function SegmentedToggle({
         disabled={disabled}
         onClick={() => onChange(false)}
         className={cn(
-          'px-4 py-1.5 rounded-lg text-sm font-medium transition-all disabled:cursor-not-allowed',
-          !checked
-            ? 'text-white shadow-sm gradient-action'
-            : 'text-content-muted hover:text-content',
+          'px-4 py-1.5 rounded-sm border-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed',
+          !checked ? 'selected-ink' : 'border-transparent text-content-muted hover:text-content',
         )}
       >
         {uncheckedLabel}
@@ -41,10 +39,8 @@ export function SegmentedToggle({
         disabled={disabled}
         onClick={() => onChange(true)}
         className={cn(
-          'px-4 py-1.5 rounded-lg text-sm font-medium transition-all disabled:cursor-not-allowed',
-          checked
-            ? 'text-white shadow-sm gradient-action'
-            : 'text-content-muted hover:text-content',
+          'px-4 py-1.5 rounded-sm border-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed',
+          checked ? 'selected-ink' : 'border-transparent text-content-muted hover:text-content',
         )}
       >
         {checkedLabel}

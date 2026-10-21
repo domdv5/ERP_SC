@@ -46,9 +46,9 @@ function ZoneSummaryCard({
     <div
       {...drillProps}
       className={cn(
-        'w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-ui-border bg-surface-raised',
+        'w-full flex items-center gap-3 px-4 py-3.5 rounded-md border-2 border-ui-border-medium bg-surface-raised',
         binsEnabled &&
-          'hover:bg-surface-hover hover:border-brand-secondary/30 transition-all cursor-pointer group',
+          'hover:bg-surface-hover hover:border-brand-secondary transition-all cursor-pointer group',
       )}
     >
       <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 gradient-dark">
@@ -109,7 +109,7 @@ function BinCard({
     <div
       role="button"
       onClick={onSelect}
-      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-ui-border bg-surface-raised hover:bg-surface-hover hover:border-brand-secondary/30 transition-all group cursor-pointer"
+      className="flex items-center gap-2.5 px-3 py-2.5 rounded-md border-2 border-ui-border-medium bg-surface-raised hover:bg-surface-hover hover:border-brand-secondary transition-all group cursor-pointer"
     >
       <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-brand-secondary/10 shrink-0">
         <Package className="w-3.5 h-3.5 text-brand-secondary" />
@@ -213,14 +213,10 @@ export function DetailPanel({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-2xl text-content">{wh.name}</h1>
-              <span
-                className={cn('px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0', typeBadge)}
-              >
-                {typeLabel}
-              </span>
+              <span className={cn('pill-stamp shrink-0', typeBadge)}>{typeLabel}</span>
               <span
                 className={cn(
-                  'px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0',
+                  'pill-stamp shrink-0',
                   wh.active
                     ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
                     : 'bg-surface-hover text-content-muted',
@@ -237,7 +233,7 @@ export function DetailPanel({
         </div>
 
         {/* Stats strip */}
-        <div className="bg-surface rounded-2xl border border-ui-border overflow-hidden">
+        <div className="card-hard overflow-hidden">
           <div className="flex divide-x divide-ui-divide">
             {[
               { label: 'Zonas', value: wh.zones.length, Icon: FolderOpen, isText: false },
@@ -261,7 +257,9 @@ export function DetailPanel({
                   {stat.isText ? (
                     <p className="text-sm font-medium text-content mt-0.5">{stat.value}</p>
                   ) : (
-                    <p className="text-2xl leading-tight font-medium text-content">{stat.value}</p>
+                    <p className="text-2xl leading-tight font-display tabular-nums text-content">
+                      {stat.value}
+                    </p>
                   )}
                 </div>
               </div>
@@ -270,7 +268,7 @@ export function DetailPanel({
         </div>
 
         {/* Zones list */}
-        <div className="bg-surface rounded-2xl border border-ui-border overflow-hidden">
+        <div className="card-hard overflow-hidden">
           <div className="px-5 py-4 border-b border-ui-border flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-content">Zonas</p>
@@ -285,7 +283,7 @@ export function DetailPanel({
             {canManage && (
               <button
                 onClick={onAddZone}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 active:scale-[0.98] gradient-action"
+                className="btn-primary flex items-center gap-2 px-3 py-1.5 text-sm"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Nueva zona
@@ -364,13 +362,13 @@ export function DetailPanel({
 
         {/* Bins grid — las bodegas `store` no tienen bultos; solo se llega acá por URL directa. */}
         {binsEnabled && (
-          <div className="bg-surface rounded-2xl border border-ui-border overflow-hidden">
+          <div className="card-hard overflow-hidden">
             <div className="px-5 py-4 border-b border-ui-border flex items-center justify-between">
               <p className="text-sm font-medium text-content">Bultos</p>
               {canManage && (
                 <button
                   onClick={() => onAddBin(zone)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90 active:scale-[0.98] gradient-action"
+                  className="btn-primary flex items-center gap-1.5 px-3 py-1.5 text-sm"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Nuevo bulto
@@ -463,8 +461,8 @@ export function DetailPanel({
         </div>
 
         {/* Info card */}
-        <div className="bg-surface rounded-2xl border border-ui-border overflow-hidden">
-          <div className="px-5 py-4 border-b border-ui-border">
+        <div className="card-hard overflow-hidden">
+          <div className="px-5 py-4 border-b-2 border-ui-border-medium">
             <p className="text-sm font-medium text-content">Información</p>
           </div>
           <div className="divide-y divide-ui-divide">

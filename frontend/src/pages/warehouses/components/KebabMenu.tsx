@@ -35,7 +35,7 @@ export function KebabMenu({ onEdit }: KebabMenuProps) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-30 rounded-xl shadow-2xl py-1 min-w-[140px] border border-ui-border bg-surface">
+        <div className="absolute right-0 top-full mt-1 z-30 rounded-xl shadow-lg py-1 min-w-[140px] border-2 border-ui-border-medium bg-surface">
           <button
             type="button"
             onClick={() => {

@@ -179,8 +179,8 @@ export default function AccountsPayableListPage() {
       />
 
       {/* Table */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
-        <div className="border-b border-ui-border">
+      <div className="card-hard overflow-hidden">
+        <div className="border-b-2 border-ui-border-medium">
           <div className="px-5 py-4 flex items-center gap-3">
             <div className="flex-1 max-w-xs">
               <Combobox
@@ -213,7 +213,7 @@ export default function AccountsPayableListPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as AccountsPayableStatus | '')}
-              className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+              className="input-hard text-sm px-3 py-1.5"
             >
               {ALL_STATUSES.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -228,7 +228,7 @@ export default function AccountsPayableListPage() {
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
                 max={dateTo || undefined}
-                className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                className="input-hard text-sm px-3 py-1.5"
               />
             </label>
             <label className="flex items-center gap-1.5 text-xs text-content-muted">
@@ -238,7 +238,7 @@ export default function AccountsPayableListPage() {
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
                 min={dateFrom || undefined}
-                className="text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all"
+                className="input-hard text-sm px-3 py-1.5"
               />
             </label>
           </div>
@@ -280,7 +280,7 @@ export default function AccountsPayableListPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ui-border">
+                <tr className="border-b-2 border-ui-border-medium">
                   {[
                     'Proveedor',
                     'Documento',
@@ -311,7 +311,7 @@ export default function AccountsPayableListPage() {
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 avatar-outline">
                           {account.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
                         </div>
                         <button
@@ -319,7 +319,7 @@ export default function AccountsPayableListPage() {
                             e.stopPropagation()
                             navigate(`/accounts-payable/suppliers/${account.supplier.id}`)
                           }}
-                          className="font-medium text-brand-secondary hover:underline text-left"
+                          className="font-medium link-plain text-left"
                         >
                           {account.supplier.thirdParty.name}
                         </button>

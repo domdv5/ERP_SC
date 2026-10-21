@@ -12,7 +12,7 @@ const formatQty = (n: number) => n.toLocaleString('es-CO')
 const formatSigned = (n: number) => (n > 0 ? `+${formatQty(n)}` : formatQty(n))
 
 const dateInputClass =
-  'text-sm bg-surface-raised border border-ui-border-medium rounded-lg px-3 py-1.5 text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all'
+  'input-hard text-sm border-ui-border-medium px-3 py-1.5 text-content transition-all'
 
 export default function OfficialLedgerProductPage() {
   const { productId } = useParams<{ productId: string }>()
@@ -79,7 +79,7 @@ export default function OfficialLedgerProductPage() {
     <div className="space-y-6 pb-10">
       {backButton}
 
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-6 border-l-4 border-l-brand-secondary">
+      <div className="card-hard p-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl text-content">{data?.product.name ?? 'Producto'}</h1>
@@ -121,13 +121,15 @@ export default function OfficialLedgerProductPage() {
         <div className="mt-6 grid grid-cols-2 gap-5 border-t border-ui-divide pt-5 max-w-md">
           <div>
             <p className="text-xs text-content-faint font-accent">Saldo inicial</p>
-            <p className="text-lg text-content mt-0.5">{formatQty(data?.openingBalance ?? 0)}</p>
+            <p className="text-lg text-content mt-0.5 font-display tabular-nums">
+              {formatQty(data?.openingBalance ?? 0)}
+            </p>
           </div>
           <div>
             <p className="text-xs text-content-faint font-accent">Saldo final</p>
             <p
               className={cn(
-                'text-lg mt-0.5',
+                'text-lg mt-0.5 font-display tabular-nums',
                 (data?.closingBalance ?? 0) < 0 ? 'text-red-600 dark:text-red-400' : 'text-content',
               )}
             >
@@ -137,7 +139,7 @@ export default function OfficialLedgerProductPage() {
         </div>
       </div>
 
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm overflow-hidden">
+      <div className="card-hard overflow-hidden">
         <div className="px-6 py-4 border-b border-ui-divide">
           <h2 className="text-base text-content">
             Movimientos
@@ -199,12 +201,7 @@ export default function OfficialLedgerProductPage() {
                           <span className="font-mono text-xs font-medium text-content">
                             {docNumber(m.type, m.number)}
                           </span>
-                          <span
-                            className={cn(
-                              'px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap',
-                              badge.className,
-                            )}
-                          >
+                          <span className={cn('pill-stamp whitespace-nowrap', badge.className)}>
                             {badge.label}
                           </span>
                         </div>

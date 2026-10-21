@@ -11,14 +11,5 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     label: status,
     className: 'bg-content-faint/10 text-content-faint',
   }
-  return (
-    <span
-      className={cn(
-        'px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap',
-        info.className,
-      )}
-    >
-      {info.label}
-    </span>
-  )
+  return <span className={cn('pill-stamp whitespace-nowrap', info.className)}>{info.label}</span>
 }

@@ -14,9 +14,9 @@ const UNIT_LABELS: Record<ProductLocationsResult['product']['unitOfMeasure'], st
 
 export function ProductSummaryCard({ product, totalBinQuantity }: ProductSummaryCardProps) {
   return (
-    <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-5">
+    <div className="card-hard p-5">
       <div className="flex items-start gap-4">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0 gradient-action">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 selected-ink">
           <Package className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
@@ -24,7 +24,7 @@ export function ProductSummaryCard({ product, totalBinQuantity }: ProductSummary
             <p className="font-mono text-xs font-medium text-content-muted">{product.code}</p>
             <span
               className={cn(
-                'px-2 py-0.5 rounded-full text-xs font-medium',
+                'pill-stamp',
                 product.active
                   ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
                   : 'bg-surface-hover text-content-muted',
@@ -40,7 +40,9 @@ export function ProductSummaryCard({ product, totalBinQuantity }: ProductSummary
           </div>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-2xl text-content">{totalBinQuantity.toLocaleString('es-CO')}</p>
+          <p className="text-2xl font-display tabular-nums text-content">
+            {totalBinQuantity.toLocaleString('es-CO')}
+          </p>
           <p className="text-xs text-content-faint font-accent">en bultos</p>
         </div>
       </div>

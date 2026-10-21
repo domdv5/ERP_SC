@@ -268,7 +268,7 @@ export function ProductRow({
                   e.preventDefault()
                   onQuantityConfirmed?.()
                 }}
-                className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all border-ui-border-medium"
+                className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
               />
             )
           })()}
@@ -282,7 +282,7 @@ export function ProductRow({
               maxLength={500}
               placeholder="Talla / nota..."
               {...register(`items.${index}.observaciones`)}
-              className="w-full px-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all border-ui-border-medium"
+              className="input-hard w-full px-3 py-2 text-sm text-content placeholder:text-content-faint transition-all border-ui-border-medium"
             />
           </td>
         )}

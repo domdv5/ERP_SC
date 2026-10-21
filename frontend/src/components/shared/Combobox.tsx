@@ -99,9 +99,9 @@ export function Combobox({
           }
         }}
         className={cn(
-          'flex items-center justify-between px-3 py-2 text-sm rounded-lg border cursor-pointer transition-all',
+          'flex items-center justify-between px-3 py-2 text-sm rounded-md border-2 cursor-pointer transition-colors',
           'bg-surface-raised border-ui-border-medium text-content',
-          'focus-within:ring-2 focus-within:ring-brand-secondary/30 focus-within:border-brand-secondary',
+          'focus-within:ring-1 focus-within:ring-brand-secondary focus-within:border-brand-secondary',
           error && 'border-red-500',
           disabled && 'opacity-50 cursor-not-allowed',
         )}
@@ -123,9 +123,9 @@ export function Combobox({
           <div
             ref={dropdownRef}
             style={{ position: 'fixed', zIndex: 9999, ...dropdownStyle }}
-            className="bg-surface border border-ui-border-medium rounded-xl shadow-xl overflow-hidden"
+            className="bg-surface border-2 border-ui-border-medium rounded-md shadow-md overflow-hidden"
           >
-            <div className="p-2 border-b border-ui-divide">
+            <div className="p-2 border-b-2 border-ui-border">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-content-faint" />
                 <input
@@ -133,7 +133,7 @@ export function Combobox({
                   value={searchValue}
                   onChange={(e) => handleSearch(e.target.value)}
                   placeholder="Buscar..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface-raised border border-ui-border rounded-lg text-content placeholder:text-content-faint focus:outline-none focus:ring-2 focus:ring-brand-secondary/30"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface-raised border-2 border-ui-border rounded-md text-content placeholder:text-content-faint focus:outline-none focus:border-brand-secondary"
                 />
               </div>
             </div>
@@ -161,8 +161,8 @@ export function Combobox({
                       handleSearch('')
                     }}
                     className={cn(
-                      'w-full text-left px-3 py-2 text-sm transition-colors hover:bg-surface-hover',
-                      value === opt.id && 'bg-brand-secondary/10 text-brand-secondary',
+                      'w-full text-left pl-2 pr-3 py-2 text-sm border-l-4 border-transparent transition-colors hover:bg-surface-hover',
+                      value === opt.id && 'bg-brand-secondary/15 border-brand-secondary',
                     )}
                   >
                     <p className="font-medium text-xs text-content">{opt.label}</p>

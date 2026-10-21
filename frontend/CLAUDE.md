@@ -142,13 +142,32 @@ All colors and gradients are tokenized — **never use hardcoded hex values** in
 - `bg-brand-primary-dark` — `#0d1210` (page background on login)
 - Opacity modifiers work natively: `bg-brand-secondary/10`, `bg-brand-primary/15`
 
-**Gradient utilities** (use as className, never as inline `style`):
-- `gradient-action` — green CTA: buttons, active pagination
-- `gradient-dark` — dark surface: empty state icons
-- `gradient-user` — user avatars: dark-to-green
-- `nav-active` — sidebar active NavLink
-- `glass` — glassmorphism for dark panel forms
-- `text-gradient-brand` — green gradient text for hero copy
+**Visual style — refined industrial neo-brutalism** (2026-10-21, `feat/brutalist-style`): hard visible borders instead of soft shadows, solid offset shadows with zero blur, near-square corners, big Prompt numbers, green `#07bc34` only as a sharp accent (user complained before of "mucho verde"), no glassmorphism or `backdrop-blur`. Most of it comes from `index.css`, not from each component:
+- `@theme` overrides Tailwind v4's `--radius-*` (2–8px; `rounded-2xl` = 6px) and `--shadow-*` (`shadow-sm` = `3px 3px 0 0 var(--hard-shadow)` … `shadow-2xl` = 8px), so every existing `rounded-*`/`shadow-*` class is already brutalist. `rounded-full` is untouched.
+- `--hard-shadow` flips per theme (`#141a17` light, pure `#000000` in dark — never green) and is for shadows only: borders use `--ui-border-medium` (brighter in dark, so cards separate from the `#0d1210` page). `--ink-bg`/`--ink-fg` (black/green in light, near-white/dark in dark) feed `selected-ink`. `--ui-border` / `--ui-border-medium` are hard lines; `--ui-divide` stays soft so table rows remain readable.
+- `body` uses `tabular-nums` globally; `font-mono` = JetBrains Mono (document codes, consecutives, SKUs, KPI labels).
+
+**Component classes** (`@layer components` in `index.css`, so Tailwind classes added by the page — padding, size, color — override them). None sets padding or font size:
+- `btn-primary` — the **only** solid green block, one main CTA per screen; green flat CTA, dark text (never `text-white` on green: ~2.5:1 contrast), 2px border, 3px shadow, press on `:active`
+- `btn-secondary` — theme surface, 2px border, 2px shadow
+- `btn-danger` — red flat destructive action
+- `:disabled` on the three buttons: neutral gray (surface-hover bg, muted text, no shadow), never faded green/red
+- `card-hard` — card/panel: surface, 2px `ui-border-medium` border, 4px shadow. `overflow-hidden` on the card itself is fine (it clips content, not the card's own shadow), but a hard-shadow child inside an `overflow-hidden` parent gets clipped
+- `input-hard` — input/select/textarea with 2px border; sharp green focus (no `focus:ring-*/30` glow); `aria-invalid='true'` turns the border red
+- `pill-stamp` — stamp-like badge (uppercase 10px, tracking, 1px `currentColor` border); the page adds its color classes with dark variants
+
+**Utilities** (use as className, never as inline `style`):
+- `press` — translates by `--press-offset` (3px default; `card-hard` sets 4px) and drops the shadow on `:active`; `press-sm` for 2px shadows
+- `border-hard` — border in the `--hard-shadow` color
+- `gradient-action` / `gradient-brand` / `gradient-dark` / `gradient-user` — now **flat** colors (names kept because many files consume them); `gradient-dark`/`gradient-user` add a 2px `ui-border-medium` border so they don't vanish in dark mode; `gradient-action` is no longer used for selection or decoration
+- `selected-ink` — selected option (SegmentedToggle, active pagination page, report period buttons) and decorative icon squares/avatars: ink block (light: `#141a17` + green text; dark: light gray `#c9d1cc` + dark text) + 2px border. Not green; do not add `text-brand-primary`/`gradient-action`
+- `avatar-outline` — initials square in list rows: transparent, 2px `ui-border-medium` border, `text-content` letter (same in both themes)
+- `link-plain` — name/code links: inherits text color, underline on hover (never green text for links)
+- `nav-active` — sidebar active NavLink: same ink block + 2px solid shadow (needs `border-2` on the link)
+- `glass` — now a **solid** theme surface with 2px border (login panel); text inside must use semantic tokens, not `text-white`
+- `text-gradient-brand` — plain green text
+
+**Patterns:** modal overlays are `bg-black/60` (no blur) with a `border-2 border-ui-border-medium shadow-2xl` panel; section/table-head separators use `border-b-2 border-ui-border-medium`; big totals and KPIs use `font-display tabular-nums`. The dashboard uses two grids: KPI tiles with real numbers (`lg:grid-cols-5`, Documentos first and widest; col spans picked from literal class maps per number of permitted tiles, so missing permissions never leave holes) and, below, CxC/CxP "módulo en desarrollo" as compact tiles. The main card of the document form, POS checkout and document detail keeps a per-type colored `border-l-[6px]` (`DOC_TYPE_ACCENT[type].border`, same color as the header icon) — it tells the user which document type they are on, don't remove it.
 
 ## Typography
 
@@ -159,6 +178,7 @@ Fonts loaded in `index.html` from Google Fonts. Applied globally via `@layer bas
 | Prompt | Black 900 | h1–h6 (automatic) | — |
 | Barlow | Regular 400 | Body text (default) | `font-sans` |
 | Barlow | Medium Italic 500 | Subtitles, supporting text | `font-accent` |
+| JetBrains Mono | 500 / 700 | Document codes, consecutives, SKUs, KPI labels | `font-mono` |
 
 **Rule:** Do not add `font-bold` to headings — Prompt Black is applied automatically. Use `font-accent` for subtitle/description text (e.g., page subtitles, date labels, placeholder descriptions).
 

@@ -21,7 +21,7 @@ interface KpiTileProps {
 
 function KpiTile({ icon: Icon, label, value, hint, isLoading, tone = 'default' }: KpiTileProps) {
   return (
-    <div className="bg-surface rounded-2xl border border-ui-border shadow-sm p-4 min-w-0">
+    <div className="card-hard p-4 min-w-0">
       <div className="flex items-center gap-2 text-content-muted text-xs">
         <span className="w-7 h-7 rounded-lg flex items-center justify-center bg-brand-secondary/10 shrink-0">
           <Icon className="w-4 h-4 text-brand-secondary" aria-hidden="true" />
@@ -38,7 +38,7 @@ function KpiTile({ icon: Icon, label, value, hint, isLoading, tone = 'default' }
           <p
             title={value ?? undefined}
             className={cn(
-              'mt-3 text-xl font-semibold truncate tabular-nums',
+              'mt-3 text-xl font-display truncate tabular-nums',
               tone === 'positive' && 'text-brand-secondary',
               tone === 'warning' && 'text-amber-600 dark:text-amber-400',
               tone === 'default' && 'text-content',

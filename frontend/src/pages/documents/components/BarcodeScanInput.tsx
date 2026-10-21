@@ -165,10 +165,8 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
             autoComplete="off"
             disabled={disabled}
             className={cn(
-              'w-full pl-9 pr-3 py-2 text-sm rounded-lg border bg-surface-raised text-content placeholder:text-content-faint',
-              'focus:outline-none focus:ring-2 focus:ring-brand-secondary/30 focus:border-brand-secondary transition-all',
+              'input-hard w-full pl-9 pr-3 py-2 text-sm placeholder:text-content-faint',
               'disabled:opacity-50 disabled:cursor-not-allowed',
-              'border-ui-border-medium',
             )}
           />
         </div>

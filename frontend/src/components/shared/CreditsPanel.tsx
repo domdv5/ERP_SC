@@ -32,8 +32,8 @@ export function CreditsPanel({
   if (credits.length === 0) return null
 
   return (
-    <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-500/10 p-4">
-      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+    <div className="rounded-md border-2 border-emerald-700 dark:border-emerald-500/60 bg-emerald-50 dark:bg-emerald-500/10 p-4">
+      <p className="flex items-center gap-1.5 font-mono text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
         <Wallet className="w-3.5 h-3.5" />
         {title}
       </p>
@@ -59,9 +59,9 @@ export function CreditsPanel({
         ))}
       </div>
 
-      <div className="flex items-center justify-between border-t border-emerald-200/60 dark:border-emerald-500/20 mt-3 pt-2 text-sm">
+      <div className="flex items-center justify-between border-t-2 border-emerald-700/40 dark:border-emerald-500/30 mt-3 pt-2 text-sm">
         <span className="text-content-secondary">Saldo aplicado</span>
-        <span className="text-content font-mono">{formatCOP(creditsApplied)}</span>
+        <span className="text-content font-mono font-semibold">{formatCOP(creditsApplied)}</span>
       </div>
     </div>
   )

@@ -16,8 +16,8 @@ const CSS = `
     50%       { transform: scale(1);   opacity: 1;    }
   }
   @keyframes elo-center-pulse {
-    0%, 100% { box-shadow: 0 0 8px 2px rgba(7,188,52,0.5); }
-    50%       { box-shadow: 0 0 18px 6px rgba(7,188,52,0.9); }
+    0%, 100% { box-shadow: 0 0 0 2px rgba(7,188,52,0.5); }
+    50%       { box-shadow: 0 0 0 6px rgba(7,188,52,0.9); }
   }
 `
 
@@ -45,7 +45,7 @@ export function PageLoader() {
             width: 320,
             height: 320,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(7,188,52,0.14) 0%, transparent 70%)',
+            background: 'rgba(7,188,52,0.07)',
             animation: 'elo-glow 2.8s ease-in-out infinite',
             pointerEvents: 'none',
           }}
@@ -71,7 +71,6 @@ export function PageLoader() {
                 strokeWidth="5.5"
                 strokeLinecap="round"
                 strokeDasharray="200 96"
-                style={{ filter: 'drop-shadow(0 0 7px rgba(7,188,52,0.9))' }}
               />
             </svg>
           </div>
@@ -96,7 +95,6 @@ export function PageLoader() {
                   strokeLinecap="round"
                   strokeDasharray="135 225"
                   opacity="0.65"
-                  style={{ filter: 'drop-shadow(0 0 5px rgba(7,188,52,0.65))' }}
                 />
               </svg>
             </div>
@@ -118,7 +116,6 @@ export function PageLoader() {
                   strokeLinecap="round"
                   strokeDasharray="80 280"
                   opacity="0.38"
-                  style={{ filter: 'drop-shadow(0 0 4px rgba(7,188,52,0.5))' }}
                 />
               </svg>
             </div>
@@ -156,10 +153,10 @@ export function PageLoader() {
           <p
             style={{
               color: 'white',
-              fontWeight: 800,
+              fontWeight: 900,
               fontSize: 21,
               letterSpacing: 6,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: '"Prompt", sans-serif',
               margin: 0,
             }}
           >

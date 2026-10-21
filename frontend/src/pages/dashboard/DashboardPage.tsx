@@ -18,17 +18,17 @@ import { getProducts } from '@/services/products.service'
 import { getWarehouses } from '@/services/warehouses.service'
 import { getDocuments } from '@/services/documents.service'
 
-// Clases literales para que Tailwind las detecte (no se puede interpolar el número); caso 1 es defensa por si un rol pierde todos los permisos.
-const OPERATIONAL_GRID_COLS: Record<number, string> = {
-  1: 'xl:grid-cols-2',
-  2: 'xl:grid-cols-2',
-  3: 'xl:grid-cols-3',
-  4: 'xl:grid-cols-4',
-}
-
-const FINANCIAL_GRID_COLS: Record<number, string> = {
-  1: 'md:grid-cols-1',
-  2: 'md:grid-cols-2',
+// Clases literales para que Tailwind las detecte; el primer KPI es el tile grande y cada fila (2 cols en móvil, 5 en lg) queda completa.
+const OPERATIONAL_TILE_SPANS: Record<number, string[]> = {
+  1: ['col-span-2 lg:col-span-5'],
+  2: ['col-span-1 lg:col-span-3', 'col-span-1 lg:col-span-2'],
+  3: ['col-span-2 lg:col-span-3', 'col-span-1 lg:col-span-1', 'col-span-1 lg:col-span-1'],
+  4: [
+    'col-span-2 lg:col-span-2',
+    'col-span-1 lg:col-span-1',
+    'col-span-1 lg:col-span-1',
+    'col-span-2 lg:col-span-1',
+  ],
 }
 
 export default function DashboardPage() {
@@ -108,6 +108,18 @@ export default function DashboardPage() {
   ]
 
   const operationalCards = [
+    ...(canReadDocuments
+      ? [
+          {
+            label: 'Documentos',
+            value: loadingDocuments ? null : String(documentsData?.meta.total ?? '—'),
+            icon: FileText,
+            iconBg: 'bg-teal-500/10',
+            iconColor: 'text-teal-600 dark:text-teal-400',
+            path: '/documents',
+          },
+        ]
+      : []),
     {
       label: 'Productos',
       value: loadingProducts ? null : String(productsData?.meta.total ?? '—'),
@@ -140,18 +152,6 @@ export default function DashboardPage() {
           },
         ]
       : []),
-    ...(canReadDocuments
-      ? [
-          {
-            label: 'Documentos',
-            value: loadingDocuments ? null : String(documentsData?.meta.total ?? '—'),
-            icon: FileText,
-            iconBg: 'bg-teal-500/10',
-            iconColor: 'text-teal-600 dark:text-teal-400',
-            path: '/documents',
-          },
-        ]
-      : []),
   ]
 
   return (
@@ -164,72 +164,87 @@ export default function DashboardPage() {
           </h1>
           <p className="text-content-muted text-sm mt-0.5 capitalize font-accent">{dateLabel}</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-content-faint bg-surface-raised px-3 py-1.5 rounded-lg border border-ui-border">
+        <div className="flex items-center gap-2 pill-stamp text-xs text-content-faint bg-surface-raised px-3 py-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary animate-pulse" />
           Sistema activo
         </div>
       </div>
 
-      {/* Financial zone — primary */}
-      {financialCards.length > 0 ? (
-        <div className={`grid grid-cols-1 gap-4 ${FINANCIAL_GRID_COLS[financialCards.length]}`}>
+      {/* Bento grid: los KPI con cifras reales son los tiles grandes; los módulos en desarrollo van compactos */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 lg:auto-rows-[minmax(6.5rem,auto)] gap-4">
+        {operationalCards.map(({ label, value, icon: Icon, iconBg, iconColor, path }, index) => {
+          const isLead = index === 0
+          return (
+            <div
+              key={label}
+              onClick={() => navigate(path)}
+              className={`card-hard press ${isLead ? 'p-6' : 'p-4'} group cursor-pointer flex flex-col justify-between ${OPERATIONAL_TILE_SPANS[operationalCards.length][index]}`}
+            >
+              <div className="flex items-start justify-between">
+                <div
+                  className={`w-9 h-9 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}
+                >
+                  <Icon className={`w-4 h-4 ${iconColor}`} />
+                </div>
+                <ArrowUpRight className="w-3.5 h-3.5 text-content-faint group-hover:text-content-muted transition-colors shrink-0" />
+              </div>
+              <div className="min-w-0">
+                {value === null ? (
+                  <div
+                    className={`bg-surface-hover rounded animate-pulse mb-1 ${isLead ? 'h-12 w-24' : 'h-9 w-16'}`}
+                  />
+                ) : (
+                  <p
+                    className={`font-display font-black leading-none text-content tabular-nums ${isLead ? 'text-6xl' : 'text-4xl'}`}
+                  >
+                    {value}
+                  </p>
+                )}
+                <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-content-muted truncate">
+                  {label}
+                </p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {financialCards.length > 0 && (
+        <div
+          className={`grid grid-cols-1 gap-4 ${financialCards.length === 2 ? 'md:grid-cols-2' : ''}`}
+        >
           {financialCards.map(
             ({ label, subtitle, icon: Icon, iconBg, iconColor, dotColor, path, context }) => (
               <div
                 key={label}
                 onClick={() => navigate(path)}
-                className="bg-surface rounded-2xl p-6 border border-ui-border shadow-sm hover:shadow-md transition-all group cursor-pointer"
+                className={`card-hard press p-4 group cursor-pointer flex items-center gap-4`}
               >
-                <div className="flex items-start justify-between mb-5">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}
-                  >
-                    <Icon className={`w-5 h-5 ${iconColor}`} />
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-content-faint group-hover:text-content-muted group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                <div
+                  className={`w-9 h-9 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}
+                >
+                  <Icon className={`w-4 h-4 ${iconColor}`} />
                 </div>
-                <p className="text-3xl text-content mb-1">—</p>
-                <p className="text-sm font-medium text-content-secondary">{label}</p>
-                <p className="text-xs text-content-faint mt-0.5 font-accent">{subtitle}</p>
-                <div className="mt-4 pt-4 border-t border-ui-border flex items-center gap-1.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-content-secondary truncate">{label}</p>
+                  <p className="text-xs text-content-faint font-accent truncate">{subtitle}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
                   <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-                  <span className="text-xs text-content-faint">{context}</span>
+                  <span className="hidden sm:inline font-mono text-[11px] uppercase tracking-wider text-content-faint">
+                    {context}
+                  </span>
                 </div>
+                <ArrowUpRight className="w-3.5 h-3.5 text-content-faint group-hover:text-content-muted transition-colors shrink-0" />
               </div>
             ),
           )}
         </div>
-      ) : null}
-
-      {/* Operational zone — secondary */}
-      <div className={`grid grid-cols-2 gap-3 ${OPERATIONAL_GRID_COLS[operationalCards.length]}`}>
-        {operationalCards.map(({ label, value, icon: Icon, iconBg, iconColor, path }) => (
-          <div
-            key={label}
-            onClick={() => navigate(path)}
-            className="bg-surface rounded-2xl p-4 border border-ui-border shadow-sm hover:shadow-md transition-all group cursor-pointer flex items-center gap-3"
-          >
-            <div
-              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}
-            >
-              <Icon className={`w-4 h-4 ${iconColor}`} />
-            </div>
-            <div className="flex-1 min-w-0">
-              {value === null ? (
-                <div className="h-5 w-10 bg-surface-hover rounded animate-pulse mb-0.5" />
-              ) : (
-                <p className="text-lg text-content leading-none">{value}</p>
-              )}
-              <p className="text-xs text-content-faint mt-0.5 truncate">{label}</p>
-            </div>
-            <ArrowUpRight className="w-3.5 h-3.5 text-content-faint group-hover:text-content-muted transition-colors shrink-0" />
-          </div>
-        ))}
-      </div>
+      )}
 
       {/* Activity */}
-      <div className="bg-surface rounded-2xl border border-ui-border shadow-sm">
-        <div className="px-5 py-4 border-b border-ui-border flex items-center justify-between">
+      <div className="card-hard">
+        <div className="px-5 py-4 border-b-2 border-ui-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-content-faint" />
             <h2 className="text-sm text-content">Actividad reciente</h2>
@@ -240,7 +255,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3 gradient-dark">
+          <div className="w-10 h-10 rounded-md flex items-center justify-center mb-3 gradient-dark">
             <Activity className="w-5 h-5 text-white/50" />
           </div>
           <p className="text-content-muted text-sm">No hay actividad reciente</p>
