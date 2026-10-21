@@ -1,0 +1,32 @@
+# Estilo brutalista industrial (toda la app)
+
+Darle identidad visual a EloSC con un neo-brutalismo refinado ("industrial", de etiqueta de despacho) en toda la aplicación, más bento grid en el dashboard. Branch `feat/brutalist-style`.
+Solo frontend (estilos). Sin cambios de lógica, rutas ni datos. El usuario no revisa estos cambios (L8): commits por tarea en la rama; push/PR quedan del usuario.
+
+## Specs
+- S1 — Afecta **toda la aplicación**, no solo el dashboard. Usuario: "quiero que afecte toda la aplciacion no solo el dashboard".
+- S2 — Sin prototipo: se aplica directo en la app real. Usuario: "pero no quiero un prottopio".
+- S3 — Rasgos del estilo (propuesta aceptada): bordes duros y visibles en lugar de sombras difusas; sombras sólidas desplazadas sin blur (`4px 4px 0`) en botones y tarjetas, que se "hunden" al hacer clic; radios chicos o rectos (nada de 16px tipo burbuja); números grandes en Prompt Black para KPIs y totales, con cifras tabulares; el verde `#07bc34` como acento puntual (botón principal, estado activo, highlight), no en todos lados; detalles de "etiqueta de despacho": códigos de documento en monoespaciada, pills con borde tipo sello.
+- S4 — "Refinado": la legibilidad de tablas y formularios no empeora; modo claro y oscuro funcionan en todas las pantallas.
+- S5 — Sin glassmorphismo ni `backdrop-blur` (login y overlays de modales pasan a superficies sólidas).
+- S6 — Dashboard en bento grid (tarjetas de distinto tamaño según importancia).
+- S7 — Primero los tokens globales en `frontend/src/index.css` (los radios/sombras de Tailwind v4 se redefinen en `@theme`, así las clases `rounded-*`/`shadow-*` ya usadas en ~60 archivos cambian desde un solo lugar); después componentes compartidos y layout; después pasada por páginas.
+- S8 — No se usa shadcn ni otra librería de UI nueva.
+- S9 — `frontend/CLAUDE.md` (Design Tokens, Typography, Shared Components) queda actualizado con el estilo nuevo.
+
+## Tasks
+- T1 — Tokens globales en `index.css`: radios, sombras sólidas, bordes, utilidades `gradient-*`/`nav-active`/`glass` planas, cifras tabulares, fuente mono (S3, S5, S7, S8). Route: react-code-crafter. Commit: — (sin commit, esperando revisión visual) ✅
+- T2 — Layout y compartidos: Sidebar, Header, StatsGrid, TableToolbar, TablePagination, SegmentedToggle, EmptyState/ErrorState, Combobox, overlays de modales, botones con efecto de presión (S1, S3, S4, S5). Route: react-code-crafter. Commit: —
+- T3 — Pasada por páginas (listados, formularios, detalles, POS, CxC/CxP, informes, login) corrigiendo lo que T1/T2 no cubran + códigos de documento en mono (S1, S3, S4). Route: react-code-crafter. Commit: —
+- T4 — Dashboard bento grid (S6). Route: react-code-crafter. Commit: —
+- T5 — `frontend/CLAUDE.md` + `tsc`/build del frontend + CodeTour (S9). Route: inline. Commit: —
+
+## Log
+- L1 (usuario, 2026-10-21): "antes de eso, estuve analizando el diseño de l aplicativo y la verdad se ve my bonito y moderno pero sinero que el ahce falta un punch algo que genere identidad y que no sea tan generico entonces vi algo como estilod e diseño o algo asi que son: brutalismo, minimalismo, neofuturismo, glassmorphismo, maximalismo, clayformismo,liquid glass, bento grid, ui espacial etc etc, entonces quisiera darle ese punch con aglo de eso, me iamgoimo qeu seria con shadcn o algoa si"
+- L2 (asistente): recomendó neo-brutalismo refinado "industrial" + bento grid en dashboard; descartó glass/liquid glass/clay/maximalismo/UI espacial para un ERP; shadcn no da identidad.
+- L3 (usuario): "no tengo otro estilo en mente"
+- L4 (usuario): "pero no quiero un prottopio"
+- L5 (usuario): "y quiero que afecte toda la aplciacion no solo el dashboard"
+- L6 (exploración): no hay componentes `Button`/`Card` (`components/ui/` vacío); estilos repetidos inline: `rounded-2xl` 131×/45 archivos, `rounded-lg` 239×/52, `shadow-sm` 70×/31, `gradient-action` 41×/29, `border-ui-border` 326×/60. Palanca: redefinir variables de tema de Tailwind v4.
+- L7 (T1): tsc + build OK. Pendiente para T2/T3: `text-white` sobre verde plano (~2,5:1) → `text-brand-primary`; login `.glass` ahora superficie del tema; `nav-active` con `shadow-lg` sobra; sombras recortadas por `overflow-hidden`; `.press` asume sombra de 3px.
+- L8 (usuario, 2026-10-21): "sigue con todo y para estos cambiso nom hace falta que yo los revise"
