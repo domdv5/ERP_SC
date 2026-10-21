@@ -176,8 +176,9 @@
 
   /* Sidebar active nav item */
   .nav-active {
-    background: rgba(7, 188, 52, 0.15);
-    border-left: 4px solid #07bc34;
+    background: #07bc34;
+    border-color: var(--hard-shadow);
+    box-shadow: 2px 2px 0 0 var(--hard-shadow);
   }
 
   .text-gradient-brand {

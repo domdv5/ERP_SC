@@ -17,10 +17,10 @@ import {
 
 function getNavLinkClass(isActive: boolean) {
   return cn(
-    'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-100',
+    'flex items-center gap-3 px-3 py-2.5 rounded-md border-2 text-sm font-medium transition-colors duration-100',
     isActive
-      ? 'nav-active text-content dark:text-white'
-      : 'text-content-secondary dark:text-white/60 hover:text-content dark:hover:text-white hover:bg-surface-hover dark:hover:bg-white/5',
+      ? 'nav-active text-brand-primary'
+      : 'border-transparent text-content-secondary hover:text-content hover:bg-surface-hover hover:border-ui-border-medium',
   )
 }
 
@@ -85,7 +85,7 @@ function WarehousesSidebarItem() {
         className="overflow-hidden transition-all ease-in-out"
         style={{ maxHeight: open ? '300px' : '0px', transitionDuration: '200ms' }}
       >
-        <div className="ml-3 mt-0.5 mb-1 border-l border-ui-border-medium dark:border-white/10 pl-2 space-y-0.5">
+        <div className="ml-3 mt-0.5 mb-1 border-l border-ui-border-medium pl-2 space-y-0.5">
           {warehouses.map((w) => {
             const WIcon = w.type === 'store' ? Store : Warehouse
             // Link + isActive manual: NavLink ignora query params y marcaría todos los sub-items activos a la vez.
@@ -95,10 +95,10 @@ function WarehousesSidebarItem() {
                 key={w.id}
                 to={`/warehouses?id=${w.id}`}
                 className={cn(
-                  'flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-100',
+                  'flex items-center gap-2 px-2 py-1.5 rounded-md border-2 text-xs font-medium transition-colors duration-100',
                   isItemActive
-                    ? 'text-content dark:text-white bg-brand-secondary/20 border-l-2 border-brand-secondary'
-                    : 'text-content-muted dark:text-white/50 hover:text-content dark:hover:text-white hover:bg-surface-hover dark:hover:bg-white/5',
+                    ? 'nav-active text-brand-primary'
+                    : 'border-transparent text-content-muted hover:text-content hover:bg-surface-hover hover:border-ui-border-medium',
                 )}
               >
                 <WIcon className="w-3 h-3 shrink-0" />
@@ -170,9 +170,9 @@ export function Sidebar() {
   const toggleMenu = () => setMenuOpen((prev) => !prev)
 
   return (
-    <aside className="w-64 flex flex-col h-full bg-surface dark:bg-brand-primary border-r-2 border-ui-border-medium dark:border-white/25">
+    <aside className="w-64 flex flex-col h-full bg-surface dark:bg-brand-primary border-r-2 border-ui-border-medium">
       {/* Logo */}
-      <div className="px-5 py-4 border-b-2 border-ui-border-medium dark:border-white/25">
+      <div className="px-5 py-4 border-b-2 border-ui-border-medium">
         <div className="flex items-center gap-3">
           <img src="/Logo.svg" alt="EloSC" className="w-9 h-9 shrink-0" />
           <div>
@@ -221,13 +221,10 @@ export function Sidebar() {
       </nav>
 
       {/* Footer — user dropdown */}
-      <div
-        className="px-3 py-4 border-t-2 border-ui-border-medium dark:border-white/25 relative"
-        ref={menuRef}
-      >
+      <div className="px-3 py-4 border-t-2 border-ui-border-medium relative" ref={menuRef}>
         {menuOpen && (
-          <div className="absolute bottom-full left-3 right-3 mb-2 rounded-md border-2 border-ui-border-medium dark:border-white/40 shadow-md overflow-hidden bg-surface dark:bg-brand-surface">
-            <div className="px-4 py-3 bg-surface-raised dark:bg-transparent border-b-2 border-ui-border-medium dark:border-white/25">
+          <div className="absolute bottom-full left-3 right-3 mb-2 rounded-md border-2 border-ui-border-medium shadow-md overflow-hidden bg-surface dark:bg-brand-surface">
+            <div className="px-4 py-3 bg-surface-raised dark:bg-transparent border-b-2 border-ui-border-medium">
               <p className="text-content dark:text-white text-xs font-semibold truncate">
                 {user?.name ?? 'Usuario'}
               </p>
@@ -261,10 +258,10 @@ export function Sidebar() {
         <button
           onClick={toggleMenu}
           className={cn(
-            'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors duration-100',
+            'w-full flex items-center gap-3 px-3 py-2 rounded-md border-2 transition-colors duration-100',
             menuOpen
-              ? 'bg-surface-hover dark:bg-white/10'
-              : 'hover:bg-surface-hover dark:hover:bg-white/5',
+              ? 'bg-surface-hover border-ui-border-medium'
+              : 'border-transparent hover:bg-surface-hover hover:border-ui-border-medium',
           )}
         >
           <div className="w-7 h-7 rounded-md flex items-center justify-center text-brand-primary text-xs font-black shrink-0 gradient-action border-2 border-hard">

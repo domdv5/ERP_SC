@@ -159,7 +159,7 @@ All colors and gradients are tokenized — **never use hardcoded hex values** in
 - `press` — translates by `--press-offset` (3px default; `card-hard` sets 4px) and drops the shadow on `:active`; `press-sm` for 2px shadows
 - `border-hard` — border in the `--hard-shadow` color
 - `gradient-action` / `gradient-brand` / `gradient-dark` / `gradient-user` — now **flat** colors (names kept because many files consume them); `gradient-dark`/`gradient-user` add a 2px border so they don't vanish in dark mode
-- `nav-active` — sidebar active NavLink (flat green tint + 4px left border, no shadow)
+- `nav-active` — sidebar active NavLink (flat green block + 2px hard border + 2px solid shadow; pair with `text-brand-primary` and `border-2` on the link)
 - `glass` — now a **solid** theme surface with 2px border (login panel); text inside must use semantic tokens, not `text-white`
 - `text-gradient-brand` — plain green text
 
