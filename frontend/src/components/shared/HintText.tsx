@@ -9,7 +9,7 @@ interface HintTextProps {
 
 const VARIANT_CLASSES: Record<NonNullable<HintTextProps['variant']>, string> = {
   neutral: 'text-content-faint',
-  positive: 'text-brand-secondary font-medium',
+  positive: 'text-emerald-700 dark:text-brand-secondary font-medium',
   warning: 'text-amber-500 dark:text-amber-400',
 }
 

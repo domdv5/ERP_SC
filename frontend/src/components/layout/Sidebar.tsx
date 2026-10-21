@@ -17,9 +17,9 @@ import {
 
 function getNavLinkClass(isActive: boolean) {
   return cn(
-    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+    'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-100',
     isActive
-      ? 'nav-active text-content dark:text-white shadow-lg'
+      ? 'nav-active text-content dark:text-white'
       : 'text-content-secondary dark:text-white/60 hover:text-content dark:hover:text-white hover:bg-surface-hover dark:hover:bg-white/5',
   )
 }
@@ -95,9 +95,9 @@ function WarehousesSidebarItem() {
                 key={w.id}
                 to={`/warehouses?id=${w.id}`}
                 className={cn(
-                  'flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all duration-200',
+                  'flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-100',
                   isItemActive
-                    ? 'text-content dark:text-white bg-brand-secondary/20'
+                    ? 'text-content dark:text-white bg-brand-secondary/20 border-l-2 border-brand-secondary'
                     : 'text-content-muted dark:text-white/50 hover:text-content dark:hover:text-white hover:bg-surface-hover dark:hover:bg-white/5',
                 )}
               >
@@ -170,13 +170,13 @@ export function Sidebar() {
   const toggleMenu = () => setMenuOpen((prev) => !prev)
 
   return (
-    <aside className="w-64 flex flex-col h-full bg-surface dark:bg-brand-primary border-r border-ui-border-medium dark:border-white/10 shadow-2xl">
+    <aside className="w-64 flex flex-col h-full bg-surface dark:bg-brand-primary border-r-2 border-ui-border-medium dark:border-white/25">
       {/* Logo */}
-      <div className="px-5 py-4 border-b border-ui-border-medium dark:border-white/10">
+      <div className="px-5 py-4 border-b-2 border-ui-border-medium dark:border-white/25">
         <div className="flex items-center gap-3">
           <img src="/Logo.svg" alt="EloSC" className="w-9 h-9 shrink-0" />
           <div>
-            <p className="text-content dark:text-white font-bold text-sm leading-tight tracking-wide">
+            <p className="text-content dark:text-white font-display font-black text-base leading-tight tracking-wide">
               EloSC
             </p>
             <p className="text-content-muted dark:text-white/40 text-xs font-accent">
@@ -195,7 +195,7 @@ export function Sidebar() {
           return (
             <div key={group.label ?? `group-${groupIdx}`} className="space-y-0.5">
               {group.label && (
-                <p className="text-content-faint dark:text-white/25 text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
+                <p className="text-content-muted dark:text-white/40 font-mono text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
                   {group.label}
                 </p>
               )}
@@ -222,12 +222,12 @@ export function Sidebar() {
 
       {/* Footer — user dropdown */}
       <div
-        className="px-3 py-4 border-t border-ui-border-medium dark:border-white/10 relative"
+        className="px-3 py-4 border-t-2 border-ui-border-medium dark:border-white/25 relative"
         ref={menuRef}
       >
         {menuOpen && (
-          <div className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border border-ui-border-medium dark:border-white/10 shadow-xl overflow-hidden bg-surface dark:bg-brand-surface">
-            <div className="px-4 py-3 bg-surface-raised dark:bg-transparent border-b border-ui-border-medium dark:border-white/10">
+          <div className="absolute bottom-full left-3 right-3 mb-2 rounded-md border-2 border-ui-border-medium dark:border-white/40 shadow-md overflow-hidden bg-surface dark:bg-brand-surface">
+            <div className="px-4 py-3 bg-surface-raised dark:bg-transparent border-b-2 border-ui-border-medium dark:border-white/25">
               <p className="text-content dark:text-white text-xs font-semibold truncate">
                 {user?.name ?? 'Usuario'}
               </p>
@@ -239,7 +239,7 @@ export function Sidebar() {
                   {user.roles.map((r) => (
                     <span
                       key={r}
-                      className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-brand-secondary/20 text-brand-secondary"
+                      className="pill-stamp text-content-secondary dark:text-white/70 bg-brand-secondary/15"
                     >
                       {getRoleLabel(r)}
                     </span>
@@ -250,7 +250,7 @@ export function Sidebar() {
             <div className="p-1">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-content-secondary dark:text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-content-secondary dark:text-white/60 hover:text-red-500 hover:bg-red-500/10 transition-colors duration-100"
               >
                 <LogOut className="w-4 h-4 shrink-0" />
                 <span>Cerrar sesión</span>
@@ -261,13 +261,13 @@ export function Sidebar() {
         <button
           onClick={toggleMenu}
           className={cn(
-            'w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200',
+            'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors duration-100',
             menuOpen
               ? 'bg-surface-hover dark:bg-white/10'
               : 'hover:bg-surface-hover dark:hover:bg-white/5',
           )}
         >
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-action">
+          <div className="w-7 h-7 rounded-md flex items-center justify-center text-brand-primary text-xs font-black shrink-0 gradient-action border-2 border-hard">
             {user?.name?.[0]?.toUpperCase() ?? 'U'}
           </div>
           <div className="flex-1 min-w-0 text-left">

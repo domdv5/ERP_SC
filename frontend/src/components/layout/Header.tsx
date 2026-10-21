@@ -91,13 +91,13 @@ export function Header() {
   }
 
   return (
-    <header className="h-16 bg-surface border-b border-ui-border flex items-center justify-end px-6 shadow-sm shrink-0">
+    <header className="h-16 bg-surface border-b-2 border-ui-border-medium flex items-center justify-end px-6 shrink-0">
       <div className="flex items-center gap-2">
         {/* Theme toggle */}
         <button
           onClick={handleThemeToggle}
           title={theme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
-          className="p-2 text-content-faint hover:text-content-muted hover:bg-surface-hover rounded-lg transition-colors"
+          className="p-2 text-content-muted hover:text-content hover:bg-surface-hover border-2 border-transparent hover:border-ui-border-medium rounded-md transition-colors"
         >
           {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
         </button>
@@ -112,17 +112,17 @@ export function Header() {
                 : 'Activar modo de solo lectura (cierre contable)'
             }
             className={cn(
-              'p-2 rounded-lg transition-colors disabled:opacity-50',
+              'p-2 rounded-md border-2 transition-colors disabled:opacity-50',
               readOnlyMode
-                ? 'text-red-500 hover:text-red-600 hover:bg-red-500/10'
-                : 'text-content-faint hover:text-content-muted hover:bg-surface-hover',
+                ? 'text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500'
+                : 'text-content-muted hover:text-content hover:bg-surface-hover border-transparent hover:border-ui-border-medium',
             )}
           >
             {readOnlyMode ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
           </button>
         )}
 
-        <button className="relative p-2 text-content-faint hover:text-content-muted hover:bg-surface-hover rounded-lg transition-colors">
+        <button className="relative p-2 text-content-muted hover:text-content hover:bg-surface-hover border-2 border-transparent hover:border-ui-border-medium rounded-md transition-colors">
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-secondary" />
         </button>
@@ -132,8 +132,10 @@ export function Header() {
           <button
             onClick={toggleMenu}
             className={cn(
-              'flex items-center gap-3 pl-3 pr-2 py-1.5 rounded-xl transition-all duration-200',
-              menuOpen ? 'bg-surface-hover' : 'hover:bg-surface-raised',
+              'flex items-center gap-3 pl-3 pr-2 py-1.5 rounded-md border-2 transition-colors duration-100',
+              menuOpen
+                ? 'bg-surface-hover border-ui-border-medium'
+                : 'border-transparent hover:bg-surface-raised hover:border-ui-border',
             )}
           >
             <div className="text-right">
@@ -142,17 +144,17 @@ export function Header() {
               </p>
               <p className="text-xs text-content-faint">{user?.username}</p>
             </div>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 gradient-user">
+            <div className="w-8 h-8 rounded-md flex items-center justify-center text-white text-sm font-black shrink-0 gradient-user">
               {user?.name?.[0]?.toUpperCase() ?? 'U'}
             </div>
           </button>
 
           {/* Dropdown */}
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-ui-border shadow-xl bg-surface overflow-hidden z-50">
-              <div className="px-4 py-3 border-b border-ui-border bg-surface-raised">
+            <div className="absolute right-0 top-full mt-2 w-52 rounded-md border-2 border-ui-border-medium shadow-md bg-surface z-50">
+              <div className="px-4 py-3 border-b-2 border-ui-border-medium bg-surface-raised">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 gradient-user">
+                  <div className="w-8 h-8 rounded-md flex items-center justify-center text-white text-xs font-black shrink-0 gradient-user">
                     {user?.name?.[0]?.toUpperCase() ?? 'U'}
                   </div>
                   <div className="min-w-0">
@@ -163,17 +165,17 @@ export function Header() {
               </div>
               <div className="p-1">
                 <button
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-content-muted hover:text-content-secondary hover:bg-surface-raised transition-colors cursor-default"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-content-muted hover:text-content-secondary hover:bg-surface-raised transition-colors cursor-default"
                   disabled
                 >
                   <User className="w-4 h-4 shrink-0" />
                   <span>Mi perfil</span>
-                  <span className="ml-auto text-xs text-content-faint">Próximamente</span>
+                  <span className="ml-auto pill-stamp text-content-faint">Próximamente</span>
                 </button>
                 <div className="my-1 border-t border-ui-border" />
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors"
                 >
                   <LogOut className="w-4 h-4 shrink-0" />
                   <span>Cerrar sesión</span>

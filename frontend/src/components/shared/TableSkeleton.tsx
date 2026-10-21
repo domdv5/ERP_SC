@@ -12,12 +12,12 @@ export function TableSkeleton({
     <div className="divide-y divide-ui-divide">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="flex items-center gap-4 px-5 py-4 animate-pulse">
-          <div className="w-8 h-8 rounded-lg bg-surface-hover shrink-0" />
+          <div className="w-8 h-8 rounded-md bg-surface-hover shrink-0" />
           <div className="flex-1 space-y-1.5">
             <div className={`h-3 bg-surface-hover rounded ${w1}`} />
             <div className={`h-2.5 bg-surface-hover rounded ${w2}`} />
           </div>
-          <div className={`h-5 bg-surface-hover rounded-full ${w3}`} />
+          <div className={`h-5 bg-surface-hover rounded-sm ${w3}`} />
           <div className={`h-3 bg-surface-hover rounded ${w4}`} />
         </div>
       ))}
