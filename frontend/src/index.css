@@ -287,6 +287,7 @@
     border: 2px solid var(--ui-border-medium);
     border-radius: 4px;
     box-shadow: 4px 4px 0 0 var(--hard-shadow);
+    --press-offset: 4px;
   }
 
   /* Input/select/textarea: borde duro de 2px; foco con borde y aro verde nítidos (sin glow) */
