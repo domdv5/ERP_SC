@@ -11,6 +11,8 @@ const VALID_REFUND_METHODS = new Set<string>(Object.values(DvvRefundMethod));
 @Injectable()
 export class DvvEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.DVV;
+  readonly tracksCustomerBranch = true;
+  protected readonly tracksItemAddedAt = true;
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
     await this.assertValidCustomer(createDocumentDto.thirdPartyId);

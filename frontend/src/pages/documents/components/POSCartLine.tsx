@@ -1,7 +1,7 @@
 import { Trash2 } from 'lucide-react'
 import { Controller, type Control, type UseFormRegister, type UseFormWatch } from 'react-hook-form'
 import { HintText, ThousandsInput } from '@/components/shared'
-import { formatCOP } from '@/lib/format'
+import { formatCOP, formatDateTimeBogota } from '@/lib/format'
 import { computeOfficialLineTax } from '@/lib/tax'
 import { cn } from '@/lib/utils'
 import type { FormValues } from '@/pages/documents/document-form.schema'
@@ -91,6 +91,12 @@ export function POSCartLine({
           </td>
         )}
 
+        <td className="px-4 py-3 w-40">
+          <span className="text-xs text-content-muted font-mono">
+            {formatDateTimeBogota(watch(`items.${index}.addedAt`))}
+          </span>
+        </td>
+
         <td className="px-3 py-3 w-10 text-center">
           <button
             type="button"
@@ -105,7 +111,7 @@ export function POSCartLine({
 
       {(isBelowFloor || exceedsAvailable) && (
         <tr>
-          <td className="px-4 pt-0 pb-2" colSpan={showTax ? 6 : 5}>
+          <td className="px-4 pt-0 pb-2" colSpan={showTax ? 7 : 6}>
             <div className="flex flex-wrap gap-x-4">
               {isBelowFloor && (
                 <HintText variant="warning">

@@ -1,5 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
-import { assertValidCalendarDate } from '@/common/utils/date-range.util';
+import {
+  assertValidCalendarDate,
+  todayInBogota,
+} from '@/common/utils/date-range.util';
 import type { DateRange } from '../reports.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -8,12 +11,6 @@ const MAX_DAYS = 366;
 
 function toUtcMidnight(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
-}
-
-function todayInBogota(now: Date) {
-  return toUtcMidnight(
-    now.toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' }),
-  );
 }
 
 /** Rango inclusivo a medianoche UTC; sin fechas son los últimos 30 días terminando hoy (Bogotá). */

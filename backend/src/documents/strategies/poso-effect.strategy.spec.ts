@@ -3,7 +3,6 @@ import { Prisma } from '@prisma/client';
 import { DocumentType } from '@/common/enums';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateDocumentDto } from '@/documents/dto/index';
-import { BRANCH_TYPES } from '@/documents/helpers/customer-branch.helpers';
 import { PosoEffectStrategy } from './poso-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
 
@@ -26,7 +25,7 @@ describe('PosoEffectStrategy: sucursal del cliente', () => {
   });
 
   it('guarda la sucursal en el POS oficial', () => {
-    expect(BRANCH_TYPES.has(DocumentType.POSO)).toBe(true);
+    expect(strategy.tracksCustomerBranch).toBe(true);
   });
 
   it('validateCreate exige la sucursal si el cliente tiene sucursales', async () => {

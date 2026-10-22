@@ -14,8 +14,7 @@ import {
   limitPayableAmount,
 } from './egreso-form.utils'
 import type { CreateEgresoPayload } from '@/types'
-
-const today = () => new Date().toISOString().slice(0, 10)
+import { todayInBogota } from '@/lib/format'
 
 function extractErrorMessage(err: unknown): string | undefined {
   const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -24,7 +23,7 @@ function extractErrorMessage(err: unknown): string | undefined {
 
 const emptyDefaults = (): EgresoFormValues => ({
   supplierId: '',
-  date: today(),
+  date: todayInBogota(),
   notes: '',
   payables: [],
   credits: [],

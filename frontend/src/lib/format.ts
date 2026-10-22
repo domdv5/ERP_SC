@@ -29,3 +29,22 @@ export const formatBogotaDate = (iso: string) => composeLocaleDate(new Date(iso)
 // Mismo texto que imprime la factura: si ciudad y departamento se llaman igual (Bogotá), va una sola vez.
 export const formatCityLabel = (cityName: string, departmentName: string) =>
   cityName === departmentName ? cityName : `${cityName}, ${departmentName}`
+
+// Fecha de hoy (YYYY-MM-DD) en hora Bogotá: toISOString usa UTC y desde las 7 p. m. daría el día siguiente.
+export const todayInBogota = () =>
+  new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' })
+
+// Hora en que se agregó cada producto (dd/mm/aaaa hh:mm:ss, 24 h, hora Bogotá).
+const dateTimeBogotaFormatter = new Intl.DateTimeFormat('es-CO', {
+  timeZone: 'America/Bogota',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+})
+
+export const formatDateTimeBogota = (iso?: string | null) =>
+  iso ? dateTimeBogotaFormatter.format(new Date(iso)).replace(',', '') : '—'

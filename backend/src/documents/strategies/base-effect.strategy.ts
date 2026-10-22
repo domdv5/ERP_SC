@@ -21,7 +21,17 @@ import { getOfficialMinNetPrice } from '@/documents/helpers/tax.helpers';
 export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
   abstract readonly type: DocumentType;
 
+  readonly tracksCustomerBranch: boolean = false;
+  readonly usesTodayDate: boolean = false;
+
+  // Los tipos que muestran la hora de cada producto pistoleado la activan con `= true`
+  protected readonly tracksItemAddedAt: boolean = false;
+
   constructor(protected readonly prisma: PrismaService) {}
+
+  resolveItemAddedAt(requested: string | undefined, now: Date): Date {
+    return this.tracksItemAddedAt && requested ? new Date(requested) : now;
+  }
 
   abstract confirm(
     tx: Prisma.TransactionClient,

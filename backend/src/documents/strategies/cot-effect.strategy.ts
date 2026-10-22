@@ -19,6 +19,9 @@ import type {
 @Injectable()
 export class CotEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.COT;
+  readonly tracksCustomerBranch = true;
+  readonly usesTodayDate = true;
+  protected readonly tracksItemAddedAt = true;
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
     const { thirdPartyId, sellerId, items } = createDocumentDto;

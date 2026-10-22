@@ -75,6 +75,9 @@ const makeExisting = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const SALE_FLAGS = { tracksCustomerBranch: true, usesTodayDate: true };
+const OTHER_FLAGS = { tracksCustomerBranch: false, usesTodayDate: false };
+
 const uniqueKeyError = () =>
   new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
     code: 'P2002',
@@ -89,7 +92,13 @@ describe('DocumentsService.create: clave para no duplicar al reintentar', () => 
     warehouse: { findFirst: jest.fn() },
     $transaction: jest.fn((fn: (client: typeof tx) => unknown) => fn(tx)),
   };
-  const registry = { get: jest.fn(() => ({ validateCreate: jest.fn() })) };
+  const registry = {
+    get: jest.fn((type: DocumentType) => ({
+      validateCreate: jest.fn(),
+      resolveItemAddedAt: (_requested: string | undefined, now: Date) => now,
+      ...(type === DocumentType.CM ? OTHER_FLAGS : SALE_FLAGS),
+    })),
+  };
   const sequence = { next: jest.fn().mockResolvedValue('000001') };
   const service = new DocumentsService(
     prisma as unknown as PrismaService,
@@ -178,7 +187,6 @@ describe('DocumentsService.create: clave para no duplicar al reintentar', () => 
     ['otro usuario', { userId: 'u2' }],
     ['otra forma de pago', { paymentMethod: 'transferencia' }],
     ['otra vendedora', { sellerId: 's2' }],
-    ['otra fecha', { date: new Date('2026-10-13') }],
     ['otras notas', { notes: 'ajuste' }],
     [
       'otro costo',
@@ -244,13 +252,23 @@ describe('isSameDocumentRequest: receiverId en la compra', () => {
 
   it('es el mismo pedido si receiverId coincide', () => {
     expect(
-      isSameDocumentRequest(cmDto('r1'), cmExisting('r1') as never, 'u1'),
+      isSameDocumentRequest(
+        cmDto('r1'),
+        cmExisting('r1') as never,
+        'u1',
+        OTHER_FLAGS,
+      ),
     ).toBe(true);
   });
 
   it('es otro pedido si receiverId cambia', () => {
     expect(
-      isSameDocumentRequest(cmDto('r2'), cmExisting('r1') as never, 'u1'),
+      isSameDocumentRequest(
+        cmDto('r2'),
+        cmExisting('r1') as never,
+        'u1',
+        OTHER_FLAGS,
+      ),
     ).toBe(false);
   });
 });
@@ -263,13 +281,23 @@ describe('isSameDocumentRequest: customerBranchId en las ventas', () => {
 
   it('es el mismo pedido si la sucursal coincide', () => {
     expect(
-      isSameDocumentRequest(saleDto('b1'), saleExisting('b1') as never, 'u1'),
+      isSameDocumentRequest(
+        saleDto('b1'),
+        saleExisting('b1') as never,
+        'u1',
+        SALE_FLAGS,
+      ),
     ).toBe(true);
   });
 
   it('es otro pedido si la sucursal cambia', () => {
     expect(
-      isSameDocumentRequest(saleDto('b2'), saleExisting('b1') as never, 'u1'),
+      isSameDocumentRequest(
+        saleDto('b2'),
+        saleExisting('b1') as never,
+        'u1',
+        SALE_FLAGS,
+      ),
     ).toBe(false);
   });
 
@@ -282,8 +310,33 @@ describe('isSameDocumentRequest: customerBranchId en las ventas', () => {
           customerBranchId: null,
         }) as never,
         'u1',
+        OTHER_FLAGS,
       ),
     ).toBe(true);
+  });
+});
+
+describe('isSameDocumentRequest: fecha fijada por el servidor', () => {
+  it('en REM/POS/COT la fecha del pedido no cuenta', () => {
+    expect(
+      isSameDocumentRequest(
+        makeDto({ date: '2026-01-05' }),
+        makeExisting() as never,
+        'u1',
+        SALE_FLAGS,
+      ),
+    ).toBe(true);
+  });
+
+  it('en los demás tipos una fecha distinta es otro pedido', () => {
+    expect(
+      isSameDocumentRequest(
+        makeDto({ type: DocumentType.CM, date: '2026-01-05' }),
+        makeExisting({ type: DocumentType.CM }) as never,
+        'u1',
+        OTHER_FLAGS,
+      ),
+    ).toBe(false);
   });
 });
 
@@ -294,7 +347,13 @@ describe('DocumentsService.create: customerBranchId solo en ventas', () => {
     warehouse: { findFirst: jest.fn() },
     $transaction: jest.fn((fn: (client: typeof tx) => unknown) => fn(tx)),
   };
-  const registry = { get: jest.fn(() => ({ validateCreate: jest.fn() })) };
+  const registry = {
+    get: jest.fn((type: DocumentType) => ({
+      validateCreate: jest.fn(),
+      resolveItemAddedAt: (_requested: string | undefined, now: Date) => now,
+      ...(type === DocumentType.CM ? OTHER_FLAGS : SALE_FLAGS),
+    })),
+  };
   const sequence = { next: jest.fn().mockResolvedValue('000001') };
   const service = new DocumentsService(
     prisma as unknown as PrismaService,

@@ -6,5 +6,6 @@ import { AbstractReservationStrategy } from './abstract-reservation.strategy';
 @Injectable()
 export class PvEffectStrategy extends AbstractReservationStrategy {
   readonly type = DocumentType.PV;
+  readonly tracksCustomerBranch = true;
   protected readonly entityNoun = 'la preventa';
 }

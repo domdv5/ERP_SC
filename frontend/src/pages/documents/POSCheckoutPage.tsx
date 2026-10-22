@@ -5,6 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form'
 import { useDebounce } from 'use-debounce'
 import { toast } from 'sonner'
 import {
+  CalendarDays,
   ArrowLeft,
   Loader2,
   ShoppingBag,
@@ -13,7 +14,6 @@ import {
   Wallet,
   ArrowRightLeft,
   CreditCard,
-  BadgeCheck,
 } from 'lucide-react'
 
 import {
@@ -32,7 +32,7 @@ import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import type { ComboboxOption } from '@/components/shared'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
-import { formatCOP, docNumber } from '@/lib/format'
+import { formatCOP, docNumber, todayInBogota } from '@/lib/format'
 import { invalidateAfterDocumentChange } from '@/lib/invalidation'
 import {
   addOfficialTax,
@@ -79,8 +79,6 @@ type SaleMode = Extract<DocumentType, 'POS' | 'COT'>
 // Sustantivo del documento de origen para el aviso de conversión: preventa o remisión.
 const sourceTypeLabel = (type: DocumentType) => (type === 'REM' ? 'remisión' : 'preventa')
 
-const TODAY = new Date().toISOString().slice(0, 10)
-
 const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
   { value: 'efectivo', label: 'Efectivo' },
   { value: 'tarjeta', label: 'Tarjeta' },
@@ -111,7 +109,7 @@ export default function POSCheckoutPage() {
 
   // Reusa el form genérico solo para el input de escaneo; el resto de sus campos no se usan, la venta se arma aparte.
   const { control, register, watch, setValue, getValues } = useForm<FormValues>({
-    defaultValues: { type: 'PV', date: TODAY, items: [] },
+    defaultValues: { type: 'PV', date: todayInBogota(), items: [] },
   })
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'items' })
   const cartItems = watch('items')
@@ -299,6 +297,7 @@ export default function POSCheckoutPage() {
         unitCost: undefined,
         unitPrice: item.unitPrice,
         observaciones: undefined,
+        addedAt: item.addedAt,
       })),
     )
     setSourceDocument(doc.sourceDocument)
@@ -396,6 +395,7 @@ export default function POSCheckoutPage() {
     if (existingIndex >= 0) {
       const currentQty = Number(currentItems[existingIndex].quantity) || 0
       setValue(`items.${existingIndex}.quantity`, currentQty + 1)
+      setValue(`items.${existingIndex}.addedAt`, new Date().toISOString())
       toast.success(`${product.code} — cantidad +1`)
     } else {
       append({
@@ -408,6 +408,7 @@ export default function POSCheckoutPage() {
           ? getOfficialNetSalePrice(Number(product.salePrice))
           : Number(product.salePrice),
         observaciones: undefined,
+        addedAt: new Date().toISOString(),
       })
       toast.success(`${product.code} agregado`)
     }
@@ -598,9 +599,10 @@ export default function POSCheckoutPage() {
         i.unitPrice !== undefined && !Number.isNaN(Number(i.unitPrice))
           ? Number(i.unitPrice)
           : undefined,
+      addedAt: i.addedAt,
     }))
     const payload: UpdateDocumentPayload = {
-      date: TODAY,
+      date: todayInBogota(),
       thirdPartyId,
       // null suelta una sucursal vieja del borrador si el cliente ya no la requiere.
       customerBranchId: needsBranch ? customerBranchId : null,
@@ -641,6 +643,8 @@ export default function POSCheckoutPage() {
       )
       navigate(`/documents/${confirmed.id}`)
     } catch (err) {
+      // El borrador ya quedó guardado aunque la confirmación falle: el listado tiene que mostrarlo
+      invalidateAfterDocumentChange(queryClient, [doc.id])
       const parsedMissingStock = parseMissingStockError(err)
       if (parsedMissingStock) {
         setMissingStock(parsedMissingStock)
@@ -803,9 +807,22 @@ export default function POSCheckoutPage() {
                 />
               </div>
 
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-sm font-medium text-content-secondary">
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  Fecha
+                </label>
+                <input
+                  type="date"
+                  value={todayInBogota()}
+                  readOnly
+                  className="input-hard w-full px-3 py-2 text-sm text-content border-ui-border-medium opacity-60 cursor-not-allowed"
+                />
+              </div>
+
               {/* Forma de pago — solo venta de contado; el crédito no la usa. */}
               {!isCredit && (
-                <div className="space-y-1.5 sm:col-span-2">
+                <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-sm font-medium text-content-secondary">
                     <Wallet className="w-3.5 h-3.5" />
                     Forma de pago <span className="text-red-500">*</span>
@@ -813,7 +830,7 @@ export default function POSCheckoutPage() {
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="input-hard w-full sm:w-64 px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
+                    className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
                   >
                     <option value="">Selecciona una forma de pago</option>
                     {PAYMENT_METHOD_OPTIONS.map((opt) => (
@@ -917,17 +934,6 @@ export default function POSCheckoutPage() {
                     </p>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Aviso de venta oficial: no hay stock ni saldos a favor. */}
-            {official && (
-              <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-lime-50 text-lime-700 dark:bg-lime-500/20 dark:text-lime-400">
-                <BadgeCheck className="w-4 h-4 shrink-0 mt-0.5" />
-                <p className="text-xs font-accent">
-                  Venta oficial: los precios se digitan sin IVA, no se valida ni se descuenta stock
-                  y no aplica saldo a favor del cliente.
-                </p>
               </div>
             )}
 
@@ -1063,6 +1069,9 @@ export default function POSCheckoutPage() {
                           IVA 19%
                         </th>
                       )}
+                      <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-40">
+                        Hora
+                      </th>
                       <th className="w-10" />
                     </tr>
                   </thead>

@@ -661,6 +661,8 @@ model DocumentItem {
   releasedQuantity  Int      @default(0) @map("released_quantity")
   /// Solo PV: cantidad ya convertida a un documento de venta real.
   convertedQuantity Int      @default(0) @map("converted_quantity")
+  /// Cuándo se agregó o pistoleó el producto; la estrategia del tipo decide si es la del carrito o la del servidor
+  addedAt           DateTime @default(now()) @map("added_at") @db.Timestamptz
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   document Document @relation(fields: [documentId], references: [id])

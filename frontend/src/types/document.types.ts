@@ -74,6 +74,7 @@ export interface DocumentItem {
   unitPrice: number
   unitCost: number
   subtotal: number
+  addedAt: string
   // Solo CMO/POSO: IVA de la línea (el backend lo serializa como texto o número).
   taxAmount?: number | string | null
   // Nota de talla por línea, solo en traslados: permite registrar un mismo producto repartido
@@ -262,6 +263,7 @@ export interface CreateDocumentItemPayload {
   // backend usa el precio de venta actual del producto.
   unitPrice?: number
   observaciones?: string
+  addedAt?: string
 }
 
 export interface CreateDocumentPayload {

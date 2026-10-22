@@ -10,7 +10,10 @@ import { DocumentStatus, DocumentType, MovementType } from '@/common/enums';
 import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
-import { buildDateColumnRange } from '@/common/utils/date-range.util';
+import {
+  buildDateColumnRange,
+  todayInBogota,
+} from '@/common/utils/date-range.util';
 import {
   ConfirmDocumentDto,
   ConvertDocumentDto,
@@ -33,7 +36,6 @@ import {
   findLastPurchaseCostAfterVoid,
 } from './helpers/stock.helpers';
 import { matchItemsByProduct } from './helpers/conversion.helpers';
-import { BRANCH_TYPES } from './helpers/customer-branch.helpers';
 import { getCreditLimitSummary } from './helpers/credit.helpers';
 import {
   DUPLICATE_REQUEST_MESSAGE,
@@ -46,6 +48,7 @@ import {
   sumOfficialLines,
 } from './helpers/tax.helpers';
 import { buildPvStatus, PvStatusInput } from './helpers/pv-status.helper';
+import { resolveDocumentDate } from './helpers/document-date.helper';
 import {
   DocumentEffectsRegistry,
   isReservationStrategy,
@@ -444,6 +447,7 @@ export class DocumentsService {
 
     // Falla si el tipo de documento todavía no está implementado.
     const strategy = this.effectsRegistry.get(type);
+    const now = new Date();
 
     await strategy.validateCreate?.(createDocumentDto);
 
@@ -474,11 +478,11 @@ export class DocumentsService {
           data: {
             type,
             number,
-            date: new Date(date),
+            date: resolveDocumentDate(strategy.usesTodayDate, date),
             thirdPartyId,
             sellerId,
             receiverId: type === DocumentType.CM ? receiverId : undefined,
-            customerBranchId: BRANCH_TYPES.has(type)
+            customerBranchId: strategy.tracksCustomerBranch
               ? (customerBranchId ?? null)
               : null,
             userId: user.sub,
@@ -507,6 +511,7 @@ export class DocumentsService {
                 subtotal: amounts.lines[index].subtotal,
                 taxAmount: amounts.lines[index].taxAmount,
                 observaciones: item.observaciones ?? null,
+                addedAt: strategy.resolveItemAddedAt(item.addedAt, now),
               })),
             },
           },
@@ -543,7 +548,8 @@ export class DocumentsService {
       include: DETAIL_INCLUDE,
     });
     if (!existing) return null;
-    if (!isSameDocumentRequest(dto, existing, user.sub)) {
+    const strategy = this.effectsRegistry.get(dto.type);
+    if (!isSameDocumentRequest(dto, existing, user.sub, strategy)) {
       throw new ConflictException(DUPLICATE_REQUEST_MESSAGE);
     }
     return this.withPvStatus(existing);
@@ -586,6 +592,9 @@ export class DocumentsService {
       sourceDocumentId: rest.sourceDocumentId,
     });
     const amounts = items && this.computeAmounts(items, document.type);
+    const strategy = this.effectsRegistry.get(document.type);
+    const newDate = resolveDocumentDate(strategy.usesTodayDate, date);
+    const now = new Date();
 
     // Al editar un borrador no se vuelven a correr las validaciones de creación.
     // Por eso la confirmación del traslado revalida bulto y bodega desde cero.
@@ -602,6 +611,7 @@ export class DocumentsService {
             subtotal: amounts.lines[index].subtotal,
             taxAmount: amounts.lines[index].taxAmount,
             observaciones: item.observaciones ?? null,
+            addedAt: strategy.resolveItemAddedAt(item.addedAt, now),
           })),
         });
       }
@@ -612,10 +622,10 @@ export class DocumentsService {
           ...rest,
           ...(document.type === DocumentType.CM &&
             receiverId !== undefined && { receiverId }),
-          ...(BRANCH_TYPES.has(document.type) &&
+          ...(strategy.tracksCustomerBranch &&
             customerBranchId !== undefined && { customerBranchId }),
           updatedById: user.sub,
-          ...(date && { date: new Date(date) }),
+          ...(newDate && { date: newDate }),
           ...(supplierInvoiceNumber !== undefined && {
             supplierInvoiceNumber: supplierInvoiceNumber.trim() || null,
           }),
@@ -698,7 +708,13 @@ export class DocumentsService {
         // Si otro proceso ya confirmó o anuló el documento, no aplicar efectos.
         const claimed = await tx.document.updateMany({
           where: { id, status: DocumentStatus.draft },
-          data: { status: DocumentStatus.confirmed, confirmedById: user.sub },
+          data: {
+            status: DocumentStatus.confirmed,
+            confirmedById: user.sub,
+            ...(this.effectsRegistry.get(document.type).usesTodayDate && {
+              date: todayInBogota(),
+            }),
+          },
         });
 
         if (claimed.count === 0) {
@@ -1361,7 +1377,10 @@ export class DocumentsService {
         data: {
           type: dto.targetType,
           number,
-          date: new Date(),
+          date: resolveDocumentDate(
+            this.effectsRegistry.get(dto.targetType).usesTodayDate,
+            new Date().toISOString(),
+          ),
           thirdPartyId: source.thirdPartyId,
           sellerId: source.sellerId,
           customerBranchId: source.customerBranchId,

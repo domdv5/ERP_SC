@@ -16,7 +16,7 @@ import { Combobox, CustomerBranchSelect } from '@/components/shared'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
-import { formatCOP, docNumber } from '@/lib/format'
+import { formatCOP, docNumber, todayInBogota } from '@/lib/format'
 import { computeOfficialTotals, removeOfficialTax } from '@/lib/tax'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { formSchema, type FormValues } from './document-form.schema'
@@ -34,8 +34,6 @@ import type { ThirdParty } from '@/types/third-party.types'
 import type { DocumentSourceRef } from '@/types/document.types'
 
 // ─── constants ───────────────────────────────────────────────────────────────
-
-const TODAY = new Date().toISOString().slice(0, 10)
 
 // Sustantivo por tipo para títulos y botones: la remisión y la devolución en venta tienen
 // texto propio; el resto usa "operación".
@@ -138,7 +136,7 @@ export default function DocumentFormPage() {
       resolver: zodResolver(formSchema) as any,
       defaultValues: {
         type: defaultType,
-        date: TODAY,
+        date: todayInBogota(),
         items: [],
       },
     })
@@ -201,7 +199,8 @@ export default function DocumentFormPage() {
     )
     reset({
       type: existingDoc.type,
-      date: existingDoc.date.slice(0, 10),
+      // La remisión siempre queda con la fecha del día; el backend la vuelve a fijar al guardar
+      date: existingDoc.type === 'REM' ? todayInBogota() : existingDoc.date.slice(0, 10),
       thirdPartyId: existingDoc.thirdParty?.id ?? undefined,
       sellerId: existingDoc.seller?.id ?? undefined,
       receiverId: existingDoc.receiver?.id ?? undefined,
@@ -225,6 +224,7 @@ export default function DocumentFormPage() {
         unitCost: item.unitCost ?? undefined,
         unitPrice: item.unitPrice ?? undefined,
         observaciones: item.observaciones ?? undefined,
+        addedAt: item.addedAt,
       })),
     })
   }, [existingDoc, reset, navigate])
@@ -241,6 +241,7 @@ export default function DocumentFormPage() {
   const needsSupplier = docType === 'CM' || docType === 'DVC' || docType === 'CMO'
   const needsCustomer = docType === 'PV' || docType === 'REM' || docType === 'DVV'
   const needsSeller = docType === 'PV' || docType === 'REM'
+  const isTodayOnly = docType === 'REM'
   const needsReceiver = docType === 'CM'
 
   const hasTpSearch = debouncedTpSearch.length >= 1
@@ -287,6 +288,7 @@ export default function DocumentFormPage() {
         unitCost: removeOfficialTax(Number(item.unitCost)),
         unitPrice: undefined,
         observaciones: undefined,
+        addedAt: new Date().toISOString(),
       })),
     )
   }, [fromCMDoc, setValue, replace])
@@ -590,6 +592,7 @@ export default function DocumentFormPage() {
         unitPrice:
           item.unitPrice !== undefined && !isNaN(item.unitPrice) ? item.unitPrice : undefined,
         observaciones: item.observaciones || undefined,
+        addedAt: item.addedAt,
       })),
     }
 
@@ -642,6 +645,7 @@ export default function DocumentFormPage() {
   )
   // Nota de talla por línea: solo en traslados.
   const showObservacionesColumn = docType === 'T'
+  const showTimeColumn = docType === 'REM' || docType === 'DVV'
 
   return (
     <div className="space-y-6 pb-10">
@@ -765,7 +769,11 @@ export default function DocumentFormPage() {
               <input
                 type="date"
                 {...register('date')}
-                className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
+                readOnly={isTodayOnly}
+                className={cn(
+                  'input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium',
+                  isTodayOnly && 'opacity-60 cursor-not-allowed',
+                )}
               />
             </div>
 
@@ -1212,6 +1220,7 @@ export default function DocumentFormPage() {
                   unitCost: undefined,
                   unitPrice: undefined,
                   observaciones: undefined,
+                  addedAt: new Date().toISOString(),
                 })
               }
               className="btn-primary flex items-center gap-2 px-3 py-1.5 text-sm"
@@ -1281,6 +1290,11 @@ export default function DocumentFormPage() {
                         IVA 19%
                       </th>
                     )}
+                    {showTimeColumn && (
+                      <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-40">
+                        Hora
+                      </th>
+                    )}
                     <th className="w-12" />
                   </tr>
                 </thead>
@@ -1290,6 +1304,7 @@ export default function DocumentFormPage() {
                       key={field.id}
                       index={index}
                       docType={docType}
+                      showTime={showTimeColumn}
                       onRemove={() => remove(index)}
                       register={register}
                       control={control}
@@ -1359,6 +1374,7 @@ export default function DocumentFormPage() {
                             }, 0),
                           )}
                         </td>
+                        {showTimeColumn && <td />}
                         <td />
                       </tr>
                     </tfoot>

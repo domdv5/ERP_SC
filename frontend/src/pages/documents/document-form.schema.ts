@@ -11,6 +11,8 @@ export const itemSchema = z.object({
   // Nota de talla por línea: solo se usa en traslados. Se admite la cadena vacía para que el
   // campo vacío del formulario no falle la validación.
   observaciones: z.string().max(500, 'Máximo 500 caracteres').optional().or(z.literal('')),
+  // Instante ISO en que se agregó o se pistoleó por última vez el producto
+  addedAt: z.string().optional(),
 })
 
 export const formSchema = z

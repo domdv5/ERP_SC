@@ -11,6 +11,13 @@ export function assertValidCalendarDate(label: string, value: string) {
   }
 }
 
+/** Día calendario de hoy en Bogotá, como medianoche UTC (el formato de las columnas `@db.Date`). */
+export function todayInBogota(now = new Date()) {
+  return new Date(
+    `${now.toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' })}T00:00:00.000Z`,
+  );
+}
+
 /** Valida el rango YYYY-MM-DD y devuelve el filtro sobre una columna `@db.Date` (medianoche UTC), con dateTo inclusivo. */
 export function buildDateColumnRange(dateFrom?: string, dateTo?: string) {
   if (dateFrom) assertValidCalendarDate('dateFrom', dateFrom);

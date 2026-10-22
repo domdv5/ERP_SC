@@ -109,6 +109,7 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
         if (existingIndex >= 0) {
           const currentQty = Number(currentItems[existingIndex].quantity) || 0
           setValue(`items.${existingIndex}.quantity`, currentQty + 1)
+          setValue(`items.${existingIndex}.addedAt`, new Date().toISOString())
           toast.success(`${product.code} — cantidad +1`)
           focusQuantityInput(existingIndex)
         } else {
@@ -130,6 +131,7 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
                 : salePrice
               : undefined,
             observaciones: undefined,
+            addedAt: new Date().toISOString(),
           })
           onProductScanned(product.id, avgCost, product.unitOfMeasure, product.availableStock)
           toast.success(`${product.code} agregado`)
