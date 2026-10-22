@@ -92,7 +92,14 @@ const DETAIL_INCLUDE = {
   },
   seller: { select: { id: true, name: true } },
   receiver: { select: { id: true, name: true } },
-  customerBranch: { select: { id: true, name: true, address: true } },
+  customerBranch: {
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      city: { select: { name: true, department: { select: { name: true } } } },
+    },
+  },
   user: { select: { id: true, name: true } },
   confirmedBy: { select: { id: true, name: true } },
   voidedBy: { select: { id: true, name: true } },
@@ -153,12 +160,20 @@ const PRINT_INCLUDE = {
       documentNumber: true,
       address: true,
       phone: true,
+      city: { select: { name: true, department: { select: { name: true } } } },
     },
   },
   user: { select: { id: true, name: true } },
   seller: { select: { id: true, name: true } },
   receiver: { select: { id: true, name: true } },
-  customerBranch: { select: { id: true, name: true, address: true } },
+  customerBranch: {
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      city: { select: { name: true, department: { select: { name: true } } } },
+    },
+  },
 } satisfies Prisma.DocumentInclude;
 
 export type DocumentForPrint = Prisma.DocumentGetPayload<{

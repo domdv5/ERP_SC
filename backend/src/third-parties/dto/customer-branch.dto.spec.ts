@@ -2,6 +2,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { CustomerBranchDto } from './customer-branch.dto';
 import { UpdateCustomerBranchDto } from './update-customer-branch.dto';
+import { UpdateThirdPartyDto } from './update-third-party.dto';
 
 describe('UpdateCustomerBranchDto', () => {
   it("convierte '' en null en address y phone y valida", async () => {
@@ -45,4 +46,39 @@ describe('CustomerBranchDto (crear)', () => {
     expect(dto.address).toBeUndefined();
     expect(dto.phone).toBeUndefined();
   });
+});
+
+describe('cityCode (tercero y sucursal)', () => {
+  it.each([CustomerBranchDto, UpdateCustomerBranchDto, UpdateThirdPartyDto])(
+    "%p: '' se guarda como null (sin ciudad)",
+    async (Dto) => {
+      const dto = plainToInstance(Dto, { name: 'Norte', cityCode: '' });
+
+      expect(dto.cityCode).toBeNull();
+      expect(await validate(dto)).toHaveLength(0);
+    },
+  );
+
+  it.each([CustomerBranchDto, UpdateCustomerBranchDto, UpdateThirdPartyDto])(
+    '%p: acepta un código DANE de 5 dígitos',
+    async (Dto) => {
+      const dto = plainToInstance(Dto, { name: 'Norte', cityCode: '05001' });
+
+      expect(dto.cityCode).toBe('05001');
+      expect(await validate(dto)).toHaveLength(0);
+    },
+  );
+
+  it.each([CustomerBranchDto, UpdateCustomerBranchDto, UpdateThirdPartyDto])(
+    '%p: rechaza un código mal formado',
+    async (Dto) => {
+      const dto = plainToInstance(Dto, { name: 'Norte', cityCode: '5001' });
+      const errors = await validate(dto);
+
+      expect(errors.map((error) => error.property)).toEqual(['cityCode']);
+      expect(errors[0].constraints).toEqual({
+        matches: 'La ciudad no es válida',
+      });
+    },
+  );
 });

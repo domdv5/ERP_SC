@@ -1,6 +1,7 @@
 import type { Content, DynamicContent } from 'pdfmake/interfaces';
 import type { DocumentForPrint } from '@/documents/documents.service';
 import { COMPANY_INFO } from '../company-info.constant';
+import { formatPrintCity } from '../helpers/print-city.helper';
 
 // document.date se guarda como medianoche UTC del día calendario elegido —
 // formatear en UTC preserva ese día exacto; usar America/Bogota lo correría un día atrás.
@@ -13,7 +14,7 @@ function formatDate(date: Date | string): string {
   }).format(new Date(date));
 }
 
-/** Se devuelve como función porque pdfmake reevalúa header/footer en cada página. Omite "Ciudad"/"Vence" a propósito: el dominio no los modela. */
+/** Se devuelve como función porque pdfmake reevalúa header/footer en cada página. Omite "Vence" a propósito: el dominio no lo modela. */
 export function buildHeader(
   document: DocumentForPrint,
   title: string,
@@ -30,6 +31,7 @@ export function buildHeader(
     const receiverName = opts.showReceiver
       ? document.receiver?.name
       : undefined;
+    const cityLine = formatPrintCity(branch, thirdParty);
 
     return {
       margin: [30, 20, 30, 10],
@@ -103,6 +105,15 @@ export function buildHeader(
               ? [
                   {
                     text: thirdParty.address,
+                    fontSize: 8,
+                    alignment: 'right' as const,
+                  },
+                ]
+              : []),
+            ...(cityLine
+              ? [
+                  {
+                    text: cityLine,
                     fontSize: 8,
                     alignment: 'right' as const,
                   },

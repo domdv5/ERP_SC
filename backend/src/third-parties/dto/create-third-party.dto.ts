@@ -11,6 +11,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -62,6 +63,12 @@ export class CreateThirdPartyDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  // Código DANE del municipio; '' o null deja el tercero sin ciudad
+  @Transform(({ value }: { value: unknown }) => (value === '' ? null : value))
+  @IsOptional()
+  @Matches(/^\d{5}$/, { message: 'La ciudad no es válida' })
+  cityCode?: string | null;
 
   // Perfil tributario — informativo, sin validación de negocio (fase de
   // facturación electrónica, no iniciada, es la que consumirá estos datos).
