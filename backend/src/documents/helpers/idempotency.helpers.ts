@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import type { CreateDocumentDto } from '../dto/index';
-import { BRANCH_TYPES } from './customer-branch.helpers';
+import type { DocumentEffectStrategy } from '@/documents/strategies/document-effect.strategy';
 
 export const DUPLICATE_REQUEST_MESSAGE =
   'Esta operación ya se registró con datos distintos. Recarga la página y revisa el listado de operaciones.';
@@ -80,17 +80,22 @@ export function isSameDocumentRequest(
   dto: CreateDocumentDto,
   existing: ExistingDocumentForIdempotency,
   userId: string,
+  strategy: Pick<
+    DocumentEffectStrategy,
+    'tracksCustomerBranch' | 'usesTodayDate'
+  >,
 ): boolean {
   const requested: ExistingDocumentForIdempotency = {
     type: dto.type,
     userId,
-    date: new Date(dto.date),
+    // REM/POS/COT llevan la fecha que fija el servidor: la del pedido no cuenta.
+    date: strategy.usesTodayDate ? existing.date : new Date(dto.date),
     thirdPartyId: dto.thirdPartyId ?? null,
     sellerId: dto.sellerId ?? null,
     // Solo la compra guarda quién recibió; en los demás tipos el campo se ignora.
     receiverId: dto.type === 'CM' ? (dto.receiverId ?? null) : null,
     // Solo las ventas guardan la sucursal; en los demás tipos el campo se ignora.
-    customerBranchId: BRANCH_TYPES.has(dto.type)
+    customerBranchId: strategy.tracksCustomerBranch
       ? (dto.customerBranchId ?? null)
       : null,
     paymentMethod: dto.paymentMethod ?? null,

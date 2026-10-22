@@ -27,6 +27,12 @@ export interface DocumentEffectStrategy {
   /** Tipo de documento que maneja esta estrategia. */
   readonly type: DocumentType;
 
+  /** Si el documento guarda la sucursal del cliente (solo ventas). */
+  readonly tracksCustomerBranch: boolean;
+
+  /** Si el documento siempre lleva la fecha de hoy (Bogotá), sin aceptar la del pedido. */
+  readonly usesTodayDate: boolean;
+
   /** Validaciones específicas del tipo al crear el borrador. */
   validateCreate?(createDocumentDto: CreateDocumentDto): Promise<void> | void;
 
@@ -37,6 +43,9 @@ export interface DocumentEffectStrategy {
     userId: string,
     context?: ConfirmContext,
   ): Promise<void>;
+
+  /** Hora en que se agregó un ítem al documento: la del carrito si el tipo la registra, si no la del servidor. */
+  resolveItemAddedAt(requested: string | undefined, now: Date): Date;
 
   /** Faltantes de stock con la misma regla que confirm; solo los tipos que validan disponible al confirmar. */
   findMissingStock?(

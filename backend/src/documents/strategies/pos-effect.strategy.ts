@@ -13,6 +13,9 @@ import type {
 @Injectable()
 export class PosEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.POS;
+  readonly tracksCustomerBranch = true;
+  readonly usesTodayDate = true;
+  protected readonly tracksItemAddedAt = true;
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
     await this.validateCashSale(createDocumentDto);

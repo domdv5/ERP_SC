@@ -5,6 +5,7 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsISO8601,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -47,6 +48,10 @@ export class CreateDocumentItemDto {
   @IsString()
   @MaxLength(500)
   observaciones?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  addedAt?: string;
 }
 
 export class CreateDocumentDto {

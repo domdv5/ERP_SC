@@ -6,5 +6,8 @@ import { AbstractReservationStrategy } from './abstract-reservation.strategy';
 @Injectable()
 export class RemEffectStrategy extends AbstractReservationStrategy {
   readonly type = DocumentType.REM;
+  readonly tracksCustomerBranch = true;
+  readonly usesTodayDate = true;
+  protected readonly tracksItemAddedAt = true;
   protected readonly entityNoun = 'la remisión';
 }
