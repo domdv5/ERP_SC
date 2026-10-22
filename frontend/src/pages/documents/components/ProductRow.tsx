@@ -14,7 +14,7 @@ import {
 import { Combobox, HintText, ThousandsInput } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { getProducts } from '@/services/products.service'
-import { formatCOP } from '@/lib/format'
+import { formatCOP, formatDateTimeBogota } from '@/lib/format'
 import { computeOfficialLineTax } from '@/lib/tax'
 import type { Product, StockByWarehouse } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
@@ -23,6 +23,7 @@ import type { FormValues } from '@/pages/documents/document-form.schema'
 interface ProductRowProps {
   index: number
   docType: DocumentType
+  showTime?: boolean
   onRemove: () => void
   register: UseFormRegister<FormValues>
   control: Control<FormValues>
@@ -46,6 +47,7 @@ interface ProductRowProps {
 export function ProductRow({
   index,
   docType,
+  showTime = false,
   onRemove,
   register,
   control,
@@ -372,6 +374,14 @@ export function ProductRow({
           </td>
         )}
 
+        {showTime && (
+          <td className="px-3 py-2 w-40">
+            <span className="text-xs text-content-muted font-mono">
+              {formatDateTimeBogota(watch(`items.${index}.addedAt`))}
+            </span>
+          </td>
+        )}
+
         {/* Quitar */}
         <td className="px-3 py-2 w-12 text-center">
           <button
@@ -407,6 +417,7 @@ export function ProductRow({
           {(showCost || showCostReadonly || showPrice) && <td className="px-3 pt-0 pb-2 w-36" />}
           <td className="px-3 pt-0 pb-2 w-32" />
           {showTax && <td className="px-3 pt-0 pb-2 w-28" />}
+          {showTime && <td className="px-3 pt-0 pb-2 w-40" />}
           <td className="px-3 pt-0 pb-2 w-12" />
         </tr>
       )}

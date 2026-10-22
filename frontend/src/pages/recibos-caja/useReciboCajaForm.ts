@@ -8,8 +8,7 @@ import { toast } from 'sonner'
 import { getReciboCajaOpenItems, createReciboCaja } from '@/services/recibos-caja.service'
 import { reciboCajaFormSchema, type ReciboCajaFormValues } from './recibo-caja-form.schema'
 import type { CreateReciboCajaPayload } from '@/types'
-
-const today = () => new Date().toISOString().slice(0, 10)
+import { todayInBogota } from '@/lib/format'
 
 function extractErrorMessage(err: unknown): string | undefined {
   const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -18,7 +17,7 @@ function extractErrorMessage(err: unknown): string | undefined {
 
 const emptyDefaults = (): ReciboCajaFormValues => ({
   clientId: '',
-  date: today(),
+  date: todayInBogota(),
   notes: '',
   receivables: [],
   payments: [],
