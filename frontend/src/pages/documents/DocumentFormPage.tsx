@@ -1359,7 +1359,7 @@ export default function DocumentFormPage() {
                   fields.length > 0 && (
                     <tfoot>
                       <tr className="border-t border-ui-border bg-surface-raised">
-                        <td colSpan={showTimeColumn ? 3 : 2} />
+                        <td colSpan={2} />
                         <td className="px-3 py-3 text-right text-xs font-semibold text-content-faint uppercase tracking-wider">
                           Total
                         </td>
@@ -1374,6 +1374,7 @@ export default function DocumentFormPage() {
                             }, 0),
                           )}
                         </td>
+                        {showTimeColumn && <td />}
                         <td />
                       </tr>
                     </tfoot>
