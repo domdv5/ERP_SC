@@ -1,3 +1,5 @@
+import type { City } from './location.types'
+
 export type PersonType = 'natural' | 'juridica'
 export type DocumentType = 'CC' | 'NIT' | 'CE' | 'PAS' | 'TI' | 'RC'
 export type WithholdingAgentType =
@@ -8,12 +10,15 @@ export interface CustomerBranch {
   id: string
   name: string
   address?: string | null
+  cityCode?: string | null
+  city?: City | null
   phone?: string | null
 }
 
 export interface CustomerBranchInput {
   name: string
   address?: string
+  cityCode?: string
   phone?: string
 }
 
@@ -43,6 +48,8 @@ export interface ThirdParty {
   email?: string
   phone?: string
   address?: string
+  cityCode?: string | null
+  city?: City | null
   ivaResponsible?: boolean | null
   withholdingAgentType?: WithholdingAgentType | null
   taxRegime?: TaxRegime | null
@@ -66,6 +73,7 @@ export interface CreateThirdPartyPayload {
   email?: string
   phone?: string
   address?: string
+  cityCode?: string | null
   ivaResponsible?: boolean | null
   withholdingAgentType?: WithholdingAgentType | null
   taxRegime?: TaxRegime | null

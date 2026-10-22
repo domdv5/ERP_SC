@@ -7,6 +7,7 @@ export type {
   PersonType,
   DocumentType as ThirdPartyDocumentType,
 } from './third-party.types'
+export type { Department, City } from './location.types'
 export type { Product } from './product.types'
 export type {
   Warehouse,
