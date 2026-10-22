@@ -5,11 +5,12 @@ import { z } from 'zod'
 import { X, Plus, Trash2, Lock, Pencil, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { formatCityLabel } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { canAssignThirdPartyRole } from '@/lib/third-party-permissions'
 import { useAuthStore } from '@/stores/auth.store'
-import { ThousandsInput } from '@/components/shared'
-import type { ThirdParty, CustomerBranchInput } from '@/types'
+import { CityPicker, ThousandsInput } from '@/components/shared'
+import type { City, ThirdParty, CustomerBranchInput } from '@/types'
 import {
   WITHHOLDING_AGENT_TYPE_OPTIONS,
   TAX_REGIME_OPTIONS,
@@ -20,10 +21,16 @@ const branchSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
   address: z.string().optional(),
+  cityCode: z.string().optional(),
+  cityLabel: z.string().optional(),
   phone: z.string().optional(),
 })
 
-const EMPTY_BRANCH = { name: '', address: '', phone: '' }
+const EMPTY_BRANCH = { name: '', address: '', cityCode: '', cityLabel: '', phone: '' }
+
+function formatCity(city: City | null | undefined) {
+  return city ? formatCityLabel(city.name, city.department?.name ?? '') : ''
+}
 
 const schema = z
   .object({
@@ -36,6 +43,7 @@ const schema = z
     email: z.string().email('Email inválido').optional().or(z.literal('')),
     phone: z.string().optional(),
     address: z.string().optional(),
+    cityCode: z.string().optional(),
     ivaResponsible: z.string().optional(),
     withholdingAgentType: z.string().optional(),
     taxRegime: z.string().optional(),
@@ -193,6 +201,7 @@ function flattenDefaults(tp: ThirdParty): Partial<FormValues> {
     email: tp.email ?? '',
     phone: tp.phone ?? '',
     address: tp.address ?? '',
+    cityCode: tp.cityCode ?? '',
     ivaResponsible:
       tp.ivaResponsible === true ? 'true' : tp.ivaResponsible === false ? 'false' : '',
     withholdingAgentType: tp.withholdingAgentType ?? '',
@@ -212,6 +221,8 @@ function flattenDefaults(tp: ThirdParty): Partial<FormValues> {
         id: b.id,
         name: b.name,
         address: b.address ?? '',
+        cityCode: b.cityCode ?? '',
+        cityLabel: formatCity(b.city),
         phone: b.phone ?? '',
       })) ?? [],
   }
@@ -330,7 +341,16 @@ export function ThirdPartyForm({
     }
     setValue(
       'branches',
-      [...branches, { name, address: branchDraft.address.trim(), phone: branchDraft.phone.trim() }],
+      [
+        ...branches,
+        {
+          name,
+          address: branchDraft.address.trim(),
+          cityCode: branchDraft.cityCode,
+          cityLabel: branchDraft.cityLabel,
+          phone: branchDraft.phone.trim(),
+        },
+      ],
       { shouldDirty: true },
     )
     setBranchDraft(EMPTY_BRANCH)
@@ -351,7 +371,13 @@ export function ThirdPartyForm({
   function startBranchEdit(index: number) {
     const b = branches[index]
     setEditingBranch(index)
-    setBranchEdit({ name: b.name, address: b.address ?? '', phone: b.phone ?? '' })
+    setBranchEdit({
+      name: b.name,
+      address: b.address ?? '',
+      cityCode: b.cityCode ?? '',
+      cityLabel: b.cityLabel ?? '',
+      phone: b.phone ?? '',
+    })
   }
 
   async function confirmBranchEdit(index: number) {
@@ -364,7 +390,12 @@ export function ThirdPartyForm({
       toast.error('Ya existe una sucursal con ese nombre')
       return
     }
-    const data = { name, address: branchEdit.address.trim(), phone: branchEdit.phone.trim() }
+    const data = {
+      name,
+      address: branchEdit.address.trim(),
+      cityCode: branchEdit.cityCode,
+      phone: branchEdit.phone.trim(),
+    }
     const branchId = branches[index].id
     if (branchId && onUpdateBranch) {
       try {
@@ -375,7 +406,9 @@ export function ThirdPartyForm({
     }
     setValue(
       'branches',
-      branches.map((b, i) => (i === index ? { ...b, ...data } : b)),
+      branches.map((b, i) =>
+        i === index ? { ...b, ...data, cityLabel: branchEdit.cityLabel } : b,
+      ),
       { shouldDirty: true },
     )
     setEditingBranch(null)
@@ -394,7 +427,7 @@ export function ThirdPartyForm({
     const newBrands = (data.brands ?? []).filter((n) => !brandIds.has(n))
     const newBranches = (data.branches ?? [])
       .filter((b) => !b.id)
-      .map(({ name, address, phone }) => ({ name, address, phone }))
+      .map(({ name, address, cityCode, phone }) => ({ name, address, cityCode, phone }))
     onSubmit({
       ...data,
       branches: data.isCustomer && newBranches.length ? newBranches : undefined,
@@ -531,6 +564,13 @@ export function ThirdPartyForm({
               <Input {...register('address')} placeholder="Dirección completa" />
             </Field>
 
+            <CityPicker
+              key={`${open}-${defaultValues?.id ?? 'new'}`}
+              value={watch('cityCode') ?? ''}
+              onChange={(code) => setValue('cityCode', code, { shouldDirty: true })}
+              showLabels
+            />
+
             {/* Roles */}
             <div>
               <label className="block text-sm font-medium text-content-secondary mb-2">
@@ -636,40 +676,55 @@ export function ThirdPartyForm({
                       <Plus className="w-4 h-4" />
                     </button>
                   </div>
+                  <CityPicker
+                    key={`draft-${branches.length}`}
+                    value={branchDraft.cityCode}
+                    onChange={(cityCode, cityLabel) =>
+                      setBranchDraft((d) => ({ ...d, cityCode, cityLabel }))
+                    }
+                    className="mb-2"
+                  />
                   <div className="space-y-1.5">
                     {branches.map((branch, index) =>
                       editingBranch === index ? (
-                        <div
-                          key={branch.id ?? `new-${index}`}
-                          className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2"
-                        >
-                          <Input
-                            value={branchEdit.name}
-                            onChange={(e) => setBranchEdit((d) => ({ ...d, name: e.target.value }))}
-                            placeholder="Nombre"
-                          />
-                          <Input
-                            value={branchEdit.address}
-                            onChange={(e) =>
-                              setBranchEdit((d) => ({ ...d, address: e.target.value }))
+                        <div key={branch.id ?? `new-${index}`} className="space-y-2">
+                          <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
+                            <Input
+                              value={branchEdit.name}
+                              onChange={(e) =>
+                                setBranchEdit((d) => ({ ...d, name: e.target.value }))
+                              }
+                              placeholder="Nombre"
+                            />
+                            <Input
+                              value={branchEdit.address}
+                              onChange={(e) =>
+                                setBranchEdit((d) => ({ ...d, address: e.target.value }))
+                              }
+                              placeholder="Dirección"
+                            />
+                            <Input
+                              value={branchEdit.phone}
+                              onChange={(e) =>
+                                setBranchEdit((d) => ({ ...d, phone: e.target.value }))
+                              }
+                              placeholder="Teléfono"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => confirmBranchEdit(index)}
+                              className="btn-primary px-3 py-2 flex items-center"
+                              title="Guardar sucursal"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <CityPicker
+                            value={branchEdit.cityCode}
+                            onChange={(cityCode, cityLabel) =>
+                              setBranchEdit((d) => ({ ...d, cityCode, cityLabel }))
                             }
-                            placeholder="Dirección"
                           />
-                          <Input
-                            value={branchEdit.phone}
-                            onChange={(e) =>
-                              setBranchEdit((d) => ({ ...d, phone: e.target.value }))
-                            }
-                            placeholder="Teléfono"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => confirmBranchEdit(index)}
-                            className="btn-primary px-3 py-2 flex items-center"
-                            title="Guardar sucursal"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
                         </div>
                       ) : (
                         <div
@@ -678,7 +733,9 @@ export function ThirdPartyForm({
                         >
                           <span className="font-medium text-content">{branch.name}</span>
                           <span className="flex-1 truncate text-xs text-content-muted">
-                            {[branch.address, branch.phone].filter(Boolean).join(' · ')}
+                            {[branch.address, branch.cityLabel, branch.phone]
+                              .filter(Boolean)
+                              .join(' · ')}
                           </span>
                           <button
                             type="button"

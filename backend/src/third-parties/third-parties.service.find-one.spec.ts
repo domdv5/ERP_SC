@@ -18,9 +18,14 @@ describe('ThirdPartiesService.findOne', () => {
     expect(findUnique).toHaveBeenCalledWith({
       where: { id: 'tp-1' },
       include: {
+        city: { include: { department: true } },
         customer: {
           include: {
-            branches: { where: { active: true }, orderBy: { name: 'asc' } },
+            branches: {
+              where: { active: true },
+              orderBy: { name: 'asc' },
+              include: { city: { include: { department: true } } },
+            },
           },
         },
         supplier: { include: { brands: { where: { active: true } } } },

@@ -26,8 +26,16 @@ const ROLE_LABELS: Record<ThirdPartyRole, string> = {
   receiver: 'recibe mercancía',
 };
 
+const CITY_INCLUDE = {
+  city: { include: { department: true } },
+} satisfies Prisma.ThirdPartyInclude;
+
 const ACTIVE_BRANCHES_INCLUDE = {
-  branches: { where: { active: true }, orderBy: { name: 'asc' } },
+  branches: {
+    where: { active: true },
+    orderBy: { name: 'asc' },
+    include: CITY_INCLUDE,
+  },
 } satisfies Prisma.CustomerInclude;
 
 @Injectable()
@@ -66,6 +74,7 @@ export class ThirdPartiesService {
         this.prisma.thirdParty.findMany({
           where,
           include: {
+            ...CITY_INCLUDE,
             customer: { include: ACTIVE_BRANCHES_INCLUDE },
             supplier: { include: { brands: { where: { active: true } } } },
           },
@@ -95,6 +104,7 @@ export class ThirdPartiesService {
     const thirdParty = await this.prisma.thirdParty.findUnique({
       where: { id },
       include: {
+        ...CITY_INCLUDE,
         customer: { include: ACTIVE_BRANCHES_INCLUDE },
         supplier: { include: { brands: { where: { active: true } } } },
       },
@@ -343,6 +353,7 @@ export class ThirdPartiesService {
       return tx.thirdParty.findUniqueOrThrow({
         where: { id },
         include: {
+          ...CITY_INCLUDE,
           customer: { include: ACTIVE_BRANCHES_INCLUDE },
           supplier: { include: { brands: true } },
         },
