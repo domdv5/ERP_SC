@@ -580,10 +580,14 @@ model Document {
   sourceDocumentId      String?              @map("source_document_id") @db.Uuid
   /// Quién confirmó — null mientras el documento sigue en borrador
   confirmedById         String?              @map("confirmed_by_id") @db.Uuid
+  confirmedAt           DateTime?            @map("confirmed_at") @db.Timestamptz
   /// Quién anuló — null si nunca fue anulado
   voidedById            String?              @map("voided_by_id") @db.Uuid
+  voidedAt              DateTime?            @map("voided_at") @db.Timestamptz
   /// Quién editó por última vez el borrador — null si nunca se editó tras crear
   updatedById           String?              @map("updated_by_id") @db.Uuid
+  /// Cuándo se editó por última vez el borrador; `updatedAt` no sirve porque también cambia al confirmar o anular
+  editedAt              DateTime?            @map("edited_at") @db.Timestamptz
   /// Quién convirtió el documento a una venta (solo preventas y remisiones) — null si no se convirtió
   convertedById         String?              @map("converted_by_id") @db.Uuid
   convertedAt           DateTime?            @map("converted_at") @db.Timestamptz
