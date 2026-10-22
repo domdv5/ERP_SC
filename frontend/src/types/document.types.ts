@@ -114,6 +114,13 @@ export interface DocumentListItem {
   paymentMethod: PaymentMethod | null
   _count: { documentItems: number }
   createdAt: string
+  // Historial del listado: quién y cuándo editó, confirmó y anuló (null si no aplica).
+  updatedBy?: DocumentUser | null
+  editedAt?: string | null
+  confirmedBy?: DocumentUser | null
+  confirmedAt?: string | null
+  voidedBy?: DocumentUser | null
+  voidedAt?: string | null
   // Preventas y remisiones: estado de conversión a venta y sus documentos derivados. null en el resto.
   pv: PvStatus | null
 }

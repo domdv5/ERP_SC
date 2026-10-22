@@ -14,7 +14,7 @@ import {
   TablePagination,
 } from '@/components/shared'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
-import { formatCOP, docNumber } from '@/lib/format'
+import { formatCOP, docNumber, formatDateTimeBogota } from '@/lib/format'
 import { visibleDocumentTypes } from '@/lib/document-permissions'
 import {
   DOC_TYPE_SELECT_OPTIONS,
@@ -23,7 +23,7 @@ import {
   DOC_STATUS_BADGE,
   PV_CONVERSION_BADGE,
 } from './document.constants'
-import type { DocumentType, DocumentStatus } from '@/types/document.types'
+import type { DocumentType, DocumentStatus, DocumentUser } from '@/types/document.types'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -37,6 +37,25 @@ const formatDate = (iso: string) =>
     // día calendario guardado tal cual.
     timeZone: 'UTC',
   })
+
+const HistoryLine = ({
+  label,
+  user,
+  at,
+}: {
+  label: string
+  user?: DocumentUser | null
+  at?: string | null
+}) =>
+  user ? (
+    <div className="whitespace-nowrap">
+      <span className="text-content-faint">{label}: </span>
+      <span className="text-content-secondary">
+        {user.name}
+        {at ? ` · ${formatDateTimeBogota(at)}` : ''}
+      </span>
+    </div>
+  ) : null
 
 // ─── label maps ─────────────────────────────────────────────────────────────
 
@@ -222,7 +241,16 @@ export default function DocumentsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Número', 'Fecha', 'Tipo', 'Tercero', 'Bodega', 'Total', 'Estado'].map((h) => (
+                  {[
+                    'Número',
+                    'Fecha',
+                    'Tipo',
+                    'Tercero',
+                    'Bodega',
+                    'Total',
+                    'Estado',
+                    'Historial',
+                  ].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -314,6 +342,14 @@ export default function DocumentsPage() {
                             <span className="text-xs text-content-faint">{ageLabel}</span>
                           )}
                         </div>
+                      </td>
+
+                      {/* History */}
+                      <td className="px-5 py-3.5 text-xs">
+                        <HistoryLine label="Creó" user={doc.user} at={doc.createdAt} />
+                        <HistoryLine label="Editó" user={doc.updatedBy} at={doc.editedAt} />
+                        <HistoryLine label="Confirmó" user={doc.confirmedBy} at={doc.confirmedAt} />
+                        <HistoryLine label="Anuló" user={doc.voidedBy} at={doc.voidedAt} />
                       </td>
                     </tr>
                   )

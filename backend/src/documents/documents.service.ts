@@ -251,6 +251,9 @@ export class DocumentsService {
           include: {
             thirdParty: { select: { id: true, name: true } },
             user: { select: { id: true, name: true } },
+            updatedBy: { select: { id: true, name: true } },
+            confirmedBy: { select: { id: true, name: true } },
+            voidedBy: { select: { id: true, name: true } },
             warehouse: { select: { id: true, name: true } },
             destWarehouse: { select: { id: true, name: true } },
             derivedDocuments: {
@@ -625,6 +628,7 @@ export class DocumentsService {
           ...(strategy.tracksCustomerBranch &&
             customerBranchId !== undefined && { customerBranchId }),
           updatedById: user.sub,
+          editedAt: now,
           ...(newDate && { date: newDate }),
           ...(supplierInvoiceNumber !== undefined && {
             supplierInvoiceNumber: supplierInvoiceNumber.trim() || null,
@@ -711,6 +715,7 @@ export class DocumentsService {
           data: {
             status: DocumentStatus.confirmed,
             confirmedById: user.sub,
+            confirmedAt: new Date(),
             ...(this.effectsRegistry.get(document.type).usesTodayDate && {
               date: todayInBogota(),
             }),
@@ -875,7 +880,11 @@ export class DocumentsService {
       async (tx) => {
         const claimed = await tx.document.updateMany({
           where: { id, status: DocumentStatus.confirmed },
-          data: { status: DocumentStatus.voided, voidedById: user.sub },
+          data: {
+            status: DocumentStatus.voided,
+            voidedById: user.sub,
+            voidedAt: new Date(),
+          },
         });
 
         if (claimed.count === 0) {
