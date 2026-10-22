@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { X, Plus, Trash2, Lock, Pencil, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { formatCityLabel } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { canAssignThirdPartyRole } from '@/lib/third-party-permissions'
 import { useAuthStore } from '@/stores/auth.store'
@@ -28,7 +29,7 @@ const branchSchema = z.object({
 const EMPTY_BRANCH = { name: '', address: '', cityCode: '', cityLabel: '', phone: '' }
 
 function formatCity(city: City | null | undefined) {
-  return city ? `${city.name}, ${city.department?.name ?? ''}` : ''
+  return city ? formatCityLabel(city.name, city.department?.name ?? '') : ''
 }
 
 const schema = z

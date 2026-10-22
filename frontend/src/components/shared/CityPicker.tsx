@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { formatCityLabel } from '@/lib/format'
 import { useCities, useDepartments } from '@/hooks/useLocations'
 
 interface CityPickerProps {
@@ -27,7 +28,7 @@ export function CityPicker({ value, onChange, showLabels = false, className }: C
   function handleCityChange(code: string) {
     const city = cities.find((c) => c.code === code)
     const department = departments.find((d) => d.code === departmentCode)
-    onChange(code, city && department ? `${city.name}, ${department.name}` : '')
+    onChange(code, city && department ? formatCityLabel(city.name, department.name) : '')
   }
 
   const departmentSelect = (

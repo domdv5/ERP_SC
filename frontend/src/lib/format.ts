@@ -25,3 +25,7 @@ export const formatDateOnly = (iso: string | null) => {
 
 // Para timestamps @db.Timestamptz reales (createdAt, confirmedAt, appliedAt...): esos sí se leen en horario Bogotá para mostrar el día en que ocurrió el evento localmente.
 export const formatBogotaDate = (iso: string) => composeLocaleDate(new Date(iso), 'America/Bogota')
+
+// Mismo texto que imprime la factura: si ciudad y departamento se llaman igual (Bogotá), va una sola vez.
+export const formatCityLabel = (cityName: string, departmentName: string) =>
+  cityName === departmentName ? cityName : `${cityName}, ${departmentName}`
