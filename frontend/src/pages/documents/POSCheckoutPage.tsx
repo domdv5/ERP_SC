@@ -643,6 +643,8 @@ export default function POSCheckoutPage() {
     } catch (err) {
       const parsedMissingStock = parseMissingStockError(err)
       if (parsedMissingStock) {
+      // El borrador ya quedó guardado aunque la confirmación falle: el listado tiene que mostrarlo
+      invalidateAfterDocumentChange(queryClient, [doc.id])
         setMissingStock(parsedMissingStock)
         return
       }
