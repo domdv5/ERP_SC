@@ -5,3 +5,4 @@ export * from './roles.seed';
 export * from './role-permissions.seed';
 export * from './warehouses.seed';
 export * from './system-config.seed';
+export * from './locations.seed';

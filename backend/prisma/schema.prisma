@@ -67,6 +67,7 @@ model ThirdParty {
   email                String?               @unique
   phone                String?
   address              String?
+  cityCode             String?               @map("city_code") @db.VarChar(5)
   isActive             Boolean               @default(true) @map("is_active")
   isSeller             Boolean               @default(false) @map("is_seller")
   isReceiver           Boolean               @default(false) @map("is_receiver")
@@ -94,6 +95,7 @@ model ThirdParty {
   accountsReceivable AccountsReceivable[] @relation("SellerAR")
   equivalenceTables  EquivalenceTable[]
   deletedBy          User?                @relation("ThirdPartyDeletedBy", fields: [deletedById], references: [id])
+  city               City?                @relation(fields: [cityCode], references: [code])
 
   @@index([isActive])
   @@index([isCustomer])
@@ -129,16 +131,41 @@ model CustomerBranch {
   customerId String   @map("customer_id") @db.Uuid
   name       String   @db.VarChar(100)
   address    String?  @db.VarChar(300)
+  cityCode   String?  @map("city_code") @db.VarChar(5)
   phone      String?  @db.VarChar(50)
   active     Boolean  @default(true)
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   customer  Customer   @relation(fields: [customerId], references: [id])
+  city      City?      @relation(fields: [cityCode], references: [code])
   documents Document[]
 
   @@unique([customerId, name])
   @@map("customer_branch")
+}
+
+// ─── Location (DIVIPOLA, solo Colombia) ──────────────────────────────────────
+
+model Department {
+  code   String @id @db.VarChar(2)
+  name   String @db.VarChar(100)
+  cities City[]
+
+  @@map("departments")
+}
+
+model City {
+  code           String @id @db.VarChar(5)
+  name           String @db.VarChar(100)
+  departmentCode String @map("department_code") @db.VarChar(2)
+
+  department     Department       @relation(fields: [departmentCode], references: [code])
+  thirdParties   ThirdParty[]
+  customerBranch CustomerBranch[]
+
+  @@index([departmentCode])
+  @@map("cities")
 }
 
 // ─── Supplier ─────────────────────────────────────────────────────────────────

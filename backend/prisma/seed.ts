@@ -10,6 +10,7 @@ import {
   seedRolePermissions,
   seedWarehouses,
   seedSystemConfig,
+  seedLocations,
 } from 'prisma/seeds/index';
 
 const connectionString = process.env.DATABASE_URL;
@@ -30,6 +31,7 @@ async function main() {
   await seedRolePermissions(prisma);
   await seedWarehouses(prisma);
   await seedSystemConfig(prisma);
+  await seedLocations(prisma);
 }
 
 main()
