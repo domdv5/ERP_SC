@@ -49,7 +49,7 @@ const HistoryLine = ({
 }) =>
   user ? (
     <div className="whitespace-nowrap">
-      <span className="text-content-faint">{label}: </span>
+      <span className="font-semibold text-content-muted">{label}: </span>
       <span className="text-content-secondary">
         {user.name}
         {at ? ` · ${formatDateTimeBogota(at)}` : ''}
