@@ -42,14 +42,16 @@ const HistoryLine = ({
   label,
   user,
   at,
+  labelClassName,
 }: {
   label: string
   user?: DocumentUser | null
   at?: string | null
+  labelClassName: string
 }) =>
   user ? (
     <div className="whitespace-nowrap">
-      <span className="text-content-faint">{label}: </span>
+      <span className={cn('font-semibold', labelClassName)}>{label}: </span>
       <span className="text-content-secondary">
         {user.name}
         {at ? ` · ${formatDateTimeBogota(at)}` : ''}
@@ -346,10 +348,30 @@ export default function DocumentsPage() {
 
                       {/* History */}
                       <td className="px-5 py-3.5 text-xs">
-                        <HistoryLine label="Creó" user={doc.user} at={doc.createdAt} />
-                        <HistoryLine label="Editó" user={doc.updatedBy} at={doc.editedAt} />
-                        <HistoryLine label="Confirmó" user={doc.confirmedBy} at={doc.confirmedAt} />
-                        <HistoryLine label="Anuló" user={doc.voidedBy} at={doc.voidedAt} />
+                        <HistoryLine
+                          label="Creó"
+                          user={doc.user}
+                          at={doc.createdAt}
+                          labelClassName="text-sky-700 dark:text-sky-400"
+                        />
+                        <HistoryLine
+                          label="Editó"
+                          user={doc.updatedBy}
+                          at={doc.editedAt}
+                          labelClassName="text-amber-700 dark:text-amber-400"
+                        />
+                        <HistoryLine
+                          label="Confirmó"
+                          user={doc.confirmedBy}
+                          at={doc.confirmedAt}
+                          labelClassName="text-emerald-700 dark:text-emerald-400"
+                        />
+                        <HistoryLine
+                          label="Anuló"
+                          user={doc.voidedBy}
+                          at={doc.voidedAt}
+                          labelClassName="text-red-600 dark:text-red-400"
+                        />
                       </td>
                     </tr>
                   )
