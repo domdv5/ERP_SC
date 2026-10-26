@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
-import { KeyRound } from 'lucide-react'
+import { Eye, EyeOff, KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { changePassword } from '@/services/auth.service'
 
@@ -31,6 +32,7 @@ const FIELDS: ReadonlyArray<{ name: keyof FormValues; label: string; autoComplet
 ]
 
 export function ChangePasswordDialog({ open, onClose }: ChangePasswordDialogProps) {
+  const [visible, setVisible] = useState<Partial<Record<keyof FormValues, boolean>>>({})
   const {
     register,
     handleSubmit,
@@ -59,6 +61,7 @@ export function ChangePasswordDialog({ open, onClose }: ChangePasswordDialogProp
 
   function handleClose() {
     reset()
+    setVisible({})
     onClose()
   }
 
@@ -86,14 +89,25 @@ export function ChangePasswordDialog({ open, onClose }: ChangePasswordDialogProp
               >
                 {label}
               </label>
-              <input
-                id={name}
-                type="password"
-                autoComplete={autoComplete}
-                aria-invalid={errors[name] ? 'true' : undefined}
-                className="input-hard w-full px-3 py-2 text-sm"
-                {...register(name)}
-              />
+              <div className="relative">
+                <input
+                  id={name}
+                  type={visible[name] ? 'text' : 'password'}
+                  autoComplete={autoComplete}
+                  aria-invalid={errors[name] ? 'true' : undefined}
+                  className="input-hard w-full px-3 py-2 pr-10 text-sm"
+                  {...register(name)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setVisible((v) => ({ ...v, [name]: !v[name] }))}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-content-faint hover:text-content-muted transition-colors"
+                  tabIndex={-1}
+                  aria-label={visible[name] ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {visible[name] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
               {errors[name] && <p className="text-xs text-red-500 mt-1">{errors[name].message}</p>}
             </div>
           ))}
