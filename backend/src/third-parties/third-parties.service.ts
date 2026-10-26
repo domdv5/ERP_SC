@@ -117,6 +117,7 @@ export class ThirdPartiesService {
 
   async create(createThirdPartyDto: CreateThirdPartyDto, user: JwtPayload) {
     this.assertRolePermissions(user, null, createThirdPartyDto, 'registrar');
+    this.assertCanSetCreditLimit(user, createThirdPartyDto.creditLimit);
 
     const {
       isCustomer,
@@ -256,6 +257,7 @@ export class ThirdPartiesService {
     user: JwtPayload,
   ) {
     await this.assertCanEdit(id, updateThirdPartyDto, user);
+    this.assertCanSetCreditLimit(user, updateThirdPartyDto.creditLimit);
 
     const {
       isCustomer,
@@ -371,6 +373,18 @@ export class ThirdPartiesService {
     if (missing.length > 0) {
       throw new ForbiddenException(
         `No tiene permiso para ${verb} terceros de tipo ${missing.map((role) => ROLE_LABELS[role]).join(', ')}`,
+      );
+    }
+  }
+
+  // El cupo de crédito lo decide cuentas, no quien registra al cliente
+  private assertCanSetCreditLimit(user: JwtPayload, creditLimit?: number) {
+    if (
+      creditLimit !== undefined &&
+      !user.permissions.includes('customer.credit.update')
+    ) {
+      throw new ForbiddenException(
+        'No tiene permiso para modificar el límite de crédito.',
       );
     }
   }

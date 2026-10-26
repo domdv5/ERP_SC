@@ -52,6 +52,8 @@ export async function seedPermissions(prisma: PrismaClient) {
       { code: 'thirdparty.role.supplier', module: 'third-parties' },
       { code: 'thirdparty.role.seller', module: 'third-parties' },
       { code: 'thirdparty.role.receiver', module: 'third-parties' },
+      // Cupo de crédito del cliente — solo cuentas y admin
+      { code: 'customer.credit.update', module: 'third-parties' },
 
       // Bodegas — manage porque solo bodega las gestiona completamente
       { code: 'warehouse.manage', module: 'warehouses' },

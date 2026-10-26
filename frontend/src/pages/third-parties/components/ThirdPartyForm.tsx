@@ -254,6 +254,7 @@ export function ThirdPartyForm({
   const canSupplier = canAssignThirdPartyRole('supplier', permissions)
   const canSeller = canAssignThirdPartyRole('seller', permissions)
   const canReceiver = canAssignThirdPartyRole('receiver', permissions)
+  const canSetCreditLimit = permissions.includes('customer.credit.update')
   // Quien solo puede asignar cliente (ej. billing) crea terceros con ese tipo ya marcado.
   const onlyCustomer = canCustomer && !canSupplier && !canSeller && !canReceiver
 
@@ -430,6 +431,7 @@ export function ThirdPartyForm({
       .map(({ name, address, cityCode, phone }) => ({ name, address, cityCode, phone }))
     onSubmit({
       ...data,
+      creditLimit: canSetCreditLimit ? data.creditLimit : undefined,
       branches: data.isCustomer && newBranches.length ? newBranches : undefined,
       name: finalName,
       brands: newBrands.length ? newBrands : undefined,
@@ -627,6 +629,7 @@ export function ThirdPartyForm({
                           onBlur={field.onBlur}
                           ref={field.ref}
                           placeholder="0"
+                          disabled={!canSetCreditLimit}
                         />
                       )}
                     />
