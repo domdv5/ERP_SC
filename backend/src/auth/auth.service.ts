@@ -1,10 +1,12 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import {
+  ChangePasswordDto,
   CreateAuthDto,
   UpdateAuthDto,
   LoginAuthDto,
@@ -129,6 +131,25 @@ export class AuthService {
         }),
       },
       select: { id: true, name: true, username: true },
+    });
+  }
+
+  // 400 y no 401: el frontend cierra la sesión ante cualquier 401
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { password: true },
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+
+    const valid = await bcrypt.compare(dto.currentPassword, user.password);
+    if (!valid) {
+      throw new BadRequestException('La contraseña actual no es correcta.');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: await bcrypt.hash(dto.newPassword, 10) },
     });
   }
 

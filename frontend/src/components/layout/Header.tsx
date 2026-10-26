@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Bell, LogOut, User, Sun, Moon, Lock, Unlock } from 'lucide-react'
+import { Bell, LogOut, KeyRound, Sun, Moon, Lock, Unlock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,7 @@ import { usePermission } from '@/hooks/usePermission'
 import { useSystemStatus } from '@/hooks/useSystemStatus'
 import { setReadOnlyMode } from '@/services/system.service'
 import { ReadOnlyConfirmDialog } from './ReadOnlyConfirmDialog'
+import { ChangePasswordDialog } from './ChangePasswordDialog'
 
 export function Header() {
   const navigate = useNavigate()
@@ -19,6 +20,7 @@ export function Header() {
   const { theme, toggleTheme } = useThemeStore()
   const [menuOpen, setMenuOpen] = useState(false)
   const [showReadOnlyConfirm, setShowReadOnlyConfirm] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const canManageSystem = usePermission('system.manage')
@@ -165,12 +167,14 @@ export function Header() {
               </div>
               <div className="p-1">
                 <button
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-content-muted hover:text-content-secondary hover:bg-surface-raised transition-colors cursor-default"
-                  disabled
+                  onClick={() => {
+                    setMenuOpen(false)
+                    setShowChangePassword(true)
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
                 >
-                  <User className="w-4 h-4 shrink-0" />
-                  <span>Mi perfil</span>
-                  <span className="ml-auto pill-stamp text-content-faint">Próximamente</span>
+                  <KeyRound className="w-4 h-4 shrink-0" />
+                  <span>Cambiar contraseña</span>
                 </button>
                 <div className="my-1 border-t border-ui-border" />
                 <button
@@ -185,6 +189,11 @@ export function Header() {
           )}
         </div>
       </div>
+
+      <ChangePasswordDialog
+        open={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+      />
 
       <ReadOnlyConfirmDialog
         open={showReadOnlyConfirm}
