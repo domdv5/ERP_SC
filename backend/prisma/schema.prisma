@@ -461,6 +461,8 @@ model User {
   username  String   @unique @db.VarChar(150)
   password  String   @db.VarChar(255)
   active    Boolean  @default(true)
+  // Va en el JWT; subirla invalida todos los tokens ya emitidos de este usuario
+  tokenVersion Int    @default(0) @map("token_version")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 

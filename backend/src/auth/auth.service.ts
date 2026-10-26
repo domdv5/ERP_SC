@@ -13,9 +13,26 @@ import {
   FindAllUsersDto,
 } from './dto/index';
 import { Prisma } from '@prisma/client';
+import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+
+const TOKEN_USER_INCLUDE = {
+  userRoles: {
+    include: {
+      role: {
+        include: {
+          rolePermissions: {
+            include: { permission: true },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.UserInclude;
+
+type TokenUser = Prisma.UserGetPayload<{ include: typeof TOKEN_USER_INCLUDE }>;
 
 @Injectable()
 export class AuthService {
@@ -52,19 +69,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({
       where: { username },
-      include: {
-        userRoles: {
-          include: {
-            role: {
-              include: {
-                rolePermissions: {
-                  include: { permission: true },
-                },
-              },
-            },
-          },
-        },
-      },
+      include: TOKEN_USER_INCLUDE,
     });
 
     if (!user) throw new UnauthorizedException('Credenciales inválidas');
@@ -79,6 +84,11 @@ export class AuthService {
       );
     }
 
+    return this.signToken(user);
+  }
+
+  // Los permisos quedan horneados en el JWT; los guards los leen del token sin consultar la DB.
+  private signToken(user: TokenUser) {
     const permissions = Array.from(
       new Set(
         user.userRoles.flatMap((userRole) =>
@@ -87,16 +97,13 @@ export class AuthService {
       ),
     );
 
-    const roles = user.userRoles.map((ur) => ur.role.name);
-
-    // Los permisos se calculan una sola vez aquí y quedan horneados en el JWT;
-    // los guards los leen del token en cada request sin consultar la DB.
-    const payload = {
+    const payload: JwtPayload = {
       sub: user.id,
       name: user.name,
       username: user.username,
       permissions,
-      roles,
+      roles: user.userRoles.map((ur) => ur.role.name),
+      tokenVersion: user.tokenVersion,
     };
 
     return { access_token: this.jwt.sign(payload) };
@@ -117,11 +124,13 @@ export class AuthService {
     const hashedPassword = password
       ? await bcrypt.hash(password, 10)
       : undefined;
+    const endsSessions = hashedPassword !== undefined || !!roleIds?.length;
 
     return this.prisma.user.update({
       where: { id },
       data: {
         ...(hashedPassword !== undefined && { password: hashedPassword }),
+        ...(endsSessions && { tokenVersion: { increment: 1 } }),
         ...rest,
         ...(roleIds?.length && {
           userRoles: {
@@ -147,10 +156,16 @@ export class AuthService {
       throw new BadRequestException('La contraseña actual no es correcta.');
     }
 
-    await this.prisma.user.update({
+    // Cierra las demás sesiones; quien la cambió sigue con el token nuevo
+    const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: { password: await bcrypt.hash(dto.newPassword, 10) },
+      data: {
+        password: await bcrypt.hash(dto.newPassword, 10),
+        tokenVersion: { increment: 1 },
+      },
+      include: TOKEN_USER_INCLUDE,
     });
+    return this.signToken(updated);
   }
 
   async remove(id: string) {

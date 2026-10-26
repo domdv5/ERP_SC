@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Eye, EyeOff, KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { changePassword } from '@/services/auth.service'
+import { useAuthStore } from '@/stores/auth.store'
 
 const schema = z
   .object({
@@ -33,6 +34,7 @@ const FIELDS: ReadonlyArray<{ name: keyof FormValues; label: string; autoComplet
 
 export function ChangePasswordDialog({ open, onClose }: ChangePasswordDialogProps) {
   const [visible, setVisible] = useState<Partial<Record<keyof FormValues, boolean>>>({})
+  const setAuth = useAuthStore((s) => s.setAuth)
   const {
     register,
     handleSubmit,
@@ -43,7 +45,8 @@ export function ChangePasswordDialog({ open, onClose }: ChangePasswordDialogProp
 
   const mutation = useMutation({
     mutationFn: (data: FormValues) => changePassword(data.currentPassword, data.newPassword),
-    onSuccess: () => {
+    onSuccess: ({ user, token }) => {
+      setAuth(user, token)
       toast.success('Contraseña actualizada')
       handleClose()
     },
