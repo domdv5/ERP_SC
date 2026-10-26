@@ -46,12 +46,12 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Token inválido o expirado');
     }
 
-    // Desactivar o borrar un usuario corta su acceso en el pedido siguiente, sin esperar a que venza el token.
+    // Desactivar, borrar o subir tokenVersion corta el acceso en el pedido siguiente, sin esperar a que venza el token.
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { active: true },
+      select: { active: true, tokenVersion: true },
     });
-    if (!user?.active) {
+    if (!user?.active || payload.tokenVersion !== user.tokenVersion) {
       throw new UnauthorizedException(
         'Tu sesión ya no es válida. Inicia sesión de nuevo.',
       );

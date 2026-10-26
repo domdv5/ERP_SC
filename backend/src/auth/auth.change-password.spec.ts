@@ -11,13 +11,18 @@ describe('AuthService.changePassword', () => {
   const prisma = { user: { findUnique: jest.fn(), update: jest.fn() } };
   const service = new AuthService(
     prisma as unknown as PrismaService,
-    {} as JwtService,
+    { sign: jest.fn().mockReturnValue('token') } as unknown as JwtService,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
     prisma.user.findUnique.mockResolvedValue({
       password: bcrypt.hashSync('actual1', 4),
+    });
+    prisma.user.update.mockResolvedValue({
+      id: 'u1',
+      tokenVersion: 1,
+      userRoles: [],
     });
   });
 

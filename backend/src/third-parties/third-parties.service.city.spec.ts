@@ -9,6 +9,7 @@ const USER: JwtPayload = {
   username: 'admin',
   permissions: ['thirdparty.role.customer'],
   roles: [],
+  tokenVersion: 0,
 };
 
 describe('ThirdPartiesService guarda la ciudad', () => {
