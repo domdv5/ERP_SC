@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { Eye, EyeOff } from 'lucide-react'
 import { login } from '@/services/auth.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { useThemeStore } from '@/stores/theme.store'
 
 const schema = z.object({
   username: z.string().min(1, 'El usuario es requerido'),
@@ -20,6 +21,12 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
   const [showPassword, setShowPassword] = useState(false)
+  const theme = useThemeStore((s) => s.theme)
+
+  // El login vive fuera de AppLayout, que es quien aplica el tema al resto de la app
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  }, [theme])
 
   const {
     register,
@@ -49,7 +56,7 @@ export default function LoginPage() {
   })
 
   return (
-    <div className="min-h-screen flex bg-brand-primary-dark">
+    <div className="min-h-screen flex bg-page">
       {/* Left panel — branding */}
       <div className="hidden lg:flex flex-col justify-between w-1/2 p-12 relative overflow-hidden bg-brand-primary">
         {/* Decorative circles */}
