@@ -26,3 +26,7 @@ export async function login(username: string, password: string): Promise<LoginRe
 
   return { token, user }
 }
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await api.patch('/auth/me/password', { currentPassword, newPassword })
+}
