@@ -85,6 +85,9 @@ describe('AuthService: tokens con versión', () => {
   const prisma = {
     user: { findUnique: jest.fn(), update: jest.fn() },
     role: { findMany: jest.fn().mockResolvedValue([{ id: 'r1' }]) },
+    userRole: {
+      findMany: jest.fn().mockResolvedValue([{ roleId: 'r-viejo' }]),
+    },
   };
   const jwt = { sign: jest.fn().mockReturnValue('token') };
   const service = new AuthService(
@@ -143,6 +146,21 @@ describe('AuthService: tokens con versión', () => {
     expect(prisma.user.update.mock.calls[1][0].data.tokenVersion).toEqual({
       increment: 1,
     });
+  });
+
+  it('el admin guardando el formulario con los mismos roles no cierra las sesiones', async () => {
+    prisma.user.update.mockResolvedValue({ id: 'u1' });
+    prisma.role.findMany.mockResolvedValueOnce([{ id: 'r1' }, { id: 'r2' }]);
+    prisma.userRole.findMany.mockResolvedValueOnce([
+      { roleId: 'r2' },
+      { roleId: 'r1' },
+    ]);
+
+    await service.update('u1', { name: 'Ana María', roleIds: ['r1', 'r2'] });
+
+    expect(
+      prisma.user.update.mock.calls[0][0].data.tokenVersion,
+    ).toBeUndefined();
   });
 
   it('el admin al cambiar solo el nombre no cierra las sesiones', async () => {

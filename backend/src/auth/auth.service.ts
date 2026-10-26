@@ -124,7 +124,8 @@ export class AuthService {
     const hashedPassword = password
       ? await bcrypt.hash(password, 10)
       : undefined;
-    const endsSessions = hashedPassword !== undefined || !!roleIds?.length;
+    const endsSessions =
+      hashedPassword !== undefined || (await this.rolesChanged(id, roleIds));
 
     return this.prisma.user.update({
       where: { id },
@@ -141,6 +142,21 @@ export class AuthService {
       },
       select: { id: true, name: true, username: true },
     });
+  }
+
+  // El formulario de usuarios siempre manda roleIds; solo cuenta si el conjunto cambió
+  private async rolesChanged(userId: string, roleIds?: string[]) {
+    if (!roleIds?.length) return false;
+    const current = await this.prisma.userRole.findMany({
+      where: { userId },
+      select: { roleId: true },
+    });
+    const currentIds = new Set(current.map((ur) => ur.roleId));
+    const nextIds = new Set(roleIds);
+    return (
+      currentIds.size !== nextIds.size ||
+      [...nextIds].some((roleId) => !currentIds.has(roleId))
+    );
   }
 
   // 400 y no 401: el frontend cierra la sesión ante cualquier 401
