@@ -2,19 +2,11 @@ import { useEffect, useState } from 'react'
 import { useDebounce } from 'use-debounce'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Users, UserCheck, ShieldCheck, Plus, Pencil, Trash2 } from 'lucide-react'
-import {
-  getUsers,
-  getRoles,
-  createUser,
-  updateUser,
-  deleteUser,
-  getRoleLabel,
-} from '@/services/users.service'
+import { Users, UserCheck, ShieldCheck, Plus, Pencil } from 'lucide-react'
+import { getUsers, getRoles, createUser, updateUser, getRoleLabel } from '@/services/users.service'
 import type { AppUser, CreateUserPayload, UpdateUserPayload } from '@/services/users.service'
 import { UserForm } from './components/UserForm'
 import type { UserFormValues } from './components/UserForm'
-import { DeleteUserDialog } from './components/DeleteUserDialog'
 import {
   StatsGrid,
   TableToolbar,
@@ -64,7 +56,6 @@ export default function UsersPage() {
   const [roleId, setRoleId] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<AppUser | null>(null)
-  const [deleting, setDeleting] = useState<AppUser | null>(null)
 
   const [debouncedSearch] = useDebounce(search, 400)
 
@@ -119,16 +110,6 @@ export default function UsersPage() {
       toast.success('Usuario actualizado correctamente')
     },
     onError: () => toast.error('Error al actualizar el usuario'),
-  })
-
-  const { mutate: remove, isPending: isDeleting } = useMutation({
-    mutationFn: (id: string) => deleteUser(id),
-    onSuccess: () => {
-      invalidate()
-      setDeleting(null)
-      toast.success('Usuario eliminado correctamente')
-    },
-    onError: () => toast.error('Error al eliminar el usuario'),
   })
 
   const statCards = [
@@ -328,15 +309,6 @@ export default function UsersPage() {
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setDeleting(u)
-                            }}
-                            className="p-1.5 rounded-lg text-content-faint hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
                         </div>
                       )}
                     </td>
@@ -370,12 +342,6 @@ export default function UsersPage() {
         onSubmit={handleUpdate}
         isPending={isUpdating}
         defaultValues={editing ?? undefined}
-      />
-      <DeleteUserDialog
-        user={deleting}
-        onConfirm={() => remove(deleting!.id)}
-        onCancel={() => setDeleting(null)}
-        isPending={isDeleting}
       />
     </div>
   )

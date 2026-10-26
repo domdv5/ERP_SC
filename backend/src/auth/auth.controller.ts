@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   Query,
   Req,
   UseGuards,
@@ -70,11 +69,5 @@ export class AuthController {
   @Permissions('user.manage')
   update(@Param('id') id: string, @Body() updateAuthDto: UpdateAuthDto) {
     return this.authService.update(id, updateAuthDto);
-  }
-
-  @Delete(':id')
-  @Permissions('user.manage')
-  remove(@Param('id') id: string) {
-    return this.authService.remove(id);
   }
 }
