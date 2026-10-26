@@ -99,7 +99,3 @@ export async function updateUser(id: string, payload: UpdateUserPayload): Promis
   const res = await api.patch<ApiResponse<AppUser>>(`/auth/${id}`, payload)
   return res.data.data
 }
-
-export async function deleteUser(id: string): Promise<void> {
-  await api.delete(`/auth/${id}`)
-}
