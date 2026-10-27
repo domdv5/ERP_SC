@@ -22,6 +22,9 @@ Rama `feat/pos-pagos-multiples`; un commit por tarea; PR al final.
 - T2: `assertPaymentsMatchTotal` RED (módulo inexistente) → GREEN 9/9 (padre); resto nestjs-code-crafter. jest 36/36 suites, 287/287; build OK.
 - T3: helpers `calculatePaymentDifference`/`arePaymentsValid` (padre) + UI react-code-crafter; tsc OK.
 - T4 gentle-ai-verify: S1-S6 pasan; jest 287/287, build OK, tsc OK. Obs. 1 (DocumentListItem.payments obligatorio) corregida a opcional; obs. 2 (payments aceptados en tipos no contado, ignorados) se deja; obs. 3 sin cambio. Sin prueba visual.
+- Commits: 65e64dc (T1+T2 backend+migración), cadbe09 (T3 frontend), 90d2783 (corrección review).
+- RDD review-03cb30ad49a6a56a: 2 CRITICAL (venta cubierta 100% con saldo a favor no se podía confirmar) corregidos en 90d2783 → approved + acknowledged. Avisos no bloqueantes: payments aceptados en cualquier tipo; método repetido en create/update choca con unique (P2002); drop de columna sin rollback; posible diferencia de centavos POSO front/back.
+- Pendiente: prueba visual del usuario, push + PR.
 
 ## Log
 - L1 (2026-10-27, usuario): "mira te voy a apsar varias correcion pero vamos hacerla una a una para que se peuda revisar una a una facilemnte \n\nla primera seria que UNICAMENTE en el POS se necesita poder seleccioanr varias formas de pago ya que puede occurir que se pague en varia formas, obviamente esa formas deben sumar el total a cobrar"
