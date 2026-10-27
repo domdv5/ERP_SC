@@ -523,6 +523,8 @@ export default function POSCheckoutPage() {
       ? [{ ...paymentRows[0], amount: totalToPay }]
       : paymentRows
   const paymentDifference = calculatePaymentDifference(paymentLines, totalToPay)
+  // Si el saldo a favor cubre toda la venta no hay nada que cobrar: no se piden formas de pago.
+  const needsPayments = !isCredit && totalToPay > 0
 
   function updatePaymentRow(index: number, patch: Partial<PaymentLine>) {
     setPaymentRows(paymentLines.map((row, i) => (i === index ? { ...row, ...patch } : row)))
@@ -560,9 +562,9 @@ export default function POSCheckoutPage() {
   if (thirdPartyId && isLoadingBranches) missingItems.push('Cargando sucursales del cliente...')
   if (needsBranch && !customerBranchId) missingItems.push('Selecciona la sucursal del cliente')
   if (!sellerId) missingItems.push('Selecciona una vendedora')
-  if (!isCredit && paymentLines.some((line) => !line.method))
+  if (needsPayments && paymentLines.some((line) => !line.method))
     missingItems.push('Selecciona una forma de pago')
-  if (!isCredit && !arePaymentsValid(paymentLines, totalToPay))
+  if (needsPayments && !arePaymentsValid(paymentLines, totalToPay))
     missingItems.push('Las formas de pago deben sumar el total a cobrar')
   if (!hasValidItems) missingItems.push('Agrega al menos un producto con cantidad válida')
   if (priceFloorViolations.length > 0)
@@ -625,13 +627,13 @@ export default function POSCheckoutPage() {
       // null suelta una sucursal vieja del borrador si el cliente ya no la requiere.
       customerBranchId: needsBranch ? customerBranchId : null,
       sellerId,
-      // Crédito manda lista vacía para que un borrador pasado a crédito suelte sus líneas viejas.
-      payments: isCredit
-        ? []
-        : paymentLines.map((l) => ({
+      // Sin cobro (crédito o cubierta con saldo a favor) manda lista vacía para soltar líneas viejas del borrador.
+      payments: needsPayments
+        ? paymentLines.map((l) => ({
             method: l.method as PaymentMethod,
             amount: Number(l.amount),
-          })),
+          }))
+        : [],
       items,
     }
 
@@ -843,8 +845,8 @@ export default function POSCheckoutPage() {
                 />
               </div>
 
-              {/* Formas de pago — solo venta de contado; el crédito no las usa. */}
-              {!isCredit && (
+              {/* Formas de pago — solo venta de contado con algo por cobrar. */}
+              {needsPayments && (
                 <div className="space-y-1.5 sm:col-span-2">
                   <label className="flex items-center gap-1.5 text-sm font-medium text-content-secondary">
                     <Wallet className="w-3.5 h-3.5" />
