@@ -102,12 +102,12 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     }
   }
 
-  /** Reglas de creación de una venta de contado (POS y POS oficial): cliente, vendedor, forma de pago y piso de precio. */
+  /** Reglas de creación de una venta de contado (POS y POS oficial): cliente, vendedor y piso de precio. */
   protected async validateCashSale(
     createDocumentDto: CreateDocumentDto,
     { pricesExcludeTax = false }: { pricesExcludeTax?: boolean } = {},
   ) {
-    const { thirdPartyId, sellerId, paymentMethod, items } = createDocumentDto;
+    const { thirdPartyId, sellerId, items } = createDocumentDto;
 
     const thirdParty = thirdPartyId
       ? await this.prisma.thirdParty.findUnique({
@@ -130,10 +130,6 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
 
     if (!seller?.isSeller) {
       throw new BadRequestException('El vendedor asignado no es válido');
-    }
-
-    if (!paymentMethod) {
-      throw new BadRequestException('La venta requiere una forma de pago');
     }
 
     const products = await this.prisma.product.findMany({

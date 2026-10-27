@@ -15,7 +15,6 @@ export type ExistingDocumentForIdempotency = {
   sellerId: string | null;
   receiverId: string | null;
   customerBranchId: string | null;
-  paymentMethod: string | null;
   refundMethod: string | null;
   notes: string | null;
   warehouseId: string | null;
@@ -27,6 +26,7 @@ export type ExistingDocumentForIdempotency = {
   officialPurchase: boolean;
   supplierInvoiceNumber: string | null;
   sourceDocumentId: string | null;
+  payments: { method: string; amount: Amount }[];
   documentItems: {
     productId: string;
     quantity: number;
@@ -36,6 +36,7 @@ export type ExistingDocumentForIdempotency = {
   }[];
 };
 
+const toFixed2 = (amount: Amount) => new Prisma.Decimal(amount).toFixed(2);
 const toFixed4 = (amount: Amount) => new Prisma.Decimal(amount).toFixed(4);
 
 // Firma de todo lo que se guarda al crear; los ítems se ordenan para que el orden no cuente.
@@ -51,6 +52,11 @@ function signature(doc: ExistingDocumentForIdempotency): string {
       ]),
     )
     .sort();
+  const payments = doc.payments
+    .map((payment) =>
+      JSON.stringify([payment.method, toFixed2(payment.amount)]),
+    )
+    .sort();
   return JSON.stringify([
     doc.type,
     doc.userId,
@@ -59,7 +65,6 @@ function signature(doc: ExistingDocumentForIdempotency): string {
     doc.sellerId ?? null,
     doc.receiverId ?? null,
     doc.customerBranchId ?? null,
-    doc.paymentMethod ?? null,
     doc.refundMethod ?? null,
     doc.notes ?? null,
     doc.warehouseId ?? null,
@@ -72,6 +77,7 @@ function signature(doc: ExistingDocumentForIdempotency): string {
     doc.supplierInvoiceNumber ?? null,
     doc.sourceDocumentId ?? null,
     items,
+    payments,
   ]);
 }
 
@@ -98,7 +104,7 @@ export function isSameDocumentRequest(
     customerBranchId: strategy.tracksCustomerBranch
       ? (dto.customerBranchId ?? null)
       : null,
-    paymentMethod: dto.paymentMethod ?? null,
+    payments: dto.payments ?? [],
     refundMethod: dto.refundMethod ?? null,
     notes: dto.notes ?? null,
     // La tienda la asigna el backend; solo el traslado trae su bodega en el pedido.

@@ -561,8 +561,6 @@ model Document {
   adjustmentReason      EaiAdjustmentReason? @map("adjustment_reason")
   /// Detalle libre — obligatorio solo cuando adjustmentReason = otro
   adjustmentReasonOther String?              @map("adjustment_reason_other") @db.VarChar(300)
-  /// Forma de pago — solo POS por ahora; informativo, sin lógica de caja.
-  paymentMethod         PaymentMethod?       @map("payment_method")
   /// Modalidad de devolución — solo DVV, obligatoria para ese tipo
   refundMethod          DvvRefundMethod?     @map("refund_method")
   /// Solo CM: compra con factura oficial; exige supplierInvoiceNumber
@@ -615,6 +613,8 @@ model Document {
   derivedDocuments Document[]      @relation("DocumentSource")
 
   documentItems          DocumentItem[]
+  // Formas de pago de la venta de contado (POS/POSO); informativas, sin lógica de caja.
+  payments               DocumentPayment[]
   inventoryMovements     InventoryMovement[]
   accountsReceivable     AccountsReceivable[]
   accountsPayable        AccountsPayable[]
@@ -646,6 +646,20 @@ model Document {
   // corre en cada fila de la lista de documentos y en cada detalle de PV.
   @@index([sourceDocumentId])
   @@map("document")
+}
+
+model DocumentPayment {
+  id         String        @id @default(uuid(7)) @db.Uuid
+  documentId String        @map("document_id") @db.Uuid
+  method     PaymentMethod
+  /// Al confirmar, la suma de las líneas = total − saldos a favor aplicados (lo valida la estrategia, ningún CHECK lo ve).
+  amount     Decimal       @db.Decimal(16, 2)
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  document Document @relation(fields: [documentId], references: [id])
+
+  @@unique([documentId, method])
+  @@map("document_payment")
 }
 
 model DocumentItem {

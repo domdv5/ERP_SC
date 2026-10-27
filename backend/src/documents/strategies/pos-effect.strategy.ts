@@ -3,13 +3,14 @@ import { Prisma } from '@prisma/client';
 import { DocumentType, MovementType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { applyCustomerCredits } from '@/documents/helpers/customer-credit.helpers';
+import { assertPaymentsMatchTotal } from '@/documents/helpers/payment.helpers';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type {
   ConfirmContext,
   DocumentWithItems,
 } from './document-effect.strategy';
 
-/** Venta de contado: saca stock físico, valorado al precio de venta. No crea cuentas por pagar ni por cobrar. La forma de pago es solo informativa. */
+/** Venta de contado: saca stock físico, valorado al precio de venta. No crea cuentas por pagar ni por cobrar. Exige que las formas de pago sumen el total menos los saldos a favor aplicados. */
 @Injectable()
 export class PosEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.POS;
@@ -42,6 +43,15 @@ export class PosEffectStrategy extends BaseEffectStrategy {
     context?: ConfirmContext,
   ) {
     const warehouseId = this.requireWarehouse(document);
+
+    const appliedCredits = (context?.appliedCustomerCredits ?? []).reduce(
+      (sum, credit) => sum.plus(credit.amount),
+      new Prisma.Decimal(0),
+    );
+    assertPaymentsMatchTotal(
+      document.payments,
+      new Prisma.Decimal(document.total).minus(appliedCredits),
+    );
 
     await this.assertValidCustomerBranch(
       document.thirdPartyId,
@@ -80,7 +90,6 @@ export class PosEffectStrategy extends BaseEffectStrategy {
     }
 
     // Saldos a favor aplicados a esta venta: descuentan el balance del crédito.
-    // El "total a pagar en efectivo" (total − crédito) es informativo del frontend.
     if (context?.appliedCustomerCredits?.length) {
       if (!document.thirdPartyId) {
         throw new ConflictException(

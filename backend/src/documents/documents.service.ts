@@ -93,6 +93,10 @@ const DETAIL_INCLUDE = {
       },
     },
   },
+  payments: {
+    select: { method: true, amount: true },
+    orderBy: { createdAt: 'asc' },
+  },
   seller: { select: { id: true, name: true } },
   receiver: { select: { id: true, name: true } },
   customerBranch: {
@@ -423,7 +427,7 @@ export class DocumentsService {
       notes,
       adjustmentReason,
       adjustmentReasonOther,
-      paymentMethod,
+      payments,
       refundMethod,
       officialPurchase,
       supplierInvoiceNumber,
@@ -499,12 +503,14 @@ export class DocumentsService {
             sourceBinId,
             adjustmentReason,
             adjustmentReasonOther,
-            paymentMethod: paymentMethod ?? null,
             refundMethod: refundMethod ?? null,
             officialPurchase: officialPurchase ?? false,
             supplierInvoiceNumber: supplierInvoiceNumber?.trim() || null,
             sourceDocumentId: sourceDocumentId ?? null,
             idempotencyKey: idempotencyKey ?? null,
+            ...(payments && {
+              payments: { create: payments },
+            }),
             documentItems: {
               create: items.map((item, index) => ({
                 productId: item.productId,
@@ -583,6 +589,7 @@ export class DocumentsService {
       items,
       date,
       customerCredits: _customerCredits,
+      payments,
       supplierInvoiceNumber,
       receiverId,
       customerBranchId,
@@ -619,6 +626,13 @@ export class DocumentsService {
         });
       }
 
+      if (payments) {
+        await tx.documentPayment.deleteMany({ where: { documentId: id } });
+        await tx.documentPayment.createMany({
+          data: payments.map((payment) => ({ documentId: id, ...payment })),
+        });
+      }
+
       return tx.document.update({
         where: { id },
         data: {
@@ -651,6 +665,7 @@ export class DocumentsService {
       where: { id },
       include: {
         documentItems: { include: { product: true } },
+        payments: true,
         thirdParty: { include: { supplier: true, customer: true } },
       },
     });
@@ -685,6 +700,7 @@ export class DocumentsService {
       where: { id },
       include: {
         documentItems: { include: { product: true } },
+        payments: true,
         thirdParty: { include: { supplier: true, customer: true } },
       },
     });
@@ -743,6 +759,7 @@ export class DocumentsService {
             where: { id: document.sourceDocumentId },
             include: {
               documentItems: { include: { product: true } },
+              payments: true,
               thirdParty: { include: { supplier: true, customer: true } },
             },
           });
@@ -1328,17 +1345,12 @@ export class DocumentsService {
       );
     }
 
-    // La venta a crédito no lleva forma de pago; la de contado conserva la recibida.
-    const paymentMethod =
-      dto.targetType === DocumentType.COT ? undefined : dto.paymentMethod;
-
     const validateCreateDto: CreateDocumentDto = {
       type: dto.targetType,
       date: new Date().toISOString(),
       thirdPartyId: source.thirdPartyId ?? undefined,
       sellerId: source.sellerId ?? undefined,
       customerBranchId: source.customerBranchId ?? undefined,
-      paymentMethod,
       items: pendingItems.map(({ item, pending }) => ({
         productId: item.productId,
         quantity: pending,
@@ -1397,7 +1409,6 @@ export class DocumentsService {
           status: DocumentStatus.draft,
           total,
           warehouseId: store.id,
-          paymentMethod: paymentMethod ?? null,
           sourceDocumentId: source.id,
           documentItems: {
             create: validateCreateDto.items.map((item) => ({
@@ -1442,6 +1453,7 @@ export class DocumentsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      await tx.documentPayment.deleteMany({ where: { documentId: id } });
       await tx.documentItem.deleteMany({ where: { documentId: id } });
       return tx.document.delete({ where: { id } });
     });
@@ -1457,6 +1469,7 @@ export class DocumentsService {
       where: { id },
       include: {
         documentItems: { include: { product: true } },
+        payments: true,
         thirdParty: { include: { supplier: true, customer: true } },
       },
     });
