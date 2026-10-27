@@ -19,6 +19,7 @@ import type {
   DocumentStatus,
   EaiAdjustmentReason,
   DvvRefundMethod,
+  PaymentMethod,
 } from '@/types/document.types'
 
 // Etiquetas largas del filtro de listado y del selector "Tipo de operación" (el form excluye las ventas, tienen su propio checkout).
@@ -53,6 +54,12 @@ export function operationFormTypes(permissions: readonly string[]) {
       !NOT_IN_OPERATION_FORM.has(opt.value) && permissions.includes(`document.create.${opt.value}`),
   )
 }
+
+export const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
+  { value: 'efectivo', label: 'Efectivo' },
+  { value: 'tarjeta', label: 'Tarjeta' },
+  { value: 'transferencia', label: 'Transferencia' },
+]
 
 // Modalidad de una devolución en venta — obligatoria al crear una DVV.
 export const DVV_REFUND_METHOD_OPTIONS: { value: DvvRefundMethod; label: string }[] = [

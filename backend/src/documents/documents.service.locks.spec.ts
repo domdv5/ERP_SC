@@ -53,10 +53,7 @@ describe('DocumentsService: lock del documento antes de liberar o convertir', ()
     sequence as unknown as SequenceService,
   );
   const releaseDto = { items: [{ documentItemId: 'i1', quantity: 1 }] };
-  const convertDto = {
-    targetType: DocumentType.POS,
-    paymentMethod: 'efectivo',
-  };
+  const convertDto = { targetType: DocumentType.POS };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -142,6 +139,16 @@ describe('DocumentsService: lock del documento antes de liberar o convertir', ()
       expect(tx.document.create.mock.calls[0][0].data.customerBranchId).toBe(
         'br-1',
       );
+    });
+
+    it('el borrador derivado nace sin formas de pago', async () => {
+      tx.$queryRaw.mockResolvedValue([{ status: DocumentStatus.confirmed }]);
+
+      await service.convert('pv-1', convertDto as never, user);
+
+      const { data } = tx.document.create.mock.calls[0][0];
+      expect(data).not.toHaveProperty('payments');
+      expect(data).not.toHaveProperty('paymentMethod');
     });
   });
 });

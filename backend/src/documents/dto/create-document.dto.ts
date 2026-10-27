@@ -24,6 +24,15 @@ import {
 } from '@/common/enums';
 import { AppliedCustomerCreditDto } from './confirm-document.dto';
 
+export class DocumentPaymentDto {
+  @IsEnum(PaymentMethod)
+  method!: PaymentMethod;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsPositive()
+  amount!: number;
+}
+
 export class CreateDocumentItemDto {
   @IsUUID()
   productId!: string;
@@ -113,10 +122,12 @@ export class CreateDocumentDto {
   @MaxLength(300)
   adjustmentReasonOther?: string;
 
-  // Solo se envía y valida en ventas de contado.
+  // Solo ventas de contado (POS/POSO); la suma contra el total se valida al confirmar.
   @IsOptional()
-  @IsEnum(PaymentMethod)
-  paymentMethod?: PaymentMethod;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DocumentPaymentDto)
+  payments?: DocumentPaymentDto[];
 
   // Solo se envía en devoluciones en venta (DVV); la obligatoriedad la impone
   // la estrategia, igual que adjustmentReason en EAI.

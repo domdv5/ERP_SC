@@ -14,6 +14,7 @@ import {
   ArrowRightLeft,
   CreditCard,
   Plus,
+  Trash2,
 } from 'lucide-react'
 
 import {
@@ -27,25 +28,26 @@ import {
 } from '@/services/documents.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import { getProductByCode } from '@/services/products.service'
-import { Combobox, SegmentedToggle, CreditsPanel, CustomerBranchSelect } from '@/components/shared'
+import {
+  Combobox,
+  SegmentedToggle,
+  CreditsPanel,
+  CustomerBranchSelect,
+  ThousandsInput,
+} from '@/components/shared'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import type { ComboboxOption } from '@/components/shared'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber, todayInBogota } from '@/lib/format'
 import { invalidateAfterDocumentChange } from '@/lib/invalidation'
-import {
-  addOfficialTax,
-  computeOfficialTotals,
-  getOfficialMinNetPrice,
-  getOfficialNetSalePrice,
-} from '@/lib/tax'
+import { splitOfficialPrice } from '@/lib/tax'
 import {
   suggestCreditAmounts,
   limitCreditAmount,
   limitCreditsToTotal,
 } from '@/lib/credit-application'
-import { DOC_TYPE_ACCENT } from './document.constants'
+import { DOC_TYPE_ACCENT, PAYMENT_METHOD_OPTIONS } from './document.constants'
 import type { FormValues } from './document-form.schema'
 import { BarcodeScanInput } from './components/BarcodeScanInput'
 import { POSCartLine } from './components/POSCartLine'
@@ -56,7 +58,10 @@ import {
   findPriceFloorViolations,
   parseMissingStockError,
   parseCreditLimitError,
+  calculatePaymentDifference,
+  arePaymentsValid,
   type MissingStockItem,
+  type PaymentLine,
   type SelectedCredit,
 } from './pos-checkout.utils'
 
@@ -79,12 +84,6 @@ type SaleMode = Extract<DocumentType, 'POS' | 'COT'>
 
 // Sustantivo del documento de origen para el aviso de conversión: preventa o remisión.
 const sourceTypeLabel = (type: DocumentType) => (type === 'REM' ? 'remisión' : 'preventa')
-
-const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
-  { value: 'efectivo', label: 'Efectivo' },
-  { value: 'tarjeta', label: 'Tarjeta' },
-  { value: 'transferencia', label: 'Transferencia' },
-]
 
 function extractErrorMessage(err: unknown): string | undefined {
   const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -185,7 +184,7 @@ export default function POSCheckoutPage() {
   const canCreateCOT = usePermission('document.create.COT')
   const canCreatePOSO = usePermission('document.create.POSO')
   const [mode, setMode] = useState<SaleMode>('POS')
-  // Venta oficial (POSO): solo contado, valores sin IVA, sin stock ni saldos a favor; se bloquea con borrador en curso.
+  // Venta oficial (POSO): solo contado, precios con IVA, sin stock ni saldos a favor; se bloquea con borrador en curso.
   const [official, setOfficial] = useState(false)
   const isCredit = mode === 'COT'
   const { branches: customerBranches, isLoading: isLoadingBranches } =
@@ -194,8 +193,10 @@ export default function POSCheckoutPage() {
   const docType: DocumentType = official ? 'POSO' : mode
   const accent = DOC_TYPE_ACCENT[docType]
 
-  // ── forma de pago (solo contado) ─────────────────────────────────────────
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('')
+  // ── formas de pago (solo contado) ────────────────────────────────────────
+  const [paymentRows, setPaymentRows] = useState<PaymentLine[]>([{ method: '', amount: undefined }])
+  // Mientras haya una sola fila y no se haya tecleado el monto, este sigue al total a cobrar.
+  const [isAmountEdited, setIsAmountEdited] = useState(false)
 
   // Error de cupo excedido del backend (create/confirm/convert); cubre la carrera entre ventas del mismo cliente.
   const [creditError, setCreditError] = useState<{
@@ -330,17 +331,17 @@ export default function POSCheckoutPage() {
       return
     }
     hydrateFromDocument(resumeDoc)
-    setPaymentMethod(resumeDoc.paymentMethod ?? '')
+    if (resumeDoc.payments?.length) {
+      setPaymentRows(
+        resumeDoc.payments.map((p) => ({ method: p.method, amount: Number(p.amount) })),
+      )
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeDoc, isResumeError, resumeDraftId])
 
-  // Convertir a contado exige forma de pago (botón deshabilitado sin ella); a crédito puede devolver error de cupo.
+  // Convertir a crédito puede devolver error de cupo; las formas de pago se eligen en el checkout.
   const { mutate: doConvert, isPending: isConverting } = useMutation({
-    mutationFn: (pvId: string) =>
-      convertDocument(pvId, {
-        targetType: mode,
-        paymentMethod: isCredit ? undefined : paymentMethod || undefined,
-      }),
+    mutationFn: (pvId: string) => convertDocument(pvId, { targetType: mode }),
     onSuccess: (converted) => {
       hydrateFromDocument(converted)
       const sourceLabel = converted.sourceDocument
@@ -389,10 +390,7 @@ export default function POSCheckoutPage() {
     setValue(`items.${index}.productId`, product.id)
     setValue(`items.${index}.productCode`, product.code)
     setValue(`items.${index}.productDesc`, product.description)
-    setValue(
-      `items.${index}.unitPrice`,
-      official ? getOfficialNetSalePrice(Number(product.salePrice)) : Number(product.salePrice),
-    )
+    setValue(`items.${index}.unitPrice`, Number(product.salePrice))
     setValue(`items.${index}.addedAt`, new Date().toISOString())
   }
 
@@ -421,11 +419,9 @@ export default function POSCheckoutPage() {
 
   const minSalePriceByProductId = useMemo(() => {
     const map = new Map<string, number>()
-    productDetailByCode.forEach((p) =>
-      map.set(p.id, official ? getOfficialMinNetPrice(p.minSalePrice) : p.minSalePrice),
-    )
+    productDetailByCode.forEach((p) => map.set(p.id, p.minSalePrice))
     return map
-  }, [productDetailByCode, official])
+  }, [productDetailByCode])
 
   const priceFloorViolations = findPriceFloorViolations(
     cartItems
@@ -446,12 +442,17 @@ export default function POSCheckoutPage() {
   const hasValidItems =
     fields.length > 0 && cartItems.every((item) => item.productId && Number(item.quantity) > 0)
   const totalUnits = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
-  // En venta oficial el precio digitado va sin IVA: total = subtotal + IVA por línea.
-  const officialTotals = computeOfficialTotals(
-    cartItems.map((item) => ({
-      quantity: Number(item.quantity || 0),
-      unitValue: Number(item.unitPrice || 0),
-    })),
+  // En venta oficial el precio trae IVA: base e IVA se separan por línea sobre su total.
+  const officialTotals = cartItems.reduce(
+    (acc, item) => {
+      const line = splitOfficialPrice(Number(item.quantity || 0), Number(item.unitPrice || 0))
+      return {
+        subtotal: acc.subtotal + line.subtotal,
+        taxTotal: acc.taxTotal + line.taxAmount,
+        total: acc.total + line.total,
+      }
+    },
+    { subtotal: 0, taxTotal: 0, total: 0 },
   )
   const grandTotal = official ? officialTotals.total : total
 
@@ -506,6 +507,30 @@ export default function POSCheckoutPage() {
   const creditsApplied = selectedCredits.reduce((sum, c) => sum + c.amount, 0)
   const totalToPay = Math.max(grandTotal - creditsApplied, 0)
 
+  const paymentLines: PaymentLine[] =
+    paymentRows.length === 1 && !isAmountEdited
+      ? [{ ...paymentRows[0], amount: totalToPay }]
+      : paymentRows
+  const paymentDifference = calculatePaymentDifference(paymentLines, totalToPay)
+  // Si el saldo a favor cubre toda la venta no hay nada que cobrar: no se piden formas de pago.
+  const needsPayments = !isCredit && totalToPay > 0
+
+  function updatePaymentRow(index: number, patch: Partial<PaymentLine>) {
+    setPaymentRows(paymentLines.map((row, i) => (i === index ? { ...row, ...patch } : row)))
+  }
+
+  function addPaymentRow() {
+    setPaymentRows([
+      ...paymentLines,
+      { method: '', amount: paymentDifference > 0 ? paymentDifference : undefined },
+    ])
+  }
+
+  function removePaymentRow(index: number) {
+    setIsAmountEdited(true)
+    setPaymentRows(paymentLines.filter((_, i) => i !== index))
+  }
+
   function setCreditAmount(creditId: string, next: number) {
     creditsTouchedRef.current.add(creditId)
     setCreditAmounts((prev) => {
@@ -526,7 +551,10 @@ export default function POSCheckoutPage() {
   if (thirdPartyId && isLoadingBranches) missingItems.push('Cargando sucursales del cliente...')
   if (needsBranch && !customerBranchId) missingItems.push('Selecciona la sucursal del cliente')
   if (!sellerId) missingItems.push('Selecciona una vendedora')
-  if (!isCredit && !paymentMethod) missingItems.push('Selecciona una forma de pago')
+  if (needsPayments && paymentLines.some((line) => !line.method))
+    missingItems.push('Selecciona una forma de pago')
+  if (needsPayments && !arePaymentsValid(paymentLines, totalToPay))
+    missingItems.push('Las formas de pago deben sumar el total a cobrar')
   if (!hasValidItems) missingItems.push('Agrega al menos un producto con cantidad válida')
   if (priceFloorViolations.length > 0)
     missingItems.push('Corrige los precios por debajo del mínimo permitido')
@@ -588,8 +616,13 @@ export default function POSCheckoutPage() {
       // null suelta una sucursal vieja del borrador si el cliente ya no la requiere.
       customerBranchId: needsBranch ? customerBranchId : null,
       sellerId,
-      // La venta a crédito no lleva forma de pago; la de contado la exige (ya validado arriba).
-      paymentMethod: isCredit ? undefined : (paymentMethod as PaymentMethod),
+      // Sin cobro (crédito o cubierta con saldo a favor) manda lista vacía para soltar líneas viejas del borrador.
+      payments: needsPayments
+        ? paymentLines.map((l) => ({
+            method: l.method as PaymentMethod,
+            amount: Number(l.amount),
+          }))
+        : [],
       items,
     }
 
@@ -665,7 +698,7 @@ export default function POSCheckoutPage() {
             {draftId && draftNumber !== null
               ? `Borrador ${docNumber(docType, draftNumber)} en curso`
               : official
-                ? 'Venta oficial de contado (valores sin IVA)'
+                ? 'Venta oficial de contado (precios con IVA)'
                 : isCredit
                   ? 'Venta a crédito'
                   : 'Venta de contado'}
@@ -701,16 +734,6 @@ export default function POSCheckoutPage() {
                     onChange={(checked) => {
                       if (draftId || sourceDocument) return
                       setOfficial(checked)
-                      // Precio de venta trae IVA; en modo oficial se digita sin IVA, así que se convierte el carrito.
-                      getValues('items').forEach((item, i) => {
-                        if (item.unitPrice === undefined) return
-                        setValue(
-                          `items.${i}.unitPrice`,
-                          checked
-                            ? getOfficialNetSalePrice(item.unitPrice)
-                            : addOfficialTax(item.unitPrice),
-                        )
-                      })
                       if (checked) {
                         setMode('POS')
                         setPendingPreventa(null)
@@ -801,25 +824,78 @@ export default function POSCheckoutPage() {
                 />
               </div>
 
-              {/* Forma de pago — solo venta de contado; el crédito no la usa. */}
-              {!isCredit && (
-                <div className="space-y-1.5">
+              {/* Formas de pago — solo venta de contado con algo por cobrar. */}
+              {needsPayments && (
+                <div className="space-y-1.5 sm:col-span-2">
                   <label className="flex items-center gap-1.5 text-sm font-medium text-content-secondary">
                     <Wallet className="w-3.5 h-3.5" />
-                    Forma de pago <span className="text-red-500">*</span>
+                    Formas de pago <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
-                  >
-                    <option value="">Selecciona una forma de pago</option>
-                    {PAYMENT_METHOD_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
+                  {paymentLines.map((line, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <select
+                        value={line.method}
+                        onChange={(e) =>
+                          updatePaymentRow(index, { method: e.target.value as PaymentMethod | '' })
+                        }
+                        className="input-hard flex-1 min-w-0 px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
+                      >
+                        <option value="">Selecciona una forma de pago</option>
+                        {PAYMENT_METHOD_OPTIONS.filter(
+                          (opt) =>
+                            opt.value === line.method ||
+                            !paymentLines.some((other) => other.method === opt.value),
+                        ).map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ThousandsInput
+                        value={line.amount}
+                        onChange={(v) => {
+                          setIsAmountEdited(true)
+                          updatePaymentRow(index, { amount: v })
+                        }}
+                        className="w-36 py-2 text-right bg-surface-raised"
+                      />
+                      {paymentLines.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removePaymentRow(index)}
+                          aria-label="Quitar forma de pago"
+                          className="p-2 text-content-faint hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={addPaymentRow}
+                      disabled={paymentLines.length >= PAYMENT_METHOD_OPTIONS.length}
+                      className="btn-secondary flex items-center gap-1.5 px-3 py-1.5 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Agregar forma de pago
+                    </button>
+                    {paymentDifference !== 0 && (
+                      <span
+                        className={cn(
+                          'text-sm font-medium',
+                          paymentDifference > 0
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-red-500',
+                        )}
+                      >
+                        {paymentDifference > 0
+                          ? `Falta ${formatCOP(paymentDifference)}`
+                          : `Sobra ${formatCOP(-paymentDifference)}`}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -952,21 +1028,11 @@ export default function POSCheckoutPage() {
                   {fields.length > 0 &&
                     ` Esto reemplazará los ${fields.length} producto(s) ya agregados al carrito.`}
                 </p>
-                {!isCredit && !paymentMethod && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">
-                    Selecciona una forma de pago arriba antes de convertir — la venta la requiere.
-                  </p>
-                )}
                 <div className="flex items-center gap-3 mt-3">
                   <button
                     type="button"
                     onClick={() => doConvert(pendingPreventa.id)}
-                    disabled={isConverting || (!isCredit && !paymentMethod)}
-                    title={
-                      !isCredit && !paymentMethod
-                        ? 'Selecciona una forma de pago primero'
-                        : undefined
-                    }
+                    disabled={isConverting}
                     className="btn-primary flex items-center gap-2 px-3 py-1.5 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isConverting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
@@ -1044,7 +1110,7 @@ export default function POSCheckoutPage() {
                       <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-32">
                         Precio unit.{' '}
                         {official && (
-                          <span className="text-content-faint normal-case">(sin IVA)</span>
+                          <span className="text-content-faint normal-case">(con IVA)</span>
                         )}
                       </th>
                       <th className="text-right text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-32">

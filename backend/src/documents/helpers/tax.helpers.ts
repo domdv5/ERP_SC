@@ -19,14 +19,13 @@ export function computeOfficialLine(quantity: number, unitValue: number) {
   return { subtotal, taxAmount };
 }
 
-/** Piso de precio sin IVA: minSalePrice ya trae IVA, así que en POSO se compara contra minSalePrice / 1,19. */
-export function getOfficialMinNetPrice(
-  minSalePriceWithTax: number | Prisma.Decimal,
-) {
-  return new Prisma.Decimal(minSalePriceWithTax)
-    .div(OFFICIAL_TAX_RATE.plus(1))
-    .toDecimalPlaces(2, Prisma.Decimal.ROUND_UP)
-    .toNumber();
+/** POSO: el precio trae IVA; se separa sobre el total de la línea para que base + IVA den exacto ese total. */
+export function splitOfficialPrice(quantity: number, unitPriceWithTax: number) {
+  const lineTotal = roundMoney(
+    new Prisma.Decimal(unitPriceWithTax).mul(quantity),
+  );
+  const subtotal = roundMoney(lineTotal.div(OFFICIAL_TAX_RATE.plus(1)));
+  return { subtotal, taxAmount: lineTotal.minus(subtotal) };
 }
 
 /** Totales del documento a partir de las líneas: total = Σ subtotal + Σ IVA. */

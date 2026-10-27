@@ -59,3 +59,44 @@ describe('PosoEffectStrategy: sucursal del cliente', () => {
     ).resolves.toBeUndefined();
   });
 });
+
+describe('PosoEffectStrategy: formas de pago al confirmar', () => {
+  const strategy = new PosoEffectStrategy({} as PrismaService);
+  const tx = {} as Prisma.TransactionClient;
+  const makeDocument = (payments: { method: string; amount: number }[]) =>
+    ({
+      thirdPartyId: 'cus-1',
+      customerBranchId: null,
+      total: new Prisma.Decimal(119000),
+      payments,
+      documentItems: [],
+    }) as unknown as DocumentWithItems;
+
+  beforeEach(() => {
+    jest
+      .spyOn(
+        strategy as unknown as {
+          assertValidCustomerBranch: () => Promise<void>;
+        },
+        'assertValidCustomerBranch',
+      )
+      .mockResolvedValue();
+  });
+
+  it('rechaza si los pagos suman el neto sin IVA', async () => {
+    const document = makeDocument([{ method: 'efectivo', amount: 100000 }]);
+
+    await expect(strategy.confirm(tx, document, 'u1')).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('acepta pagos que suman el total con IVA', async () => {
+    const document = makeDocument([
+      { method: 'efectivo', amount: 69000 },
+      { method: 'transferencia', amount: 50000 },
+    ]);
+
+    await expect(strategy.confirm(tx, document, 'u1')).resolves.toBeUndefined();
+  });
+});

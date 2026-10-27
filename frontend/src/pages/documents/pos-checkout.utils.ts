@@ -4,6 +4,7 @@ import type {
   Document,
   DocumentItem,
   MissingStockItem,
+  PaymentMethod,
 } from '@/types/document.types'
 
 // ─── preventa pendiente (conversión PV → POS) ─────────────────────────────────
@@ -91,4 +92,29 @@ export function parseCreditLimitError(err: unknown): CreditLimitExceededDetail |
     return null
   }
   return credit as CreditLimitExceededDetail
+}
+
+// ─── formas de pago (solo contado) ───────────────────────────────────────────
+
+export interface PaymentLine {
+  method: PaymentMethod | ''
+  amount: number | undefined
+}
+
+// Lo que falta por cubrir (negativo = sobra); en centavos enteros para no arrastrar error de punto flotante.
+export function calculatePaymentDifference(lines: PaymentLine[], totalToPay: number): number {
+  const toCents = (value: number) => Math.round(value * 100)
+  const paidCents = lines.reduce((sum, line) => sum + toCents(line.amount ?? 0), 0)
+  return (toCents(totalToPay) - paidCents) / 100
+}
+
+// Misma regla que el backend al confirmar: cada fila con forma de pago y monto > 0, sin repetir, y suma exacta.
+export function arePaymentsValid(lines: PaymentLine[], totalToPay: number): boolean {
+  if (lines.length === 0) return totalToPay === 0
+  const methods = lines.map((line) => line.method)
+  return (
+    lines.every((line) => line.method !== '' && (line.amount ?? 0) > 0) &&
+    new Set(methods).size === methods.length &&
+    calculatePaymentDifference(lines, totalToPay) === 0
+  )
 }

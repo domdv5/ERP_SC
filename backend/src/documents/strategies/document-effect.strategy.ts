@@ -6,6 +6,7 @@ import { CreateDocumentDto } from '@/documents/dto/index';
 export type DocumentWithItems = Prisma.DocumentGetPayload<{
   include: {
     documentItems: { include: { product: true } };
+    payments: true;
     thirdParty: { include: { supplier: true; customer: true } };
   };
 }>;
