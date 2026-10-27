@@ -157,7 +157,8 @@ export class AccountsPayableService {
         include: LIST_INCLUDE,
         skip,
         take: limit,
-        orderBy: { dueDate: { sort: 'asc', nulls: 'last' } },
+        // updatedAt cambia con cada abono: arriba queda la cuenta con el movimiento más reciente
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       }),
       this.prisma.accountsPayable.count({ where }),
       this.prisma.accountsPayable.aggregate({
@@ -220,7 +221,7 @@ export class AccountsPayableService {
       this.prisma.accountsPayable.findMany({
         where: { supplierId },
         include: LIST_INCLUDE,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       }),
       this.prisma.supplierCredit.findMany({
         where: { supplierId },
