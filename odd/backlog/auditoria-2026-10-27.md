@@ -1,0 +1,43 @@
+# Auditoría de seguridad y arquitectura (2026-10-27)
+
+Revisión de solo lectura pedida por el usuario. Nada de esto está corregido todavía; cada punto va en su propio PR cuando se tome.
+
+## Seguridad — nota 8/10
+
+Sin hallazgos críticos ni altos explotables.
+
+| # | Riesgo | Hallazgo | Dónde | Arreglo |
+|---|---|---|---|---|
+| S1 | Medio | `GET /documents/:id` y el PDF no filtran por los tipos visibles del rol (el listado sí, con `visibleDocumentTypes`). Con el ID se ve un documento de otro tipo. | `backend/src/documents/documents.service.ts` (`findOne`, `getDocumentForPrint`) | Mismo chequeo que `findAll`; 403 si el tipo no es visible. |
+| S2 | Medio | Dependencias del servidor con DoS: `body-parser`, `multer`, `qs` (vía `@nestjs/platform-express`). El resto de `pnpm audit` es del CLI de Prisma (no corre en producción). | `backend/package.json` | Actualizar dependencias y volver a correr `pnpm audit --prod`. |
+| S3 | Medio | JWT en `localStorage`: si algún día hay XSS, se roba la sesión. Hoy no hay punto de XSS. | `frontend/src/stores/auth.store.ts` | A futuro: cookie `HttpOnly`. Cambio grande, después de S1/S2/S4. |
+| S4 | Bajo | `JWT_SECRET` no se valida al arrancar; si en producción queda el valor de `.env.example`, se pueden falsificar tokens. | `backend/src/auth/auth.module.ts` | Fallar al arrancar si falta, es corto o es el valor de ejemplo. |
+| S5 | Bajo | Contraseña mínima de 6 caracteres sin complejidad. | `backend/src/auth/dto/create-auth.dto.ts` | Subir a 8+ con letras y números. |
+| S6 | Bajo | El SSE de estado manda el token en `?token=` (EventSource no admite headers). Ya se redacta en los logs. | `frontend/src/hooks/useSystemStatus.ts` | Aceptable; se resuelve solo si se pasa a cookies (S3). |
+
+Verificado bien: guards globales (todo protegido salvo login), `tokenVersion`, rate limit en login y cambio de contraseña, sin enumeración de usuarios, `$queryRaw` parametrizado, `ValidationPipe` con whitelist, errores sin stack, logs con secretos redactados, sin `.env` del backend en git (del frontend solo `VITE_API_URL`).
+
+Prioridad antes de producción: S1, S2, S4 (sube a ~9/10).
+
+## Arquitectura y acoplamiento — nota 6.5/10
+
+Fortalezas
+- Módulos backend con límites claros: cada uno usa Prisma y sus DTOs, sin llamarse entre servicios.
+- Patrón Strategy por tipo de documento (`DocumentEffectsRegistry` + 12 estrategias) bien aplicado; reglas de impuestos, stock, crédito y pagos en helpers con pruebas.
+- Invariante `BinStock`/`Inventory` centralizado en helpers de stock; transacciones y `FOR UPDATE` donde hay concurrencia.
+- Frontend en capas (páginas → services → api), TanStack Query y react-hook-form consistentes.
+- 37 specs en backend (estrategias, helpers, auth, idempotencia, locks, CxC/CxP).
+
+Debilidades
+
+| # | Hallazgo | Evidencia | Recomendación | Tamaño |
+|---|---|---|---|---|
+| A1 | `documents.service.ts` es una clase dios (create, update, confirm, void, convert, duplicate, stock, impuestos). | 1.649 líneas | Separar por operación (p. ej. conversión y confirmación en servicios propios) sin cambiar comportamiento. | Grande |
+| A2 | Quedan 4 `if (type === ...)` en el service que deberían vivir en la estrategia. | `documents.service.ts` | Mover a métodos de la estrategia (regla del repo: reglas por tipo viven en la estrategia). | Mediano |
+| A3 | Páginas gigantes en frontend. | `POSCheckoutPage.tsx` 1.240, `DocumentFormPage.tsx` 1.408 líneas | Extraer hooks (pagos, créditos, carrito) y subcomponentes. No fusionar las dos páginas: el POS es distinto a propósito. | Grande |
+| A4 | Tipos del contrato front/back escritos a mano. | `frontend/src/types/*.types.ts` | Generar tipos desde el backend (OpenAPI/Swagger + generador) para que un cambio de campo rompa la compilación. | Mediano |
+| A5 | Frontend sin pruebas automáticas; backend sin e2e ni pruebas de controllers. | 0 archivos `*.test`/`*.spec` en `frontend/src` | Vitest para helpers puros (`pos-checkout.utils`, `lib/tax`) y un e2e de confirmar/anular venta. | Mediano |
+
+Puntaje de acoplamiento: backend 7/10, frontend 6/10, contrato front/back 4/10 (10 = muy desacoplado).
+
+Orden sugerido: S1 → S2 → S4 → A5 (pruebas frontend de helpers) → A2 → A4 → A1/A3.
