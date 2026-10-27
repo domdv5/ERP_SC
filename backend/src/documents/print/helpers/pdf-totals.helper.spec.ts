@@ -51,6 +51,22 @@ describe('splitIncludedIva', () => {
 });
 
 describe('computeSaleUnitValues', () => {
+  it('POSO 42.900 con IVA: base 36.050,42 + IVA 6.849,58, total exacto 42.900', () => {
+    const values = computeSaleUnitValues({
+      quantity: 1,
+      unitPrice: 42900,
+      subtotal: 36050.42,
+      taxAmount: 6849.58,
+    });
+
+    expect(values).toEqual({
+      unit: 36050.42,
+      unitIva: 6849.58,
+      unitTotal: 42900,
+      lineTotal: 42900,
+    });
+  });
+
   it('venta normal (taxAmount null): el precio ya incluye IVA, se separa base e IVA', () => {
     const values = computeSaleUnitValues({
       quantity: 1,
@@ -67,10 +83,10 @@ describe('computeSaleUnitValues', () => {
     });
   });
 
-  it('POSO: usa el taxAmount guardado y no recalcula (997.500 + 189.525)', () => {
+  it('POSO: el precio guardado ya trae IVA; base e IVA salen de lo guardado (997.500 + 189.525)', () => {
     const values = computeSaleUnitValues({
       quantity: 1,
-      unitPrice: new Prisma.Decimal('997500'),
+      unitPrice: new Prisma.Decimal('1187025'),
       subtotal: new Prisma.Decimal('997500'),
       taxAmount: new Prisma.Decimal('189525'),
     });
@@ -83,10 +99,10 @@ describe('computeSaleUnitValues', () => {
     });
   });
 
-  it('POSO con 2 unidades: el IVA unitario es taxAmount / cantidad', () => {
+  it('POSO con 2 unidades: base e IVA unitarios son lo guardado / cantidad', () => {
     const values = computeSaleUnitValues({
       quantity: 2,
-      unitPrice: 10000,
+      unitPrice: 11900,
       subtotal: 20000,
       taxAmount: 3800,
     });
@@ -102,7 +118,7 @@ describe('computeSaleUnitValues', () => {
   it('POSO usa el taxAmount guardado aunque no sea el 19% exacto', () => {
     const values = computeSaleUnitValues({
       quantity: 1,
-      unitPrice: 10000,
+      unitPrice: 11500,
       subtotal: 10000,
       taxAmount: 1500,
     });

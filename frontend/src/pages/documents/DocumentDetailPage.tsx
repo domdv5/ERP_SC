@@ -236,7 +236,7 @@ export default function DocumentDetailPage() {
   })
   const missingStockByProduct = new Map(missingStock.map((s) => [s.productId, s]))
 
-  // CMO/POSO: valores sin IVA, IVA 19% guardado aparte; no mueven inventario ni cuentas.
+  // CMO: valores sin IVA; POSO: precio con IVA y subtotal/IVA separados por línea; IVA 19% guardado aparte; no mueven inventario ni cuentas.
   const isOfficialType = doc?.type === 'CMO' || doc?.type === 'POSO'
 
   const invalidate = () => invalidateAfterDocumentChange(queryClient, [id, doc?.sourceDocument?.id])
@@ -428,7 +428,9 @@ export default function DocumentDetailPage() {
   const showObservaciones = doc.type === 'T'
   // SAJ/T muestran el costo promedio, nunca uno tipeado por el usuario (ver usesAvgCostFallback arriba).
   const costHeaderLabel = isPriceBasedType
-    ? 'Precio unit.'
+    ? doc.type === 'POSO'
+      ? 'Precio unit. (con IVA)'
+      : 'Precio unit.'
     : usesAvgCostFallback
       ? 'Costo unit. (prom.)'
       : 'Costo unit.'

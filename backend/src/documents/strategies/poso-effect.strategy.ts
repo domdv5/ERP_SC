@@ -4,7 +4,6 @@ import { DocumentType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import { assertPaymentsMatchTotal } from '@/documents/helpers/payment.helpers';
-import { getOfficialMinNetPrice } from '@/documents/helpers/tax.helpers';
 import type {
   ConfirmContext,
   DocumentWithItems,
@@ -19,7 +18,7 @@ export class PosoEffectStrategy extends BaseEffectStrategy {
   protected readonly tracksItemAddedAt = true;
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
-    await this.validateCashSale(createDocumentDto, { pricesExcludeTax: true });
+    await this.validateCashSale(createDocumentDto);
     await this.assertValidCustomerBranch(
       createDocumentDto.thirdPartyId,
       createDocumentDto.customerBranchId,
@@ -37,7 +36,7 @@ export class PosoEffectStrategy extends BaseEffectStrategy {
       document.documentItems.map((item) => ({
         code: item.product.code,
         unitPrice: Number(item.unitPrice),
-        minSalePrice: getOfficialMinNetPrice(item.product.minSalePrice),
+        minSalePrice: item.product.minSalePrice,
       })),
     );
 

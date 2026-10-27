@@ -3,7 +3,7 @@ import { DocumentType } from '@/common/enums';
 import {
   OFFICIAL_TAX_TYPES,
   computeOfficialLine,
-  getOfficialMinNetPrice,
+  splitOfficialPrice,
   sumOfficialLines,
 } from './tax.helpers';
 
@@ -64,32 +64,6 @@ describe('computeOfficialLine', () => {
   });
 });
 
-describe('getOfficialMinNetPrice', () => {
-  it('quita el IVA del precio mínimo cuando la división es exacta: 119.000 → 100.000', () => {
-    expect(getOfficialMinNetPrice(119000)).toBe(100000);
-  });
-
-  it('redondea HACIA ARRIBA para no dejar vender por debajo del mínimo: 100 / 1,19 = 84,0336 → 84,04', () => {
-    expect(getOfficialMinNetPrice(100)).toBe(84.04);
-  });
-
-  it('el piso redondeado hacia arriba nunca queda debajo del mínimo al volver a sumarle IVA', () => {
-    const floor = getOfficialMinNetPrice(85800);
-
-    // 85.800 / 1,19 = 72.100,8403 → 72.100,85 (round normal daría 72.100,84)
-    expect(floor).toBe(72100.85);
-    expect(floor * 1.19).toBeGreaterThanOrEqual(85800);
-  });
-
-  it('acepta un Prisma.Decimal como precio mínimo', () => {
-    expect(getOfficialMinNetPrice(new Prisma.Decimal('119000'))).toBe(100000);
-  });
-
-  it('con precio mínimo 0 el piso es 0', () => {
-    expect(getOfficialMinNetPrice(0)).toBe(0);
-  });
-});
-
 describe('sumOfficialLines', () => {
   it('suma subtotales e IVA: 997.500 + 189.525 = 1.187.025', () => {
     const line = computeOfficialLine(1, 997500);
@@ -127,5 +101,36 @@ describe('sumOfficialLines', () => {
 
     expect(taxTotal.toString()).toBe('0');
     expect(total.toString()).toBe('0');
+  });
+});
+
+describe('splitOfficialPrice', () => {
+  it('42.900 con IVA: base 36.050,42 + IVA 6.849,58 = 42.900 exacto', () => {
+    const { subtotal, taxAmount } = splitOfficialPrice(1, 42900);
+
+    expect(subtotal.toString()).toBe('36050.42');
+    expect(taxAmount.toString()).toBe('6849.58');
+    expect(subtotal.plus(taxAmount).toString()).toBe('42900');
+  });
+
+  it('con varias unidades separa sobre el total de la línea, que queda exacto: 7 × 42.900 = 300.300', () => {
+    const { subtotal, taxAmount } = splitOfficialPrice(7, 42900);
+
+    expect(subtotal.plus(taxAmount).toString()).toBe('300300');
+    expect(subtotal.toString()).toBe('252352.94');
+  });
+
+  it('cuando la división es exacta no hay centavos: 119.000 → 100.000 + 19.000', () => {
+    const { subtotal, taxAmount } = splitOfficialPrice(1, 119000);
+
+    expect(subtotal.toString()).toBe('100000');
+    expect(taxAmount.toString()).toBe('19000');
+  });
+
+  it('con precio 0 la base y el IVA son 0', () => {
+    const { subtotal, taxAmount } = splitOfficialPrice(2, 0);
+
+    expect(subtotal.toString()).toBe('0');
+    expect(taxAmount.toString()).toBe('0');
   });
 });

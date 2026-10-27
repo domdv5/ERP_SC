@@ -38,16 +38,13 @@ export function splitIncludedIva(total: number): { base: number; iva: number } {
   return { base, iva: roundTo2Decimals(total - base) };
 }
 
-/** Ventas normales: el precio ya incluye IVA. POSO: precio sin IVA y taxAmount guardado por línea. */
+/** Ventas normales: el precio incluye IVA y se separa aquí. POSO: precio con IVA, base e IVA ya guardados por línea. */
 export function computeSaleUnitValues(item: SaleItem): SaleUnitValues {
   if (item.taxAmount !== null) {
-    const unit = Number(item.unitPrice);
-    const unitIva = roundTo2Decimals(Number(item.taxAmount) / item.quantity);
-
     return {
-      unit,
-      unitIva,
-      unitTotal: roundTo2Decimals(unit + unitIva),
+      unit: roundTo2Decimals(Number(item.subtotal) / item.quantity),
+      unitIva: roundTo2Decimals(Number(item.taxAmount) / item.quantity),
+      unitTotal: Number(item.unitPrice),
       lineTotal: roundTo2Decimals(
         Number(item.subtotal) + Number(item.taxAmount),
       ),

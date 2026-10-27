@@ -44,6 +44,7 @@ import {
 } from './helpers/idempotency.helpers';
 import {
   computeOfficialLine,
+  splitOfficialPrice,
   OFFICIAL_TAX_TYPES,
   sumOfficialLines,
 } from './helpers/tax.helpers';
@@ -1556,7 +1557,7 @@ export class DocumentsService {
     DocumentType.POSO,
   ]);
 
-  /** Subtotales, IVA y total del documento; CMO/POSO digitan valor sin IVA y el IVA se guarda aparte. */
+  /** Subtotales, IVA y total del documento; CMO digita valor sin IVA, POSO precio con IVA; en ambos el IVA se guarda aparte. */
   private computeAmounts(items: CreateDocumentItemDto[], type: DocumentType) {
     if (!OFFICIAL_TAX_TYPES.has(type)) {
       return {
@@ -1571,10 +1572,9 @@ export class DocumentsService {
 
     const usePrice = DocumentsService.PRICE_BASED_TYPES.has(type);
     const official = items.map((item) =>
-      computeOfficialLine(
-        item.quantity,
-        usePrice ? (item.unitPrice ?? 0) : (item.unitCost ?? 0),
-      ),
+      usePrice
+        ? splitOfficialPrice(item.quantity, item.unitPrice ?? 0)
+        : computeOfficialLine(item.quantity, item.unitCost ?? 0),
     );
     const totals = sumOfficialLines(official);
 

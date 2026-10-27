@@ -41,12 +41,7 @@ import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber, todayInBogota } from '@/lib/format'
 import { invalidateAfterDocumentChange } from '@/lib/invalidation'
-import {
-  addOfficialTax,
-  computeOfficialTotals,
-  getOfficialMinNetPrice,
-  getOfficialNetSalePrice,
-} from '@/lib/tax'
+import { splitOfficialPrice } from '@/lib/tax'
 import {
   suggestCreditAmounts,
   limitCreditAmount,
@@ -189,7 +184,7 @@ export default function POSCheckoutPage() {
   const canCreateCOT = usePermission('document.create.COT')
   const canCreatePOSO = usePermission('document.create.POSO')
   const [mode, setMode] = useState<SaleMode>('POS')
-  // Venta oficial (POSO): solo contado, valores sin IVA, sin stock ni saldos a favor; se bloquea con borrador en curso.
+  // Venta oficial (POSO): solo contado, precios con IVA, sin stock ni saldos a favor; se bloquea con borrador en curso.
   const [official, setOfficial] = useState(false)
   const isCredit = mode === 'COT'
   const { branches: customerBranches, isLoading: isLoadingBranches } =
@@ -395,10 +390,7 @@ export default function POSCheckoutPage() {
     setValue(`items.${index}.productId`, product.id)
     setValue(`items.${index}.productCode`, product.code)
     setValue(`items.${index}.productDesc`, product.description)
-    setValue(
-      `items.${index}.unitPrice`,
-      official ? getOfficialNetSalePrice(Number(product.salePrice)) : Number(product.salePrice),
-    )
+    setValue(`items.${index}.unitPrice`, Number(product.salePrice))
     setValue(`items.${index}.addedAt`, new Date().toISOString())
   }
 
@@ -427,11 +419,9 @@ export default function POSCheckoutPage() {
 
   const minSalePriceByProductId = useMemo(() => {
     const map = new Map<string, number>()
-    productDetailByCode.forEach((p) =>
-      map.set(p.id, official ? getOfficialMinNetPrice(p.minSalePrice) : p.minSalePrice),
-    )
+    productDetailByCode.forEach((p) => map.set(p.id, p.minSalePrice))
     return map
-  }, [productDetailByCode, official])
+  }, [productDetailByCode])
 
   const priceFloorViolations = findPriceFloorViolations(
     cartItems
@@ -452,12 +442,17 @@ export default function POSCheckoutPage() {
   const hasValidItems =
     fields.length > 0 && cartItems.every((item) => item.productId && Number(item.quantity) > 0)
   const totalUnits = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
-  // En venta oficial el precio digitado va sin IVA: total = subtotal + IVA por línea.
-  const officialTotals = computeOfficialTotals(
-    cartItems.map((item) => ({
-      quantity: Number(item.quantity || 0),
-      unitValue: Number(item.unitPrice || 0),
-    })),
+  // En venta oficial el precio trae IVA: base e IVA se separan por línea sobre su total.
+  const officialTotals = cartItems.reduce(
+    (acc, item) => {
+      const line = splitOfficialPrice(Number(item.quantity || 0), Number(item.unitPrice || 0))
+      return {
+        subtotal: acc.subtotal + line.subtotal,
+        taxTotal: acc.taxTotal + line.taxAmount,
+        total: acc.total + line.total,
+      }
+    },
+    { subtotal: 0, taxTotal: 0, total: 0 },
   )
   const grandTotal = official ? officialTotals.total : total
 
@@ -703,7 +698,7 @@ export default function POSCheckoutPage() {
             {draftId && draftNumber !== null
               ? `Borrador ${docNumber(docType, draftNumber)} en curso`
               : official
-                ? 'Venta oficial de contado (valores sin IVA)'
+                ? 'Venta oficial de contado (precios con IVA)'
                 : isCredit
                   ? 'Venta a crédito'
                   : 'Venta de contado'}
@@ -739,16 +734,6 @@ export default function POSCheckoutPage() {
                     onChange={(checked) => {
                       if (draftId || sourceDocument) return
                       setOfficial(checked)
-                      // Precio de venta trae IVA; en modo oficial se digita sin IVA, así que se convierte el carrito.
-                      getValues('items').forEach((item, i) => {
-                        if (item.unitPrice === undefined) return
-                        setValue(
-                          `items.${i}.unitPrice`,
-                          checked
-                            ? getOfficialNetSalePrice(item.unitPrice)
-                            : addOfficialTax(item.unitPrice),
-                        )
-                      })
                       if (checked) {
                         setMode('POS')
                         setPendingPreventa(null)
@@ -1125,7 +1110,7 @@ export default function POSCheckoutPage() {
                       <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-32">
                         Precio unit.{' '}
                         {official && (
-                          <span className="text-content-faint normal-case">(sin IVA)</span>
+                          <span className="text-content-faint normal-case">(con IVA)</span>
                         )}
                       </th>
                       <th className="text-right text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-32">

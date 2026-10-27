@@ -9,18 +9,16 @@ export const computeOfficialLineTax = (subtotal: number) =>
 export const removeOfficialTax = (valueWithTax: number) =>
   Math.round((valueWithTax * 100) / (100 + OFFICIAL_TAX_PERCENT))
 
-// Precio de venta sin IVA para POSO: hacia arriba, para no quedar nunca por debajo de getOfficialMinNetPrice.
-export const getOfficialNetSalePrice = (salePriceWithTax: number) =>
-  Math.ceil((salePriceWithTax * 100) / (100 + OFFICIAL_TAX_PERCENT))
-
-// Inverso de removeOfficialTax: vuelve a sumar el IVA al salir del modo oficial del POS.
-// Hacia abajo: así getOfficialNetSalePrice (hacia arriba) devuelve el mismo valor y el precio no sube en cada cambio.
-export const addOfficialTax = (valueWithoutTax: number) =>
-  Math.floor((valueWithoutTax * (100 + OFFICIAL_TAX_PERCENT)) / 100)
-
-// Piso de precio sin IVA para POSO (minSalePrice trae IVA); redondeo hacia arriba como el backend.
-export const getOfficialMinNetPrice = (minSalePriceWithTax: number) =>
-  Math.ceil((minSalePriceWithTax * 100 * 100) / (100 + OFFICIAL_TAX_PERCENT)) / 100
+// POSO: el precio trae IVA; base e IVA se separan sobre el total de la línea, mismo cálculo que el backend.
+export function splitOfficialPrice(quantity: number, unitPriceWithTax: number) {
+  const lineTotalCents = Math.round(quantity * unitPriceWithTax * 100)
+  const subtotalCents = Math.round((lineTotalCents * 100) / (100 + OFFICIAL_TAX_PERCENT))
+  return {
+    subtotal: subtotalCents / 100,
+    taxAmount: (lineTotalCents - subtotalCents) / 100,
+    total: lineTotalCents / 100,
+  }
+}
 
 export interface OfficialLine {
   quantity: number

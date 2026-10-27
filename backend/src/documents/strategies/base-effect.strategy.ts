@@ -14,7 +14,6 @@ import {
   applyStockChange,
 } from '@/documents/helpers/stock.helpers';
 import { getReservedByProduct } from '@/documents/helpers/reservation.helpers';
-import { getOfficialMinNetPrice } from '@/documents/helpers/tax.helpers';
 
 /** Base de las estrategias de efectos: concentra la lógica compartida para que cada una solo describa lo propio de su tipo. */
 @Injectable()
@@ -103,10 +102,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
   }
 
   /** Reglas de creación de una venta de contado (POS y POS oficial): cliente, vendedor y piso de precio. */
-  protected async validateCashSale(
-    createDocumentDto: CreateDocumentDto,
-    { pricesExcludeTax = false }: { pricesExcludeTax?: boolean } = {},
-  ) {
+  protected async validateCashSale(createDocumentDto: CreateDocumentDto) {
     const { thirdPartyId, sellerId, items } = createDocumentDto;
 
     const thirdParty = thirdPartyId
@@ -141,13 +137,10 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     this.assertPricesAboveFloor(
       items.map((item) => {
         const product = productById.get(item.productId);
-        const minSalePrice = product?.minSalePrice ?? 0;
         return {
           code: product?.code ?? item.productId,
           unitPrice: item.unitPrice ?? 0,
-          minSalePrice: pricesExcludeTax
-            ? getOfficialMinNetPrice(minSalePrice)
-            : minSalePrice,
+          minSalePrice: product?.minSalePrice ?? 0,
         };
       }),
     );

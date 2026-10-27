@@ -7,7 +7,7 @@ import { Combobox, HintText, ThousandsInput } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { getProducts } from '@/services/products.service'
 import { formatCOP, formatDateTimeBogota } from '@/lib/format'
-import { computeOfficialLineTax } from '@/lib/tax'
+import { splitOfficialPrice } from '@/lib/tax'
 import { cn } from '@/lib/utils'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 import type { Product } from '@/types/product.types'
@@ -25,7 +25,7 @@ interface POSCartLineProps {
   minSalePrice?: number
   // Disponible ya neteado; solo informativo, es un aviso temprano y el backend rechaza al confirmar si de verdad no alcanza.
   availableStock?: number
-  // Venta oficial: agrega la columna con el IVA 19% de la línea (el precio va sin IVA).
+  // Venta oficial: agrega la columna con el IVA 19% de la línea (el precio va con IVA y se separa por línea).
   showTax?: boolean
 }
 
@@ -64,7 +64,9 @@ export function POSCartLine({
   const productDesc = watch(`items.${index}.productDesc`)
   const quantity = Number(watch(`items.${index}.quantity`) ?? 0)
   const unitPrice = Number(watch(`items.${index}.unitPrice`) ?? 0)
-  const subtotal = quantity * unitPrice
+  const lineTotal = quantity * unitPrice
+  const split = splitOfficialPrice(quantity, unitPrice)
+  const subtotal = showTax ? split.subtotal : lineTotal
 
   const isBelowFloor = minSalePrice !== undefined && unitPrice > 0 && unitPrice < minSalePrice
   const exceedsAvailable = availableStock !== undefined && quantity > availableStock
@@ -130,9 +132,7 @@ export function POSCartLine({
 
         {showTax && (
           <td className="px-4 py-3 w-28 text-right">
-            <span className="text-sm text-content-muted">
-              {formatCOP(computeOfficialLineTax(subtotal))}
-            </span>
+            <span className="text-sm text-content-muted">{formatCOP(split.taxAmount)}</span>
           </td>
         )}
 
