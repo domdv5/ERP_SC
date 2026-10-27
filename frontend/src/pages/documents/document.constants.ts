@@ -55,13 +55,13 @@ export function operationFormTypes(permissions: readonly string[]) {
   )
 }
 
-// Modalidad de una devolución en venta — obligatoria al crear una DVV.
 export const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
   { value: 'efectivo', label: 'Efectivo' },
   { value: 'tarjeta', label: 'Tarjeta' },
   { value: 'transferencia', label: 'Transferencia' },
 ]
 
+// Modalidad de una devolución en venta — obligatoria al crear una DVV.
 export const DVV_REFUND_METHOD_OPTIONS: { value: DvvRefundMethod; label: string }[] = [
   { value: 'saldo_a_favor', label: 'Saldo a favor del cliente' },
   { value: 'cambio_producto', label: 'Cambio de producto' },
