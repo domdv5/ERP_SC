@@ -49,6 +49,7 @@ import {
   DOC_STATUS_BADGE,
   PV_CONVERSION_BADGE,
   DVV_REFUND_METHOD_OPTIONS,
+  PAYMENT_METHOD_OPTIONS,
 } from './document.constants'
 import { ReleaseItemsDialog } from './components/ReleaseItemsDialog'
 import { MissingStockDialog } from './components/MissingStockDialog'
@@ -96,6 +97,9 @@ const STATUS_LABELS = DOC_STATUS_BADGE
 
 const refundMethodLabelFor = (method: string) =>
   DVV_REFUND_METHOD_OPTIONS.find((o) => o.value === method)?.label ?? method
+
+const paymentMethodLabelFor = (method: string) =>
+  PAYMENT_METHOD_OPTIONS.find((o) => o.value === method)?.label ?? method
 
 // Estado de una nota de saldo a favor: solo 'available' | 'used' en el backend.
 const CREDIT_STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -778,6 +782,28 @@ export default function DocumentDetailPage() {
               <div>
                 <p className="text-xs text-content-faint font-accent">Modalidad de devolución</p>
                 <p className="text-sm text-content">{refundMethodLabelFor(doc.refundMethod)}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Formas de pago — ventas de contado (POS/POSO) */}
+          {doc.payments && doc.payments.length > 0 && (
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <Wallet className="w-4 h-4 text-content-muted" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint font-accent">
+                  {doc.payments.length === 1 ? 'Forma de pago' : 'Formas de pago'}
+                </p>
+                {doc.payments.map((payment) => (
+                  <p key={payment.method} className="text-sm text-content">
+                    {paymentMethodLabelFor(payment.method)}{' '}
+                    <span className="font-mono text-content-muted">
+                      {formatCOP(Number(payment.amount))}
+                    </span>
+                  </p>
+                ))}
               </div>
             </div>
           )}

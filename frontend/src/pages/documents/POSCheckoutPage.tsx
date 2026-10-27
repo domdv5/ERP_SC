@@ -52,7 +52,7 @@ import {
   limitCreditAmount,
   limitCreditsToTotal,
 } from '@/lib/credit-application'
-import { DOC_TYPE_ACCENT } from './document.constants'
+import { DOC_TYPE_ACCENT, PAYMENT_METHOD_OPTIONS } from './document.constants'
 import type { FormValues } from './document-form.schema'
 import { BarcodeScanInput } from './components/BarcodeScanInput'
 import { POSCartLine } from './components/POSCartLine'
@@ -89,12 +89,6 @@ type SaleMode = Extract<DocumentType, 'POS' | 'COT'>
 
 // Sustantivo del documento de origen para el aviso de conversión: preventa o remisión.
 const sourceTypeLabel = (type: DocumentType) => (type === 'REM' ? 'remisión' : 'preventa')
-
-const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
-  { value: 'efectivo', label: 'Efectivo' },
-  { value: 'tarjeta', label: 'Tarjeta' },
-  { value: 'transferencia', label: 'Transferencia' },
-]
 
 function extractErrorMessage(err: unknown): string | undefined {
   const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
