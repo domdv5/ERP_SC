@@ -222,7 +222,8 @@ export class AccountsReceivableService {
         include: LIST_INCLUDE,
         skip,
         take: limit,
-        orderBy: { dueDate: { sort: 'asc', nulls: 'last' } },
+        // updatedAt cambia con cada abono: arriba queda la cuenta con el movimiento más reciente
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       }),
       this.prisma.accountsReceivable.count({ where }),
       this.prisma.accountsReceivable.aggregate({
@@ -282,7 +283,7 @@ export class AccountsReceivableService {
       this.prisma.accountsReceivable.findMany({
         where: { clientId },
         include: LIST_INCLUDE,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       }),
       this.prisma.customerCredit.findMany({
         where: { customerId: clientId },

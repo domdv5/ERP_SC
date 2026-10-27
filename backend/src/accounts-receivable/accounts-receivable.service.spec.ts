@@ -172,5 +172,29 @@ describe('AccountsReceivableService: sucursales del cliente', () => {
         { document: { customerBranchId: 'b1' } },
       );
     });
+
+    it('ordena por último movimiento (venta o abono), el más reciente primero', async () => {
+      prisma.$transaction.mockResolvedValue([
+        [],
+        0,
+        { _sum: { totalAmount: null, paidAmount: null } },
+      ]);
+
+      await service.findAll({});
+
+      expect(
+        prisma.accountsReceivable.findMany.mock.calls[0][0].orderBy,
+      ).toEqual([{ updatedAt: 'desc' }, { id: 'desc' }]);
+    });
+  });
+
+  it('el estado de cuenta ordena por último movimiento, el más reciente primero', async () => {
+    prisma.accountsReceivable.findMany.mockResolvedValue([]);
+
+    await service.getClientStatement('c1');
+
+    expect(prisma.accountsReceivable.findMany.mock.calls[0][0].orderBy).toEqual(
+      [{ updatedAt: 'desc' }, { id: 'desc' }],
+    );
   });
 });
