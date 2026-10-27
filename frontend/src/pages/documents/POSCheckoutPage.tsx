@@ -8,12 +8,12 @@ import {
   CalendarDays,
   ArrowLeft,
   Loader2,
-  ShoppingBag,
   User,
   UserCog,
   Wallet,
   ArrowRightLeft,
   CreditCard,
+  Plus,
 } from 'lucide-react'
 
 import {
@@ -26,7 +26,7 @@ import {
   getAvailableCustomerCredits,
 } from '@/services/documents.service'
 import { getThirdParties } from '@/services/third-parties.service'
-import { getProducts, getProductByCode } from '@/services/products.service'
+import { getProductByCode } from '@/services/products.service'
 import { Combobox, SegmentedToggle, CreditsPanel, CustomerBranchSelect } from '@/components/shared'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import type { ComboboxOption } from '@/components/shared'
@@ -69,6 +69,7 @@ import type {
   UpdateDocumentPayload,
 } from '@/types/document.types'
 import type { ThirdParty } from '@/types/third-party.types'
+import type { Product } from '@/types/product.types'
 
 // Modo del checkout: venta de contado (POS) o venta a crédito (COT). COT no lleva forma de
 // pago, valida el cupo de crédito del cliente y genera una cuenta por cobrar al confirmar.
@@ -364,55 +365,35 @@ export default function POSCheckoutPage() {
     },
   })
 
-  // ── búsqueda manual de producto (alternativa al escaneo) ─────────────────
-  const [manualProductSearch, setManualProductSearch] = useState('')
-  const [debouncedManualSearch] = useDebounce(manualProductSearch, 400)
-  const hasManualSearch = debouncedManualSearch.length >= 1
-
-  const { data: manualProductData, isLoading: isLoadingManualProducts } = useQuery({
-    queryKey: ['products-search-pos', debouncedManualSearch],
-    queryFn: () => getProducts({ search: debouncedManualSearch, page: 1, limit: 20 }),
-    staleTime: 2 * 60 * 1000,
-    enabled: hasManualSearch,
-  })
-
-  const manualProductOptions: ComboboxOption[] = (manualProductData?.items ?? []).map((p) => ({
-    id: p.id,
-    label: `${p.code} — ${p.description}`,
-    // La venta oficial no consulta stock físico.
-    sublabel: official ? undefined : `Disponible: ${p.availableStock}`,
-  }))
-
-  function handleManualProductAdd(id: string) {
-    const product = manualProductData?.items.find((p) => p.id === id)
-    if (!product) return
+  // ── producto elegido a mano en una fila vacía (alternativa al escaneo) ────
+  function handleRowProductSelect(index: number, product: Product) {
     // Deja el producto ya conocido en la caché de búsqueda por código, para no volver a pedir
     // al servidor el precio mínimo y el disponible de esta misma fila.
     queryClient.setQueryData(['product-by-code', product.code], product)
 
     const currentItems = getValues('items')
-    const existingIndex = currentItems.findIndex((item) => item.productId === id)
+    const existingIndex = currentItems.findIndex(
+      (item, i) => item.productId === product.id && i !== index,
+    )
     if (existingIndex >= 0) {
-      const currentQty = Number(currentItems[existingIndex].quantity) || 0
-      setValue(`items.${existingIndex}.quantity`, currentQty + 1)
+      // Igual que el escaneo: suma en la fila existente y descarta la vacía.
+      const rowQty = Number(currentItems[index].quantity) || 1
+      const existingQty = Number(currentItems[existingIndex].quantity) || 0
+      setValue(`items.${existingIndex}.quantity`, existingQty + rowQty)
       setValue(`items.${existingIndex}.addedAt`, new Date().toISOString())
-      toast.success(`${product.code} — cantidad +1`)
-    } else {
-      append({
-        productId: product.id,
-        productCode: product.code,
-        productDesc: product.description,
-        quantity: 1,
-        unitCost: undefined,
-        unitPrice: official
-          ? getOfficialNetSalePrice(Number(product.salePrice))
-          : Number(product.salePrice),
-        observaciones: undefined,
-        addedAt: new Date().toISOString(),
-      })
-      toast.success(`${product.code} agregado`)
+      remove(index)
+      toast.success(`${product.code} ya estaba en el carrito — cantidad sumada`)
+      return
     }
-    setManualProductSearch('')
+
+    setValue(`items.${index}.productId`, product.id)
+    setValue(`items.${index}.productCode`, product.code)
+    setValue(`items.${index}.productDesc`, product.description)
+    setValue(
+      `items.${index}.unitPrice`,
+      official ? getOfficialNetSalePrice(Number(product.salePrice)) : Number(product.salePrice),
+    )
+    setValue(`items.${index}.addedAt`, new Date().toISOString())
   }
 
   // ── detalle de producto por código (minSalePrice + disponible) ───────────
@@ -1005,11 +986,32 @@ export default function POSCheckoutPage() {
 
           {/* Productos */}
           <div className="card-hard overflow-hidden">
-            <div className="px-6 py-4 border-b border-ui-divide">
-              <h2 className="text-base text-content">Productos</h2>
-              <p className="text-xs text-content-faint font-accent mt-0.5">
-                Escanea o busca para agregar
-              </p>
+            <div className="px-6 py-4 border-b border-ui-divide flex items-center justify-between">
+              <div>
+                <h2 className="text-base text-content">Productos</h2>
+                <p className="text-xs text-content-faint font-accent mt-0.5">
+                  Escanea o busca para agregar
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  append({
+                    productId: '',
+                    productCode: '',
+                    productDesc: '',
+                    quantity: 1,
+                    unitCost: undefined,
+                    unitPrice: undefined,
+                    observaciones: undefined,
+                    addedAt: new Date().toISOString(),
+                  })
+                }
+                className="btn-primary flex items-center gap-2 px-3 py-1.5 text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Agregar ítem
+              </button>
             </div>
 
             <BarcodeScanInput
@@ -1022,24 +1024,8 @@ export default function POSCheckoutPage() {
               supplierBrandIds={undefined}
             />
 
-            <div className="px-6 py-4 border-b border-ui-divide">
-              <label className="block text-xs font-semibold text-content-faint uppercase tracking-wider mb-1.5">
-                Búsqueda manual
-              </label>
-              <Combobox
-                value=""
-                onChange={(id) => handleManualProductAdd(id)}
-                options={manualProductOptions}
-                isLoading={isLoadingManualProducts}
-                placeholder="Selecciona un producto..."
-                searchValue={manualProductSearch}
-                onSearchChange={setManualProductSearch}
-              />
-            </div>
-
             {fields.length === 0 ? (
               <div className="py-10 text-center">
-                <ShoppingBag className="w-8 h-8 text-content-faint mx-auto mb-2" />
                 <p className="text-content-muted text-sm">
                   El carrito está vacío. Escanea o busca un producto.
                 </p>
@@ -1087,6 +1073,7 @@ export default function POSCheckoutPage() {
                           control={control}
                           watch={watch}
                           onRemove={() => remove(index)}
+                          onProductSelect={(product) => handleRowProductSelect(index, product)}
                           minSalePrice={detail && minSalePriceByProductId.get(detail.id)}
                           availableStock={official ? undefined : detail?.availableStock}
                           showTax={official}

@@ -1,10 +1,16 @@
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useDebounce } from 'use-debounce'
 import { Trash2 } from 'lucide-react'
 import { Controller, type Control, type UseFormRegister, type UseFormWatch } from 'react-hook-form'
-import { HintText, ThousandsInput } from '@/components/shared'
+import { Combobox, HintText, ThousandsInput } from '@/components/shared'
+import type { ComboboxOption } from '@/components/shared'
+import { getProducts } from '@/services/products.service'
 import { formatCOP, formatDateTimeBogota } from '@/lib/format'
 import { computeOfficialLineTax } from '@/lib/tax'
 import { cn } from '@/lib/utils'
 import type { FormValues } from '@/pages/documents/document-form.schema'
+import type { Product } from '@/types/product.types'
 
 interface POSCartLineProps {
   index: number
@@ -12,6 +18,8 @@ interface POSCartLineProps {
   control: Control<FormValues>
   watch: UseFormWatch<FormValues>
   onRemove: () => void
+  // La pantalla decide qué hacer con el producto elegido en una fila vacía (precio, duplicados).
+  onProductSelect: (product: Product) => void
   // Precio mínimo actual del producto (piso del 2%). Lo resuelve la pantalla de checkout al
   // entrar el código al carrito. Viene sin valor mientras ese dato todavía no llegó.
   minSalePrice?: number
@@ -21,17 +29,37 @@ interface POSCartLineProps {
   showTax?: boolean
 }
 
-// Componente propio, no reutiliza ProductRow: acá el producto siempre llega resuelto (escaneo/búsqueda), nunca se elige desde la fila.
+// Componente propio, no reutiliza ProductRow: el producto solo se elige en filas vacías y no se cambia después.
 export function POSCartLine({
   index,
   register,
   control,
   watch,
   onRemove,
+  onProductSelect,
   minSalePrice,
   availableStock,
   showTax = false,
 }: POSCartLineProps) {
+  const [productSearch, setProductSearch] = useState('')
+  const [debouncedProductSearch] = useDebounce(productSearch, 400)
+  const productId = watch(`items.${index}.productId`)
+  const isEmptyRow = !productId
+
+  const { data: productData, isLoading: isLoadingProducts } = useQuery({
+    queryKey: ['products-search-pos', debouncedProductSearch],
+    queryFn: () => getProducts({ search: debouncedProductSearch, page: 1, limit: 20 }),
+    staleTime: 2 * 60 * 1000,
+    enabled: isEmptyRow && debouncedProductSearch.length >= 1,
+  })
+
+  const productOptions: ComboboxOption[] = (productData?.items ?? []).map((p) => ({
+    id: p.id,
+    label: `${p.code} — ${p.description}`,
+    // La venta oficial no consulta stock físico.
+    sublabel: showTax ? undefined : `Disponible: ${p.availableStock}`,
+  }))
+
   const productCode = watch(`items.${index}.productCode`)
   const productDesc = watch(`items.${index}.productDesc`)
   const quantity = Number(watch(`items.${index}.quantity`) ?? 0)
@@ -45,8 +73,25 @@ export function POSCartLine({
     <>
       <tr className={isBelowFloor ? 'bg-red-500/5' : undefined}>
         <td className="px-4 py-3 min-w-[220px]">
-          <p className="text-sm text-content font-medium truncate">{productDesc}</p>
-          <p className="text-xs text-content-faint font-mono">{productCode}</p>
+          {isEmptyRow ? (
+            <Combobox
+              value=""
+              onChange={(id) => {
+                const product = productData?.items.find((p) => p.id === id)
+                if (product) onProductSelect(product)
+              }}
+              options={productOptions}
+              isLoading={isLoadingProducts}
+              placeholder="Selecciona un producto..."
+              searchValue={productSearch}
+              onSearchChange={setProductSearch}
+            />
+          ) : (
+            <>
+              <p className="text-sm text-content font-medium truncate">{productDesc}</p>
+              <p className="text-xs text-content-faint font-mono">{productCode}</p>
+            </>
+          )}
         </td>
 
         <td className="px-4 py-3 w-24">
