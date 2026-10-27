@@ -110,8 +110,8 @@ export interface DocumentListItem {
   user: DocumentUser
   warehouse: DocumentWarehouse | null
   destWarehouse: DocumentWarehouse | null
-  // Solo en ventas de contado; null en el resto. Es solo informativo.
-  paymentMethod: PaymentMethod | null
+  // Solo POS/POSO de contado y solo en el detalle (el listado no lo trae); el monto puede llegar como string (Decimal).
+  payments?: { method: PaymentMethod; amount: number | string }[]
   _count: { documentItems: number }
   createdAt: string
   // Historial del listado: quién y cuándo editó, confirmó y anuló (null si no aplica).
@@ -293,8 +293,8 @@ export interface CreateDocumentPayload {
   // viaja en el JSON y el backend borra el texto viejo en vez de dejarlo guardado.
   adjustmentReasonOther?: string | null
   notes?: string
-  // Solo en ventas de contado, donde es obligatorio (lo valida el backend; en el tipo queda opcional).
-  paymentMethod?: PaymentMethod
+  // Solo POS/POSO de contado: deben sumar el total a cobrar al confirmar; al editar reemplaza todas las líneas.
+  payments?: { method: PaymentMethod; amount: number }[]
   // Solo DVV, obligatorio: define si deja saldo a favor, es cambio de producto, o devuelve dinero.
   refundMethod?: DvvRefundMethod
   // Solo en creación COT: backend netea la CxC y valida cupo sobre el neto (POS los aplica recién al confirmar).
@@ -320,8 +320,6 @@ export interface ConfirmDocumentPayload {
 export interface ConvertDocumentPayload {
   // El backend permite convertir una preventa o remisión confirmada en venta de contado o a crédito.
   targetType: 'POS' | 'COT'
-  // Solo aplica al convertir a venta de contado; la venta a crédito no lleva forma de pago.
-  paymentMethod?: PaymentMethod
 }
 
 // Resumen del cupo de crédito del cliente, en pesos. El disponible es el límite menos lo

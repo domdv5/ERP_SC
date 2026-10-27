@@ -14,6 +14,7 @@ import {
   ArrowRightLeft,
   CreditCard,
   Plus,
+  Trash2,
 } from 'lucide-react'
 
 import {
@@ -27,7 +28,13 @@ import {
 } from '@/services/documents.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import { getProductByCode } from '@/services/products.service'
-import { Combobox, SegmentedToggle, CreditsPanel, CustomerBranchSelect } from '@/components/shared'
+import {
+  Combobox,
+  SegmentedToggle,
+  CreditsPanel,
+  CustomerBranchSelect,
+  ThousandsInput,
+} from '@/components/shared'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import type { ComboboxOption } from '@/components/shared'
 import { usePermission } from '@/hooks/usePermission'
@@ -56,7 +63,10 @@ import {
   findPriceFloorViolations,
   parseMissingStockError,
   parseCreditLimitError,
+  calculatePaymentDifference,
+  arePaymentsValid,
   type MissingStockItem,
+  type PaymentLine,
   type SelectedCredit,
 } from './pos-checkout.utils'
 
@@ -194,8 +204,10 @@ export default function POSCheckoutPage() {
   const docType: DocumentType = official ? 'POSO' : mode
   const accent = DOC_TYPE_ACCENT[docType]
 
-  // ── forma de pago (solo contado) ─────────────────────────────────────────
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('')
+  // ── formas de pago (solo contado) ────────────────────────────────────────
+  const [paymentRows, setPaymentRows] = useState<PaymentLine[]>([{ method: '', amount: undefined }])
+  // Mientras haya una sola fila y no se haya tecleado el monto, este sigue al total a cobrar.
+  const [isAmountEdited, setIsAmountEdited] = useState(false)
 
   // Error de cupo excedido del backend (create/confirm/convert); cubre la carrera entre ventas del mismo cliente.
   const [creditError, setCreditError] = useState<{
@@ -330,17 +342,17 @@ export default function POSCheckoutPage() {
       return
     }
     hydrateFromDocument(resumeDoc)
-    setPaymentMethod(resumeDoc.paymentMethod ?? '')
+    if (resumeDoc.payments?.length) {
+      setPaymentRows(
+        resumeDoc.payments.map((p) => ({ method: p.method, amount: Number(p.amount) })),
+      )
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeDoc, isResumeError, resumeDraftId])
 
-  // Convertir a contado exige forma de pago (botón deshabilitado sin ella); a crédito puede devolver error de cupo.
+  // Convertir a crédito puede devolver error de cupo; las formas de pago se eligen en el checkout.
   const { mutate: doConvert, isPending: isConverting } = useMutation({
-    mutationFn: (pvId: string) =>
-      convertDocument(pvId, {
-        targetType: mode,
-        paymentMethod: isCredit ? undefined : paymentMethod || undefined,
-      }),
+    mutationFn: (pvId: string) => convertDocument(pvId, { targetType: mode }),
     onSuccess: (converted) => {
       hydrateFromDocument(converted)
       const sourceLabel = converted.sourceDocument
@@ -506,6 +518,28 @@ export default function POSCheckoutPage() {
   const creditsApplied = selectedCredits.reduce((sum, c) => sum + c.amount, 0)
   const totalToPay = Math.max(grandTotal - creditsApplied, 0)
 
+  const paymentLines: PaymentLine[] =
+    paymentRows.length === 1 && !isAmountEdited
+      ? [{ ...paymentRows[0], amount: totalToPay }]
+      : paymentRows
+  const paymentDifference = calculatePaymentDifference(paymentLines, totalToPay)
+
+  function updatePaymentRow(index: number, patch: Partial<PaymentLine>) {
+    setPaymentRows(paymentLines.map((row, i) => (i === index ? { ...row, ...patch } : row)))
+  }
+
+  function addPaymentRow() {
+    setPaymentRows([
+      ...paymentLines,
+      { method: '', amount: paymentDifference > 0 ? paymentDifference : undefined },
+    ])
+  }
+
+  function removePaymentRow(index: number) {
+    setIsAmountEdited(true)
+    setPaymentRows(paymentLines.filter((_, i) => i !== index))
+  }
+
   function setCreditAmount(creditId: string, next: number) {
     creditsTouchedRef.current.add(creditId)
     setCreditAmounts((prev) => {
@@ -526,7 +560,10 @@ export default function POSCheckoutPage() {
   if (thirdPartyId && isLoadingBranches) missingItems.push('Cargando sucursales del cliente...')
   if (needsBranch && !customerBranchId) missingItems.push('Selecciona la sucursal del cliente')
   if (!sellerId) missingItems.push('Selecciona una vendedora')
-  if (!isCredit && !paymentMethod) missingItems.push('Selecciona una forma de pago')
+  if (!isCredit && paymentLines.some((line) => !line.method))
+    missingItems.push('Selecciona una forma de pago')
+  if (!isCredit && !arePaymentsValid(paymentLines, totalToPay))
+    missingItems.push('Las formas de pago deben sumar el total a cobrar')
   if (!hasValidItems) missingItems.push('Agrega al menos un producto con cantidad válida')
   if (priceFloorViolations.length > 0)
     missingItems.push('Corrige los precios por debajo del mínimo permitido')
@@ -588,8 +625,13 @@ export default function POSCheckoutPage() {
       // null suelta una sucursal vieja del borrador si el cliente ya no la requiere.
       customerBranchId: needsBranch ? customerBranchId : null,
       sellerId,
-      // La venta a crédito no lleva forma de pago; la de contado la exige (ya validado arriba).
-      paymentMethod: isCredit ? undefined : (paymentMethod as PaymentMethod),
+      // Crédito manda lista vacía para que un borrador pasado a crédito suelte sus líneas viejas.
+      payments: isCredit
+        ? []
+        : paymentLines.map((l) => ({
+            method: l.method as PaymentMethod,
+            amount: Number(l.amount),
+          })),
       items,
     }
 
@@ -801,25 +843,78 @@ export default function POSCheckoutPage() {
                 />
               </div>
 
-              {/* Forma de pago — solo venta de contado; el crédito no la usa. */}
+              {/* Formas de pago — solo venta de contado; el crédito no las usa. */}
               {!isCredit && (
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 sm:col-span-2">
                   <label className="flex items-center gap-1.5 text-sm font-medium text-content-secondary">
                     <Wallet className="w-3.5 h-3.5" />
-                    Forma de pago <span className="text-red-500">*</span>
+                    Formas de pago <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
-                  >
-                    <option value="">Selecciona una forma de pago</option>
-                    {PAYMENT_METHOD_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
+                  {paymentLines.map((line, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <select
+                        value={line.method}
+                        onChange={(e) =>
+                          updatePaymentRow(index, { method: e.target.value as PaymentMethod | '' })
+                        }
+                        className="input-hard flex-1 min-w-0 px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
+                      >
+                        <option value="">Selecciona una forma de pago</option>
+                        {PAYMENT_METHOD_OPTIONS.filter(
+                          (opt) =>
+                            opt.value === line.method ||
+                            !paymentLines.some((other) => other.method === opt.value),
+                        ).map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ThousandsInput
+                        value={line.amount}
+                        onChange={(v) => {
+                          setIsAmountEdited(true)
+                          updatePaymentRow(index, { amount: v })
+                        }}
+                        className="w-36 py-2 text-right bg-surface-raised"
+                      />
+                      {paymentLines.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removePaymentRow(index)}
+                          aria-label="Quitar forma de pago"
+                          className="p-2 text-content-faint hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={addPaymentRow}
+                      disabled={paymentLines.length >= PAYMENT_METHOD_OPTIONS.length}
+                      className="btn-secondary flex items-center gap-1.5 px-3 py-1.5 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Agregar forma de pago
+                    </button>
+                    {paymentDifference !== 0 && (
+                      <span
+                        className={cn(
+                          'text-sm font-medium',
+                          paymentDifference > 0
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-red-500',
+                        )}
+                      >
+                        {paymentDifference > 0
+                          ? `Falta ${formatCOP(paymentDifference)}`
+                          : `Sobra ${formatCOP(-paymentDifference)}`}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -952,21 +1047,11 @@ export default function POSCheckoutPage() {
                   {fields.length > 0 &&
                     ` Esto reemplazará los ${fields.length} producto(s) ya agregados al carrito.`}
                 </p>
-                {!isCredit && !paymentMethod && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">
-                    Selecciona una forma de pago arriba antes de convertir — la venta la requiere.
-                  </p>
-                )}
                 <div className="flex items-center gap-3 mt-3">
                   <button
                     type="button"
                     onClick={() => doConvert(pendingPreventa.id)}
-                    disabled={isConverting || (!isCredit && !paymentMethod)}
-                    title={
-                      !isCredit && !paymentMethod
-                        ? 'Selecciona una forma de pago primero'
-                        : undefined
-                    }
+                    disabled={isConverting}
                     className="btn-primary flex items-center gap-2 px-3 py-1.5 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isConverting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
