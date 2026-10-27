@@ -41,3 +41,27 @@ Debilidades
 Puntaje de acoplamiento: backend 7/10, frontend 6/10, contrato front/back 4/10 (10 = muy desacoplado).
 
 Orden sugerido: S1 → S2 → S4 → A5 (pruebas frontend de helpers) → A2 → A4 → A1/A3.
+
+## Plan para partir los archivos gigantes (A1 + A3)
+
+Regla: mover código sin cambiar comportamiento (mismos endpoints, permisos y reglas). Un PR por pieza, < ~400 líneas, y las pruebas existentes deben pasar sin tocarlas.
+
+Backend — `documents.service.ts` (1.649 líneas; `void()` solo ~420):
+- `documents.service.ts`: crear, editar, confirmar (~450).
+- `documents-query.service.ts`: listados, detalle, PDF (~200).
+- `document-void.service.ts`: anular (~150); lo propio de cada tipo pasa a un `void()` en su estrategia, igual que `confirm()`, y desaparecen los `if (type === ...)` (A2).
+- `document-conversion.service.ts`: convertir y duplicar (~250).
+- `helpers/document-amounts.ts`: montos e IVA (~90).
+- El controller sigue igual; solo cambia a qué service llama.
+
+Frontend — `POSCheckoutPage.tsx` (1.240 líneas) → página de ~250 que solo arma la pantalla:
+- `useSaleParties()` cliente, vendedora, sucursal.
+- `usePaymentLines(totalToPay)` + `<PaymentLinesField>` formas de pago.
+- `useAppliedCredits()` saldos a favor.
+- `useSaleDraft()` borrador retomado y conversión.
+- `useSaleTotals()` totales, IVA y lista de faltantes.
+- `useConfirmSale()` guardar/confirmar con errores de stock y cupo.
+- `<SaleCart>` y `<SaleSummary>`.
+- `DocumentFormPage.tsx` igual, por separado. No fusionar ambas páginas.
+
+Orden: 1) pruebas primero (anular por tipo en backend; helpers puros en frontend) → 2) montos → consultas → conversión → anular con estrategias → 3) frontend hook por hook. Estimado: 8–10 PRs chicos.
