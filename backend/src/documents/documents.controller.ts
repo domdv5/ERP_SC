@@ -15,6 +15,7 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
 import { DocumentsQueryService } from './documents-query.service';
+import { DocumentConversionService } from './document-conversion.service';
 import { DocumentPrintService } from './print/index';
 import {
   ConfirmDocumentDto,
@@ -33,6 +34,7 @@ export class DocumentsController {
   constructor(
     private readonly documentsService: DocumentsService,
     private readonly documentsQuery: DocumentsQueryService,
+    private readonly documentConversion: DocumentConversionService,
     private readonly documentPrintService: DocumentPrintService,
   ) {}
 
@@ -112,7 +114,7 @@ export class DocumentsController {
 
   @Post(':id/duplicate')
   duplicate(@Param('id') id: string, @Req() req: RequestWithUser) {
-    return this.documentsService.duplicate(id, req.user);
+    return this.documentConversion.duplicate(id, req.user);
   }
 
   @Post(':id/convert')
@@ -121,7 +123,7 @@ export class DocumentsController {
     @Body() convertDocumentDto: ConvertDocumentDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.documentsService.convert(id, convertDocumentDto, req.user);
+    return this.documentConversion.convert(id, convertDocumentDto, req.user);
   }
 
   // passthrough: false evita que ResponseFormatInterceptor envuelva el PDF binario en {success, data}.

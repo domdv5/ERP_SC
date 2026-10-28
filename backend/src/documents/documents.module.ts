@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { DocumentsService } from './documents.service';
 import { DocumentsQueryService } from './documents-query.service';
+import { DocumentConversionService } from './document-conversion.service';
 import { DocumentsController } from './documents.controller';
 import {
   CmEffectStrategy,
@@ -41,6 +42,7 @@ import {
   providers: [
     DocumentsService,
     DocumentsQueryService,
+    DocumentConversionService,
     CmEffectStrategy,
     DvcEffectStrategy,
     DvvEffectStrategy,
