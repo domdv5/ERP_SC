@@ -18,7 +18,6 @@ import {
   ConfirmDocumentDto,
   ConvertDocumentDto,
   CreateDocumentDto,
-  CreateDocumentItemDto,
   FindAllDocumentsDto,
   FindPendingOfficialPurchasesDto,
   ReleaseItemsDto,
@@ -43,11 +42,11 @@ import {
   isSameDocumentRequest,
 } from './helpers/idempotency.helpers';
 import {
-  computeOfficialLine,
-  splitOfficialPrice,
-  OFFICIAL_TAX_TYPES,
-  sumOfficialLines,
-} from './helpers/tax.helpers';
+  assertOfficialFieldsAllowed,
+  computeAmounts,
+  computeItemSubtotal,
+  computeTotal,
+} from './helpers/document-amounts';
 import { buildPvStatus, PvStatusInput } from './helpers/pv-status.helper';
 import { resolveDocumentDate } from './helpers/document-date.helper';
 import {
@@ -438,7 +437,7 @@ export class DocumentsService {
     } = createDocumentDto;
 
     this.assertDocumentPermission(user, type);
-    this.assertOfficialFieldsAllowed(type, {
+    assertOfficialFieldsAllowed(type, {
       officialPurchase,
       supplierInvoiceNumber,
       sourceDocumentId,
@@ -480,7 +479,7 @@ export class DocumentsService {
     const createInTransaction = () =>
       this.prisma.$transaction(async (tx) => {
         const number = await this.nextNumber(tx, type);
-        const amounts = this.computeAmounts(items, type);
+        const amounts = computeAmounts(items, type);
 
         return tx.document.create({
           data: {
@@ -597,12 +596,12 @@ export class DocumentsService {
       ...rest
     } = updateDocumentDto;
 
-    this.assertOfficialFieldsAllowed(document.type, {
+    assertOfficialFieldsAllowed(document.type, {
       officialPurchase: rest.officialPurchase,
       supplierInvoiceNumber,
       sourceDocumentId: rest.sourceDocumentId,
     });
-    const amounts = items && this.computeAmounts(items, document.type);
+    const amounts = items && computeAmounts(items, document.type);
     const strategy = this.effectsRegistry.get(document.type);
     const newDate = resolveDocumentDate(strategy.usesTodayDate, date);
     const now = new Date();
@@ -1273,10 +1272,10 @@ export class DocumentsService {
               unitCost: item.unitCost,
               unitPrice: item.unitPrice,
               observaciones: item.observaciones ?? null,
-              subtotal: this.computeItemSubtotal(item, DocumentType.CM),
+              subtotal: computeItemSubtotal(item, DocumentType.CM),
             })),
           },
-          total: this.computeTotal(items, DocumentType.CM),
+          total: computeTotal(items, DocumentType.CM),
         },
         include: DETAIL_INCLUDE,
       });
@@ -1393,7 +1392,7 @@ export class DocumentsService {
       }
 
       const number = await this.nextNumber(tx, dto.targetType);
-      const total = this.computeTotal(validateCreateDto.items, dto.targetType);
+      const total = computeTotal(validateCreateDto.items, dto.targetType);
 
       const created = await tx.document.create({
         data: {
@@ -1416,7 +1415,7 @@ export class DocumentsService {
               productId: item.productId,
               quantity: item.quantity,
               unitPrice: item.unitPrice ?? 0,
-              subtotal: this.computeItemSubtotal(item, dto.targetType),
+              subtotal: computeItemSubtotal(item, dto.targetType),
             })),
           },
         },
@@ -1545,93 +1544,6 @@ export class DocumentsService {
         `No tiene permiso para ${actionLabel} documentos de tipo ${type}`,
       );
     }
-  }
-
-  /** Documentos valorados al precio de venta (el resto se valora al costo); DVV usa unitPrice a diferencia de DVC. */
-  private static readonly PRICE_BASED_TYPES = new Set<DocumentType>([
-    DocumentType.PV,
-    DocumentType.REM,
-    DocumentType.POS,
-    DocumentType.COT,
-    DocumentType.DVV,
-    DocumentType.POSO,
-  ]);
-
-  /** Subtotales, IVA y total del documento; CMO digita valor sin IVA, POSO precio con IVA; en ambos el IVA se guarda aparte. */
-  private computeAmounts(items: CreateDocumentItemDto[], type: DocumentType) {
-    if (!OFFICIAL_TAX_TYPES.has(type)) {
-      return {
-        lines: items.map((item) => ({
-          subtotal: this.computeItemSubtotal(item, type),
-          taxAmount: null as number | null,
-        })),
-        total: this.computeTotal(items, type),
-        taxTotal: null as number | null,
-      };
-    }
-
-    const usePrice = DocumentsService.PRICE_BASED_TYPES.has(type);
-    const official = items.map((item) =>
-      usePrice
-        ? splitOfficialPrice(item.quantity, item.unitPrice ?? 0)
-        : computeOfficialLine(item.quantity, item.unitCost ?? 0),
-    );
-    const totals = sumOfficialLines(official);
-
-    return {
-      lines: official.map((line) => ({
-        subtotal: line.subtotal.toNumber(),
-        taxAmount: line.taxAmount.toNumber(),
-      })),
-      total: totals.total.toNumber(),
-      taxTotal: totals.taxTotal.toNumber(),
-    };
-  }
-
-  /** Los campos de facturación oficial solo aplican a ciertos tipos; en el resto se rechazan en vez de ignorarse. */
-  private assertOfficialFieldsAllowed(
-    type: DocumentType,
-    fields: {
-      officialPurchase?: boolean;
-      supplierInvoiceNumber?: string;
-      sourceDocumentId?: string;
-    },
-  ) {
-    if (fields.officialPurchase && type !== DocumentType.CM) {
-      throw new BadRequestException(
-        'Solo una compra (CM) puede marcarse como oficial',
-      );
-    }
-
-    if (
-      fields.supplierInvoiceNumber?.trim() &&
-      type !== DocumentType.CM &&
-      type !== DocumentType.CMO
-    ) {
-      throw new BadRequestException(
-        'El número de factura del proveedor solo aplica a compras',
-      );
-    }
-
-    if (fields.sourceDocumentId && type !== DocumentType.CMO) {
-      throw new BadRequestException(
-        'Solo una compra oficial (CMO) puede enlazar una compra de origen',
-      );
-    }
-  }
-
-  private computeItemSubtotal(item: CreateDocumentItemDto, type: DocumentType) {
-    const usePrice = DocumentsService.PRICE_BASED_TYPES.has(type);
-    return (
-      item.quantity * (usePrice ? (item.unitPrice ?? 0) : (item.unitCost ?? 0))
-    );
-  }
-
-  private computeTotal(items: CreateDocumentItemDto[], type: DocumentType) {
-    return items.reduce(
-      (sum, item) => sum + this.computeItemSubtotal(item, type),
-      0,
-    );
   }
 
   /** Bloquea la fila del documento hasta el fin de la transacción y devuelve su estado actual. */
