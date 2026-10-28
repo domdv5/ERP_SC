@@ -72,8 +72,8 @@ export class DocumentsController {
 
   @Get(':id')
   @Permissions('document.read')
-  findOne(@Param('id') id: string) {
-    return this.documentsQuery.findOne(id);
+  findOne(@Param('id') id: string, @Req() req: RequestWithUser) {
+    return this.documentsQuery.findOneForUser(id, req.user);
   }
 
   @Get(':id/missing-stock')
@@ -135,9 +135,13 @@ export class DocumentsController {
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
   async print(
     @Param('id') id: string,
+    @Req() req: RequestWithUser,
     @Res({ passthrough: false }) res: Response,
   ) {
-    const { buffer, filename } = await this.documentPrintService.print(id);
+    const { buffer, filename } = await this.documentPrintService.print(
+      id,
+      req.user,
+    );
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
     res.setHeader('Content-Length', buffer.length.toString());
