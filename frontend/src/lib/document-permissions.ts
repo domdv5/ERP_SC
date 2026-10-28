@@ -32,3 +32,13 @@ export function visibleDocumentTypes(permissions: readonly string[]): DocumentTy
   }
   return [...types]
 }
+
+// Mismo criterio que el backend para el detalle: cartera y libro oficial ven cualquier tipo.
+const SEE_ALL_PERMISSIONS = ['ar.read', 'ap.read', 'official.read']
+
+export function canViewDocument(type: DocumentType, permissions: readonly string[]): boolean {
+  return (
+    SEE_ALL_PERMISSIONS.some((p) => permissions.includes(p)) ||
+    visibleDocumentTypes(permissions).includes(type)
+  )
+}
