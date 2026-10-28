@@ -34,10 +34,7 @@ Frontend (`.worktrees/frontend`, cadena desde `main`):
 - L3 (2026-10-28, decisión técnica del orquestador al leer `void()`): lo genérico de anular (movimientos, cartera, saldos a favor, reservas vía `isReservationStrategy`) no depende del tipo; lo único propio de cada tipo son 4 reglas. En vez de un `void()` completo por estrategia (duplicaría la lógica en 12 clases), se agregan a la estrategia flags/métodos como los ya existentes `tracksCustomerBranch`/`usesTodayDate`: `tracksReceiver` (CM), `affectsCostOnVoid(unitCost)` (CM siempre, EAI con costo > 0) y `revertsLastCostOnVoid` (CM). Cumple S4: desaparecen los `if (type === ...)` y lo propio del tipo vive en la estrategia.
 
 ## Estado final (2026-10-28)
-- Todas las tareas hechas y verificadas. Ninguna rama está pusheada.
-- Cadena backend: `refactor/void-tests` d040528 → `refactor/document-amounts` e6e0ad2 → `refactor/documents-query-service` 18de722 → `refactor/document-conversion-service` 3396166 → `refactor/document-void-service` 8ecfe9b.
-- Cadena frontend: `test/frontend-vitest` 3cbbc68 → `refactor/pos-checkout-split` eb6e27f → `refactor/document-form-split` 5ef67bf.
-- PRs apilados: el primero de cada cadena apunta a `main`, cada siguiente a la rama anterior.
-- Worktrees `.worktrees/backend` y `.worktrees/frontend` se dejan para la prueba visual; quitarlos con `git worktree remove` (las ramas quedan).
-- Pendiente del usuario: prueba visual del POS (retomar borrador con pagos y saldos a favor, convertir con error de cupo) y del formulario genérico (CM oficial, traslado, EAI/SAJ, DVV, CMO), push y PRs.
-- Opcional: pruebas puras de `document-form/buildDocumentPayload.ts` y `documentTypeFlags.ts`; pre-commit con `pnpm test` del frontend.
+- Prueba visual del usuario OK ("funciona perfecto").
+- Mergeado en main con CI verde, un PR por pieza: #46 T1, #47 T2, #48 T3, #49 T4, #50 T5, #51 T6, #52 T7, #53 T8. Aparte: #54 fix de caché del listado de productos.
+- Ramas y worktrees eliminados.
+- Pendientes: F1 en el backlog (costo promedio al anular con stock 0); opcional pruebas puras de `document-form/buildDocumentPayload.ts` y `documentTypeFlags.ts`, y pre-commit con `pnpm test` del frontend.

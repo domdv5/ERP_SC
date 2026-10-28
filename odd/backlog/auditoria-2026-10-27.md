@@ -44,7 +44,7 @@ Orden sugerido: S1 → S2 → S4 → A5 (pruebas frontend de helpers) → A2 →
 
 ### Estado (2026-10-28)
 
-Detalle y evidencia por tarea en `odd/tasks/dividir-archivos-grandes.md`. Ramas apiladas, sin push todavía.
+Detalle y evidencia por tarea en `odd/tasks/dividir-archivos-grandes.md`. Mergeado en main: PRs #46–#53.
 
 - [x] A1 — `documents.service.ts` 1.649 → 506 líneas, repartido en `documents-query.service.ts`, `document-conversion.service.ts`, `document-void.service.ts`, `helpers/document-amounts.ts` y `helpers/document-guards.helpers.ts`. Ramas `refactor/void-tests` (d040528) → `refactor/document-amounts` (e6e0ad2) → `refactor/documents-query-service` (18de722) → `refactor/document-conversion-service` (3396166) → `refactor/document-void-service` (8ecfe9b).
 - [x] A2 — sin `if (type === ...)` en los services: `tracksReceiver`, `affectsCostOnVoid(unitCost)` y `revertsLastCostOnVoid` en la estrategia (8ecfe9b).
