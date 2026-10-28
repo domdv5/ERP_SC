@@ -1,3 +1,4 @@
+import type { JwtPayload } from '@/common/types';
 import {
   Injectable,
   InternalServerErrorException,
@@ -18,8 +19,11 @@ export class DocumentPrintService {
     private readonly pdfGenerator: PdfGeneratorService,
   ) {}
 
-  async print(id: string): Promise<{ buffer: Buffer; filename: string }> {
-    const document = await this.documentsQuery.getDocumentForPrint(id);
+  async print(
+    id: string,
+    user: JwtPayload,
+  ): Promise<{ buffer: Buffer; filename: string }> {
+    const document = await this.documentsQuery.getDocumentForPrint(id, user);
     const strategy = this.printRegistry.get(document.type);
 
     let buffer: Buffer;

@@ -14,6 +14,10 @@ import {
 } from './dto/index';
 import { getCreditLimitSummary } from './helpers/credit.helpers';
 import { withPvStatus } from './helpers/pv-status.helper';
+import {
+  assertCanViewDocument,
+  findVisibleDocumentTypes,
+} from './helpers/document-visibility.helpers';
 
 export const DETAIL_INCLUDE = {
   documentItems: {
@@ -144,17 +148,6 @@ export type DocumentForPrint = Prisma.DocumentGetPayload<{
 export class DocumentsQueryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Tipos de documento visibles en el listado: se derivan de los permisos document.create.{TIPO} del usuario. */
-  private visibleDocumentTypes(permissions: string[]): DocumentType[] {
-    const prefixes = ['document.create.', 'document.void.'];
-    const valid = new Set<string>(Object.values(DocumentType));
-    const types = permissions.flatMap((p) => {
-      const prefix = prefixes.find((pre) => p.startsWith(pre));
-      return prefix ? [p.slice(prefix.length)] : [];
-    });
-    return [...new Set(types)].filter((t): t is DocumentType => valid.has(t));
-  }
-
   async findAll(findAllDocumentsDto: FindAllDocumentsDto, user: JwtPayload) {
     const {
       page = 1,
@@ -178,7 +171,7 @@ export class DocumentsQueryService {
       : type
         ? [type]
         : undefined;
-    const allowedTypes = this.visibleDocumentTypes(user.permissions);
+    const allowedTypes = findVisibleDocumentTypes(user.permissions);
     // Tipos pedidos se intersecan con los visibles del rol; fuera de alcance da lista vacía, nunca 403.
     const effectiveTypes = requestedTypes
       ? requestedTypes.filter((t) => allowedTypes.includes(t))
@@ -298,6 +291,13 @@ export class DocumentsQueryService {
     };
   }
 
+  /** Detalle pedido por un usuario: además del documento, valida que su rol pueda ver ese tipo. */
+  async findOneForUser(id: string, user: JwtPayload) {
+    const document = await this.findOne(id);
+    assertCanViewDocument(user.permissions, document.type);
+    return document;
+  }
+
   async findOne(id: string) {
     const document = await this.prisma.document.findUnique({
       where: { id },
@@ -312,7 +312,10 @@ export class DocumentsQueryService {
   }
 
   /** Datos mínimos para el PDF. Solo documentos confirmados: un borrador todavía puede cambiar y un PDF de algo no definitivo confunde. */
-  async getDocumentForPrint(id: string): Promise<DocumentForPrint> {
+  async getDocumentForPrint(
+    id: string,
+    user: JwtPayload,
+  ): Promise<DocumentForPrint> {
     const document = await this.prisma.document.findUnique({
       where: { id },
       include: PRINT_INCLUDE,
@@ -321,6 +324,8 @@ export class DocumentsQueryService {
     if (!document) {
       throw new NotFoundException('Documento no encontrado');
     }
+
+    assertCanViewDocument(user.permissions, document.type);
 
     if (document.status !== DocumentStatus.confirmed) {
       throw new BadRequestException(
