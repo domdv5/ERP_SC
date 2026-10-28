@@ -1,5 +1,5 @@
 import type { Content, TableCell } from 'pdfmake/interfaces';
-import type { DocumentForPrint } from '@/documents/documents.service';
+import type { DocumentForPrint } from '@/documents/documents-query.service';
 import {
   computeItemIva,
   computeSaleUnitValues,

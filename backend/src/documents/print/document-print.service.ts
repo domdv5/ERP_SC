@@ -3,7 +3,7 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { DocumentsService } from '@/documents/documents.service';
+import { DocumentsQueryService } from '@/documents/documents-query.service';
 import { DocumentPrintRegistry } from './strategies/document-print.registry';
 import { PdfGeneratorService } from './pdf-generator.service';
 
@@ -13,13 +13,13 @@ export class DocumentPrintService {
   private readonly logger = new Logger(DocumentPrintService.name);
 
   constructor(
-    private readonly documentsService: DocumentsService,
+    private readonly documentsQuery: DocumentsQueryService,
     private readonly printRegistry: DocumentPrintRegistry,
     private readonly pdfGenerator: PdfGeneratorService,
   ) {}
 
   async print(id: string): Promise<{ buffer: Buffer; filename: string }> {
-    const document = await this.documentsService.getDocumentForPrint(id);
+    const document = await this.documentsQuery.getDocumentForPrint(id);
     const strategy = this.printRegistry.get(document.type);
 
     let buffer: Buffer;

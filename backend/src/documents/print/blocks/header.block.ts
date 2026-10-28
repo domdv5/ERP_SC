@@ -1,5 +1,5 @@
 import type { Content, DynamicContent } from 'pdfmake/interfaces';
-import type { DocumentForPrint } from '@/documents/documents.service';
+import type { DocumentForPrint } from '@/documents/documents-query.service';
 import { COMPANY_INFO } from '../company-info.constant';
 import { formatPrintCity } from '../helpers/print-city.helper';
 

@@ -30,7 +30,8 @@ jest.mock('./helpers/reservation.helpers', () => ({
 
 describe('DocumentsService.void: validaciones y estado', () => {
   const harness = createVoidHarness();
-  const { tx, prisma, service, found, loadDocument, rawSql } = harness;
+  const { tx, prisma, service, documentsQuery, found, loadDocument, rawSql } =
+    harness;
 
   beforeEach(() => {
     resetVoidHarness(harness);
@@ -201,7 +202,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
       expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
         timeout: 30000,
       });
-      expect(service.findOne).toHaveBeenCalledWith('doc-1');
+      expect(documentsQuery.findOne).toHaveBeenCalledWith('doc-1');
       expect(result).toBe(found);
     });
 

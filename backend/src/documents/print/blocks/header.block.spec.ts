@@ -1,4 +1,4 @@
-import type { DocumentForPrint } from '@/documents/documents.service';
+import type { DocumentForPrint } from '@/documents/documents-query.service';
 import { buildHeader } from './header.block';
 
 const MEDELLIN = { name: 'MEDELLÍN', department: { name: 'ANTIOQUIA' } };

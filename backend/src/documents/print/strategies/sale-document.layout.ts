@@ -1,5 +1,5 @@
 import type { TDocumentDefinitions } from 'pdfmake/interfaces';
-import type { DocumentForPrint } from '@/documents/documents.service';
+import type { DocumentForPrint } from '@/documents/documents-query.service';
 import {
   buildHeader,
   buildSaleFooter,

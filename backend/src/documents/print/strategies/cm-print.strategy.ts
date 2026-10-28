@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DocumentType } from '@/common/enums';
-import type { DocumentForPrint } from '@/documents/documents.service';
+import type { DocumentForPrint } from '@/documents/documents-query.service';
 import type { DocumentPrintStrategy } from './document-print.strategy';
 import { buildPurchaseDocumentDefinition } from './purchase-document.layout';
 

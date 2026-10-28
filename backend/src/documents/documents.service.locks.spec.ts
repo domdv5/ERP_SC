@@ -4,6 +4,7 @@ import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import { DocumentsService } from './documents.service';
+import { DocumentsQueryService } from './documents-query.service';
 import { DocumentEffectsRegistry } from './strategies/document-effects.registry';
 
 const user = {
@@ -47,10 +48,14 @@ describe('DocumentsService: lock del documento antes de liberar o convertir', ()
     getReservation: jest.fn(() => ({ releaseItems })),
   };
   const sequence = { next: jest.fn().mockResolvedValue('POS-1') };
+  const documentsQuery = new DocumentsQueryService(
+    prisma as unknown as PrismaService,
+  );
   const service = new DocumentsService(
     prisma as unknown as PrismaService,
     registry as unknown as DocumentEffectsRegistry,
     sequence as unknown as SequenceService,
+    documentsQuery,
   );
   const releaseDto = { items: [{ documentItemId: 'i1', quantity: 1 }] };
   const convertDto = { targetType: DocumentType.POS };
@@ -65,7 +70,7 @@ describe('DocumentsService: lock del documento antes de liberar o convertir', ()
       type: DocumentType.POS,
       derivedDocuments: [],
     });
-    jest.spyOn(service, 'findOne').mockResolvedValue({} as never);
+    jest.spyOn(documentsQuery, 'findOne').mockResolvedValue({} as never);
   });
 
   describe('releaseItems', () => {
