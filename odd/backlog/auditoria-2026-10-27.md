@@ -54,17 +54,17 @@ Detalle y evidencia por tarea en `odd/tasks/dividir-archivos-grandes.md`. Mergea
 
 ### Resumen de pendientes (2026-10-28)
 
-Nota estimada tras el split: arquitectura ~7.5/10 (backend 8, frontend 7, contrato front/back 4); seguridad sigue 8/10.
+Nota estimada: arquitectura ~7.5/10 (backend 8, frontend 7, contrato front/back 4); seguridad ~9/10 tras S1/S2/S4/S5 (detalle en `odd/tasks/seguridad-cortos.md`).
 
 | Orden | # | Pendiente | Tamaño |
 |---|---|---|---|
-| 1 | S1 | `GET /documents/:id` y PDF sin filtrar por tipo visible | Chico |
-| 2 | S2 | Actualizar dependencias con DoS (`body-parser`, `multer`, `qs`) | Chico |
-| 3 | S4 | Validar `JWT_SECRET` al arrancar | Chico |
+| ✅ | S1 | `GET /documents/:id` y PDF sin filtrar por tipo visible | Hecho (#57, #59) |
+| ✅ | S2 | Actualizar dependencias con DoS (`body-parser`, `multer`, `qs`) | Hecho (#58) |
+| ✅ | S4 | Validar `JWT_SECRET` al arrancar | Hecho (#55) |
 | 4 | A4 | Generar tipos del frontend desde el backend | Mediano |
 | 5 | A5 | Pruebas de pantallas/hooks y e2e | Mediano |
 | 6 | F1 | Costo promedio al anular compra que deja stock 0 | Chico |
-| 7 | S5 | Contraseña 8+ con letras y números | Chico |
+| ✅ | S5 | Contraseña 8+ con letras y números | Hecho (#56) |
 | 8 | S3/S6 | JWT en cookie `HttpOnly` (resuelve también el token del SSE) | Grande |
 | — | Lint | Frontend sin ESLint configurado (`frontend/CLAUDE.md` menciona `pnpm lint`); errores `no-unsafe-*` en specs del backend | Chico |
 | — | Idea | Venta mixta contado+crédito = COT por el total + recibo de caja automático | Por definir |
