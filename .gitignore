@@ -59,3 +59,8 @@ TASKS.txt
 graphify-out
 .atl/
 PENDIENTES-PRODUCCION.md
+
+# Worktrees locales (git worktree, Claude Code)
+.worktrees/
+.claude/worktrees/
+.tours/
