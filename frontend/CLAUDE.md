@@ -222,6 +222,7 @@ import { StatsGrid } from '@/components/shared/StatsGrid'
 | `TableSkeleton` | `rows?`, `widths: [w1, w2, w3, w4]` | Animated placeholder while data loads |
 | `SegmentedToggle` | `checked`, `onChange`, `uncheckedLabel`, `checkedLabel` | Two-option pill toggle (e.g. Activos/Inactivos on Products and ThirdParties list pages) |
 | `EmptyState` | `icon`, `title`, `description` | No-data / no-results state inside table |
+| `PasswordRuleHint` | `value` | Bajo todo input de contraseña nueva (`UserForm`, `ChangePasswordDialog`): lista en vivo las 3 partes de `checkPasswordRule` (`@/lib/password-rule`) con ícono + texto; el schema zod usa `isValidPassword`/`PASSWORD_RULE_MESSAGE` |
 | `ErrorState` | `message`, `onRetry` | Fetch error state inside table |
 | `TablePagination` | `page`, `totalPages`, `total`, `onPageChange` | Footer pagination; auto-hides if `totalPages ≤ 1` |
 | `PageLoader` | — | Full-page branded loading spinner |

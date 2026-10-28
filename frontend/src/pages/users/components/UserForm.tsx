@@ -8,6 +8,8 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
+import { isValidPassword, PASSWORD_RULE_MESSAGE } from '@/lib/password-rule'
+import { PasswordRuleHint } from '@/components/shared'
 import { getRoles, getRoleLabel } from '@/services/users.service'
 import type { AppUser } from '@/services/users.service'
 
@@ -17,7 +19,7 @@ const createSchema = z
   .object({
     name: z.string().min(1, 'El nombre es requerido').max(100, 'Máximo 100 caracteres'),
     username: z.string().min(3, 'Mínimo 3 caracteres').max(50, 'Máximo 50 caracteres'),
-    password: z.string().min(6, 'Mínimo 6 caracteres'),
+    password: z.string().refine(isValidPassword, PASSWORD_RULE_MESSAGE),
     confirmPassword: z.string().min(1, 'Confirma la contraseña'),
     roleIds: z.array(z.string()).min(1, 'Selecciona al menos un rol'),
     active: z.boolean().optional(),
@@ -36,7 +38,10 @@ const editSchema = z
   .object({
     name: z.string().min(1, 'El nombre es requerido').max(100, 'Máximo 100 caracteres'),
     username: z.string().min(3, 'Mínimo 3 caracteres').max(50, 'Máximo 50 caracteres'),
-    password: z.string().min(6, 'Mínimo 6 caracteres').optional().or(z.literal('')),
+    password: z
+      .string()
+      .refine((value) => value === '' || isValidPassword(value), PASSWORD_RULE_MESSAGE)
+      .optional(),
     confirmPassword: z.string().optional().or(z.literal('')),
     roleIds: z.array(z.string()).min(1, 'Selecciona al menos un rol'),
     active: z.boolean().optional(),
@@ -104,7 +109,7 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
 
   const schema = isEdit ? editSchema : createSchema
 
-  const { register, handleSubmit, reset, control } = useForm<UserFormValues>({
+  const { register, handleSubmit, reset, control, watch } = useForm<UserFormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
       name: '',
@@ -114,6 +119,8 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
       active: true,
     },
   })
+
+  const passwordValue = watch('password') ?? ''
 
   useEffect(() => {
     if (open) {
@@ -199,7 +206,7 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
                 <Input
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
-                  placeholder={isEdit ? 'Dejar en blanco para no cambiar' : 'Mínimo 6 caracteres'}
+                  placeholder={isEdit ? 'Dejar en blanco para no cambiar' : 'Mínimo 8 caracteres'}
                   autoComplete="new-password"
                   className="pr-10"
                 />
@@ -212,6 +219,7 @@ export function UserForm({ open, onClose, onSubmit, isPending, defaultValues }: 
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {passwordValue !== '' && <PasswordRuleHint value={passwordValue} />}
             </Field>
 
             <Field label={isEdit ? 'Confirmar nueva contraseña' : 'Confirmar contraseña'}>
