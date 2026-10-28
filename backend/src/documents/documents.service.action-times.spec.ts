@@ -3,6 +3,7 @@ import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import { DocumentsService } from './documents.service';
+import { DocumentsQueryService } from './documents-query.service';
 import { DocumentEffectsRegistry } from './strategies/document-effects.registry';
 
 const user = {
@@ -27,10 +28,14 @@ describe('DocumentsService: hora de cada acción', () => {
       resolveItemAddedAt: (_requested: string | undefined, now: Date) => now,
     })),
   };
+  const documentsQuery = new DocumentsQueryService(
+    prisma as unknown as PrismaService,
+  );
   const service = new DocumentsService(
     prisma as unknown as PrismaService,
     registry as unknown as DocumentEffectsRegistry,
     {} as SequenceService,
+    documentsQuery,
   );
   const draft = {
     id: 'doc-1',

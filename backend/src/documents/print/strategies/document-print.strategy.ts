@@ -1,6 +1,6 @@
 import type { TDocumentDefinitions } from 'pdfmake/interfaces';
 import { DocumentType } from '@/common/enums';
-import type { DocumentForPrint } from '@/documents/documents.service';
+import type { DocumentForPrint } from '@/documents/documents-query.service';
 
 /** Contrato de impresión por tipo (patrón Strategy): un tipo nuevo solo agrega una clase, sin tocar el service de impresión. */
 export interface DocumentPrintStrategy {

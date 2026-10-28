@@ -14,6 +14,7 @@ import {
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
+import { DocumentsQueryService } from './documents-query.service';
 import { DocumentPrintService } from './print/index';
 import {
   ConfirmDocumentDto,
@@ -31,6 +32,7 @@ import type { RequestWithUser } from '@/common/types';
 export class DocumentsController {
   constructor(
     private readonly documentsService: DocumentsService,
+    private readonly documentsQuery: DocumentsQueryService,
     private readonly documentPrintService: DocumentPrintService,
   ) {}
 
@@ -40,34 +42,34 @@ export class DocumentsController {
     @Query() findAllDocumentsDto: FindAllDocumentsDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.documentsService.findAll(findAllDocumentsDto, req.user);
+    return this.documentsQuery.findAll(findAllDocumentsDto, req.user);
   }
 
   // Antes de @Get(':id') para que "official-purchases" no se interprete como un id.
   @Get('official-purchases/pending')
   @Permissions('document.create.CMO')
   findPendingOfficialPurchases(@Query() dto: FindPendingOfficialPurchasesDto) {
-    return this.documentsService.findPendingOfficialPurchases(dto);
+    return this.documentsQuery.findPendingOfficialPurchases(dto);
   }
 
   // Antes de @Get(':id') para que "customers" no se interprete como un id.
   @Get('customers/:customerId/credit')
   @Permissions('document.create.COT')
   getCreditLimit(@Param('customerId') customerId: string) {
-    return this.documentsService.getCreditLimitSummary(customerId);
+    return this.documentsQuery.getCreditLimitSummary(customerId);
   }
 
   // No confundir con customers/:customerId/credit (cupo de crédito).
   @Get('customers/:customerId/available-credits')
   @Permissions('document.create.POS')
   findAvailableCustomerCredits(@Param('customerId') customerId: string) {
-    return this.documentsService.findAvailableCustomerCredits(customerId);
+    return this.documentsQuery.findAvailableCustomerCredits(customerId);
   }
 
   @Get(':id')
   @Permissions('document.read')
   findOne(@Param('id') id: string) {
-    return this.documentsService.findOne(id);
+    return this.documentsQuery.findOne(id);
   }
 
   @Get(':id/missing-stock')

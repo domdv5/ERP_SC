@@ -2,6 +2,7 @@ import { DocumentStatus, DocumentType } from '@/common/enums';
 import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DocumentsService } from './documents.service';
+import { DocumentsQueryService } from './documents-query.service';
 import { DocumentEffectsRegistry } from './strategies/document-effects.registry';
 import {
   applyStockChange,
@@ -80,10 +81,14 @@ export function createVoidHarness() {
   };
   const registry = { get: jest.fn() };
   const sequence = { next: jest.fn() };
+  const documentsQuery = new DocumentsQueryService(
+    prisma as unknown as PrismaService,
+  );
   const service = new DocumentsService(
     prisma as unknown as PrismaService,
     registry as unknown as DocumentEffectsRegistry,
     sequence,
+    documentsQuery,
   );
   const found = { id: 'doc-1' };
 
@@ -96,7 +101,16 @@ export function createVoidHarness() {
   const rawSql = () =>
     tx.$queryRaw.mock.calls.map((call) => (call[0] as string[]).join('?'));
 
-  return { tx, prisma, registry, service, found, loadDocument, rawSql };
+  return {
+    tx,
+    prisma,
+    registry,
+    service,
+    documentsQuery,
+    found,
+    loadDocument,
+    rawSql,
+  };
 }
 
 export type VoidHarness = ReturnType<typeof createVoidHarness>;
@@ -105,7 +119,7 @@ export function resetVoidHarness({
   tx,
   prisma,
   registry,
-  service,
+  documentsQuery,
   found,
 }: VoidHarness) {
   jest.resetAllMocks();
@@ -132,5 +146,5 @@ export function resetVoidHarness({
   });
   jest.mocked(calculateAvgCostAfterVoid).mockResolvedValue(75);
   jest.mocked(findLastPurchaseCostAfterVoid).mockResolvedValue(90);
-  jest.spyOn(service, 'findOne').mockResolvedValue(found as never);
+  jest.spyOn(documentsQuery, 'findOne').mockResolvedValue(found as never);
 }

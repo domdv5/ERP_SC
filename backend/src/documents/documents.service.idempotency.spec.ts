@@ -5,6 +5,7 @@ import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import { DocumentsService } from './documents.service';
+import { DocumentsQueryService } from './documents-query.service';
 import { DocumentEffectsRegistry } from './strategies/document-effects.registry';
 import { CreateDocumentDto } from './dto/index';
 import { isSameDocumentRequest } from './helpers/idempotency.helpers';
@@ -100,10 +101,14 @@ describe('DocumentsService.create: clave para no duplicar al reintentar', () => 
     })),
   };
   const sequence = { next: jest.fn().mockResolvedValue('000001') };
+  const documentsQuery = new DocumentsQueryService(
+    prisma as unknown as PrismaService,
+  );
   const service = new DocumentsService(
     prisma as unknown as PrismaService,
     registry as unknown as DocumentEffectsRegistry,
     sequence as unknown as SequenceService,
+    documentsQuery,
   );
 
   beforeEach(() => {
@@ -366,10 +371,14 @@ describe('DocumentsService.create: customerBranchId solo en ventas', () => {
     })),
   };
   const sequence = { next: jest.fn().mockResolvedValue('000001') };
+  const documentsQuery = new DocumentsQueryService(
+    prisma as unknown as PrismaService,
+  );
   const service = new DocumentsService(
     prisma as unknown as PrismaService,
     registry as unknown as DocumentEffectsRegistry,
     sequence as unknown as SequenceService,
+    documentsQuery,
   );
 
   beforeEach(() => {

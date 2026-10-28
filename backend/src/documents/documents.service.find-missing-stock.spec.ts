@@ -4,6 +4,7 @@ import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import { DocumentsService } from './documents.service';
+import { DocumentsQueryService } from './documents-query.service';
 import { DocumentEffectsRegistry } from './strategies/document-effects.registry';
 
 const user = {
@@ -29,10 +30,12 @@ describe('DocumentsService.findMissingStock', () => {
   const get = jest.fn();
   const prisma = { document: { findUnique } } as unknown as PrismaService;
   const registry = { get } as unknown as DocumentEffectsRegistry;
+  const documentsQuery = new DocumentsQueryService(prisma);
   const service = new DocumentsService(
     prisma,
     registry,
     {} as unknown as SequenceService,
+    documentsQuery,
   );
 
   beforeEach(() => jest.resetAllMocks());

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { DocumentsService } from './documents.service';
+import { DocumentsQueryService } from './documents-query.service';
 import { DocumentsController } from './documents.controller';
 import {
   CmEffectStrategy,
@@ -39,6 +40,7 @@ import {
   controllers: [DocumentsController],
   providers: [
     DocumentsService,
+    DocumentsQueryService,
     CmEffectStrategy,
     DvcEffectStrategy,
     DvvEffectStrategy,

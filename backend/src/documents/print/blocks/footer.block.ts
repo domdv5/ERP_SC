@@ -1,5 +1,5 @@
 import type { Content, DynamicContent } from 'pdfmake/interfaces';
-import type { DocumentForPrint } from '@/documents/documents.service';
+import type { DocumentForPrint } from '@/documents/documents-query.service';
 
 // createdAt es timestamp real (no fecha-calendario): se formatea en la zona horaria del negocio, no UTC.
 function formatDate(date: Date | string): string {
