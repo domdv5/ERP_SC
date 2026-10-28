@@ -1,134 +1,45 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm, useFieldArray, Controller } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { useDebounce } from 'use-debounce'
-import { ArrowLeft, Plus, Loader2, Info, Link2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
-import { getDocument, createDocument, updateDocument } from '@/services/documents.service'
-import { getWarehouses, getWarehouse } from '@/services/warehouses.service'
-import { getThirdParties } from '@/services/third-parties.service'
-import { useAuthStore } from '@/stores/auth.store'
-import { invalidateAfterDocumentChange } from '@/lib/invalidation'
-import { Combobox, CustomerBranchSelect } from '@/components/shared'
-import { useCustomerBranches } from '@/hooks/useCustomerBranches'
-import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
-import { formatCOP, docNumber, todayInBogota } from '@/lib/format'
-import { computeOfficialTotals, removeOfficialTax } from '@/lib/tax'
+import { todayInBogota } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { formSchema, type FormValues } from './document-form.schema'
-import {
-  operationFormTypes,
-  DOC_TYPE_ACCENT,
-  EAI_ADJUSTMENT_REASON_OPTIONS,
-  DVV_REFUND_METHOD_OPTIONS,
-} from './document.constants'
-import { ProductRow } from './components/ProductRow'
-import { BarcodeScanInput } from './components/BarcodeScanInput'
+import { EAI_ADJUSTMENT_REASON_OPTIONS } from './document.constants'
+import { DocumentExtraFields } from './document-form/DocumentExtraFields'
+import { DocumentFormHeader } from './document-form/DocumentFormHeader'
+import { DocumentItemsEditor } from './document-form/DocumentItemsEditor'
+import { DocumentTypeField } from './document-form/DocumentTypeField'
+import { OfficialInvoiceFields } from './document-form/OfficialInvoiceFields'
+import { PartyFields } from './document-form/PartyFields'
+import { TransferFields } from './document-form/TransferFields'
+import { getDocumentTypeFlags } from './document-form/documentTypeFlags'
+import { typeLabelFor } from './document-form/documentTypeLabels'
+import { useDocumentFormType } from './document-form/useDocumentFormType'
+import { useDocumentItems } from './document-form/useDocumentItems'
+import { useDocumentParties } from './document-form/useDocumentParties'
+import { useExistingDocument } from './document-form/useExistingDocument'
+import { useOfficialPurchasePrefill } from './document-form/useOfficialPurchasePrefill'
+import { useSaveDocument } from './document-form/useSaveDocument'
+import { useTransferLocations } from './document-form/useTransferLocations'
 
-import type { Warehouse, WarehouseDetail } from '@/types/warehouse.types'
-import type { ThirdParty } from '@/types/third-party.types'
 import type { DocumentSourceRef } from '@/types/document.types'
-
-// ─── constants ───────────────────────────────────────────────────────────────
-
-// Sustantivo por tipo para títulos y botones: la remisión y la devolución en venta tienen
-// texto propio; el resto usa "operación".
-const TYPE_LABEL: Record<string, string> = {
-  REM: 'remisión',
-  DVV: 'devolución en venta',
-  CMO: 'compra oficial',
-}
-const FIXED_TYPE_LABEL: Record<string, string> = {
-  REM: 'Remisión',
-  DVV: 'Devolución en venta',
-  CMO: 'Compra oficial',
-}
-const typeLabelFor = (t: string) => TYPE_LABEL[t] ?? 'operación'
-
-// ─── main page ───────────────────────────────────────────────────────────────
 
 export default function DocumentFormPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
   const isEditing = Boolean(id)
-  const queryClient = useQueryClient()
 
-  const userPermissions = useAuthStore((s) => s.user?.permissions ?? [])
-  const canCreateType = (t: string) => userPermissions.includes(`document.create.${t}`)
-
-  const availableTypes = operationFormTypes(userPermissions)
-
-  // Tipos que solo se pueden crear desde un enlace directo, no desde el desplegable.
-  const DEEP_LINK_TYPES: readonly FormValues['type'][] = ['REM', 'DVV', 'CMO']
-  const requestedType = searchParams.get('type') as FormValues['type'] | null
-  const requestedTypeAllowed =
-    requestedType != null &&
-    canCreateType(requestedType) &&
-    (DEEP_LINK_TYPES.includes(requestedType) ||
-      availableTypes.some((opt) => opt.value === requestedType))
-  const defaultType = (
-    requestedTypeAllowed ? requestedType : (availableTypes[0]?.value ?? 'CM')
-  ) as FormValues['type']
-
-  // Si el enlace pide crear un tipo para el que el usuario no tiene permiso, no romper:
-  // mandarlo al listado. Al editar, el tipo lo fija el documento existente.
-  useEffect(() => {
-    if (isEditing || !requestedType || canCreateType(requestedType)) return
-    toast.error('No tienes permiso para crear este tipo de documento')
-    navigate('/documents', { replace: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestedType, isEditing])
-
-  // Sin tipos para el desplegable ni enlace válido no hay qué crear (el caso del enlace sin permiso ya avisa arriba).
-  useEffect(() => {
-    if (isEditing || requestedTypeAllowed || availableTypes.length > 0) return
-    if (requestedType && !canCreateType(requestedType)) return
-    toast.error('No tienes operaciones disponibles para crear')
-    navigate('/documents', { replace: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing, requestedTypeAllowed, availableTypes.length])
+  const { availableTypes, defaultType } = useDocumentFormType(isEditing)
 
   // CM oficial de la que se precarga la compra oficial (bandeja); solo aplica a CMO nueva.
   const fromCMId = searchParams.get('fromCM')
   const [sourceRef, setSourceRef] = useState<DocumentSourceRef | null>(null)
-  const prefilledFromCMRef = useRef(false)
-  const idempotencyKeyRef = useRef(crypto.randomUUID())
-
-  // Búsqueda de tercero: proveedor en compras y devoluciones, cliente en preventas y remisiones.
-  const [tpSearch, setTpSearch] = useState('')
-  const [debouncedTpSearch] = useDebounce(tpSearch, 400)
-  const [tpSelectedName, setTpSelectedName] = useState('')
-  // Marcas activas del proveedor elegido (solo compras y devoluciones): el buscador y el
-  // escaneo de productos quedan restringidos a esas marcas.
-  const [selectedSupplierBrandIds, setSelectedSupplierBrandIds] = useState<string[]>([])
-  // Condiciones de descuento del proveedor elegido, solo informativas (no se calcula nada).
-  // Se muestran en un aviso, solo en compras.
-  const [selectedSupplierDiscountNotes, setSelectedSupplierDiscountNotes] = useState<
-    string | undefined
-  >()
-
-  // Vendedora: solo preventas y remisiones.
-  const [sellerSearch, setSellerSearch] = useState('')
-  const [debouncedSellerSearch] = useDebounce(sellerSearch, 400)
-  const [sellerSelectedName, setSellerSelectedName] = useState('')
-  const [receiverSearch, setReceiverSearch] = useState('')
-  const [debouncedReceiverSearch] = useDebounce(receiverSearch, 400)
-  const [receiverSelectedName, setReceiverSelectedName] = useState('')
-
-  // Datos del producto al momento de escanearlo; availableStock queda vacío al reabrir un borrador (mostrar el "actual" engañaría, ya está reservando).
-  const [scannedProductInfo, setScannedProductInfo] = useState<
-    Record<string, { avgCost: number; unitOfMeasure: 'unidad' | 'docena'; availableStock?: number }>
-  >({})
-
-  // useRef, no useState: la lista de referencias del ciclo escanear → cantidad → escanear no debe provocar re-render.
-  const quantityInputRefs = useRef<Map<number, HTMLInputElement>>(new Map())
-  const barcodeInputRef = useRef<{ focus: () => void }>(null)
-  const [pendingQuantityFocusIndex, setPendingQuantityFocusIndex] = useState<number | null>(null)
 
   const { control, register, handleSubmit, watch, setValue, getValues, reset } =
     useForm<FormValues>({
@@ -141,470 +52,46 @@ export default function DocumentFormPage() {
       },
     })
 
-  const { fields, append, remove, replace } = useFieldArray({ control, name: 'items' })
-
-  // `fields` en las dependencias: si el índice pendiente se fija junto con la fila nueva, el efecto se re-evalúa cuando ya está montada.
-  useEffect(() => {
-    if (pendingQuantityFocusIndex === null) return
-    quantityInputRefs.current.get(pendingQuantityFocusIndex)?.focus()
-    setPendingQuantityFocusIndex(null)
-  }, [pendingQuantityFocusIndex, fields])
+  const items = useDocumentItems(control)
+  const { append, replace, setScannedProductInfo } = items
 
   const docType = watch('type')
-  const warehouseId = watch('warehouseId')
-  const destWarehouseId = watch('destWarehouseId')
-  // Ícono y color de acento del encabezado; se recalculan en vivo al cambiar el tipo de operación.
-  const accent = DOC_TYPE_ACCENT[docType]
-  // Tipos que llegan con el tipo ya fijado por deep-link: el selector se reemplaza por un pill
-  // no editable.
-  const isFixedType = docType === 'REM' || docType === 'DVV' || docType === 'CMO'
-  const fixedTypeLabel = FIXED_TYPE_LABEL[docType] ?? ''
+  const typeFlags = getDocumentTypeFlags(docType)
+  const { accent, needsCustomer, isTodayOnly, needsTransfer, needsAdjustmentReason } = typeFlags
 
-  // ── load existing document for edit ──────────────────────────────────────
-  const { data: existingDoc, isLoading: isLoadingDoc } = useQuery({
-    queryKey: ['document', id],
-    queryFn: () => getDocument(id!),
-    enabled: isEditing,
-    staleTime: 5 * 60 * 1000,
+  const parties = useDocumentParties(watch, typeFlags)
+  const { customerBranches, isLoadingBranches } = parties
+
+  const { isLoadingDoc } = useExistingDocument({
+    id,
+    isEditing,
+    reset,
+    parties,
+    setSourceRef,
+    setScannedProductInfo,
   })
 
-  useEffect(() => {
-    if (!existingDoc) return
-    if (existingDoc.status !== 'draft') {
-      toast.error('Solo se pueden editar operaciones en estado borrador')
-      navigate(`/documents/${existingDoc.id}`)
-      return
-    }
-    // Un borrador de venta no se edita acá (sin cliente/vendedora/forma de pago/cupo en este form genérico); se retoma desde el checkout.
-    if (existingDoc.type === 'POS' || existingDoc.type === 'COT' || existingDoc.type === 'POSO') {
-      navigate(`/documents/pos/new?draft=${existingDoc.id}`, { replace: true })
-      return
-    }
-    setTpSelectedName(existingDoc.thirdParty?.name ?? '')
-    setSellerSelectedName(existingDoc.seller?.name ?? '')
-    setReceiverSelectedName(existingDoc.receiver?.name ?? '')
-    setSelectedSupplierBrandIds(existingDoc.thirdParty?.supplier?.brands.map((b) => b.id) ?? [])
-    setSelectedSupplierDiscountNotes(existingDoc.thirdParty?.supplier?.discountNotes ?? undefined)
-    setSourceRef(existingDoc.type === 'CMO' ? existingDoc.sourceDocument : null)
-    setScannedProductInfo(
-      Object.fromEntries(
-        existingDoc.documentItems.map((item) => [
-          item.productId,
-          {
-            avgCost: Number(item.product.avgCost),
-            unitOfMeasure: item.product.unitOfMeasure,
-          },
-        ]),
-      ),
-    )
-    reset({
-      type: existingDoc.type,
-      // La remisión siempre queda con la fecha del día; el backend la vuelve a fijar al guardar
-      date: existingDoc.type === 'REM' ? todayInBogota() : existingDoc.date.slice(0, 10),
-      thirdPartyId: existingDoc.thirdParty?.id ?? undefined,
-      sellerId: existingDoc.seller?.id ?? undefined,
-      receiverId: existingDoc.receiver?.id ?? undefined,
-      warehouseId: existingDoc.warehouse?.id ?? undefined,
-      sourceBinId: existingDoc.sourceBin?.id ?? undefined,
-      destWarehouseId: existingDoc.destWarehouse?.id ?? undefined,
-      destBinId: existingDoc.destBin?.id ?? undefined,
-      customerBranchId: existingDoc.customerBranch?.id ?? undefined,
-      adjustmentReason: existingDoc.adjustmentReason ?? undefined,
-      adjustmentReasonOther: existingDoc.adjustmentReasonOther ?? undefined,
-      refundMethod: existingDoc.refundMethod ?? undefined,
-      officialPurchase: existingDoc.officialPurchase ?? false,
-      supplierInvoiceNumber: existingDoc.supplierInvoiceNumber ?? undefined,
-      sourceDocumentId: existingDoc.type === 'CMO' ? existingDoc.sourceDocument?.id : undefined,
-      notes: existingDoc.notes ?? undefined,
-      items: existingDoc.documentItems.map((item) => ({
-        productId: item.productId,
-        productCode: item.product.code,
-        productDesc: item.product.description,
-        quantity: item.quantity,
-        unitCost: item.unitCost ?? undefined,
-        unitPrice: item.unitPrice ?? undefined,
-        observaciones: item.observaciones ?? undefined,
-        addedAt: item.addedAt,
-      })),
-    })
-  }, [existingDoc, reset, navigate])
-
-  // ── catalogues ────────────────────────────────────────────────────────────
-  const { data: warehouses = [] } = useQuery({
-    queryKey: ['warehouses'],
-    queryFn: getWarehouses,
-    staleTime: 10 * 60 * 1000,
+  useOfficialPurchasePrefill({
+    isEditing,
+    docType,
+    fromCMId,
+    setValue,
+    replace,
+    parties,
+    setSourceRef,
+    setScannedProductInfo,
   })
 
-  // CM/DVC piden proveedor; PV, REM y DVV piden cliente — mismo combobox, distinto filtro
-  // server-side. La devolución en venta no lleva vendedora (v1, igual que la devolución compra).
-  const needsSupplier = docType === 'CM' || docType === 'DVC' || docType === 'CMO'
-  const needsCustomer = docType === 'PV' || docType === 'REM' || docType === 'DVV'
-  const needsSeller = docType === 'PV' || docType === 'REM'
-  const isTodayOnly = docType === 'REM'
-  const needsReceiver = docType === 'CM'
+  const transfer = useTransferLocations(docType, watch, setValue)
 
-  const hasTpSearch = debouncedTpSearch.length >= 1
-
-  // Prefill desde la bandeja: proveedor, factura, ítems y precios de la CM origen, todo editable.
-  const { data: fromCMDoc } = useQuery({
-    queryKey: ['document', fromCMId],
-    queryFn: () => getDocument(fromCMId!),
-    enabled: !isEditing && docType === 'CMO' && Boolean(fromCMId),
-    staleTime: 5 * 60 * 1000,
+  const { onSubmit, isPending } = useSaveDocument({
+    id,
+    isEditing,
+    needsCustomer,
+    customerBranchCount: customerBranches.length,
+    isLoadingBranches,
   })
 
-  useEffect(() => {
-    if (!fromCMDoc || prefilledFromCMRef.current) return
-    prefilledFromCMRef.current = true
-    if (
-      fromCMDoc.type !== 'CM' ||
-      fromCMDoc.status !== 'confirmed' ||
-      !fromCMDoc.officialPurchase
-    ) {
-      toast.error('La compra de origen no es una compra oficial confirmada')
-      return
-    }
-    setTpSelectedName(fromCMDoc.thirdParty?.name ?? '')
-    setSelectedSupplierBrandIds(fromCMDoc.thirdParty?.supplier?.brands.map((b) => b.id) ?? [])
-    setScannedProductInfo(
-      Object.fromEntries(
-        fromCMDoc.documentItems.map((item) => [
-          item.productId,
-          { avgCost: Number(item.product.avgCost), unitOfMeasure: item.product.unitOfMeasure },
-        ]),
-      ),
-    )
-    setSourceRef({ id: fromCMDoc.id, type: fromCMDoc.type, number: fromCMDoc.number })
-    setValue('thirdPartyId', fromCMDoc.thirdParty?.id ?? undefined)
-    setValue('supplierInvoiceNumber', fromCMDoc.supplierInvoiceNumber ?? undefined)
-    setValue('sourceDocumentId', fromCMDoc.id)
-    replace(
-      fromCMDoc.documentItems.map((item) => ({
-        productId: item.productId,
-        productCode: item.product.code,
-        productDesc: item.product.description,
-        quantity: item.quantity,
-        unitCost: removeOfficialTax(Number(item.unitCost)),
-        unitPrice: undefined,
-        observaciones: undefined,
-        addedAt: new Date().toISOString(),
-      })),
-    )
-  }, [fromCMDoc, setValue, replace])
-
-  const { data: tpData, isLoading: isLoadingTp } = useQuery({
-    queryKey: ['third-parties-search', debouncedTpSearch, needsCustomer],
-    queryFn: () =>
-      getThirdParties({
-        search: debouncedTpSearch || undefined,
-        page: 1,
-        limit: 30,
-        isSupplier: needsSupplier ? true : undefined,
-        isCustomer: needsCustomer ? true : undefined,
-      }),
-    staleTime: 2 * 60 * 1000,
-    enabled: (needsSupplier || needsCustomer) && hasTpSearch,
-  })
-
-  const hasSellerSearch = debouncedSellerSearch.length >= 1
-
-  const { data: sellerData, isLoading: isLoadingSeller } = useQuery({
-    queryKey: ['third-parties-search-seller', debouncedSellerSearch],
-    queryFn: () =>
-      getThirdParties({
-        search: debouncedSellerSearch || undefined,
-        page: 1,
-        limit: 30,
-        isSeller: true,
-      }),
-    staleTime: 2 * 60 * 1000,
-    enabled: needsSeller && hasSellerSearch,
-  })
-
-  const hasReceiverSearch = debouncedReceiverSearch.length >= 1
-
-  const { data: receiverData, isLoading: isLoadingReceiver } = useQuery({
-    queryKey: ['third-parties-search-receiver', debouncedReceiverSearch],
-    queryFn: () =>
-      getThirdParties({
-        search: debouncedReceiverSearch || undefined,
-        page: 1,
-        limit: 30,
-        isReceiver: true,
-      }),
-    staleTime: 2 * 60 * 1000,
-    enabled: needsReceiver && hasReceiverSearch,
-  })
-
-  // Carga el detalle de la bodega origen para la cascada zona/bulto (solo en traslados).
-  const { data: sourceWarehouseDetail, isLoading: isLoadingSourceDetail } = useQuery({
-    queryKey: ['warehouses', warehouseId],
-    queryFn: () => getWarehouse(warehouseId!),
-    enabled: docType === 'T' && Boolean(warehouseId),
-    staleTime: 5 * 60 * 1000,
-  })
-
-  // Carga el detalle de la bodega destino para la cascada zona/bulto (solo en traslados).
-  const { data: destWarehouseDetail, isLoading: isLoadingDestDetail } = useQuery({
-    queryKey: ['warehouses', destWarehouseId],
-    queryFn: () => getWarehouse(destWarehouseId!),
-    enabled: docType === 'T' && Boolean(destWarehouseId),
-    staleTime: 5 * 60 * 1000,
-  })
-
-  // Cada bulto pertenece a una bodega concreta. Si cambia la bodega origen, el bulto ya
-  // elegido casi seguro deja de ser válido, así que se limpia junto con la zona.
-  useEffect(() => {
-    setValue('sourceBinId', undefined)
-  }, [warehouseId, setValue])
-
-  // Mismo motivo que el efecto anterior, pero para la bodega destino.
-  useEffect(() => {
-    setValue('destBinId', undefined)
-  }, [destWarehouseId, setValue])
-
-  // Si el origen cambia DESPUÉS de elegir destino, el destino queda apuntando a una opción oculta y arrastra zona/bulto fantasma; se limpia.
-  useEffect(() => {
-    if (destWarehouseId && destWarehouseId === warehouseId) {
-      setValue('destWarehouseId', undefined)
-    }
-  }, [warehouseId, destWarehouseId, setValue])
-
-  // Solo las bodegas físicas llevan seguimiento por bulto; los almacenes de venta no tienen
-  // ese detalle, así que el traslado no pide zona ni bulto cuando el origen es un almacén.
-  const sourceRequiresBin =
-    docType === 'T' &&
-    Boolean(warehouseId) &&
-    warehouses.find((w: Warehouse) => w.id === warehouseId)?.type === 'warehouse'
-
-  // Mismo criterio, aplicado a la bodega destino.
-  const destRequiresBin =
-    docType === 'T' &&
-    Boolean(destWarehouseId) &&
-    warehouses.find((w: Warehouse) => w.id === destWarehouseId)?.type === 'warehouse'
-
-  const sourceZones = (sourceWarehouseDetail as WarehouseDetail | undefined)?.zones ?? []
-  const destZones = (destWarehouseDetail as WarehouseDetail | undefined)?.zones ?? []
-
-  const [selectedSourceZoneId, setSelectedSourceZoneId] = useState('')
-  useEffect(() => {
-    setSelectedSourceZoneId('')
-  }, [warehouseId])
-
-  const [selectedZoneId, setSelectedZoneId] = useState('')
-  useEffect(() => {
-    setSelectedZoneId('')
-  }, [destWarehouseId])
-
-  const currentSourceBinId = watch('sourceBinId')
-  const currentDestBinId = watch('destBinId')
-
-  // Productos actualmente en el documento — un bulto origen solo califica si ya tiene stock
-  // de alguno de estos productos (normalmente se traslada un solo producto por bulto).
-  const watchedItems = watch('items')
-  const itemProductIds = new Set(
-    (watchedItems ?? []).map((item) => item.productId).filter((pid): pid is string => Boolean(pid)),
-  )
-
-  const sourceBins = (() => {
-    const baseBins = selectedSourceZoneId
-      ? (sourceZones.find((z) => z.id === selectedSourceZoneId)?.bins ?? [])
-      : sourceZones.flatMap((z) => z.bins)
-
-    const available = baseBins.filter((bin) =>
-      bin.binStocks.some((bs) => bs.quantity > 0 && itemProductIds.has(bs.productId)),
-    )
-
-    // El bulto ya elegido se reinserta aunque ya no pase el filtro, para no dejar el selector apuntando a una opción inexistente.
-    if (currentSourceBinId && !available.some((b) => b.id === currentSourceBinId)) {
-      const staleSelected = baseBins.find((b) => b.id === currentSourceBinId)
-      if (staleSelected) return [...available, staleSelected]
-    }
-
-    return available
-  })()
-
-  const destBins = (() => {
-    const baseBins = selectedZoneId
-      ? (destZones.find((z) => z.id === selectedZoneId)?.bins ?? [])
-      : destZones.flatMap((z) => z.bins)
-
-    // "occupied" lo calcula el backend (stock > 0); un bulto ocupado se filtra salvo que solo tenga productos ya presentes en este documento (apilar, no mezclar). Filtro solo visual, el backend valida de verdad.
-    const available = baseBins.filter(
-      (bin) => !bin.occupied || bin.binStocks.every((bs) => itemProductIds.has(bs.productId)),
-    )
-
-    // Mismo motivo que en los bultos de origen: mantener visible el bulto ya elegido aunque
-    // ya no pase el filtro, para no dejar el selector apuntando a una opción inexistente.
-    if (currentDestBinId && !available.some((b) => b.id === currentDestBinId)) {
-      const staleSelected = baseBins.find((b) => b.id === currentDestBinId)
-      if (staleSelected) return [...available, staleSelected]
-    }
-
-    return available
-  })()
-
-  // Opciones de tercero: proveedor en compras y devoluciones, cliente en preventas y remisiones.
-  const tpOptions: ComboboxOption[] = (tpData?.items ?? []).map((tp: ThirdParty) => ({
-    id: tp.id,
-    label: tp.name,
-    sublabel: needsCustomer ? undefined : tp.isSupplier ? 'Proveedor' : undefined,
-  }))
-
-  const currentTpId = watch('thirdPartyId') ?? ''
-  const { branches: customerBranches, isLoading: isLoadingBranches } = useCustomerBranches(
-    needsCustomer ? currentTpId : undefined,
-  )
-
-  const tpDisplayOptions: ComboboxOption[] =
-    currentTpId && !debouncedTpSearch
-      ? [
-          { id: currentTpId, label: tpSelectedName },
-          ...tpOptions.filter((o) => o.id !== currentTpId),
-        ]
-      : tpOptions
-
-  // Opciones de vendedora: solo preventas y remisiones.
-  const sellerOptions: ComboboxOption[] = (sellerData?.items ?? []).map((tp: ThirdParty) => ({
-    id: tp.id,
-    label: tp.name,
-  }))
-
-  const currentSellerId = watch('sellerId') ?? ''
-
-  const sellerDisplayOptions: ComboboxOption[] =
-    currentSellerId && !debouncedSellerSearch
-      ? [
-          { id: currentSellerId, label: sellerSelectedName },
-          ...sellerOptions.filter((o) => o.id !== currentSellerId),
-        ]
-      : sellerOptions
-
-  const receiverOptions: ComboboxOption[] = (receiverData?.items ?? []).map((tp: ThirdParty) => ({
-    id: tp.id,
-    label: tp.name,
-  }))
-
-  const currentReceiverId = watch('receiverId') ?? ''
-
-  const receiverDisplayOptions: ComboboxOption[] =
-    currentReceiverId && !debouncedReceiverSearch
-      ? [
-          { id: currentReceiverId, label: receiverSelectedName },
-          ...receiverOptions.filter((o) => o.id !== currentReceiverId),
-        ]
-      : receiverOptions
-
-  // ── mutations ─────────────────────────────────────────────────────────────
-  const invalidate = useCallback(() => {
-    invalidateAfterDocumentChange(queryClient, [id])
-  }, [queryClient, id])
-
-  const { mutate: create, isPending: isCreating } = useMutation({
-    mutationFn: createDocument,
-    onSuccess: (doc) => {
-      invalidate()
-      toast.success('Operación creada correctamente')
-      navigate(`/documents/${doc.id}`)
-    },
-    onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al crear la operación')
-    },
-  })
-
-  const { mutate: update, isPending: isUpdating } = useMutation({
-    mutationFn: ({
-      docId,
-      payload,
-    }: {
-      docId: string
-      payload: Parameters<typeof updateDocument>[1]
-    }) => updateDocument(docId, payload),
-    onSuccess: (doc) => {
-      invalidate()
-      toast.success('Operación actualizada correctamente')
-      navigate(`/documents/${doc.id}`)
-    },
-    onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al actualizar la operación')
-    },
-  })
-
-  const isPending = isCreating || isUpdating
-
-  // ── submit ────────────────────────────────────────────────────────────────
-  const onSubmit = (values: FormValues) => {
-    if (needsCustomer && values.thirdPartyId) {
-      if (isLoadingBranches) {
-        toast.error('Espera a que carguen las sucursales del cliente')
-        return
-      }
-      if (customerBranches.length > 0 && !values.customerBranchId) {
-        toast.error('Selecciona la sucursal del cliente')
-        return
-      }
-    }
-    const branchId = needsCustomer && customerBranches.length > 0 ? values.customerBranchId : ''
-    const payload = {
-      type: values.type,
-      date: values.date,
-      thirdPartyId: values.thirdPartyId || undefined,
-      // Al editar, null suelta la sucursal vieja si el cliente cambió a uno sin sucursales.
-      customerBranchId: needsCustomer ? branchId || (isEditing ? null : undefined) : undefined,
-      sellerId:
-        values.type === 'PV' || values.type === 'REM' ? values.sellerId || undefined : undefined,
-      receiverId: values.type === 'CM' ? values.receiverId || undefined : undefined,
-      warehouseId: values.type === 'T' ? values.warehouseId || undefined : undefined,
-      sourceBinId: values.sourceBinId || undefined,
-      destWarehouseId: values.destWarehouseId || undefined,
-      destBinId: values.destBinId || undefined,
-      adjustmentReason: values.type === 'EAI' ? values.adjustmentReason || undefined : undefined,
-      // null explícito (no undefined): así viaja en el JSON y el backend borra el texto viejo si el motivo deja de ser "otro".
-      adjustmentReasonOther:
-        values.type === 'EAI' && values.adjustmentReason === 'otro'
-          ? values.adjustmentReasonOther || undefined
-          : null,
-      // Solo la devolución en venta manda modalidad; el backend la exige para ese tipo.
-      refundMethod: values.type === 'DVV' ? values.refundMethod || undefined : undefined,
-      // Solo CM manda el flag (el backend lo rechaza en otros tipos); '' limpia la factura al desmarcarlo.
-      officialPurchase: values.type === 'CM' ? Boolean(values.officialPurchase) : undefined,
-      supplierInvoiceNumber:
-        values.type === 'CM'
-          ? values.officialPurchase
-            ? values.supplierInvoiceNumber?.trim()
-            : ''
-          : values.type === 'CMO'
-            ? values.supplierInvoiceNumber?.trim()
-            : undefined,
-      // Al editar, null suelta el vínculo con la CM; undefined lo dejaría intacto en BD.
-      sourceDocumentId:
-        values.type === 'CMO'
-          ? values.sourceDocumentId || (isEditing ? null : undefined)
-          : undefined,
-      notes: values.notes || undefined,
-      items: values.items.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        unitCost: item.unitCost !== undefined && !isNaN(item.unitCost) ? item.unitCost : undefined,
-        unitPrice:
-          item.unitPrice !== undefined && !isNaN(item.unitPrice) ? item.unitPrice : undefined,
-        observaciones: item.observaciones || undefined,
-        addedAt: item.addedAt,
-      })),
-    }
-
-    if (isEditing && id) {
-      const { type: _type, ...rest } = payload
-      update({ docId: id, payload: rest })
-    } else {
-      create({ ...payload, idempotencyKey: idempotencyKeyRef.current })
-    }
-  }
-
-  // ── loading state ─────────────────────────────────────────────────────────
   if (isEditing && isLoadingDoc) {
     return (
       <div className="space-y-6">
@@ -621,68 +108,13 @@ export default function DocumentFormPage() {
     )
   }
 
-  // ── helpers ───────────────────────────────────────────────────────────────
-  const needsThirdParty = needsSupplier || needsCustomer
-  const needsTransfer = docType === 'T'
-  const needsAdjustmentReason = docType === 'EAI'
+  const goBack = () => navigate(isEditing ? `/documents/${id}` : '/documents')
   const currentAdjustmentReason = watch('adjustmentReason')
   const isOfficialPurchase = docType === 'CM' && Boolean(watch('officialPurchase'))
-  const isOfficialPurchaseDoc = docType === 'CMO'
-  const showCostColumn =
-    docType === 'CM' || docType === 'DVC' || docType === 'EAI' || docType === 'CMO'
-  // Preventas, remisiones y devoluciones en venta muestran precio de venta editable en vez de
-  // costo: es una columna aparte.
-  const showPriceColumn = docType === 'PV' || docType === 'REM' || docType === 'DVV'
-  // Las salidas por ajuste y los traslados también necesitan la columna de costo (de solo
-  // lectura) para que las celdas de cada fila sigan alineadas con el encabezado.
-  const hasCostColumn = showCostColumn || showPriceColumn || docType === 'SAJ' || docType === 'T'
-  // Totales de la compra oficial en vivo: IVA por línea redondeado como el backend.
-  const officialTotals = computeOfficialTotals(
-    (watchedItems ?? []).map((item) => ({
-      quantity: Number(item.quantity || 0),
-      unitValue: Number(item.unitCost || 0),
-    })),
-  )
-  // Nota de talla por línea: solo en traslados.
-  const showObservacionesColumn = docType === 'T'
-  const showTimeColumn = docType === 'REM' || docType === 'DVV'
 
   return (
     <div className="space-y-6 pb-10">
-      {/* Encabezado */}
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => navigate(isEditing ? `/documents/${id}` : '/documents')}
-          className="p-2 rounded-xl text-content-faint hover:text-content hover:bg-surface-hover transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div
-          className={cn(
-            'w-12 h-12 rounded-xl flex items-center justify-center shrink-0',
-            accent.iconBg,
-          )}
-        >
-          <accent.icon className={cn('w-6 h-6', accent.iconText)} />
-        </div>
-        <div>
-          <h1 className="text-2xl text-content">
-            {isEditing ? `Editar ${typeLabelFor(docType)}` : `Nueva ${typeLabelFor(docType)}`}
-          </h1>
-          <p className="text-content-muted text-sm mt-0.5 font-accent">
-            {isEditing
-              ? 'Editando borrador'
-              : docType === 'REM'
-                ? 'Crea una nueva remisión'
-                : docType === 'DVV'
-                  ? 'Crea una nueva devolución en venta'
-                  : docType === 'CMO'
-                    ? 'Registra la compra con factura; los valores se digitan sin IVA'
-                    : 'Crea una nueva operación de inventario'}
-          </p>
-        </div>
-      </div>
+      <DocumentFormHeader docType={docType} isEditing={isEditing} onBack={goBack} />
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <form
@@ -699,67 +131,15 @@ export default function DocumentFormPage() {
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {/* Tipo — la remisión y la devolución en venta van con tipo fijo (no editable); el resto usa el desplegable */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-content-secondary">
-                Tipo de operación {!isFixedType && <span className="text-red-500">*</span>}
-              </label>
-              {isFixedType ? (
-                <div className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg border border-ui-border-medium bg-surface-raised text-content opacity-90">
-                  <span
-                    className={cn(
-                      'w-6 h-6 rounded-md flex items-center justify-center shrink-0',
-                      accent.iconBg,
-                    )}
-                  >
-                    <accent.icon className={cn('w-4 h-4', accent.iconText)} />
-                  </span>
-                  {fixedTypeLabel}
-                </div>
-              ) : (
-                <Controller
-                  name="type"
-                  control={control}
-                  render={({ field }) => (
-                    <select
-                      {...field}
-                      disabled={isEditing}
-                      onChange={(e) => {
-                        field.onChange(e)
-                        setValue('thirdPartyId', undefined)
-                        setValue('sellerId', undefined)
-                        setValue('receiverId', undefined)
-                        setValue('warehouseId', undefined)
-                        setValue('sourceBinId', undefined)
-                        setValue('destWarehouseId', undefined)
-                        setValue('destBinId', undefined)
-                        setValue('adjustmentReason', undefined)
-                        setValue('adjustmentReasonOther', undefined)
-                        setValue('officialPurchase', false)
-                        setValue('supplierInvoiceNumber', undefined)
-                        setTpSelectedName('')
-                        setSellerSelectedName('')
-                        setReceiverSelectedName('')
-                        setSelectedSupplierBrandIds([])
-                        setSelectedSupplierDiscountNotes(undefined)
-                        replace([])
-                      }}
-                      className={cn(
-                        'input-hard w-full px-3 py-2 text-sm text-content transition-all',
-
-                        isEditing ? 'opacity-60 cursor-not-allowed' : 'border-ui-border-medium',
-                      )}
-                    >
-                      {availableTypes.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                />
-              )}
-            </div>
+            <DocumentTypeField
+              control={control}
+              setValue={setValue}
+              replace={replace}
+              typeFlags={typeFlags}
+              availableTypes={availableTypes}
+              isEditing={isEditing}
+              onClearSelections={parties.clearSelections}
+            />
 
             {/* Fecha */}
             <div className="space-y-1.5">
@@ -777,305 +157,19 @@ export default function DocumentFormPage() {
               />
             </div>
 
-            {/* Tercero — proveedor en compras y devoluciones, cliente en preventas y remisiones */}
-            {needsThirdParty && (
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-content-secondary">
-                  {needsCustomer ? 'Cliente' : 'Proveedor'} <span className="text-red-500">*</span>
-                </label>
-                <Controller
-                  name="thirdPartyId"
-                  control={control}
-                  render={({ field }) => (
-                    <Combobox
-                      value={field.value ?? ''}
-                      onChange={(selectedId, option) => {
-                        field.onChange(selectedId)
-                        setTpSelectedName(option.label)
-                        setValue('customerBranchId', undefined)
+            <PartyFields
+              control={control}
+              setValue={setValue}
+              getValues={getValues}
+              replace={replace}
+              docType={docType}
+              typeFlags={typeFlags}
+              parties={parties}
+              setSourceRef={setSourceRef}
+            />
 
-                        const tp = tpData?.items.find((t: ThirdParty) => t.id === selectedId)
-                        setSelectedSupplierBrandIds(tp?.supplier?.brands.map((b) => b.id) ?? [])
-                        setSelectedSupplierDiscountNotes(tp?.supplier?.discountNotes ?? undefined)
-
-                        // El backend exige mismo proveedor entre la CMO y su CM origen: cambiar de proveedor suelta el vínculo.
-                        if (docType === 'CMO' && getValues('sourceDocumentId')) {
-                          setValue('sourceDocumentId', undefined)
-                          setSourceRef(null)
-                        }
-
-                        // Cambiar de proveedor invalida la marca de los ítems ya cargados y los vacía; en PV/REM (sin filtro de marca) no aplica.
-                        if (needsSupplier && getValues('items').length > 0) {
-                          replace([])
-                        }
-                      }}
-                      options={tpDisplayOptions}
-                      isLoading={isLoadingTp}
-                      placeholder={
-                        needsCustomer ? 'Selecciona un cliente...' : 'Selecciona un proveedor...'
-                      }
-                      searchValue={tpSearch}
-                      onSearchChange={setTpSearch}
-                    />
-                  )}
-                />
-                {docType === 'CM' && selectedSupplierDiscountNotes && (
-                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
-                    <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                    <div className="text-xs">
-                      <p className="font-medium">Condiciones de descuento</p>
-                      <p className="font-accent mt-0.5 whitespace-pre-wrap">
-                        {selectedSupplierDiscountNotes}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {needsCustomer && currentTpId && (
-              <Controller
-                name="customerBranchId"
-                control={control}
-                render={({ field }) => (
-                  <CustomerBranchSelect
-                    branches={customerBranches}
-                    value={field.value ?? ''}
-                    onChange={field.onChange}
-                    isLoading={isLoadingBranches}
-                  />
-                )}
-              />
-            )}
-
-            {/* Vendedora — solo preventas y remisiones */}
-            {needsSeller && (
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-content-secondary">
-                  Vendedora <span className="text-red-500">*</span>
-                </label>
-                <Controller
-                  name="sellerId"
-                  control={control}
-                  render={({ field }) => (
-                    <Combobox
-                      value={field.value ?? ''}
-                      onChange={(selectedId, option) => {
-                        field.onChange(selectedId)
-                        setSellerSelectedName(option.label)
-                      }}
-                      options={sellerDisplayOptions}
-                      isLoading={isLoadingSeller}
-                      placeholder="Selecciona una vendedora..."
-                      searchValue={sellerSearch}
-                      onSearchChange={setSellerSearch}
-                    />
-                  )}
-                />
-              </div>
-            )}
-
-            {/* Recibido por — solo compras */}
-            {needsReceiver && (
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-content-secondary">
-                  Recibido por <span className="text-red-500">*</span>
-                </label>
-                <Controller
-                  name="receiverId"
-                  control={control}
-                  render={({ field }) => (
-                    <Combobox
-                      value={field.value ?? ''}
-                      onChange={(selectedId, option) => {
-                        field.onChange(selectedId)
-                        setReceiverSelectedName(option.label)
-                      }}
-                      options={receiverDisplayOptions}
-                      isLoading={isLoadingReceiver}
-                      placeholder="Selecciona quién recibió la mercancía..."
-                      searchValue={receiverSearch}
-                      onSearchChange={setReceiverSearch}
-                    />
-                  )}
-                />
-              </div>
-            )}
-
-            {/* Traslado: bodega origen y destino */}
             {needsTransfer && (
-              <>
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-content-secondary">
-                    Bodega origen <span className="text-red-500">*</span>
-                  </label>
-                  <Controller
-                    name="warehouseId"
-                    control={control}
-                    render={({ field }) => (
-                      <select
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
-                      >
-                        <option value="">Selecciona bodega origen</option>
-                        {warehouses.map((w: Warehouse) => (
-                          <option key={w.id} value={w.id}>
-                            {w.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  />
-                </div>
-
-                {/* Cascada zona + bulto cuando el origen es una bodega física */}
-                {sourceRequiresBin && (
-                  <>
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium text-content-secondary">
-                        Zona origen <span className="text-red-500">*</span>
-                      </label>
-                      {isLoadingSourceDetail ? (
-                        <div className="h-9 rounded-lg bg-surface-hover animate-pulse" />
-                      ) : (
-                        <select
-                          value={selectedSourceZoneId}
-                          onChange={(e) => {
-                            setSelectedSourceZoneId(e.target.value)
-                            setValue('sourceBinId', undefined)
-                          }}
-                          className="input-hard w-full px-3 py-2 text-sm border-ui-border-medium text-content transition-all"
-                        >
-                          <option value="">Selecciona una zona</option>
-                          {sourceZones.map((z) => (
-                            <option key={z.id} value={z.id}>
-                              {z.name}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium text-content-secondary">
-                        Bulto origen <span className="text-red-500">*</span>
-                      </label>
-                      <Controller
-                        name="sourceBinId"
-                        control={control}
-                        render={({ field }) => (
-                          <select
-                            value={field.value ?? ''}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            disabled={!selectedSourceZoneId}
-                            className={cn(
-                              'input-hard w-full px-3 py-2 text-sm text-content transition-all',
-
-                              !selectedSourceZoneId && 'opacity-50 cursor-not-allowed',
-                              'border-ui-border-medium',
-                            )}
-                          >
-                            <option value="">Selecciona un bulto</option>
-                            {sourceBins.map((b) => (
-                              <option key={b.id} value={b.id}>
-                                Bulto {b.code}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-content-secondary">
-                    Bodega destino <span className="text-red-500">*</span>
-                  </label>
-                  <Controller
-                    name="destWarehouseId"
-                    control={control}
-                    render={({ field }) => (
-                      <select
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
-                      >
-                        <option value="">Selecciona bodega destino</option>
-                        {warehouses
-                          .filter((w: Warehouse) => w.id !== warehouseId)
-                          .map((w: Warehouse) => (
-                            <option key={w.id} value={w.id}>
-                              {w.name}
-                            </option>
-                          ))}
-                      </select>
-                    )}
-                  />
-                </div>
-
-                {/* Cascada zona + bulto cuando el destino es una bodega física */}
-                {destRequiresBin && (
-                  <>
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium text-content-secondary">
-                        Zona destino <span className="text-red-500">*</span>
-                      </label>
-                      {isLoadingDestDetail ? (
-                        <div className="h-9 rounded-lg bg-surface-hover animate-pulse" />
-                      ) : (
-                        <select
-                          value={selectedZoneId}
-                          onChange={(e) => {
-                            setSelectedZoneId(e.target.value)
-                            setValue('destBinId', undefined)
-                          }}
-                          className="input-hard w-full px-3 py-2 text-sm border-ui-border-medium text-content transition-all"
-                        >
-                          <option value="">Selecciona una zona</option>
-                          {destZones.map((z) => (
-                            <option key={z.id} value={z.id}>
-                              {z.name}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium text-content-secondary">
-                        Bulto destino <span className="text-red-500">*</span>
-                      </label>
-                      <Controller
-                        name="destBinId"
-                        control={control}
-                        render={({ field }) => (
-                          <select
-                            value={field.value ?? ''}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            disabled={!selectedZoneId}
-                            className={cn(
-                              'input-hard w-full px-3 py-2 text-sm text-content transition-all',
-
-                              !selectedZoneId && 'opacity-50 cursor-not-allowed',
-                              'border-ui-border-medium',
-                            )}
-                          >
-                            <option value="">Selecciona un bulto</option>
-                            {destBins.map((b) => (
-                              <option key={b.id} value={b.id}>
-                                Bulto {b.code}
-                                {b.occupied ? ' (ocupado — ya asignado a este borrador)' : ''}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      />
-                    </div>
-                  </>
-                )}
-              </>
+              <TransferFields control={control} setValue={setValue} transfer={transfer} />
             )}
 
             {/* Motivo del ajuste (solo entradas por ajuste) */}
@@ -1099,298 +193,39 @@ export default function DocumentFormPage() {
             )}
           </div>
 
-          {/* Facturación oficial — CM: casilla + factura del proveedor; CMO: factura (obligatoria) y vínculo a la CM origen. */}
-          {(docType === 'CM' || docType === 'CMO') && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {docType === 'CM' && (
-                <label className="flex items-center gap-2.5 text-sm font-medium text-content-secondary cursor-pointer self-end pb-2">
-                  <input
-                    type="checkbox"
-                    {...register('officialPurchase')}
-                    className="w-4 h-4 rounded border-ui-border-medium accent-brand-secondary"
-                  />
-                  Con factura (compra oficial)
-                </label>
-              )}
-              {(docType === 'CMO' || isOfficialPurchase) && (
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-content-secondary">
-                    Número de factura del proveedor <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={50}
-                    placeholder="Ej. FV-12345"
-                    {...register('supplierInvoiceNumber')}
-                    className="input-hard w-full px-3 py-2 text-sm border-ui-border-medium text-content placeholder:text-content-faint transition-all"
-                  />
-                </div>
-              )}
-              {docType === 'CMO' && sourceRef && (
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-content-secondary">
-                    Compra de origen
-                  </label>
-                  <div className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-ui-border-medium bg-surface-raised text-content">
-                    <Link2 className="w-4 h-4 text-content-muted shrink-0" />
-                    <span className="font-mono">{docNumber(sourceRef.type, sourceRef.number)}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <OfficialInvoiceFields
+            register={register}
+            docType={docType}
+            isOfficialPurchase={isOfficialPurchase}
+            sourceRef={sourceRef}
+          />
 
-          {docType === 'CMO' && sourceRef && (
-            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
-              <Info className="w-4 h-4 shrink-0 mt-0.5" />
-              <p className="text-xs font-accent">
-                Los valores se precargaron desde la compra{' '}
-                {docNumber(sourceRef.type, sourceRef.number)} sin el IVA que traían incluido (costo
-                ÷ 1,19). Revísalos contra la factura del proveedor.
-              </p>
-            </div>
-          )}
-
-          {/* Modalidad de devolución — solo devoluciones en venta. Define si la devolución deja
-              saldo a favor, es un cambio de producto, o se devuelve el dinero. */}
-          {docType === 'DVV' && (
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-content-secondary">
-                Modalidad de devolución <span className="text-red-500">*</span>
-              </label>
-              <select
-                {...register('refundMethod')}
-                className="input-hard w-full sm:w-72 px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
-              >
-                <option value="">Selecciona una modalidad</option>
-                {DVV_REFUND_METHOD_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Detalle del motivo — solo en entradas por ajuste cuando el motivo es "Otro" */}
-          {needsAdjustmentReason && currentAdjustmentReason === 'otro' && (
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-content-secondary">
-                Explica el motivo <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                maxLength={300}
-                placeholder="Describe el motivo real del ajuste..."
-                {...register('adjustmentReasonOther')}
-                className="input-hard w-full px-3 py-2 text-sm border-ui-border-medium text-content placeholder:text-content-faint transition-all"
-              />
-            </div>
-          )}
-
-          {/* Notas */}
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-content-secondary">Notas</label>
-            <textarea
-              rows={2}
-              {...register('notes')}
-              placeholder="Observaciones opcionales..."
-              className="input-hard w-full px-3 py-2 text-sm border-ui-border-medium text-content placeholder:text-content-faint transition-all resize-none"
-            />
-          </div>
+          <DocumentExtraFields
+            register={register}
+            docType={docType}
+            needsAdjustmentReason={needsAdjustmentReason}
+            currentAdjustmentReason={currentAdjustmentReason}
+          />
         </div>
 
         {/* ── Editor de ítems ──────────────────────────────────────────── */}
-        <div className="card-hard overflow-hidden">
-          <div className="px-6 py-4 border-b border-ui-divide flex items-center justify-between">
-            <div>
-              <h2 className="text-base text-content">Ítems</h2>
-              <p className="text-xs text-content-faint font-accent mt-0.5">
-                Mínimo 1 ítem requerido
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() =>
-                append({
-                  productId: '',
-                  productCode: '',
-                  productDesc: '',
-                  quantity: 1,
-                  unitCost: undefined,
-                  unitPrice: undefined,
-                  observaciones: undefined,
-                  addedAt: new Date().toISOString(),
-                })
-              }
-              className="btn-primary flex items-center gap-2 px-3 py-1.5 text-sm"
-            >
-              <Plus className="w-4 h-4" />
-              Agregar ítem
-            </button>
-          </div>
-
-          <BarcodeScanInput
-            ref={barcodeInputRef}
-            docType={docType}
-            append={append}
-            getValues={getValues}
-            setValue={setValue}
-            onProductScanned={(productId, avgCost, unitOfMeasure, availableStock) =>
-              setScannedProductInfo((prev) => ({
-                ...prev,
-                [productId]: { avgCost, unitOfMeasure, availableStock },
-              }))
-            }
-            focusQuantityInput={(index) => setPendingQuantityFocusIndex(index)}
-            supplierBrandIds={needsSupplier ? selectedSupplierBrandIds : undefined}
-            disabled={needsSupplier && !watch('thirdPartyId')}
-            supplierName={tpSelectedName}
-          />
-
-          {fields.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-content-muted text-sm">No hay ítems. Agrega el primero.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-ui-border">
-                    <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 min-w-[260px]">
-                      Producto
-                    </th>
-                    <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-28">
-                      Cantidad
-                    </th>
-                    {showObservacionesColumn && (
-                      <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-40">
-                        Observaciones
-                      </th>
-                    )}
-                    {hasCostColumn && (
-                      <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-36">
-                        {showPriceColumn ? 'Precio unit.' : 'Costo unit.'}{' '}
-                        {isOfficialPurchaseDoc && (
-                          <span className="text-content-faint normal-case">(sin IVA)</span>
-                        )}
-                        {docType === 'EAI' && (
-                          <span className="text-content-faint normal-case">(opc.)</span>
-                        )}
-                        {(docType === 'SAJ' || docType === 'T') && (
-                          <span className="text-content-faint normal-case">(prom.)</span>
-                        )}
-                      </th>
-                    )}
-                    <th className="text-right text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-32">
-                      Subtotal
-                    </th>
-                    {isOfficialPurchaseDoc && (
-                      <th className="text-right text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-28">
-                        IVA 19%
-                      </th>
-                    )}
-                    {showTimeColumn && (
-                      <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-40">
-                        Hora
-                      </th>
-                    )}
-                    <th className="w-12" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-ui-divide">
-                  {fields.map((field, index) => (
-                    <ProductRow
-                      key={field.id}
-                      index={index}
-                      docType={docType}
-                      showTime={showTimeColumn}
-                      onRemove={() => remove(index)}
-                      register={register}
-                      control={control}
-                      setValue={setValue}
-                      watch={watch}
-                      getValues={getValues}
-                      initialAvgCost={scannedProductInfo[field.productId]?.avgCost}
-                      initialUnitOfMeasure={scannedProductInfo[field.productId]?.unitOfMeasure}
-                      initialAvailableStock={scannedProductInfo[field.productId]?.availableStock}
-                      supplierBrandIds={needsSupplier ? selectedSupplierBrandIds : undefined}
-                      quantityInputRef={(el) => {
-                        if (el) quantityInputRefs.current.set(index, el)
-                        else quantityInputRefs.current.delete(index)
-                      }}
-                      onQuantityConfirmed={() => barcodeInputRef.current?.focus()}
-                    />
-                  ))}
-                </tbody>
-                {isOfficialPurchaseDoc && fields.length > 0 && (
-                  <tfoot>
-                    {[
-                      { label: 'Subtotal', value: officialTotals.subtotal, strong: false },
-                      { label: 'IVA (19%)', value: officialTotals.taxTotal, strong: false },
-                      { label: 'Total', value: officialTotals.total, strong: true },
-                    ].map((row) => (
-                      <tr
-                        key={row.label}
-                        className={cn(
-                          'bg-surface-raised',
-                          row.label === 'Subtotal' && 'border-t border-ui-border',
-                        )}
-                      >
-                        <td colSpan={2} />
-                        <td className="px-3 py-2 text-right text-xs font-semibold text-content-faint uppercase tracking-wider">
-                          {row.label}
-                        </td>
-                        <td
-                          className={cn(
-                            'px-3 py-2 text-right text-sm',
-                            row.strong ? 'font-semibold text-content' : 'text-content-secondary',
-                          )}
-                        >
-                          {formatCOP(row.value)}
-                        </td>
-                        <td colSpan={2} />
-                      </tr>
-                    ))}
-                  </tfoot>
-                )}
-                {!isOfficialPurchaseDoc &&
-                  (showCostColumn || showPriceColumn) &&
-                  fields.length > 0 && (
-                    <tfoot>
-                      <tr className="border-t border-ui-border bg-surface-raised">
-                        <td colSpan={2} />
-                        <td className="px-3 py-3 text-right text-xs font-semibold text-content-faint uppercase tracking-wider">
-                          Total
-                        </td>
-                        <td className="px-3 py-3 text-right text-sm font-medium text-content-secondary">
-                          {formatCOP(
-                            fields.reduce((sum, _, i) => {
-                              const qty = Number(watch(`items.${i}.quantity`) ?? 0)
-                              const price = showPriceColumn
-                                ? Number(watch(`items.${i}.unitPrice`) ?? 0)
-                                : Number(watch(`items.${i}.unitCost`) ?? 0)
-                              return sum + qty * price
-                            }, 0),
-                          )}
-                        </td>
-                        {showTimeColumn && <td />}
-                        <td />
-                      </tr>
-                    </tfoot>
-                  )}
-              </table>
-            </div>
-          )}
-        </div>
+        <DocumentItemsEditor
+          docType={docType}
+          typeFlags={typeFlags}
+          items={items}
+          append={append}
+          register={register}
+          control={control}
+          setValue={setValue}
+          watch={watch}
+          getValues={getValues}
+          selectedSupplierBrandIds={parties.selectedSupplierBrandIds}
+          tpSelectedName={parties.tpSelectedName}
+        />
 
         {/* ── Acciones ─────────────────────────────────────────────────── */}
         <div className="flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(isEditing ? `/documents/${id}` : '/documents')}
-            className="btn-secondary px-4 py-2 text-sm"
-          >
+          <button type="button" onClick={goBack} className="btn-secondary px-4 py-2 text-sm">
             Cancelar
           </button>
           <button
