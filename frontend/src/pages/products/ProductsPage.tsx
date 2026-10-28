@@ -66,6 +66,8 @@ export default function ProductsPage() {
       }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
+    // Las ventas en otra pestaña mueven el stock: al volver a esta se recarga aunque la caché no haya vencido
+    refetchOnWindowFocus: 'always',
   })
 
   // Misma clave que ProductForm para compartir la caché de marcas.
