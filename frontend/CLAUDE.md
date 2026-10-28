@@ -11,7 +11,12 @@ pnpm dev          # Start Vite dev server
 pnpm build        # Production build
 pnpm preview      # Preview production build
 pnpm lint         # ESLint
+pnpm test         # Vitest (vitest run)
 ```
+
+## Unit tests (Vitest)
+
+`pnpm test` corre Vitest (entorno `node`, config en `vitest.config.ts` con el alias `@`). Los tests viven junto al archivo como `*.test.ts` y cubren helpers puros: `src/lib/tax.ts`, `src/lib/credit-application.ts`, `src/pages/documents/pos-checkout.utils.ts` (este mockea `@/services/documents.service`). Sin jsdom: no hay tests de componentes todavía.
 
 ## Testing frontend changes
 
