@@ -298,4 +298,5 @@ Key domain models and their relationships:
 - **Response format**: Always `{ success: boolean, data: T }` — the interceptor handles wrapping; `message` is optional
 - **Error messages**: Spanish language (matches existing filter messages)
 - **Passwords**: bcrypt, 10 salt rounds
+- **Dependencias (2026-10-28)**: `pnpm.overrides` fuerza `multer ^2.5.0` porque `@nestjs/platform-express` 11 lo fija en 2.4.0 (DoS); quitarlo cuando Nest lo suba. Lo que queda en `pnpm audit --prod` (`mysql2`, `fast-uri`, `deepmerge-ts`) viene del CLI de Prisma, que no corre en el servidor.
 - **Config**: All secrets via `ConfigService` from `.env` (`DATABASE_URL`, `JWT_SECRET`). `AuthModule` no arranca si `JWT_SECRET` falta, tiene menos de 32 caracteres o es el valor de `.env.example` (`auth/helpers/jwt-secret.helper.ts`).
