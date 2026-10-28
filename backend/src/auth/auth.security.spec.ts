@@ -117,7 +117,7 @@ describe('JwtAuthGuard: el usuario debe seguir activo en cada pedido', () => {
   });
 });
 
-describe('Contraseña: mínimo 6 caracteres también en el backend', () => {
+describe('Contraseña: 8+ caracteres con letras y números también en el backend', () => {
   const base = {
     name: 'Ana',
     username: 'ana',
@@ -128,24 +128,28 @@ describe('Contraseña: mínimo 6 caracteres también en el backend', () => {
       (e) => e.property === 'password',
     );
 
-  it('al crear, rechaza una contraseña de 5 caracteres con un mensaje claro', async () => {
-    const errors = await errorsFor(CreateAuthDto, {
-      ...base,
-      password: '12345',
-    });
-    expect(Object.values(errors[0]?.constraints ?? {})).toContain(
-      'La contraseña debe tener al menos 6 caracteres',
-    );
+  it.each([
+    ['7 caracteres', 'abc1234'],
+    ['solo números', '12345678'],
+    ['solo letras', 'abcdefgh'],
+  ])('al crear, rechaza %s con un mensaje claro', async (_case, password) => {
+    const errors = await errorsFor(CreateAuthDto, { ...base, password });
+    expect(errors).toHaveLength(1);
+    expect(Object.values(errors[0].constraints ?? {})).toEqual([
+      'La contraseña debe tener al menos 8 caracteres, con letras y números',
+    ]);
   });
 
-  it('al crear, acepta 6 caracteres', async () => {
+  it('al crear, acepta 8 caracteres con letras y números', async () => {
     expect(
-      await errorsFor(CreateAuthDto, { ...base, password: '123456' }),
+      await errorsFor(CreateAuthDto, { ...base, password: 'abcd1234' }),
     ).toEqual([]);
   });
 
   it('al editar, rechaza una contraseña corta pero permite no mandarla', async () => {
-    expect((await errorsFor(UpdateAuthDto, { password: '1' })).length).toBe(1);
+    expect(
+      (await errorsFor(UpdateAuthDto, { password: 'abc123' })).length,
+    ).toBe(1);
     expect(await errorsFor(UpdateAuthDto, {})).toEqual([]);
   });
 

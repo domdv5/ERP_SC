@@ -6,8 +6,9 @@ import {
   ArrayNotEmpty,
   IsOptional,
   IsBoolean,
-  MinLength,
+  Matches,
 } from 'class-validator';
+import { PASSWORD_RULE, PASSWORD_RULE_MESSAGE } from '../password-rule';
 
 export class CreateAuthDto {
   @IsString()
@@ -19,9 +20,7 @@ export class CreateAuthDto {
   username!: string;
 
   @IsString()
-  @MinLength(6, {
-    message: 'La contraseña debe tener al menos 6 caracteres',
-  })
+  @Matches(PASSWORD_RULE, { message: PASSWORD_RULE_MESSAGE })
   password!: string;
 
   @IsArray()

@@ -70,25 +70,25 @@ describe('ChangePasswordDto', () => {
   const errorsFor = async (body: object) =>
     validate(plainToInstance(ChangePasswordDto, body));
 
-  it('exige al menos 6 caracteres en la nueva contraseña', async () => {
+  it('exige 8+ caracteres con letras y números en la nueva contraseña', async () => {
     const errors = await errorsFor({
       currentPassword: 'actual1',
-      newPassword: '12345',
+      newPassword: '12345678',
     });
     expect(errors).toHaveLength(1);
     expect(Object.values(errors[0].constraints ?? {})).toContain(
-      'La contraseña debe tener al menos 6 caracteres',
+      'La contraseña debe tener al menos 8 caracteres, con letras y números',
     );
   });
 
   it('exige la contraseña actual', async () => {
-    const errors = await errorsFor({ newPassword: '123456' });
+    const errors = await errorsFor({ newPassword: 'nueva123' });
     expect(errors.map((e) => e.property)).toEqual(['currentPassword']);
   });
 
   it('acepta un cuerpo válido', async () => {
     expect(
-      await errorsFor({ currentPassword: 'x', newPassword: '123456' }),
+      await errorsFor({ currentPassword: 'x', newPassword: 'nueva123' }),
     ).toEqual([]);
   });
 });

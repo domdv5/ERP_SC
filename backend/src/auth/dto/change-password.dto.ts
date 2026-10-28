@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, Matches } from 'class-validator';
+import { PASSWORD_RULE, PASSWORD_RULE_MESSAGE } from '../password-rule';
 
 export class ChangePasswordDto {
   @IsString()
@@ -6,8 +7,6 @@ export class ChangePasswordDto {
   currentPassword!: string;
 
   @IsString()
-  @MinLength(6, {
-    message: 'La contraseña debe tener al menos 6 caracteres',
-  })
+  @Matches(PASSWORD_RULE, { message: PASSWORD_RULE_MESSAGE })
   newPassword!: string;
 }
