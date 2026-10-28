@@ -3,6 +3,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { DocumentsService } from './documents.service';
 import { DocumentsQueryService } from './documents-query.service';
 import { DocumentConversionService } from './document-conversion.service';
+import { DocumentVoidService } from './document-void.service';
 import { DocumentsController } from './documents.controller';
 import {
   CmEffectStrategy,
@@ -43,6 +44,7 @@ import {
     DocumentsService,
     DocumentsQueryService,
     DocumentConversionService,
+    DocumentVoidService,
     CmEffectStrategy,
     DvcEffectStrategy,
     DvvEffectStrategy,

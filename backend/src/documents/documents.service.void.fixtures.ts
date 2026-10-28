@@ -1,9 +1,12 @@
 import { DocumentStatus, DocumentType } from '@/common/enums';
 import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
-import { DocumentsService } from './documents.service';
+import { DocumentVoidService } from './document-void.service';
 import { DocumentsQueryService } from './documents-query.service';
 import { DocumentEffectsRegistry } from './strategies/document-effects.registry';
+import type { DocumentEffectStrategy } from './strategies/document-effect.strategy';
+import { CmEffectStrategy } from './strategies/cm-effect.strategy';
+import { EaiEffectStrategy } from './strategies/eai-effect.strategy';
 import {
   applyStockChange,
   calculateAvgCostAfterVoid,
@@ -21,6 +24,16 @@ export const RESERVATION = new Set<DocumentType>([
   DocumentType.PV,
   DocumentType.REM,
 ]);
+
+type VoidRules = Pick<
+  DocumentEffectStrategy,
+  'affectsCostOnVoid' | 'revertsLastCostOnVoid'
+>;
+const noPrisma = {} as PrismaService;
+const VOID_RULES: Partial<Record<DocumentType, VoidRules>> = {
+  [DocumentType.CM]: new CmEffectStrategy(noPrisma),
+  [DocumentType.EAI]: new EaiEffectStrategy(noPrisma),
+};
 
 export const makeUser = (permissions: string[]) =>
   ({ sub: 'u1', permissions }) as unknown as JwtPayload;
@@ -80,14 +93,12 @@ export function createVoidHarness() {
     $transaction: jest.fn(),
   };
   const registry = { get: jest.fn() };
-  const sequence = { next: jest.fn() };
   const documentsQuery = new DocumentsQueryService(
     prisma as unknown as PrismaService,
   );
-  const service = new DocumentsService(
+  const service = new DocumentVoidService(
     prisma as unknown as PrismaService,
     registry as unknown as DocumentEffectsRegistry,
-    sequence,
     documentsQuery,
   );
   const found = { id: 'doc-1' };
@@ -126,9 +137,15 @@ export function resetVoidHarness({
   prisma.$transaction.mockImplementation((fn: (client: typeof tx) => unknown) =>
     fn(tx),
   );
-  registry.get.mockImplementation((type: DocumentType) =>
-    RESERVATION.has(type) ? { releaseItems: jest.fn() } : {},
-  );
+  registry.get.mockImplementation((type: DocumentType) => {
+    const rules = VOID_RULES[type];
+    return {
+      affectsCostOnVoid: (unitCost: number) =>
+        rules?.affectsCostOnVoid(unitCost) ?? false,
+      revertsLastCostOnVoid: rules?.revertsLastCostOnVoid ?? false,
+      ...(RESERVATION.has(type) && { releaseItems: jest.fn() }),
+    };
+  });
   tx.document.updateMany.mockResolvedValue({ count: 1 });
   tx.documentItem.findMany.mockResolvedValue([]);
   tx.inventoryMovement.findFirst.mockResolvedValue(null);

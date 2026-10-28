@@ -22,6 +22,12 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
 
   readonly tracksCustomerBranch: boolean = false;
   readonly usesTodayDate: boolean = false;
+  readonly tracksReceiver: boolean = false;
+  readonly revertsLastCostOnVoid: boolean = false;
+
+  affectsCostOnVoid(_unitCost: number): boolean {
+    return false;
+  }
 
   // Los tipos que muestran la hora de cada producto pistoleado la activan con `= true`
   protected readonly tracksItemAddedAt: boolean = false;

@@ -34,6 +34,15 @@ export interface DocumentEffectStrategy {
   /** Si el documento siempre lleva la fecha de hoy (Bogotá), sin aceptar la del pedido. */
   readonly usesTodayDate: boolean;
 
+  /** Si el documento guarda quién recibe la mercancía (solo compras). */
+  readonly tracksReceiver: boolean;
+
+  /** Si la línea anulada recalcula el costo promedio del producto; unitCost es el costo de la línea. */
+  affectsCostOnVoid(unitCost: number): boolean;
+
+  /** Si al anular también se revierte el último costo de compra del producto. */
+  readonly revertsLastCostOnVoid: boolean;
+
   /** Validaciones específicas del tipo al crear el borrador. */
   validateCreate?(createDocumentDto: CreateDocumentDto): Promise<void> | void;
 
