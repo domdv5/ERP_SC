@@ -298,4 +298,4 @@ Key domain models and their relationships:
 - **Response format**: Always `{ success: boolean, data: T }` — the interceptor handles wrapping; `message` is optional
 - **Error messages**: Spanish language (matches existing filter messages)
 - **Passwords**: bcrypt, 10 salt rounds
-- **Config**: All secrets via `ConfigService` from `.env` (`DATABASE_URL`, `JWT_SECRET`)
+- **Config**: All secrets via `ConfigService` from `.env` (`DATABASE_URL`, `JWT_SECRET`). `AuthModule` no arranca si `JWT_SECRET` falta, tiene menos de 32 caracteres o es el valor de `.env.example` (`auth/helpers/jwt-secret.helper.ts`).
