@@ -74,3 +74,9 @@ Frontend — `POSCheckoutPage.tsx` (1.240 líneas) → página de ~250 que solo 
 - `DocumentFormPage.tsx` igual, por separado. No fusionar ambas páginas.
 
 Orden: 1) pruebas primero (anular por tipo en backend; helpers puros en frontend) → 2) montos → consultas → conversión → anular con estrategias → 3) frontend hook por hook. Estimado: 8–10 PRs chicos.
+
+## Pendientes a futuro
+
+| # | Hallazgo | Evidencia | Opciones | Tamaño |
+|---|---|---|---|---|
+| F1 | Al anular una compra que deja el stock en 0, el costo promedio se queda con el costo de esa compra (el último costo sí vuelve a 0). Reportado por el usuario 2026-10-28: PRD-1007, CM 000049 (300 u a $14.000) anulada → promedio $14.000 con stock 0. Comportamiento previo al refactor, fijado a propósito en `stock.helpers.spec.ts:105`. No afecta compras futuras (con stock 0 el promedio toma el costo de la compra), solo lo que se muestra. | `calculateAvgCostAfterVoid` en `backend/src/documents/helpers/stock.helpers.ts` (`if (denominator <= 0) return currentAvgCost`) | 1) guardar el promedio anterior en cada movimiento y restaurarlo (migración); 2) poner 0 cuando el stock queda en 0 (recomendada, sin migración); 3) dejarlo. | Chico (opción 2) |
