@@ -6,12 +6,14 @@ import { useMutation } from '@tanstack/react-query'
 import { Eye, EyeOff, KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { changePassword } from '@/services/auth.service'
+import { isValidPassword, PASSWORD_RULE_MESSAGE } from '@/lib/password-rule'
+import { PasswordRuleHint } from '@/components/shared'
 import { useAuthStore } from '@/stores/auth.store'
 
 const schema = z
   .object({
     currentPassword: z.string().min(1, 'Ingresa tu contraseña actual'),
-    newPassword: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+    newPassword: z.string().refine(isValidPassword, PASSWORD_RULE_MESSAGE),
     confirmPassword: z.string(),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -40,8 +42,11 @@ export function ChangePasswordDialog({ open, onClose }: ChangePasswordDialogProp
     handleSubmit,
     reset,
     setError,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
+
+  const newPasswordValue = watch('newPassword') ?? ''
 
   const mutation = useMutation({
     mutationFn: (data: FormValues) => changePassword(data.currentPassword, data.newPassword),
@@ -111,6 +116,7 @@ export function ChangePasswordDialog({ open, onClose }: ChangePasswordDialogProp
                   {visible[name] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {name === 'newPassword' && <PasswordRuleHint value={newPasswordValue} />}
               {errors[name] && <p className="text-xs text-red-500 mt-1">{errors[name].message}</p>}
             </div>
           ))}
