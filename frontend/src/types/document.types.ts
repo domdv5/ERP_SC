@@ -208,6 +208,7 @@ export interface CustomerCreditApplication {
   id: string
   amount: number
   saleDocumentId: string
+  saleDocument: { type: DocumentType }
   appliedAt: string
 }
 

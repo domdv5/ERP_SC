@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -40,7 +40,7 @@ import type { DocumentType } from '@/types/document.types'
 import { usePermission } from '@/hooks/usePermission'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
-import { canCheckMissingStock, canVoidDocument } from '@/lib/document-permissions'
+import { canCheckMissingStock, canVoidDocument, canViewDocument } from '@/lib/document-permissions'
 import { useAuthStore } from '@/stores/auth.store'
 import { invalidateAfterDocumentChange } from '@/lib/invalidation'
 import {
@@ -196,6 +196,26 @@ function ConfirmDialog({
   )
 }
 
+// Enlace a otro documento; sin permiso para ver ese tipo se muestra como texto plano.
+function DocumentLink({
+  canView,
+  onOpen,
+  className,
+  children,
+}: {
+  canView: boolean
+  onOpen: () => void
+  className?: string
+  children: ReactNode
+}) {
+  if (!canView) return <span className={className}>{children}</span>
+  return (
+    <button type="button" onClick={onOpen} className={cn('link-plain', className)}>
+      {children}
+    </button>
+  )
+}
+
 // ─── detail page ─────────────────────────────────────────────────────────────
 
 export default function DocumentDetailPage() {
@@ -215,6 +235,7 @@ export default function DocumentDetailPage() {
   const canConvertREM = usePermission('document.convert.REM')
   const canDuplicateCM = usePermission('document.create.CM')
   const userPermissions = useAuthStore((s) => s.user?.permissions)
+  const canSeeType = (type: DocumentType) => canViewDocument(type, userPermissions ?? [])
 
   const {
     data: doc,
@@ -615,18 +636,25 @@ export default function DocumentDetailPage() {
                 Convertir a venta
               </button>
             )}
-            {isReservationType && pvActiveDerived && (
+            {isReservationType &&
+              pvActiveDerived &&
               // Ya hay una venta derivada vigente (borrador o confirmada): en vez de anular o
               // convertir, se ofrece ir directo a esa venta. El backend igual lo rechaza si se intenta.
-              <button
-                type="button"
-                onClick={() => navigate(`/documents/${pvActiveDerived.id}`)}
-                className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                Ver venta {docNumber(pvActiveDerived.type, pvActiveDerived.number)}
-              </button>
-            )}
+              (canSeeType(pvActiveDerived.type) ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/documents/${pvActiveDerived.id}`)}
+                  className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  Ver venta {docNumber(pvActiveDerived.type, pvActiveDerived.number)}
+                </button>
+              ) : (
+                <span className="flex items-center gap-2 px-3 py-2 text-sm text-content-muted">
+                  <ShoppingCart className="w-4 h-4" />
+                  Venta {docNumber(pvActiveDerived.type, pvActiveDerived.number)}
+                </span>
+              ))}
             {isConfirmed && PRINTABLE_TYPES.has(doc.type) && (
               <button
                 onClick={() => doPrint()}
@@ -730,13 +758,13 @@ export default function DocumentDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-content-faint font-accent">Compra de origen</p>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/documents/${doc.sourceDocument!.id}`)}
-                  className="text-sm link-plain font-mono"
+                <DocumentLink
+                  canView={canSeeType(doc.sourceDocument.type)}
+                  onOpen={() => navigate(`/documents/${doc.sourceDocument!.id}`)}
+                  className="text-sm font-mono"
                 >
                   {docNumber(doc.sourceDocument.type, doc.sourceDocument.number)}
-                </button>
+                </DocumentLink>
               </div>
             </div>
           )}
@@ -752,18 +780,18 @@ export default function DocumentDetailPage() {
                 {doc.officialPurchases && doc.officialPurchases.length > 0 ? (
                   <div className="flex flex-col gap-0.5">
                     {doc.officialPurchases.map((cmo) => (
-                      <button
+                      <DocumentLink
                         key={cmo.id}
-                        type="button"
-                        onClick={() => navigate(`/documents/${cmo.id}`)}
-                        className="text-sm link-plain font-mono text-left"
+                        canView={canSeeType(cmo.type)}
+                        onOpen={() => navigate(`/documents/${cmo.id}`)}
+                        className="text-sm font-mono text-left"
                       >
                         {docNumber(cmo.type, cmo.number)}
                         <span className="font-sans text-content-muted">
                           {' · '}
                           {cmo.status === 'confirmed' ? 'confirmada' : 'borrador'}
                         </span>
-                      </button>
+                      </DocumentLink>
                     ))}
                   </div>
                 ) : (
@@ -1097,15 +1125,15 @@ export default function DocumentDetailPage() {
                     <div className="mt-3 border-t border-ui-divide pt-3 space-y-1.5">
                       <p className="text-xs text-content-faint font-accent">Aplicado en</p>
                       {credit.applications.map((app) => (
-                        <button
+                        <DocumentLink
                           key={app.id}
-                          type="button"
-                          onClick={() => navigate(`/documents/${app.saleDocumentId}`)}
-                          className="flex items-center gap-2 text-sm link-plain"
+                          canView={canSeeType(app.saleDocument.type)}
+                          onOpen={() => navigate(`/documents/${app.saleDocumentId}`)}
+                          className="flex items-center gap-2 text-sm"
                         >
                           <ArrowRight className="w-3.5 h-3.5" />
                           {formatCOP(app.amount)} · {formatDate(app.appliedAt)}
-                        </button>
+                        </DocumentLink>
                       ))}
                     </div>
                   )}
@@ -1144,12 +1172,12 @@ export default function DocumentDetailPage() {
                       </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() =>
+                  <DocumentLink
+                    canView={canSeeType(applied.customerCredit.sourceDocument.type)}
+                    onOpen={() =>
                       navigate(`/documents/${applied.customerCredit.sourceDocument.id}`)
                     }
-                    className="flex items-center gap-1.5 text-sm link-plain"
+                    className="flex items-center gap-1.5 text-sm"
                   >
                     Origen{' '}
                     {docNumber(
@@ -1157,7 +1185,7 @@ export default function DocumentDetailPage() {
                       applied.customerCredit.sourceDocument.number,
                     )}
                     <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  </DocumentLink>
                 </div>
               ))}
             </div>

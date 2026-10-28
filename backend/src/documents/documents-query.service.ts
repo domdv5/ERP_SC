@@ -84,6 +84,7 @@ export const DETAIL_INCLUDE = {
           id: true,
           amount: true,
           saleDocumentId: true,
+          saleDocument: { select: { type: true } },
           appliedAt: true,
         },
       },
