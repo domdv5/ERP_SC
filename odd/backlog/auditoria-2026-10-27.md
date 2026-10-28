@@ -48,8 +48,26 @@ Detalle y evidencia por tarea en `odd/tasks/dividir-archivos-grandes.md`. Mergea
 
 - [x] A1 — `documents.service.ts` 1.649 → 506 líneas, repartido en `documents-query.service.ts`, `document-conversion.service.ts`, `document-void.service.ts`, `helpers/document-amounts.ts` y `helpers/document-guards.helpers.ts`. Ramas `refactor/void-tests` (d040528) → `refactor/document-amounts` (e6e0ad2) → `refactor/documents-query-service` (18de722) → `refactor/document-conversion-service` (3396166) → `refactor/document-void-service` (8ecfe9b).
 - [x] A2 — sin `if (type === ...)` en los services: `tracksReceiver`, `affectsCostOnVoid(unitCost)` y `revertsLastCostOnVoid` en la estrategia (8ecfe9b).
-- [x] A3 — `POSCheckoutPage.tsx` 1.240 → 339 y `DocumentFormPage.tsx` 1.408 → 243 líneas. Ramas `refactor/pos-checkout-split` (eb6e27f) → `refactor/document-form-split` (5ef67bf). Falta prueba visual.
-- [~] A5 — parcial: Vitest en frontend con pruebas de helpers puros (`test/frontend-vitest`, 3cbbc68). Faltan e2e y pruebas de componentes.
+- [x] A3 — `POSCheckoutPage.tsx` 1.240 → 339 y `DocumentFormPage.tsx` 1.408 → 243 líneas. Ramas `refactor/pos-checkout-split` (eb6e27f) → `refactor/document-form-split` (5ef67bf). Prueba visual del usuario OK.
+- [~] A5 — parcial: Vitest en frontend, 100 pruebas de funciones puras (#51, #53) y 68 de anular en backend (#46). Faltan pruebas de pantallas/hooks y un e2e.
+- [ ] A4 — tipos front/back siguen a mano (sin empezar).
+
+### Resumen de pendientes (2026-10-28)
+
+Nota estimada tras el split: arquitectura ~7.5/10 (backend 8, frontend 7, contrato front/back 4); seguridad sigue 8/10.
+
+| Orden | # | Pendiente | Tamaño |
+|---|---|---|---|
+| 1 | S1 | `GET /documents/:id` y PDF sin filtrar por tipo visible | Chico |
+| 2 | S2 | Actualizar dependencias con DoS (`body-parser`, `multer`, `qs`) | Chico |
+| 3 | S4 | Validar `JWT_SECRET` al arrancar | Chico |
+| 4 | A4 | Generar tipos del frontend desde el backend | Mediano |
+| 5 | A5 | Pruebas de pantallas/hooks y e2e | Mediano |
+| 6 | F1 | Costo promedio al anular compra que deja stock 0 | Chico |
+| 7 | S5 | Contraseña 8+ con letras y números | Chico |
+| 8 | S3/S6 | JWT en cookie `HttpOnly` (resuelve también el token del SSE) | Grande |
+| — | Lint | Frontend sin ESLint configurado (`frontend/CLAUDE.md` menciona `pnpm lint`); errores `no-unsafe-*` en specs del backend | Chico |
+| — | Idea | Venta mixta contado+crédito = COT por el total + recibo de caja automático | Por definir |
 
 ## Plan para partir los archivos gigantes (A1 + A3)
 
