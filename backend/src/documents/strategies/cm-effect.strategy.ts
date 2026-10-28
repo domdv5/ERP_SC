@@ -10,6 +10,12 @@ import { computeNewAvgCost } from '@/documents/helpers/stock.helpers';
 @Injectable()
 export class CmEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.CM;
+  readonly tracksReceiver = true;
+  readonly revertsLastCostOnVoid = true;
+
+  affectsCostOnVoid(): boolean {
+    return true;
+  }
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {
     await this.assertValidSupplier(createDocumentDto.thirdPartyId);

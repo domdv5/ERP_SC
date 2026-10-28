@@ -15,6 +15,10 @@ import { computeNewAvgCost } from '@/documents/helpers/stock.helpers';
 export class EaiEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.EAI;
 
+  affectsCostOnVoid(unitCost: number): boolean {
+    return unitCost > 0;
+  }
+
   async validateCreate(createDocumentDto: CreateDocumentDto) {
     if (
       createDocumentDto.items.some(

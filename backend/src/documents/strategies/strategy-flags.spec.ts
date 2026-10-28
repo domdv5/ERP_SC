@@ -1,11 +1,16 @@
 import type { PrismaService } from '@/prisma/prisma.service';
+import type { DocumentEffectStrategy } from './document-effect.strategy';
 import { CmEffectStrategy } from './cm-effect.strategy';
+import { CmoEffectStrategy } from './cmo-effect.strategy';
 import { CotEffectStrategy } from './cot-effect.strategy';
+import { DvcEffectStrategy } from './dvc-effect.strategy';
 import { DvvEffectStrategy } from './dvv-effect.strategy';
+import { EaiEffectStrategy } from './eai-effect.strategy';
 import { PosEffectStrategy } from './pos-effect.strategy';
 import { PosoEffectStrategy } from './poso-effect.strategy';
 import { PvEffectStrategy } from './pv-effect.strategy';
 import { RemEffectStrategy } from './rem-effect.strategy';
+import { SajEffectStrategy } from './saj-effect.strategy';
 import { TransferEffectStrategy } from './transfer-effect.strategy';
 
 const prisma = {} as PrismaService;
@@ -78,4 +83,70 @@ describe('usesTodayDate', () => {
       expect(new Strategy(prisma).usesTodayDate).toBe(false);
     },
   );
+});
+
+const ALL_STRATEGIES = [
+  CmEffectStrategy,
+  CmoEffectStrategy,
+  CotEffectStrategy,
+  DvcEffectStrategy,
+  DvvEffectStrategy,
+  EaiEffectStrategy,
+  PosEffectStrategy,
+  PosoEffectStrategy,
+  PvEffectStrategy,
+  RemEffectStrategy,
+  SajEffectStrategy,
+  TransferEffectStrategy,
+];
+
+describe('tracksReceiver', () => {
+  it('CM guarda quién recibe la mercancía', () => {
+    expect(new CmEffectStrategy(prisma).tracksReceiver).toBe(true);
+  });
+
+  it.each(ALL_STRATEGIES.filter((Strategy) => Strategy !== CmEffectStrategy))(
+    '%p no guarda receptor',
+    (Strategy) => {
+      expect(new Strategy(prisma).tracksReceiver).toBe(false);
+    },
+  );
+});
+
+describe('revertsLastCostOnVoid', () => {
+  it('CM revierte el último costo al anular', () => {
+    expect(new CmEffectStrategy(prisma).revertsLastCostOnVoid).toBe(true);
+  });
+
+  it.each(ALL_STRATEGIES.filter((Strategy) => Strategy !== CmEffectStrategy))(
+    '%p no toca el último costo al anular',
+    (Strategy) => {
+      expect(new Strategy(prisma).revertsLastCostOnVoid).toBe(false);
+    },
+  );
+});
+
+describe('affectsCostOnVoid', () => {
+  it.each([0, 100])('CM siempre afecta el costo (costo %p)', (unitCost) => {
+    const strategy: DocumentEffectStrategy = new CmEffectStrategy(prisma);
+    expect(strategy.affectsCostOnVoid(unitCost)).toBe(true);
+  });
+
+  it.each([
+    [0, false],
+    [100, true],
+  ])('EAI con costo %p afecta el costo: %p', (unitCost, expected) => {
+    expect(new EaiEffectStrategy(prisma).affectsCostOnVoid(unitCost)).toBe(
+      expected,
+    );
+  });
+
+  it.each(
+    ALL_STRATEGIES.filter(
+      (Strategy) =>
+        Strategy !== CmEffectStrategy && Strategy !== EaiEffectStrategy,
+    ),
+  )('%p nunca afecta el costo, aunque la línea tenga costo', (Strategy) => {
+    expect(new Strategy(prisma).affectsCostOnVoid(100)).toBe(false);
+  });
 });

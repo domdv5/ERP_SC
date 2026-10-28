@@ -16,6 +16,7 @@ import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
 import { DocumentsQueryService } from './documents-query.service';
 import { DocumentConversionService } from './document-conversion.service';
+import { DocumentVoidService } from './document-void.service';
 import { DocumentPrintService } from './print/index';
 import {
   ConfirmDocumentDto,
@@ -35,6 +36,7 @@ export class DocumentsController {
     private readonly documentsService: DocumentsService,
     private readonly documentsQuery: DocumentsQueryService,
     private readonly documentConversion: DocumentConversionService,
+    private readonly documentVoid: DocumentVoidService,
     private readonly documentPrintService: DocumentPrintService,
   ) {}
 
@@ -109,7 +111,7 @@ export class DocumentsController {
 
   @Post(':id/void')
   void(@Param('id') id: string, @Req() req: RequestWithUser) {
-    return this.documentsService.void(id, req.user);
+    return this.documentVoid.void(id, req.user);
   }
 
   @Post(':id/duplicate')
