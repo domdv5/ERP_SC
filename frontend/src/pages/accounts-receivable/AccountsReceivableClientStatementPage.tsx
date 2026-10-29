@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useGoBack } from '@/hooks/useGoBack'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { ArrowLeft, Wallet, CreditCard, FileText, History, PiggyBank } from 'lucide-react'
@@ -29,6 +30,7 @@ const creditStatusBadgeFor = (status: string) =>
 export default function AccountsReceivableClientStatementPage() {
   const { clientId } = useParams<{ clientId: string }>()
   const navigate = useNavigate()
+  const goBack = useGoBack('/accounts-receivable')
   const [branchId, setBranchId] = useState('')
 
   const {
@@ -74,11 +76,11 @@ export default function AccountsReceivableClientStatementPage() {
     return (
       <div className="space-y-4">
         <button
-          onClick={() => navigate('/accounts-receivable')}
+          onClick={goBack}
           className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Volver a cuentas por cobrar
+          Volver
         </button>
         <div className="card-hard p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
@@ -102,11 +104,11 @@ export default function AccountsReceivableClientStatementPage() {
     <div className="space-y-6 pb-10">
       {/* Back */}
       <button
-        onClick={() => navigate('/accounts-receivable')}
+        onClick={goBack}
         className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Volver a cuentas por cobrar
+        Volver
       </button>
 
       {/* Header card */}

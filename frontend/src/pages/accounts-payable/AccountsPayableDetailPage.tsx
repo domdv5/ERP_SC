@@ -1,3 +1,4 @@
+import { useGoBack } from '@/hooks/useGoBack'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -41,6 +42,7 @@ const ORIGIN_BADGE: Record<
 export default function AccountsPayableDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const goBack = useGoBack('/accounts-payable')
 
   const {
     data: account,
@@ -84,11 +86,11 @@ export default function AccountsPayableDetailPage() {
     return (
       <div className="space-y-4">
         <button
-          onClick={() => navigate('/accounts-payable')}
+          onClick={goBack}
           className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Volver a cuentas por pagar
+          Volver
         </button>
         <div className="card-hard p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
@@ -111,11 +113,11 @@ export default function AccountsPayableDetailPage() {
     <div className="space-y-6 pb-10">
       {/* Back */}
       <button
-        onClick={() => navigate('/accounts-payable')}
+        onClick={goBack}
         className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Volver a cuentas por pagar
+        Volver
       </button>
 
       {/* Header card */}
