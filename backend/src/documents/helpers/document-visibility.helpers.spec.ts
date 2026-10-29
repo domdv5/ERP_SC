@@ -26,6 +26,18 @@ describe('assertCanViewDocument', () => {
     ).not.toThrow();
   });
 
+  it('deja ver un tipo que el rol solo convierte (facturación con preventas)', () => {
+    expect(() =>
+      assertCanViewDocument(['document.convert.PV'], DocumentType.PV),
+    ).not.toThrow();
+  });
+
+  it('liberar una reserva no da visibilidad', () => {
+    expect(() =>
+      assertCanViewDocument(['document.release.PV'], DocumentType.PV),
+    ).toThrow(ForbiddenException);
+  });
+
   it('deja ver un tipo que el rol solo anula', () => {
     expect(() =>
       assertCanViewDocument(['document.void.COT'], DocumentType.COT),
