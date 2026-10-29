@@ -13,11 +13,12 @@ Rama: `feature/contrato-documentos`.
 
 ## Tasks
 
-- T1 — S1, S2, S3 — nestjs-code-crafter — contrato + `AsJson` + chequeo en `DocumentsQueryService` + prueba de tipos — commit: pendiente
-- T2 — S4 — react-code-crafter — frontend importa del contrato y corrige usos — commit: pendiente
-- T3 — S5 — inline — job de frontend en CI — commit: pendiente
-- T4 — S6 — inline — docs y backlog — commit: pendiente
+- T1 — S1, S2, S3 — nestjs-code-crafter — contrato + `AsJson` + chequeo en `DocumentsQueryService` + prueba de tipos — commit: 13f3d7b
+- T2 — S4 — react-code-crafter — frontend importa del contrato y corrige usos — commit: c9556c2
+- T3 — S5 — inline — job de frontend en CI — commit: c98e5eb
+- T4 — S6 — inline — docs y backlog — commit: (este)
 
 ## Log
 
 - L1 — Usuario (2026-10-29): "sigamogs con lo del bakclogg" → A4. Tras discutir acoplamiento: "pero entonces empeizo a ganr acoplameinto porque ay el fornted depende del vkac exclusivamente" → se descarta importar tipos de Prisma; se elige contract-first. "momento quein da al forma del contrato?" → lo escribe una persona; lo decide lo que la pantalla necesita. "entocnces si existe algun cambio de algun campo ambos se vana enterar antes de compliar porque suane se contrato?" → sí, con 4 condiciones (ambos usan el contrato, campos de más no se detectan, AsJson para Decimal/Date, CI compila el frontend). "dale" a: documentos como prueba, incluyendo el chequeo del frontend en el CI.
+- L2 — Evidencia: T1 descubrió bugs reales (`destBin.name` no existe, `sourceBin` no viaja); T2 los corrigió. Romper `voidedAt` en el contrato deja 1 error en el `tsc` del frontend (verificado y revertido). ts-jest no detecta errores de tipos → CI agrega `tsc --noEmit` al backend.

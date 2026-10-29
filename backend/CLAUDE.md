@@ -235,6 +235,10 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 - `enums/index.ts` — exports `MovementType`, `DocumentType`, `DocumentStatus`
 - `types/index.ts` — exports `JwtPayload`, `RequestWithUser`, `ResponseFormat<T>`
 
+### Contrato de respuestas (2026-10-29)
+
+`src/contracts/` guarda los tipos planos que el frontend importa (regla en el `CLAUDE.md` raíz). `DocumentsQueryService.findAll`/`findOne` devuelven a través de `matchListContract`/`matchDetailContract` (`matchContract` en `common/types/as-json.ts`): identidad en runtime, error de compilación si la respuesta en JSON no cumple `DocumentListResponse`/`DocumentDetail`. La prueba `contracts/documents.contract.spec.ts` usa `@ts-expect-error`, así que solo la valida `pnpm exec tsc --noEmit -p tsconfig.json` (ts-jest no chequea tipos).
+
 ### Logging (2026-09-29)
 
 Logging estructurado con `nestjs-pino` (`LoggerModule.forRootAsync` en `AppModule`, config en `src/common/logger/logger.config.ts`). **Los logs NO se guardan en BD ni en servicios externos** — solo terminal y archivo.

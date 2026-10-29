@@ -42,6 +42,15 @@ Identificadores en **inglés simple** (comentarios en español); el dueño del r
 - Los nombres de documentos y conceptos del negocio se quedan en español (`egreso`, `reciboCaja`, `preventa`): son dominio, no vocabulario a traducir.
 - Renombrar algo que viaja al frontend (rutas, campos JSON) exige cambiar ambos lados en el mismo PR.
 
+## Contrato front/back
+
+Las respuestas de la API que ya tienen contrato se describen en `backend/src/contracts/` (hoy: documentos, `GET /documents` y `GET /documents/:id`). Es contract-first: el archivo lo escribe una persona y es la referencia; backend y frontend lo cumplen.
+
+- Solo tipos planos: nada de `enum`, valores en tiempo de ejecución ni imports fuera de la carpeta (el frontend lo compila con su tsconfig estricto).
+- Backend: el service envuelve lo que devuelve con `matchContract<Contrato>()` (`common/types/as-json.ts`); si `AsJson<lo que devuelve>` (Decimal y Date → `string`) no cumple, no compila.
+- Frontend: importa con `import type` desde `@contracts/*`, sin copia propia en `src/types`.
+- Cambiar un campo = editar el contrato en el mismo PR que ajusta ambos lados. `pnpm test` del backend no detecta errores de tipos (ts-jest transpila); el CI corre `tsc --noEmit` del backend y el build del frontend.
+
 ## Documentation Maintenance
 
 Cuando una tarea introduce una **decisión de arquitectura, regla de negocio, endpoint nuevo, o comportamiento no obvio** (no un simple CRUD o maquetación), el CLAUDE.md correspondiente debe quedar actualizado como parte de la misma tarea, no después:
