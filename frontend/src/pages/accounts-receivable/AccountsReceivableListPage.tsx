@@ -18,7 +18,8 @@ import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { StatusBadge } from './components/StatusBadge'
-import { formatDate, formatPaymentDays, DOCUMENT_TYPE_LABELS } from './accounts-receivable.utils'
+import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-receivable.utils'
+import { PaymentDaysCell } from './components/PaymentDaysCell'
 import type { AccountsReceivableStatus } from '@/types'
 import type { ThirdParty } from '@/types/third-party.types'
 
@@ -381,12 +382,7 @@ export default function AccountsReceivableListPage() {
                       {formatDate(account.lastPaymentDate)}
                     </td>
                     <td className="px-5 py-3.5 text-xs whitespace-nowrap">
-                      <span className="text-content-secondary font-medium">
-                        {formatPaymentDays(account.paymentDays)}
-                      </span>
-                      {account.isPaymentOpen && (
-                        <span className="block text-content-faint">en curso</span>
-                      )}
+                      <PaymentDaysCell days={account.paymentDays} isOpen={account.isPaymentOpen} />
                     </td>
                     <td className="px-5 py-3.5">
                       <StatusBadge status={account.status} />

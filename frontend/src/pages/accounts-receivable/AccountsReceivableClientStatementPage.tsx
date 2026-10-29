@@ -6,6 +6,7 @@ import { getClientStatement } from '@/services/accounts-receivable.service'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber, formatBogotaDate } from '@/lib/format'
 import { StatusBadge } from './components/StatusBadge'
+import { PaymentDaysCell } from './components/PaymentDaysCell'
 import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-receivable.utils'
 
 // Estado de una nota de saldo a favor: solo 'available' | 'used' en el backend.
@@ -261,6 +262,8 @@ export default function AccountsReceivableClientStatementPage() {
                     'Total',
                     'Pagado',
                     'Saldo',
+                    'Último pago',
+                    'Días',
                     'Estado',
                   ].map((h) => (
                     <th
@@ -306,6 +309,15 @@ export default function AccountsReceivableClientStatementPage() {
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                       {formatCOP(Number(receivable.balance))}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                      {formatDate(receivable.lastPaymentDate)}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                      <PaymentDaysCell
+                        days={receivable.paymentDays}
+                        isOpen={receivable.isPaymentOpen}
+                      />
                     </td>
                     <td className="px-5 py-3.5">
                       <StatusBadge status={receivable.status} />
