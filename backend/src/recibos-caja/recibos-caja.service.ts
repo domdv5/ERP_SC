@@ -11,9 +11,11 @@ import type { JwtPayload } from '@/common/types';
 import { toCents } from '@/common/utils/money.util';
 import { CreateReciboCajaDto } from './dto/create-recibo-caja.dto';
 import { FindAllRecibosCajaDto } from './dto/find-all-recibos-caja.dto';
+import { NO_BRANCH_FILTER } from './dto/find-open-items.dto';
 
 export const RECIBO_CAJA_DETAIL_INCLUDE = {
   client: { include: { thirdParty: { select: { id: true, name: true } } } },
+  customerBranch: { select: { id: true, name: true } },
   user: { select: { id: true, name: true } },
   payments: true,
   allocations: {
@@ -31,6 +33,7 @@ export const RECIBO_CAJA_DETAIL_INCLUDE = {
 
 type ExistingReciboCajaForIdempotency = {
   clientId: string;
+  customerBranchId: string | null;
   total: Prisma.Decimal;
   allocations: { accountReceivableId: string; amount: Prisma.Decimal }[];
 };
@@ -41,6 +44,9 @@ function isSameEgresoRequest(
   existing: ExistingReciboCajaForIdempotency,
 ): boolean {
   if (existing.clientId !== dto.clientId) {
+    return false;
+  }
+  if (existing.customerBranchId !== (dto.customerBranchId ?? null)) {
     return false;
   }
 
@@ -172,6 +178,9 @@ export class RecibosCajaService {
 
     const receivables = await tx.accountsReceivable.findMany({
       where: { id: { in: receivableIds } },
+      include: {
+        document: { select: { number: true, customerBranchId: true } },
+      },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -180,6 +189,13 @@ export class RecibosCajaService {
         'Alguna cuenta por cobrar citada no existe',
       );
     }
+
+    await this.assertValidBranch(
+      tx,
+      client.id,
+      dto.customerBranchId,
+      receivables,
+    );
 
     for (const receivable of receivables) {
       if (receivable.clientId !== client.id) {
@@ -266,6 +282,7 @@ export class RecibosCajaService {
         number,
         date: new Date(dateStr),
         clientId: client.id,
+        customerBranchId: dto.customerBranchId ?? null,
         userId: user.sub,
         total: paymentsTotalCents / 100,
         notes: dto.notes,
@@ -318,12 +335,58 @@ export class RecibosCajaService {
     });
   }
 
+  /** La sucursal del recibo debe ser del cliente y coincidir con la de cada CxC citada (ambas null = sin sucursal). */
+  private async assertValidBranch(
+    tx: Prisma.TransactionClient,
+    clientId: string,
+    customerBranchId: string | undefined,
+    receivables: {
+      clientId: string;
+      document: { number: string | null; customerBranchId: string | null };
+    }[],
+  ) {
+    const branchId = customerBranchId ?? null;
+
+    if (branchId) {
+      const branch = await tx.customerBranch.findFirst({
+        where: { id: branchId, customerId: clientId },
+        select: { id: true },
+      });
+      if (!branch) {
+        throw new BadRequestException('La sucursal no pertenece al cliente');
+      }
+    }
+
+    for (const receivable of receivables) {
+      if (receivable.clientId !== clientId) continue;
+      if (receivable.document.customerBranchId !== branchId) {
+        const label = receivable.document.number
+          ? `La factura ${receivable.document.number}`
+          : 'Una cuenta por cobrar citada';
+        throw new BadRequestException(
+          branchId
+            ? `${label} no pertenece a la sucursal seleccionada`
+            : `${label} pertenece a una sucursal: seleccione la sucursal del recibo`,
+        );
+      }
+    }
+  }
+
   async findAll(dto: FindAllRecibosCajaDto) {
-    const { page = 1, limit = 20, clientId, dateFrom, dateTo, number } = dto;
+    const {
+      page = 1,
+      limit = 20,
+      clientId,
+      customerBranchId,
+      dateFrom,
+      dateTo,
+      number,
+    } = dto;
     const skip = (page - 1) * limit;
 
     const where: Prisma.ReciboCajaWhereInput = {
       ...(clientId && { clientId }),
+      ...(customerBranchId && { customerBranchId }),
       ...(number && { number: { contains: number } }),
       ...((dateFrom || dateTo) && {
         date: {
@@ -342,6 +405,7 @@ export class RecibosCajaService {
           date: true,
           total: true,
           createdAt: true,
+          customerBranch: { select: { id: true, name: true } },
           client: {
             include: { thirdParty: { select: { id: true, name: true } } },
           },
@@ -380,12 +444,27 @@ export class RecibosCajaService {
   }
 
   /** CxC abiertas de un cliente, para armar el formulario de recibo de caja. Sin saldos a favor: este flujo no los usa (regla de negocio explícita). */
-  async findOpenItems(clientId: string) {
+  async findOpenItems(clientId: string, customerBranchId?: string) {
     const receivables = await this.prisma.accountsReceivable.findMany({
-      where: { clientId, status: { not: AccountsReceivableStatus.paid } },
+      where: {
+        clientId,
+        status: { not: AccountsReceivableStatus.paid },
+        ...(customerBranchId && {
+          document: {
+            customerBranchId:
+              customerBranchId === NO_BRANCH_FILTER ? null : customerBranchId,
+          },
+        }),
+      },
       include: {
         document: {
-          select: { id: true, type: true, number: true, date: true },
+          select: {
+            id: true,
+            type: true,
+            number: true,
+            date: true,
+            customerBranch: { select: { id: true, name: true } },
+          },
         },
       },
       orderBy: { createdAt: 'asc' },

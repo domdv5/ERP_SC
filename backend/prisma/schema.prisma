@@ -137,9 +137,10 @@ model CustomerBranch {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  customer  Customer   @relation(fields: [customerId], references: [id])
-  city      City?      @relation(fields: [cityCode], references: [code])
-  documents Document[]
+  customer    Customer     @relation(fields: [customerId], references: [id])
+  city        City?        @relation(fields: [cityCode], references: [code])
+  documents   Document[]
+  recibosCaja ReciboCaja[]
 
   @@unique([customerId, name])
   @@map("customer_branch")
@@ -456,15 +457,15 @@ model RolePermission {
 }
 
 model User {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  name      String   @db.VarChar(150)
-  username  String   @unique @db.VarChar(150)
-  password  String   @db.VarChar(255)
-  active    Boolean  @default(true)
+  id           String   @id @default(uuid(7)) @db.Uuid
+  name         String   @db.VarChar(150)
+  username     String   @unique @db.VarChar(150)
+  password     String   @db.VarChar(255)
+  active       Boolean  @default(true)
   // Va en el JWT; subirla invalida todos los tokens ya emitidos de este usuario
-  tokenVersion Int    @default(0) @map("token_version")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  tokenVersion Int      @default(0) @map("token_version")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   userRoles                UserRole[]
   documents                Document[]
@@ -1004,27 +1005,31 @@ model EgresoAllocation {
 
 /// Paga una o varias CxC de un mismo cliente en un solo movimiento; no se anula ni se edita. Sin saldo a favor: a diferencia de Egreso, no hay líneas de crédito — regla de negocio explícita.
 model ReciboCaja {
-  id             String   @id @default(uuid(7)) @db.Uuid
+  id               String   @id @default(uuid(7)) @db.Uuid
   /// Consecutivo propio (clave "RECIBO_CAJA" en Sequence), ceros a la izquierda a 6 dígitos para ordenar como texto.
-  number         String   @unique @db.VarChar(30)
+  number           String   @unique @db.VarChar(30)
   /// Sin @default a propósito: la fija el service en huso Colombia, no el de la base (mismo criterio que Egreso.date).
-  date           DateTime @db.Date
-  clientId       String   @map("client_id") @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
+  date             DateTime @db.Date
+  clientId         String   @map("client_id") @db.Uuid
+  /// Sucursal cobrada; null = recibo de CxC sin sucursal (o cliente sin sucursales).
+  customerBranchId String?  @map("customer_branch_id") @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
   /// total = suma de las formas de pago (CHECK) y también la suma de ReciboCajaAllocation.amount (eso lo valida el service, ningún CHECK lo ve).
-  total          Decimal  @db.Decimal(16, 2)
-  notes          String?  @db.VarChar(500)
+  total            Decimal  @db.Decimal(16, 2)
+  notes            String?  @db.VarChar(500)
   /// Clave que manda el cliente para que un reintento de red no cobre dos veces.
-  idempotencyKey String   @unique @map("idempotency_key") @db.VarChar(100)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  idempotencyKey   String   @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  client      Customer               @relation(fields: [clientId], references: [id])
-  user        User                   @relation(fields: [userId], references: [id])
-  payments    ReciboCajaPayment[]
-  allocations ReciboCajaAllocation[]
+  client         Customer               @relation(fields: [clientId], references: [id])
+  customerBranch CustomerBranch?        @relation(fields: [customerBranchId], references: [id], onDelete: Restrict)
+  user           User                   @relation(fields: [userId], references: [id])
+  payments       ReciboCajaPayment[]
+  allocations    ReciboCajaAllocation[]
 
   @@index([date])
   @@index([clientId, date])
+  @@index([customerBranchId])
   @@index([userId])
   @@map("recibo_caja")
 }

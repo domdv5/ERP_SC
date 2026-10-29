@@ -53,6 +53,11 @@ export class CreateReciboCajaDto {
   @IsUUID()
   clientId!: string;
 
+  // Obligatoria si el cliente tiene sucursales activas y se cobra una CxC con sucursal; omitida = recibo de CxC sin sucursal.
+  @IsOptional()
+  @IsUUID()
+  customerBranchId?: string;
+
   // Sin default acá: el service lo resuelve a hoy (fecha del servidor) si se omite.
   // Solo YYYY-MM-DD: IsDateString() solo acepta ISO 8601 completo, y el service
   // compara este string contra "hoy" lexicográficamente (mismo formato) — un

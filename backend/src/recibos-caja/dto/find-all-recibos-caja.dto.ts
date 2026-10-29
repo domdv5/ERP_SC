@@ -28,6 +28,10 @@ export class FindAllRecibosCajaDto {
   clientId?: string;
 
   @IsOptional()
+  @IsUUID()
+  customerBranchId?: string;
+
+  @IsOptional()
   @IsDateString()
   dateFrom?: string;
 
