@@ -69,6 +69,7 @@ describe('DocumentsService.void: compra y costos', () => {
         80,
         5,
         100,
+        0,
       );
       expect(findLastPurchaseCostAfterVoid).toHaveBeenCalledWith(
         tx,
@@ -275,6 +276,7 @@ describe('DocumentsService.void: compra y costos', () => {
         80,
         4,
         50,
+        0,
       );
       expect(findLastPurchaseCostAfterVoid).not.toHaveBeenCalled();
       expect(tx.product.update).toHaveBeenCalledWith({
@@ -285,6 +287,32 @@ describe('DocumentsService.void: compra y costos', () => {
         productId: 'p1',
         warehouseId: 'w1',
         delta: -4,
+      });
+    });
+
+    it('dos líneas del mismo producto: la segunda descuenta del stock lo ya revertido por la primera', async () => {
+      loadDocument(DocumentType.CM, {
+        inventoryMovements: [
+          makeMovement({ documentItemId: 'i1', quantity: 5, unitCost: 100 }),
+          makeMovement({ documentItemId: 'i2', quantity: 2, unitCost: 60 }),
+        ],
+      });
+      tx.product.findUniqueOrThrow
+        .mockResolvedValueOnce({ avgCost: 80, code: 'PRD-1' })
+        .mockResolvedValueOnce({ avgCost: 75, code: 'PRD-1' });
+      jest
+        .mocked(calculateAvgCostAfterVoid)
+        .mockResolvedValueOnce(75)
+        .mockResolvedValueOnce(70);
+
+      await service.void('doc-1', fullUser);
+
+      const calls = jest.mocked(calculateAvgCostAfterVoid).mock.calls;
+      expect(calls[0]).toEqual([tx, 'p1', 80, 5, 100, 0]);
+      expect(calls[1]).toEqual([tx, 'p1', 75, 2, 60, 5]);
+      expect(tx.product.update).toHaveBeenNthCalledWith(2, {
+        where: { id: 'p1' },
+        data: { avgCost: 70, lastCost: 90 },
       });
     });
 

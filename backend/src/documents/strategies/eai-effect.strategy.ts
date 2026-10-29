@@ -7,7 +7,10 @@ import {
 } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
-import type { DocumentWithItems } from './document-effect.strategy';
+import type {
+  DocumentToVoid,
+  DocumentWithItems,
+} from './document-effect.strategy';
 import { computeNewAvgCost } from '@/documents/helpers/stock.helpers';
 
 /** Entrada por ajuste de inventario: suma stock y recalcula el costo promedio con el costo indicado en la línea. */
@@ -15,8 +18,13 @@ import { computeNewAvgCost } from '@/documents/helpers/stock.helpers';
 export class EaiEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.EAI;
 
-  affectsCostOnVoid(unitCost: number): boolean {
-    return unitCost > 0;
+  // El último costo nunca lo toca un ajuste de entrada.
+  undoEffects(tx: Prisma.TransactionClient, document: DocumentToVoid) {
+    return this.undoCosts(tx, document, {
+      revertsLastCost: false,
+      affectsCost: (movement) =>
+        Number(movement.documentItem?.unitCost ?? 0) > 0,
+    });
   }
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {

@@ -113,40 +113,24 @@ describe('tracksReceiver', () => {
   );
 });
 
-describe('revertsLastCostOnVoid', () => {
-  it('CM revierte el último costo al anular', () => {
-    expect(new CmEffectStrategy(prisma).revertsLastCostOnVoid).toBe(true);
+describe('undoEffects', () => {
+  const WITH_UNDO: (typeof ALL_STRATEGIES)[number][] = [
+    CmEffectStrategy,
+    EaiEffectStrategy,
+    PvEffectStrategy,
+    RemEffectStrategy,
+  ];
+
+  it.each(WITH_UNDO)('%p define efectos propios al anular', (Strategy) => {
+    const strategy: DocumentEffectStrategy = new Strategy(prisma);
+    expect(typeof strategy.undoEffects).toBe('function');
   });
 
-  it.each(ALL_STRATEGIES.filter((Strategy) => Strategy !== CmEffectStrategy))(
-    '%p no toca el último costo al anular',
+  it.each(ALL_STRATEGIES.filter((Strategy) => !WITH_UNDO.includes(Strategy)))(
+    '%p no define efectos propios al anular',
     (Strategy) => {
-      expect(new Strategy(prisma).revertsLastCostOnVoid).toBe(false);
+      const strategy: DocumentEffectStrategy = new Strategy(prisma);
+      expect(strategy.undoEffects).toBeUndefined();
     },
   );
-});
-
-describe('affectsCostOnVoid', () => {
-  it.each([0, 100])('CM siempre afecta el costo (costo %p)', (unitCost) => {
-    const strategy: DocumentEffectStrategy = new CmEffectStrategy(prisma);
-    expect(strategy.affectsCostOnVoid(unitCost)).toBe(true);
-  });
-
-  it.each([
-    [0, false],
-    [100, true],
-  ])('EAI con costo %p afecta el costo: %p', (unitCost, expected) => {
-    expect(new EaiEffectStrategy(prisma).affectsCostOnVoid(unitCost)).toBe(
-      expected,
-    );
-  });
-
-  it.each(
-    ALL_STRATEGIES.filter(
-      (Strategy) =>
-        Strategy !== CmEffectStrategy && Strategy !== EaiEffectStrategy,
-    ),
-  )('%p nunca afecta el costo, aunque la línea tenga costo', (Strategy) => {
-    expect(new Strategy(prisma).affectsCostOnVoid(100)).toBe(false);
-  });
 });

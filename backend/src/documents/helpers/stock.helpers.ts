@@ -167,18 +167,22 @@ export async function computeNewAvgCost(
   return (globalStock * currentAvgCost + quantity * unitCost) / denominator;
 }
 
-/** Deshace un recálculo del costo promedio; solo es exacto si no hubo consumo de stock desde la compra original — el llamador debe verificarlo antes. */
+/** Deshace un recálculo del costo promedio; solo es exacto si no hubo consumo de stock desde la compra original — el llamador debe verificarlo antes. `alreadyUndoneQuantity` es lo ya revertido del mismo producto que el stock leído todavía cuenta. */
 export async function calculateAvgCostAfterVoid(
   tx: Prisma.TransactionClient,
   productId: string,
   currentAvgCost: number,
   quantity: number,
   unitCost: number,
+  alreadyUndoneQuantity = 0,
 ) {
-  const globalStock = await getGlobalStock(tx, productId);
+  const globalStock =
+    (await getGlobalStock(tx, productId)) - alreadyUndoneQuantity;
   const denominator = globalStock - quantity;
 
-  if (denominator <= 0) return currentAvgCost;
+  // Sin stock no hay promedio: vuelve a 0 como un producto que nunca se compró.
+  if (denominator === 0) return 0;
+  if (denominator < 0) return currentAvgCost;
 
   return (globalStock * currentAvgCost - quantity * unitCost) / denominator;
 }

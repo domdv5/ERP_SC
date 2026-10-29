@@ -99,12 +99,27 @@ describe('calculateAvgCostAfterVoid', () => {
     expect(avgRevertido).toBeCloseTo(avgAntes, 8);
   });
 
-  it('si la compra era todo el stock (denominador 0) conserva el promedio actual', async () => {
+  it('si la compra era todo el stock (queda en 0) el promedio vuelve a 0', async () => {
     const { tx } = fakeTx(5);
 
     const result = await calculateAvgCostAfterVoid(tx, 'prod-1', 160, 5, 160);
 
-    expect(result).toBe(160);
+    expect(result).toBe(0);
+  });
+
+  it('descuenta del stock leído lo ya deshecho del mismo producto', async () => {
+    const { tx } = fakeTx(20);
+
+    const result = await calculateAvgCostAfterVoid(
+      tx,
+      'prod-1',
+      120,
+      5,
+      160,
+      5,
+    );
+
+    expect(result).toBeCloseTo(100, 10);
   });
 
   it('con stock menor a la cantidad a revertir (denominador negativo) conserva el promedio actual', async () => {

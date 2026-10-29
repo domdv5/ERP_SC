@@ -3,7 +3,10 @@ import { Prisma } from '@prisma/client';
 import { DocumentType, MovementType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
-import type { DocumentWithItems } from './document-effect.strategy';
+import type {
+  DocumentToVoid,
+  DocumentWithItems,
+} from './document-effect.strategy';
 import { computeNewAvgCost } from '@/documents/helpers/stock.helpers';
 
 /** Compra de mercancía: suma stock, recalcula el costo promedio y crea la cuenta por pagar. */
@@ -11,10 +14,12 @@ import { computeNewAvgCost } from '@/documents/helpers/stock.helpers';
 export class CmEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.CM;
   readonly tracksReceiver = true;
-  readonly revertsLastCostOnVoid = true;
 
-  affectsCostOnVoid(): boolean {
-    return true;
+  undoEffects(tx: Prisma.TransactionClient, document: DocumentToVoid) {
+    return this.undoCosts(tx, document, {
+      revertsLastCost: true,
+      affectsCost: () => true,
+    });
   }
 
   async validateCreate(createDocumentDto: CreateDocumentDto) {

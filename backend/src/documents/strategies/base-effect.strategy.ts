@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DocumentType, MovementType } from '@/common/enums';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -6,12 +10,15 @@ import type { CreateDocumentDto } from '@/documents/dto/index';
 import type {
   ConfirmContext,
   DocumentEffectStrategy,
+  DocumentToVoid,
   DocumentWithItems,
   MissingStockItem,
 } from './document-effect.strategy';
 import {
   applyBinStockChange,
   applyStockChange,
+  calculateAvgCostAfterVoid,
+  findLastPurchaseCostAfterVoid,
 } from '@/documents/helpers/stock.helpers';
 import { getReservedByProduct } from '@/documents/helpers/reservation.helpers';
 
@@ -23,11 +30,6 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
   readonly tracksCustomerBranch: boolean = false;
   readonly usesTodayDate: boolean = false;
   readonly tracksReceiver: boolean = false;
-  readonly revertsLastCostOnVoid: boolean = false;
-
-  affectsCostOnVoid(_unitCost: number): boolean {
-    return false;
-  }
 
   // Los tipos que muestran la hora de cada producto pistoleado la activan con `= true`
   protected readonly tracksItemAddedAt: boolean = false;
@@ -238,6 +240,92 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
     }
 
     return missingStock;
+  }
+
+  /** Revierte el costo promedio (y el último costo si se pide) de las líneas que lo afectan; corre antes de revertir el stock. */
+  protected async undoCosts(
+    tx: Prisma.TransactionClient,
+    document: DocumentToVoid,
+    options: {
+      revertsLastCost: boolean;
+      affectsCost: (
+        movement: DocumentToVoid['inventoryMovements'][number],
+      ) => boolean;
+    },
+  ) {
+    // Solo se revierte si el movimiento es el último del producto (cacheado por producto, excluye este documento).
+    const recentConsumptionCache = new Map<
+      string,
+      Awaited<ReturnType<typeof tx.inventoryMovement.findFirst>>
+    >();
+    // El service revierte el stock después: se descuenta lo ya deshecho de este documento para igualar el stock que vería cada línea.
+    const undoneByProduct = new Map<string, number>();
+
+    for (const movement of document.inventoryMovements) {
+      const alreadyUndone = undoneByProduct.get(movement.productId) ?? 0;
+      undoneByProduct.set(
+        movement.productId,
+        alreadyUndone + movement.quantity,
+      );
+
+      if (!options.affectsCost(movement)) continue;
+
+      // Excluye líneas del mismo documento por fecha de creación; solo cuenta consumo real (no traslados ni anulaciones).
+      let mostRecentOther = recentConsumptionCache.get(movement.productId);
+
+      if (mostRecentOther === undefined) {
+        mostRecentOther = await tx.inventoryMovement.findFirst({
+          where: {
+            productId: movement.productId,
+            documentId: { not: document.id },
+            quantity: { lt: 0 },
+            movementType: {
+              notIn: [MovementType.transfer, MovementType.void],
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        recentConsumptionCache.set(movement.productId, mostRecentOther);
+      }
+
+      if (mostRecentOther && mostRecentOther.createdAt > movement.createdAt) {
+        throw new ConflictException(
+          `No se puede anular: el producto ${movement.productId} tuvo movimientos de stock posteriores a esta compra/ajuste, lo que impide recalcular el costo promedio de forma segura. Use un ajuste manual (EAI/SAJ) o una devolución a proveedor (DVC) en su lugar.`,
+        );
+      }
+
+      const product = await tx.product.findUniqueOrThrow({
+        where: { id: movement.productId },
+      });
+
+      const updateData: Prisma.ProductUpdateInput = {
+        avgCost: await calculateAvgCostAfterVoid(
+          tx,
+          movement.productId,
+          Number(product.avgCost),
+          movement.quantity,
+          Number(movement.unitCost),
+          alreadyUndone,
+        ),
+      };
+
+      if (options.revertsLastCost) {
+        const resolvedLastCost = await findLastPurchaseCostAfterVoid(
+          tx,
+          movement.productId,
+          document.id,
+          movement.createdAt,
+        );
+        if (resolvedLastCost !== undefined) {
+          updateData.lastCost = resolvedLastCost;
+        }
+      }
+
+      await tx.product.update({
+        where: { id: movement.productId },
+        data: updateData,
+      });
+    }
   }
 
   /** Aplica el cambio de stock en el inventario y registra el movimiento en el kardex. */
