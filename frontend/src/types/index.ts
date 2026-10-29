@@ -55,7 +55,9 @@ export type {
   SupplierCreditApplicationWithEgreso,
   SupplierStatement,
   SupplierStatementTotals,
-  GetAccountsPayableParams,
+  GetPayableSuppliersParams,
+  PayableSuppliersStatus,
+  PayableSupplierSummary,
 } from './accounts-payable.types'
 export type {
   EgresoPaymentMethod,
@@ -88,7 +90,9 @@ export type {
   ClientStatementTotals,
   ClientCredit,
   ClientCreditApplication,
-  GetAccountsReceivableParams,
+  GetReceivableClientsParams,
+  ReceivableClientsStatus,
+  ReceivableClientSummary,
 } from './accounts-receivable.types'
 export type {
   AccountsReceivableStatus,

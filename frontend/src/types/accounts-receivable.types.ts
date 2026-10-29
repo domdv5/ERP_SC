@@ -83,16 +83,28 @@ export interface AccountsReceivableMeta {
   totals: AccountsReceivableTotals
 }
 
-export interface GetAccountsReceivableParams {
+export type ReceivableClientsStatus = 'with_balance' | 'settled'
+
+export interface GetReceivableClientsParams {
   page?: number
   limit?: number
-  status?: AccountsReceivableStatus
-  clientId?: string
-  customerBranchId?: string
   search?: string
-  // Formato YYYY-MM-DD (el que da un <input type="date">); filtra sobre document.date
+  status?: ReceivableClientsStatus
+  // Formato YYYY-MM-DD; filtra las facturas por document.date
   dateFrom?: string
   dateTo?: string
+}
+
+// Una fila por cliente, agregada sobre todas sus CxC.
+export interface ReceivableClientSummary {
+  client: { id: string; name: string }
+  receivableCount: number
+  totalAmount: string
+  paidAmount: string
+  balance: string
+  lastSaleDate: string
+  lastPaymentDate: string | null
+  lastMovementAt: string
 }
 
 export interface ClientStatementTotals {

@@ -95,15 +95,28 @@ export interface AccountsPayableMeta {
   totals: AccountsPayableTotals
 }
 
-export interface GetAccountsPayableParams {
+export type PayableSuppliersStatus = 'with_balance' | 'settled'
+
+export interface GetPayableSuppliersParams {
   page?: number
   limit?: number
-  status?: AccountsPayableStatus
-  supplierId?: string
   search?: string
-  // Formato YYYY-MM-DD (el que da un <input type="date">); filtra sobre document.date
+  status?: PayableSuppliersStatus
+  // Formato YYYY-MM-DD; filtra las facturas por document.date
   dateFrom?: string
   dateTo?: string
+}
+
+// Una fila por proveedor, agregada sobre todas sus CxP.
+export interface PayableSupplierSummary {
+  supplier: { id: string; name: string }
+  payableCount: number
+  totalAmount: string
+  paidAmount: string
+  balance: string
+  lastPurchaseDate: string
+  lastPaymentDate: string | null
+  lastMovementAt: string
 }
 
 export interface SupplierStatementTotals {
