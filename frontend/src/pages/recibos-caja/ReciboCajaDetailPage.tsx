@@ -91,7 +91,10 @@ export default function ReciboCajaDetailPage() {
               {docNumber('RC', reciboCaja.number)}
             </h1>
             <p className="text-content-muted text-sm mt-1 font-accent">
-              <span className="text-content font-medium">{reciboCaja.client.thirdParty.name}</span>{' '}
+              <span className="text-content font-medium">{reciboCaja.client.thirdParty.name}</span>
+              {reciboCaja.customerBranch && (
+                <> &middot; Sucursal {reciboCaja.customerBranch.name}</>
+              )}{' '}
               &middot; {formatDateOnly(reciboCaja.date)} &middot; Registrado por{' '}
               {reciboCaja.user.name}
             </p>

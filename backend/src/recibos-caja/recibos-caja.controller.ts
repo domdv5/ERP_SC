@@ -9,7 +9,11 @@ import {
   Req,
 } from '@nestjs/common';
 import { RecibosCajaService } from './recibos-caja.service';
-import { CreateReciboCajaDto, FindAllRecibosCajaDto } from './dto/index';
+import {
+  CreateReciboCajaDto,
+  FindAllRecibosCajaDto,
+  FindOpenItemsDto,
+} from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import type { RequestWithUser } from '@/common/types';
 
@@ -27,8 +31,14 @@ export class RecibosCajaController {
   // param :id (mismo riesgo documentado en CLAUDE.md para GET /auth/roles).
   @Get('clients/:clientId/open-items')
   @Permissions('recibo.create')
-  findOpenItems(@Param('clientId', ParseUUIDPipe) clientId: string) {
-    return this.recibosCajaService.findOpenItems(clientId);
+  findOpenItems(
+    @Param('clientId', ParseUUIDPipe) clientId: string,
+    @Query() findOpenItemsDto: FindOpenItemsDto,
+  ) {
+    return this.recibosCajaService.findOpenItems(
+      clientId,
+      findOpenItemsDto.customerBranchId,
+    );
   }
 
   @Get(':id')

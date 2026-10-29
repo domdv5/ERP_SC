@@ -12,12 +12,18 @@ export interface ReciboCajaClient {
   }
 }
 
+export interface ReciboCajaBranch {
+  id: string
+  name: string
+}
+
 export interface ReciboCajaDocument {
   id: string
   type: DocumentType
   // El backend ya lo manda con ceros a la izquierda (ej. "000009"); pasa por docNumber() igual.
   number: string
   date: string
+  customerBranch?: ReciboCajaBranch | null
 }
 
 // Campos Decimal de Prisma tipados `string` a propósito: llegan como string del backend
@@ -28,6 +34,7 @@ export interface ReciboCajaListItem {
   total: string
   createdAt: string
   client: ReciboCajaClient
+  customerBranch: ReciboCajaBranch | null
 }
 
 export interface ReciboCajaPaymentLine {
@@ -74,6 +81,7 @@ export interface ReciboCaja {
   idempotencyKey: string
   createdAt: string
   client: ReciboCajaClient
+  customerBranch: ReciboCajaBranch | null
   user: { id: string; name: string }
   payments: ReciboCajaPaymentLine[]
   allocations: ReciboCajaAllocation[]
@@ -90,6 +98,7 @@ export interface GetRecibosCajaParams {
   page?: number
   limit?: number
   clientId?: string
+  customerBranchId?: string
   dateFrom?: string
   dateTo?: string
   number?: string
@@ -128,6 +137,7 @@ export interface CreateReciboCajaPaymentPayload {
 
 export interface CreateReciboCajaPayload {
   clientId: string
+  customerBranchId?: string
   date?: string
   notes?: string
   idempotencyKey: string

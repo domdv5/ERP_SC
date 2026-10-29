@@ -9,6 +9,9 @@ import { getReciboCajaOpenItems, createReciboCaja } from '@/services/recibos-caj
 import { reciboCajaFormSchema, type ReciboCajaFormValues } from './recibo-caja-form.schema'
 import type { CreateReciboCajaPayload } from '@/types'
 import { todayInBogota } from '@/lib/format'
+import { useCustomerBranches } from '@/hooks/useCustomerBranches'
+
+export const NO_BRANCH = 'none'
 
 function extractErrorMessage(err: unknown): string | undefined {
   const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -17,6 +20,7 @@ function extractErrorMessage(err: unknown): string | undefined {
 
 const emptyDefaults = (): ReciboCajaFormValues => ({
   clientId: '',
+  customerBranchId: '',
   date: todayInBogota(),
   notes: '',
   receivables: [],
@@ -44,12 +48,53 @@ export function useReciboCajaForm() {
 
   const clientId = watch('clientId')
 
-  const { data: openItems, isLoading: isLoadingOpenItems } = useQuery({
-    queryKey: ['recibos-caja-open-items', clientId],
+  const branchId = watch('customerBranchId')
+
+  const { branches: activeBranches, isLoading: isLoadingActiveBranches } = useCustomerBranches(
+    clientId || undefined,
+  )
+
+  const { data: allOpenItems, isLoading: isLoadingAllOpenItems } = useQuery({
+    queryKey: ['recibos-caja-open-items', clientId, 'all'],
     queryFn: () => getReciboCajaOpenItems(clientId),
     enabled: Boolean(clientId),
     staleTime: 30 * 1000,
   })
+  const isLoadingBranches = isLoadingActiveBranches || isLoadingAllOpenItems
+
+  // Suma las sucursales inactivas que todavía tienen facturas pendientes: si no, esas facturas no se podrían cobrar.
+  const branches = [...activeBranches]
+  for (const receivable of allOpenItems?.receivables ?? []) {
+    const branch = receivable.document.customerBranch
+    if (branch && !branches.some((b) => b.id === branch.id)) branches.push(branch)
+  }
+  const hasBranches = branches.length > 0
+  const awaitingBranch = hasBranches && !branchId
+
+  // Con sucursales solo se ofrece "Sin sucursal" si el cliente tiene facturas pendientes sin sucursal
+  const hasUnbranchedItems = (allOpenItems?.receivables ?? []).some(
+    (receivable) => !receivable.document.customerBranch,
+  )
+
+  const openItemsBranch = hasBranches ? branchId : undefined
+  const { data: openItems, isLoading: isLoadingOpenItemsQuery } = useQuery({
+    queryKey: ['recibos-caja-open-items', clientId, openItemsBranch ?? 'all'],
+    queryFn: () => getReciboCajaOpenItems(clientId, openItemsBranch),
+    enabled: Boolean(clientId) && !isLoadingBranches && !awaitingBranch,
+    staleTime: 30 * 1000,
+  })
+  const isLoadingOpenItems = isLoadingBranches || isLoadingOpenItemsQuery
+
+  function changeClient() {
+    setValue('customerBranchId', '')
+    receivablesArray.replace([])
+  }
+
+  // Cambiar de sucursal descarta las filas: el recibo solo cobra facturas de una sucursal
+  function changeBranch(next: string) {
+    setValue('customerBranchId', next)
+    receivablesArray.replace([])
+  }
 
   // Cambiar de cliente reinicia las filas: las CxC de uno no aplican a otro
   useEffect(() => {
@@ -68,7 +113,7 @@ export function useReciboCajaForm() {
 
   useEffect(() => {
     idempotencyKeyRef.current = crypto.randomUUID()
-  }, [clientId])
+  }, [clientId, branchId])
 
   const watchedReceivables = watch('receivables')
   const watchedPayments = watch('payments')
@@ -103,6 +148,10 @@ export function useReciboCajaForm() {
   async function submitReciboCaja(values: ReciboCajaFormValues) {
     const payload: CreateReciboCajaPayload = {
       clientId: values.clientId,
+      customerBranchId:
+        hasBranches && values.customerBranchId !== NO_BRANCH
+          ? values.customerBranchId || undefined
+          : undefined,
       date: values.date,
       notes: values.notes || undefined,
       idempotencyKey: idempotencyKeyRef.current,
@@ -146,7 +195,14 @@ export function useReciboCajaForm() {
     totalAbonos,
     totalPayments,
     cuadraOk,
+    openItems,
     isLoadingOpenItems,
+    branches,
+    isLoadingBranches,
+    hasUnbranchedItems,
+    awaitingBranch,
+    changeClient,
+    changeBranch,
     hasClient: Boolean(clientId),
     submitReciboCaja,
     isSubmitting: isCreating,
