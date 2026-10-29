@@ -26,6 +26,7 @@ import {
   EmptyState,
   ErrorState,
   TablePagination,
+  DEFAULT_PAGE_SIZE,
   SegmentedToggle,
 } from '@/components/shared'
 import { cn } from '@/lib/utils'
@@ -64,6 +65,7 @@ export default function ThirdPartiesPage() {
 
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
   const [showInactive, setShowInactive] = useState(false)
   const [roleFilter, setRoleFilter] = useState<
     'all' | 'customer' | 'supplier' | 'seller' | 'receiver'
@@ -79,12 +81,12 @@ export default function ThirdPartiesPage() {
   }, [debouncedSearch, showInactive, roleFilter])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['third-parties', debouncedSearch, page, showInactive, roleFilter],
+    queryKey: ['third-parties', debouncedSearch, page, limit, showInactive, roleFilter],
     queryFn: () =>
       getThirdParties({
         search: debouncedSearch || undefined,
         page,
-        limit: 20,
+        limit,
         isActive: showInactive ? false : undefined,
         // Un rol por vez: el backend combina los flags con AND.
         isCustomer: roleFilter === 'customer' ? true : undefined,
@@ -399,7 +401,12 @@ export default function ThirdPartiesPage() {
             page={page}
             totalPages={totalPages}
             total={total}
+            limit={limit}
             onPageChange={setPage}
+            onLimitChange={(value) => {
+              setLimit(value)
+              setPage(1)
+            }}
           />
         )}
       </div>

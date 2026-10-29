@@ -11,6 +11,7 @@ import {
   EmptyState,
   ErrorState,
   TablePagination,
+  DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +24,7 @@ export default function OfficialLedgerPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
 
   const [debouncedSearch] = useDebounce(search, 400)
 
@@ -39,14 +41,14 @@ export default function OfficialLedgerPage() {
   const hasInvalidDateRange = Boolean(dateFrom && dateTo && dateFrom > dateTo)
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['official-ledger', debouncedSearch, dateFrom, dateTo, page],
+    queryKey: ['official-ledger', debouncedSearch, dateFrom, dateTo, page, limit],
     queryFn: () =>
       getOfficialLedger({
         search: debouncedSearch || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         page,
-        limit: 20,
+        limit,
       }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
@@ -236,7 +238,12 @@ export default function OfficialLedgerPage() {
             page={page}
             totalPages={totalPages}
             total={total}
+            limit={limit}
             onPageChange={setPage}
+            onLimitChange={(value) => {
+              setLimit(value)
+              setPage(1)
+            }}
           />
         )}
       </div>

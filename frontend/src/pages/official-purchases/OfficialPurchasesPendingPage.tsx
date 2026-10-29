@@ -12,6 +12,7 @@ import {
   EmptyState,
   ErrorState,
   TablePagination,
+  DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
@@ -29,6 +30,7 @@ export default function OfficialPurchasesPendingPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
 
   const [debouncedSearch] = useDebounce(search, 400)
   const [debouncedSupplierSearch] = useDebounce(supplierSearch, 400)
@@ -77,7 +79,15 @@ export default function OfficialPurchasesPendingPage() {
   const hasInvalidDateRange = Boolean(dateFrom && dateTo && dateFrom > dateTo)
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['official-purchases-pending', debouncedSearch, supplierId, dateFrom, dateTo, page],
+    queryKey: [
+      'official-purchases-pending',
+      debouncedSearch,
+      supplierId,
+      dateFrom,
+      dateTo,
+      page,
+      limit,
+    ],
     queryFn: () =>
       getPendingOfficialPurchases({
         search: debouncedSearch || undefined,
@@ -85,7 +95,7 @@ export default function OfficialPurchasesPendingPage() {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         page,
-        limit: 20,
+        limit,
       }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
@@ -261,7 +271,12 @@ export default function OfficialPurchasesPendingPage() {
             page={page}
             totalPages={totalPages}
             total={total}
+            limit={limit}
             onPageChange={setPage}
+            onLimitChange={(value) => {
+              setLimit(value)
+              setPage(1)
+            }}
           />
         )}
       </div>

@@ -14,6 +14,7 @@ import {
   EmptyState,
   ErrorState,
   TablePagination,
+  DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
@@ -53,6 +54,7 @@ export default function UsersPage() {
 
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
   const [roleId, setRoleId] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<AppUser | null>(null)
@@ -64,11 +66,11 @@ export default function UsersPage() {
   }, [debouncedSearch, roleId])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['users', debouncedSearch, roleId, page],
+    queryKey: ['users', debouncedSearch, roleId, page, limit],
     queryFn: () =>
       getUsers({
         page,
-        limit: 20,
+        limit,
         search: debouncedSearch || undefined,
         roleId: roleId || undefined,
       }),
@@ -324,7 +326,12 @@ export default function UsersPage() {
             page={page}
             totalPages={totalPages}
             total={total}
+            limit={limit}
             onPageChange={setPage}
+            onLimitChange={(value) => {
+              setLimit(value)
+              setPage(1)
+            }}
           />
         )}
       </div>

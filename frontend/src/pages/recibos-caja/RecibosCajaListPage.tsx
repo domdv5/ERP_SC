@@ -14,6 +14,7 @@ import {
   EmptyState,
   ErrorState,
   TablePagination,
+  DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
@@ -30,6 +31,7 @@ export default function RecibosCajaListPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
 
   const [debouncedSearch] = useDebounce(search, 400)
   const [debouncedClientSearch] = useDebounce(clientSearch, 400)
@@ -47,7 +49,7 @@ export default function RecibosCajaListPage() {
   }
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['recibos-caja', debouncedSearch, clientId, dateFrom, dateTo, page],
+    queryKey: ['recibos-caja', debouncedSearch, clientId, dateFrom, dateTo, page, limit],
     queryFn: () =>
       getRecibosCaja({
         number: debouncedSearch || undefined,
@@ -55,7 +57,7 @@ export default function RecibosCajaListPage() {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         page,
-        limit: 20,
+        limit,
       }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
@@ -246,7 +248,12 @@ export default function RecibosCajaListPage() {
             page={page}
             totalPages={totalPages}
             total={total}
+            limit={limit}
             onPageChange={setPage}
+            onLimitChange={(value) => {
+              setLimit(value)
+              setPage(1)
+            }}
           />
         )}
       </div>

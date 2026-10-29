@@ -34,7 +34,7 @@ return res.data.data
 
 **Debounced search** — 400 ms debounce via `useEffect` + `setTimeout`; reset `page` to 1 when search changes.
 
-**Pagination** — Backend returns `{ items, meta: { total, page, limit, totalPages } }`. Query key includes `[..., page]`. Pagination controls show ellipsis for large page counts.
+**Pagination** — Backend returns `{ items, meta: { total, page, limit, totalPages } }`. Query key includes `[..., page]`. Pagination controls show ellipsis for large page counts. Todo listado usa `TablePagination` con selector "Mostrar N por página" (`PAGE_SIZE_OPTIONS` 10/20/50/100, `DEFAULT_PAGE_SIZE` 10, tope del backend 100): la página guarda `limit` en estado, lo incluye en `queryKey` y params, y `onLimitChange` hace `setLimit` + `setPage(1)`. La barra se muestra siempre que `total > 0` (con 1 sola página solo oculta las flechas).
 
 **Mutations** — Always call `queryClient.invalidateQueries({ queryKey: ['resource'] })` on success. Las mutaciones que afectan documentos, stock, CxC o CxP usan los helpers de `lib/invalidation.ts` (`invalidateAfterDocumentChange`, `invalidateProducts`, `invalidateThirdParties`) en vez de listar claves a mano. El logout limpia todo el caché (`queryClient.clear()`). El detalle de bodega usa la clave `['warehouses', id]`, compartida por `WarehousesPage` y el form de traslados.
 

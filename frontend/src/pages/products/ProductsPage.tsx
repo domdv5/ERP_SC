@@ -23,6 +23,7 @@ import {
   EmptyState,
   ErrorState,
   TablePagination,
+  DEFAULT_PAGE_SIZE,
   SegmentedToggle,
 } from '@/components/shared'
 import type { Product } from '@/types'
@@ -42,6 +43,7 @@ export default function ProductsPage() {
 
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
   const [showInactive, setShowInactive] = useState(false)
   const [brandId, setBrandId] = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -55,12 +57,12 @@ export default function ProductsPage() {
   }, [debouncedSearch, showInactive, brandId])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['products', debouncedSearch, page, showInactive, brandId],
+    queryKey: ['products', debouncedSearch, page, limit, showInactive, brandId],
     queryFn: () =>
       getProducts({
         search: debouncedSearch || undefined,
         page,
-        limit: 20,
+        limit,
         active: showInactive ? false : undefined,
         brandId: brandId || undefined,
       }),
@@ -362,7 +364,12 @@ export default function ProductsPage() {
             page={page}
             totalPages={totalPages}
             total={total}
+            limit={limit}
             onPageChange={setPage}
+            onLimitChange={(value) => {
+              setLimit(value)
+              setPage(1)
+            }}
           />
         )}
       </div>
