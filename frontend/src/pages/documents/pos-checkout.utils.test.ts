@@ -249,7 +249,7 @@ describe('parseCreditLimitError', () => {
 
 describe('calculatePaymentDifference', () => {
   const lines = (...amounts: (number | undefined)[]): PaymentLine[] =>
-    amounts.map((amount) => ({ method: 'efectivo', amount }))
+    amounts.map((amount) => ({ method: 'efectivo_almacen', amount }))
 
   it('sin líneas → todo el total falta', () => {
     expect(calculatePaymentDifference([], 5000)).toBe(5000)
@@ -301,19 +301,21 @@ describe('arePaymentsValid', () => {
   })
 
   it('una línea que cubre el total exacto es válida', () => {
-    expect(arePaymentsValid([line('efectivo', 5000)], 5000)).toBe(true)
+    expect(arePaymentsValid([line('efectivo_almacen', 5000)], 5000)).toBe(true)
   })
 
   it('varias formas distintas que suman exacto son válidas', () => {
-    expect(arePaymentsValid([line('efectivo', 3000), line('transferencia', 2000)], 5000)).toBe(true)
+    expect(
+      arePaymentsValid([line('efectivo_almacen', 3000), line('consignacion_almacen', 2000)], 5000),
+    ).toBe(true)
   })
 
   it('pago de menos es inválido', () => {
-    expect(arePaymentsValid([line('efectivo', 4999.99)], 5000)).toBe(false)
+    expect(arePaymentsValid([line('efectivo_almacen', 4999.99)], 5000)).toBe(false)
   })
 
   it('pago de más es inválido', () => {
-    expect(arePaymentsValid([line('efectivo', 5000.01)], 5000)).toBe(false)
+    expect(arePaymentsValid([line('efectivo_almacen', 5000.01)], 5000)).toBe(false)
   })
 
   it('forma de pago vacía es inválida', () => {
@@ -321,20 +323,33 @@ describe('arePaymentsValid', () => {
   })
 
   it('monto 0, negativo o undefined es inválido', () => {
-    expect(arePaymentsValid([line('efectivo', 0), line('tarjeta', 5000)], 5000)).toBe(false)
-    expect(arePaymentsValid([line('efectivo', -1), line('tarjeta', 5001)], 5000)).toBe(false)
-    expect(arePaymentsValid([line('efectivo', undefined), line('tarjeta', 5000)], 5000)).toBe(false)
+    expect(
+      arePaymentsValid([line('efectivo_almacen', 0), line('consignacion_almacen', 5000)], 5000),
+    ).toBe(false)
+    expect(
+      arePaymentsValid([line('efectivo_almacen', -1), line('consignacion_almacen', 5001)], 5000),
+    ).toBe(false)
+    expect(
+      arePaymentsValid(
+        [line('efectivo_almacen', undefined), line('consignacion_almacen', 5000)],
+        5000,
+      ),
+    ).toBe(false)
   })
 
   it('forma de pago repetida es inválida aunque sume exacto', () => {
-    expect(arePaymentsValid([line('efectivo', 3000), line('efectivo', 2000)], 5000)).toBe(false)
+    expect(
+      arePaymentsValid([line('efectivo_almacen', 3000), line('efectivo_almacen', 2000)], 5000),
+    ).toBe(false)
   })
 
   it('con líneas y total 0 es inválido (el monto debe ser > 0)', () => {
-    expect(arePaymentsValid([line('efectivo', 0)], 0)).toBe(false)
+    expect(arePaymentsValid([line('efectivo_almacen', 0)], 0)).toBe(false)
   })
 
   it('suma con decimales que cuadra por centavos enteros es válida', () => {
-    expect(arePaymentsValid([line('efectivo', 0.1), line('tarjeta', 0.2)], 0.3)).toBe(true)
+    expect(
+      arePaymentsValid([line('efectivo_almacen', 0.1), line('consignacion_almacen', 0.2)], 0.3),
+    ).toBe(true)
   })
 })
