@@ -23,31 +23,14 @@ const creditRowSchema = z.object({
   amount: moneyAmount,
 })
 
-export const EGRESO_PAYMENT_METHODS = [
-  'efectivo_almacen',
-  'consignacion_almacen',
-  'cheque',
-  'efectivo_oficina',
-  'consignacion_oficina',
-] as const
+export const EGRESO_PAYMENT_METHODS = ['efectivo_oficina', 'consignacion_oficina'] as const
 
-const paymentLineSchema = z
-  .object({
-    method: z.enum(EGRESO_PAYMENT_METHODS, { error: 'Selecciona una forma de pago' }),
-    amount: moneyAmount,
-    reference: z.string().optional(),
-    bank: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    // El backend exige `reference` (número de cheque) solo para este método.
-    if (data.method === 'cheque' && !data.reference?.trim()) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'El número de cheque es obligatorio',
-        path: ['reference'],
-      })
-    }
-  })
+const paymentLineSchema = z.object({
+  method: z.enum(EGRESO_PAYMENT_METHODS, { error: 'Selecciona una forma de pago' }),
+  amount: moneyAmount,
+  reference: z.string().optional(),
+  bank: z.string().optional(),
+})
 
 const baseSchema = z.object({
   supplierId: z.string().min(1, 'Selecciona un proveedor'),

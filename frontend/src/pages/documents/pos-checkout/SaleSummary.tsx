@@ -42,7 +42,7 @@ export function SaleSummary({
               : creditsApplied > 0
                 ? isCredit
                   ? 'Total a crédito (neto)'
-                  : 'Total a pagar en efectivo'
+                  : 'Total a pagar'
                 : 'Total a pagar'}
           </p>
           <p className="text-4xl text-content mt-1 font-display tabular-nums">

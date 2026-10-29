@@ -521,9 +521,8 @@ enum DocumentStatus {
 }
 
 enum PaymentMethod {
-  efectivo
-  tarjeta
-  transferencia
+  efectivo_almacen
+  consignacion_almacen
 }
 
 /// Motivo del ajuste (obligatorio solo para EAI): negativo/inventario_general son el mismo caso (stock físico > sistema), separados solo para reportería; traspaso_costo mueve costo de otro producto; otro requiere adjustmentReasonOther.

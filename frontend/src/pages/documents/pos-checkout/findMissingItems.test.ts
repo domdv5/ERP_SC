@@ -4,7 +4,7 @@ import { findMissingItems } from './findMissingItems'
 
 type Input = Parameters<typeof findMissingItems>[0]
 
-const cashLine: PaymentLine = { method: 'efectivo', amount: 100 }
+const cashLine: PaymentLine = { method: 'efectivo_almacen', amount: 100 }
 
 const completeSale: Input = {
   thirdPartyId: 'tp-1',

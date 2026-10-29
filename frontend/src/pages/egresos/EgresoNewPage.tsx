@@ -14,8 +14,8 @@ import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { useEgresoForm } from './useEgresoForm'
+import { EGRESO_PAYMENT_METHODS } from './egreso-form.schema'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
-import type { EgresoPaymentMethod } from '@/types'
 import type { ThirdParty } from '@/types/third-party.types'
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
@@ -422,7 +422,7 @@ export default function EgresoNewPage() {
                     type="button"
                     onClick={() =>
                       paymentsArray.append({
-                        method: '' as EgresoPaymentMethod,
+                        method: 'efectivo_oficina',
                         amount: 0,
                         reference: '',
                         bank: '',
@@ -457,9 +457,9 @@ export default function EgresoNewPage() {
                             className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
                           >
                             <option value="">Selecciona...</option>
-                            {Object.entries(EGRESO_PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                            {EGRESO_PAYMENT_METHODS.map((value) => (
                               <option key={value} value={value}>
-                                {label}
+                                {EGRESO_PAYMENT_METHOD_LABELS[value]}
                               </option>
                             ))}
                           </select>
@@ -487,7 +487,7 @@ export default function EgresoNewPage() {
 
                         <div className="space-y-1">
                           <label className="block text-xs font-medium text-content-secondary">
-                            Referencia / N° de cheque
+                            Referencia
                           </label>
                           <input
                             {...register(`payments.${index}.reference`)}
