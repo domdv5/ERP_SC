@@ -52,8 +52,8 @@ describe('DocumentsService: formas de pago del borrador', () => {
 
   it('update reemplaza las líneas de pago y no las manda como columna', async () => {
     const payments = [
-      { method: 'efectivo', amount: 60000 },
-      { method: 'tarjeta', amount: 40000 },
+      { method: 'efectivo_almacen', amount: 60000 },
+      { method: 'consignacion_almacen', amount: 40000 },
     ];
 
     await service.update('doc-1', { payments } as never, user);

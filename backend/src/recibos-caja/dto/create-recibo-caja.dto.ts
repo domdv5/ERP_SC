@@ -3,7 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsDateString,
-  IsEnum,
+  IsIn,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -15,6 +15,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { EgresoPaymentMethod } from '@prisma/client';
+import { OFFICE_PAYMENT_METHODS } from '@/common/enums/office-payment-methods';
 import { IsValidChequeReference } from '@/common/validators/is-valid-cheque-reference.validator';
 
 /** Abono a una cuenta por cobrar dentro del recibo de caja. */
@@ -28,7 +29,10 @@ export class ReciboCajaReceivableLineDto {
 }
 
 export class ReciboCajaPaymentLineDto {
-  @IsEnum(EgresoPaymentMethod)
+  @IsIn(OFFICE_PAYMENT_METHODS, {
+    message:
+      'La forma de pago debe ser efectivo_oficina o consignacion_oficina',
+  })
   method!: EgresoPaymentMethod;
 
   @IsNumber()

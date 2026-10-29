@@ -47,7 +47,9 @@ describe('PosEffectStrategy: formas de pago al confirmar', () => {
   });
 
   it('rechaza si las formas de pago no suman el total', async () => {
-    const document = makeDocument([{ method: 'efectivo', amount: 90000 }]);
+    const document = makeDocument([
+      { method: 'efectivo_almacen', amount: 90000 },
+    ]);
 
     await expect(strategy.confirm(tx, document, 'u1')).rejects.toThrow(
       BadRequestException,
@@ -55,14 +57,14 @@ describe('PosEffectStrategy: formas de pago al confirmar', () => {
   });
 
   it('descuenta los saldos a favor del total a cobrar', async () => {
-    const full = makeDocument([{ method: 'efectivo', amount: 100000 }]);
+    const full = makeDocument([{ method: 'efectivo_almacen', amount: 100000 }]);
     await expect(
       strategy.confirm(tx, full, 'u1', { appliedCustomerCredits: credits }),
     ).rejects.toThrow(BadRequestException);
 
     const net = makeDocument([
-      { method: 'efectivo', amount: 40000 },
-      { method: 'transferencia', amount: 30000 },
+      { method: 'efectivo_almacen', amount: 40000 },
+      { method: 'consignacion_almacen', amount: 30000 },
     ]);
     await expect(
       strategy.confirm(tx, net, 'u1', { appliedCustomerCredits: credits }),
@@ -72,8 +74,8 @@ describe('PosEffectStrategy: formas de pago al confirmar', () => {
 
   it('acepta pagos que suman el total sin saldos a favor', async () => {
     const document = makeDocument([
-      { method: 'efectivo', amount: 60000 },
-      { method: 'tarjeta', amount: 40000 },
+      { method: 'efectivo_almacen', amount: 60000 },
+      { method: 'consignacion_almacen', amount: 40000 },
     ]);
 
     await expect(strategy.confirm(tx, document, 'u1')).resolves.toBeUndefined();
@@ -84,7 +86,7 @@ describe('PosEffectStrategy: formas de pago al confirmar', () => {
       .spyOn(internals as { moveStock: () => Promise<void> }, 'moveStock')
       .mockResolvedValue();
     const document = {
-      ...makeDocument([{ method: 'efectivo', amount: 1 }]),
+      ...makeDocument([{ method: 'efectivo_almacen', amount: 1 }]),
       documentItems: [
         {
           id: 'i1',

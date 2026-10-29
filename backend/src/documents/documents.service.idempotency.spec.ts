@@ -25,7 +25,7 @@ const makeDto = (overrides: Partial<CreateDocumentDto> = {}) =>
     date: '2026-10-14',
     thirdPartyId: 'c1',
     sellerId: 's1',
-    payments: [{ method: 'efectivo', amount: 96800 }],
+    payments: [{ method: 'efectivo_almacen', amount: 96800 }],
     items: [
       { productId: 'p1', quantity: 2, unitPrice: 42900 },
       { productId: 'p2', quantity: 1, unitPrice: 10000 },
@@ -43,7 +43,9 @@ const makeExisting = (overrides: Record<string, unknown> = {}) => ({
   sellerId: 's1',
   receiverId: null,
   date: new Date('2026-10-14'),
-  payments: [{ method: 'efectivo', amount: new Prisma.Decimal('96800.00') }],
+  payments: [
+    { method: 'efectivo_almacen', amount: new Prisma.Decimal('96800.00') },
+  ],
   refundMethod: null,
   notes: null,
   warehouseId: 'store-1',
@@ -194,13 +196,17 @@ describe('DocumentsService.create: clave para no duplicar al reintentar', () => 
       'otra forma de pago',
       {
         payments: [
-          { method: 'transferencia', amount: new Prisma.Decimal(96800) },
+          { method: 'consignacion_almacen', amount: new Prisma.Decimal(96800) },
         ],
       },
     ],
     [
       'otro monto de pago',
-      { payments: [{ method: 'efectivo', amount: new Prisma.Decimal(90000) }] },
+      {
+        payments: [
+          { method: 'efectivo_almacen', amount: new Prisma.Decimal(90000) },
+        ],
+      },
     ],
     ['otra vendedora', { sellerId: 's2' }],
     ['otras notas', { notes: 'ajuste' }],

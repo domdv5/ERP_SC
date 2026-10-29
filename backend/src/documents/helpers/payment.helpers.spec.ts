@@ -20,7 +20,10 @@ const errorOf = (fn: () => void) => {
 describe('assertPaymentsMatchTotal', () => {
   it('acepta una sola forma de pago por el total', () => {
     expect(() =>
-      assertPaymentsMatchTotal([pay(PaymentMethod.efectivo, 50000)], 50000),
+      assertPaymentsMatchTotal(
+        [pay(PaymentMethod.efectivo_almacen, 50000)],
+        50000,
+      ),
     ).not.toThrow();
   });
 
@@ -28,9 +31,8 @@ describe('assertPaymentsMatchTotal', () => {
     expect(() =>
       assertPaymentsMatchTotal(
         [
-          pay(PaymentMethod.efectivo, '30000.10'),
-          pay(PaymentMethod.tarjeta, '20000.20'),
-          pay(PaymentMethod.transferencia, '0.20'),
+          pay(PaymentMethod.efectivo_almacen, '30000.10'),
+          pay(PaymentMethod.consignacion_almacen, '20000.40'),
         ],
         new Prisma.Decimal('50000.50'),
       ),
@@ -50,7 +52,10 @@ describe('assertPaymentsMatchTotal', () => {
   it('rechaza un monto en cero o negativo', () => {
     const error = errorOf(() =>
       assertPaymentsMatchTotal(
-        [pay(PaymentMethod.efectivo, 50000), pay(PaymentMethod.tarjeta, 0)],
+        [
+          pay(PaymentMethod.efectivo_almacen, 50000),
+          pay(PaymentMethod.consignacion_almacen, 0),
+        ],
         50000,
       ),
     );
@@ -64,8 +69,8 @@ describe('assertPaymentsMatchTotal', () => {
     const error = errorOf(() =>
       assertPaymentsMatchTotal(
         [
-          pay(PaymentMethod.efectivo, 20000),
-          pay(PaymentMethod.efectivo, 30000),
+          pay(PaymentMethod.efectivo_almacen, 20000),
+          pay(PaymentMethod.efectivo_almacen, 30000),
         ],
         50000,
       ),
@@ -77,7 +82,10 @@ describe('assertPaymentsMatchTotal', () => {
   it('rechaza si faltan pesos y dice cuánto falta', () => {
     const error = errorOf(() =>
       assertPaymentsMatchTotal(
-        [pay(PaymentMethod.efectivo, 30000), pay(PaymentMethod.tarjeta, 15000)],
+        [
+          pay(PaymentMethod.efectivo_almacen, 30000),
+          pay(PaymentMethod.consignacion_almacen, 15000),
+        ],
         50000,
       ),
     );
@@ -89,7 +97,10 @@ describe('assertPaymentsMatchTotal', () => {
 
   it('rechaza si sobran pesos y dice cuánto sobra', () => {
     const error = errorOf(() =>
-      assertPaymentsMatchTotal([pay(PaymentMethod.efectivo, 60000)], 50000),
+      assertPaymentsMatchTotal(
+        [pay(PaymentMethod.efectivo_almacen, 60000)],
+        50000,
+      ),
     );
     expect(error).toBeInstanceOf(BadRequestException);
     expect(error.message.replace(/\s/g, ' ')).toBe(
@@ -99,7 +110,7 @@ describe('assertPaymentsMatchTotal', () => {
 
   it('rechaza formas de pago cuando no hay nada por cobrar', () => {
     const error = errorOf(() =>
-      assertPaymentsMatchTotal([pay(PaymentMethod.efectivo, 1000)], 0),
+      assertPaymentsMatchTotal([pay(PaymentMethod.efectivo_almacen, 1000)], 0),
     );
     expect(error.message.replace(/\s/g, ' ')).toBe(
       'Las formas de pago suman $ 1.000 y el total a cobrar es $ 0: sobran $ 1.000',

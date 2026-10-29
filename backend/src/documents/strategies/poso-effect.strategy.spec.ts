@@ -84,7 +84,9 @@ describe('PosoEffectStrategy: formas de pago al confirmar', () => {
   });
 
   it('rechaza si los pagos suman el neto sin IVA', async () => {
-    const document = makeDocument([{ method: 'efectivo', amount: 100000 }]);
+    const document = makeDocument([
+      { method: 'efectivo_almacen', amount: 100000 },
+    ]);
 
     await expect(strategy.confirm(tx, document, 'u1')).rejects.toThrow(
       BadRequestException,
@@ -93,8 +95,8 @@ describe('PosoEffectStrategy: formas de pago al confirmar', () => {
 
   it('acepta pagos que suman el total con IVA', async () => {
     const document = makeDocument([
-      { method: 'efectivo', amount: 69000 },
-      { method: 'transferencia', amount: 50000 },
+      { method: 'efectivo_almacen', amount: 69000 },
+      { method: 'consignacion_almacen', amount: 50000 },
     ]);
 
     await expect(strategy.confirm(tx, document, 'u1')).resolves.toBeUndefined();
