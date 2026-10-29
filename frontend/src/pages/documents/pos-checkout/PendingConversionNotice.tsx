@@ -1,10 +1,10 @@
 import { ArrowRightLeft, Loader2 } from 'lucide-react'
 import { docNumber } from '@/lib/format'
-import type { Document } from '@/types/document.types'
+import type { DocumentDetail } from '@/types/document.types'
 import { sourceTypeLabel } from './useSaleDraft'
 
 interface PendingConversionNoticeProps {
-  document: Document
+  document: DocumentDetail
   isCredit: boolean
   cartItemCount: number
   isConverting: boolean

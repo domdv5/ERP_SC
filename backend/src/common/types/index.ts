@@ -18,3 +18,6 @@ export interface ResponseFormat<T = any> {
   data: T;
   message?: string;
 }
+
+export { matchContract } from './as-json';
+export type { AsJson } from './as-json';

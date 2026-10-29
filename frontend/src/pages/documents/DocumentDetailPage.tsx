@@ -432,16 +432,14 @@ export default function DocumentDetailPage() {
   const itemTax = (item: (typeof doc.documentItems)[number]) => Number(item.taxAmount ?? 0)
   const itemUnitCost = (item: (typeof doc.documentItems)[number]) =>
     isPriceBasedType
-      ? item.unitPrice
+      ? Number(item.unitPrice)
       : usesAvgCostFallback
         ? Number(item.product.avgCost)
-        : item.unitCost
+        : Number(item.unitCost)
   const itemSubtotal = (item: (typeof doc.documentItems)[number]) =>
-    isPriceBasedType
-      ? item.subtotal
-      : usesAvgCostFallback
-        ? item.quantity * Number(item.product.avgCost)
-        : item.subtotal
+    !isPriceBasedType && usesAvgCostFallback
+      ? item.quantity * Number(item.product.avgCost)
+      : Number(item.subtotal)
 
   // El subtotal llega como texto; sin Number(), desde la 2ª línea la suma concatena en vez de sumar.
   const itemsTotal = doc.documentItems.reduce((sum, item) => sum + Number(itemSubtotal(item)), 0)
@@ -878,7 +876,7 @@ export default function DocumentDetailPage() {
                   <span>{doc.destWarehouse?.name ?? '—'}</span>
                   {doc.destBin && (
                     <span className="text-content-muted">
-                      / {doc.destBin.zone.name} / {doc.destBin.name}
+                      / {doc.destBin.zone.name} / Bulto {doc.destBin.code}
                     </span>
                   )}
                 </div>
@@ -1110,12 +1108,16 @@ export default function DocumentDetailPage() {
                       </div>
                       <div>
                         <p className="text-xs text-content-faint font-accent">Generado</p>
-                        <p className="text-sm text-content font-mono">{formatCOP(credit.amount)}</p>
+                        <p className="text-sm text-content font-mono">
+                          {formatCOP(Number(credit.amount))}
+                        </p>
                       </div>
                     </div>
                     <div>
                       <p className="text-xs text-content-faint font-accent">Disponible</p>
-                      <p className="text-sm text-content font-mono">{formatCOP(credit.balance)}</p>
+                      <p className="text-sm text-content font-mono">
+                        {formatCOP(Number(credit.balance))}
+                      </p>
                     </div>
                     <span className={cn('pill-stamp', creditBadge.className)}>
                       {creditBadge.label}
@@ -1132,7 +1134,7 @@ export default function DocumentDetailPage() {
                           className="flex items-center gap-2 text-sm"
                         >
                           <ArrowRight className="w-3.5 h-3.5" />
-                          {formatCOP(app.amount)} · {formatDate(app.appliedAt)}
+                          {formatCOP(Number(app.amount))} · {formatDate(app.appliedAt)}
                         </DocumentLink>
                       ))}
                     </div>
@@ -1156,38 +1158,39 @@ export default function DocumentDetailPage() {
               </p>
             </div>
             <div className="p-6 space-y-2">
-              {doc.appliedCustomerCredits.map((applied) => (
-                <div
-                  key={applied.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ui-border bg-surface-raised px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-fuchsia-100 dark:bg-fuchsia-500/20 flex items-center justify-center shrink-0">
-                      <Wallet className="w-4 h-4 text-fuchsia-700 dark:text-fuchsia-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-content font-mono">{formatCOP(applied.amount)}</p>
-                      <p className="text-xs text-content-faint font-accent">
-                        {formatDate(applied.appliedAt)}
-                      </p>
-                    </div>
-                  </div>
-                  <DocumentLink
-                    canView={canSeeType(applied.customerCredit.sourceDocument.type)}
-                    onOpen={() =>
-                      navigate(`/documents/${applied.customerCredit.sourceDocument.id}`)
-                    }
-                    className="flex items-center gap-1.5 text-sm"
+              {doc.appliedCustomerCredits.map((applied) => {
+                const origin = applied.customerCredit.sourceDocument
+                return (
+                  <div
+                    key={applied.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ui-border bg-surface-raised px-4 py-3"
                   >
-                    Origen{' '}
-                    {docNumber(
-                      applied.customerCredit.sourceDocument.type,
-                      applied.customerCredit.sourceDocument.number,
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-fuchsia-100 dark:bg-fuchsia-500/20 flex items-center justify-center shrink-0">
+                        <Wallet className="w-4 h-4 text-fuchsia-700 dark:text-fuchsia-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-content font-mono">
+                          {formatCOP(Number(applied.amount))}
+                        </p>
+                        <p className="text-xs text-content-faint font-accent">
+                          {formatDate(applied.appliedAt)}
+                        </p>
+                      </div>
+                    </div>
+                    {origin && (
+                      <DocumentLink
+                        canView={canSeeType(origin.type)}
+                        onOpen={() => navigate(`/documents/${origin.id}`)}
+                        className="flex items-center gap-1.5 text-sm"
+                      >
+                        Origen {docNumber(origin.type, origin.number)}
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </DocumentLink>
                     )}
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </DocumentLink>
-                </div>
-              ))}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

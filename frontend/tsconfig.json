@@ -18,7 +18,8 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@contracts/*": ["../backend/src/contracts/*"]
     }
   },
   "include": ["src", "vite.config.ts"]

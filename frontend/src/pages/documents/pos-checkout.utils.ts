@@ -1,7 +1,7 @@
 import { getDocument, getDocuments } from '@/services/documents.service'
 import type {
   CreditLimitExceededDetail,
-  Document,
+  DocumentDetail,
   DocumentItem,
   MissingStockItem,
   PaymentMethod,
@@ -11,17 +11,20 @@ import type {
 
 // Misma fórmula que usa el backend para decidir si una preventa todavía tiene reserva activa
 export function getPendingQuantity(
-  item: Pick<DocumentItem, 'quantity' | 'releasedQuantity' | 'convertedQuantity'>,
+  item: Pick<DocumentItem, 'quantity'> &
+    Partial<Pick<DocumentItem, 'releasedQuantity' | 'convertedQuantity'>>,
 ): number {
   return item.quantity - (item.releasedQuantity ?? 0) - (item.convertedQuantity ?? 0)
 }
 
-export function hasPendingItems(doc: Pick<Document, 'documentItems'>): boolean {
+export function hasPendingItems(doc: Pick<DocumentDetail, 'documentItems'>): boolean {
   return doc.documentItems.some((item) => getPendingQuantity(item) > 0)
 }
 
 // El listado no trae las líneas, así que se pide el detalle de cada candidata para calcular el pendiente
-export async function findActivePendingPreventa(thirdPartyId: string): Promise<Document | null> {
+export async function findActivePendingPreventa(
+  thirdPartyId: string,
+): Promise<DocumentDetail | null> {
   const { items } = await getDocuments({
     type: 'PV',
     status: 'confirmed',

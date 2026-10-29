@@ -4,7 +4,7 @@ import { useDebounce } from 'use-debounce'
 import { getThirdParties } from '@/services/third-parties.service'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import type { ComboboxOption } from '@/components/shared'
-import type { Document } from '@/types/document.types'
+import type { DocumentDetail } from '@/types/document.types'
 import type { ThirdParty } from '@/types/third-party.types'
 
 export function useSaleParties() {
@@ -88,7 +88,7 @@ export function useSaleParties() {
     setSellerSelectedName(label)
   }
 
-  function loadFromDocument(doc: Document) {
+  function loadFromDocument(doc: DocumentDetail) {
     setThirdPartyId(doc.thirdParty?.id ?? '')
     setTpSelectedName(doc.thirdParty?.name ?? '')
     setCustomerBranchId(doc.customerBranch?.id ?? '')

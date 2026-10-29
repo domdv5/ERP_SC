@@ -9,7 +9,7 @@ import { releaseItems } from '@/services/documents.service'
 import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { invalidateAfterDocumentChange } from '@/lib/invalidation'
-import type { Document, ReleaseItemsPayload } from '@/types/document.types'
+import type { DocumentDetail, ReleaseItemsPayload } from '@/types/document.types'
 
 // ─── schema ──────────────────────────────────────────────────────────────────
 
@@ -64,7 +64,7 @@ interface ReleaseItemsDialogProps {
   open: boolean
   // Se llama `doc` (no `document`) a propósito, para no tapar el `document` global del navegador
   // dentro del componente.
-  doc: Document
+  doc: DocumentDetail
   onClose: () => void
 }
 

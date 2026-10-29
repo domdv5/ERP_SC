@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { UseFormSetValue, UseFormWatch } from 'react-hook-form'
 import { getWarehouses, getWarehouse } from '@/services/warehouses.service'
@@ -81,6 +81,27 @@ export function useTransferLocations(
 
   const currentSourceBinId = watch('sourceBinId')
   const currentDestBinId = watch('destBinId')
+
+  // Al abrir un borrador llega el bulto pero no la zona: se deduce una sola vez por bulto, sin pisar lo que el usuario cambie después.
+  const inferredSourceBinId = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (selectedSourceZoneId || !currentSourceBinId) return
+    if (inferredSourceBinId.current === currentSourceBinId) return
+    const zone = sourceZones.find((z) => z.bins.some((b) => b.id === currentSourceBinId))
+    if (!zone) return
+    inferredSourceBinId.current = currentSourceBinId
+    setSelectedSourceZoneId(zone.id)
+  }, [selectedSourceZoneId, currentSourceBinId, sourceZones])
+
+  const inferredDestBinId = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (selectedZoneId || !currentDestBinId) return
+    if (inferredDestBinId.current === currentDestBinId) return
+    const zone = destZones.find((z) => z.bins.some((b) => b.id === currentDestBinId))
+    if (!zone) return
+    inferredDestBinId.current = currentDestBinId
+    setSelectedZoneId(zone.id)
+  }, [selectedZoneId, currentDestBinId, destZones])
 
   // Productos actualmente en el documento — un bulto origen solo califica si ya tiene stock
   // de alguno de estos productos (normalmente se traslada un solo producto por bulto).

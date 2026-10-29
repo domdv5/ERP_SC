@@ -5,7 +5,8 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DocumentStatus, DocumentType } from '@/common/enums';
-import type { JwtPayload } from '@/common/types';
+import { matchContract, type JwtPayload } from '@/common/types';
+import type { DocumentDetail, DocumentListResponse } from '@/contracts';
 import { PrismaService } from '@/prisma/prisma.service';
 import { buildDateColumnRange } from '@/common/utils/date-range.util';
 import {
@@ -141,6 +142,10 @@ const PRINT_INCLUDE = {
   },
 } satisfies Prisma.DocumentInclude;
 
+// Si lo que arma el service deja de cumplir el contrato, el backend no compila.
+const matchListContract = matchContract<DocumentListResponse>();
+const matchDetailContract = matchContract<DocumentDetail>();
+
 export type DocumentForPrint = Prisma.DocumentGetPayload<{
   include: typeof PRINT_INCLUDE;
 }>;
@@ -221,7 +226,7 @@ export class DocumentsQueryService {
         }),
       ]);
 
-    return {
+    return matchListContract({
       items: items.map((doc) => withPvStatus(doc)),
       meta: {
         total,
@@ -231,7 +236,7 @@ export class DocumentsQueryService {
         draftCount,
         confirmedCount,
       },
-    };
+    });
   }
 
   /** Bandeja de Administración: CM oficiales confirmadas que aún no tienen una CMO confirmada enlazada (los borradores no la ocultan). */
@@ -309,7 +314,7 @@ export class DocumentsQueryService {
       throw new NotFoundException('Documento no encontrado');
     }
 
-    return withPvStatus(document);
+    return matchDetailContract(withPvStatus(document));
   }
 
   /** Datos mínimos para el PDF. Solo documentos confirmados: un borrador todavía puede cambiar y un PDF de algo no definitivo confunde. */

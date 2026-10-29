@@ -9,7 +9,7 @@ interface SaleHeaderProps {
   official: boolean
   isCredit: boolean
   draftId: string | null
-  draftNumber: number | null
+  draftNumber: string | null
   sourceDocument: DocumentSourceRef | null
   onBack: () => void
 }

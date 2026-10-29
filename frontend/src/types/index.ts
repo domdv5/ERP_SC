@@ -27,7 +27,7 @@ export type {
   DocumentType,
   DocumentStatus,
   DocumentListItem,
-  Document,
+  DocumentDetail,
   DocumentItem,
   DocumentMeta,
   DocumentWarehouse,

@@ -123,6 +123,14 @@ export const DOC_TYPE_BADGE: Record<DocumentType, { label: string; className: st
     label: 'Compra oficial',
     className: 'bg-sky-100    text-sky-700    dark:bg-sky-500/20    dark:text-sky-400',
   },
+  RMDVC: {
+    label: 'Rem. Dev. Compra',
+    className: 'bg-amber-100  text-amber-700  dark:bg-amber-500/20  dark:text-amber-400',
+  },
+  PE: {
+    label: 'Pedido',
+    className: 'bg-blue-100   text-blue-700   dark:bg-blue-500/20   dark:text-blue-400',
+  },
   POSO: {
     label: 'Venta oficial',
     className: 'bg-lime-100   text-lime-700   dark:bg-lime-500/20   dark:text-lime-400',
@@ -204,6 +212,18 @@ export const DOC_TYPE_ACCENT: Record<
     iconBg: 'bg-sky-100    dark:bg-sky-500/20',
     iconText: 'text-sky-700    dark:text-sky-400',
     border: 'border-l-sky-500',
+  },
+  RMDVC: {
+    icon: Undo2,
+    iconBg: 'bg-amber-100  dark:bg-amber-500/20',
+    iconText: 'text-amber-700  dark:text-amber-400',
+    border: 'border-l-amber-500',
+  },
+  PE: {
+    icon: ShoppingCart,
+    iconBg: 'bg-blue-100   dark:bg-blue-500/20',
+    iconText: 'text-blue-700   dark:text-blue-400',
+    border: 'border-l-blue-500',
   },
   POSO: {
     icon: BadgeCheck,
