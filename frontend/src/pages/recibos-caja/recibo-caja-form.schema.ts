@@ -28,6 +28,8 @@ const paymentLineSchema = z.object({
 
 const baseSchema = z.object({
   clientId: z.string().min(1, 'Selecciona un cliente'),
+  // '' = sin elegir, 'none' = facturas sin sucursal
+  customerBranchId: z.string(),
   date: z.string().min(1, 'La fecha es requerida'),
   notes: z.string().optional(),
   receivables: z.array(receivableRowSchema),

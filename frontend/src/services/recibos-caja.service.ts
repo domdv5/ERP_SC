@@ -24,10 +24,14 @@ export async function getReciboCaja(id: string): Promise<ReciboCaja> {
   return res.data.data
 }
 
-/** CxC abiertas de un cliente, para armar un nuevo recibo de caja. */
-export async function getReciboCajaOpenItems(clientId: string): Promise<ReciboCajaOpenItems> {
+/** CxC abiertas de un cliente; `customerBranchId` = id de sucursal o 'none' (facturas sin sucursal). */
+export async function getReciboCajaOpenItems(
+  clientId: string,
+  customerBranchId?: string,
+): Promise<ReciboCajaOpenItems> {
   const res = await api.get<ApiResponse<ReciboCajaOpenItems>>(
     `/recibos-caja/clients/${clientId}/open-items`,
+    { params: customerBranchId ? { customerBranchId } : undefined },
   )
   return res.data.data
 }

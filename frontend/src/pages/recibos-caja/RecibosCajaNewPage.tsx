@@ -7,13 +7,12 @@ import { toast } from 'sonner'
 import { ArrowLeft, Plus, Trash2, Loader2, Wallet } from 'lucide-react'
 
 import { getThirdParties } from '@/services/third-parties.service'
-import { getReciboCajaOpenItems } from '@/services/recibos-caja.service'
-import { Combobox, ThousandsInput } from '@/components/shared'
+import { Combobox, CustomerBranchSelect, ThousandsInput } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
-import { useReciboCajaForm } from './useReciboCajaForm'
+import { useReciboCajaForm, NO_BRANCH } from './useReciboCajaForm'
 import { RECIBO_CAJA_PAYMENT_METHODS } from './recibo-caja-form.schema'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
 import type { ThirdParty } from '@/types/third-party.types'
@@ -96,7 +95,14 @@ export default function RecibosCajaNewPage() {
     totalAbonos,
     totalPayments,
     cuadraOk,
+    openItems,
     isLoadingOpenItems,
+    branches,
+    isLoadingBranches,
+    hasUnbranchedItems,
+    awaitingBranch,
+    changeClient,
+    changeBranch,
     hasClient,
     submitReciboCaja,
     isSubmitting,
@@ -137,14 +143,6 @@ export default function RecibosCajaNewPage() {
           ...clientOptions.filter((o) => o.id !== clientId),
         ]
       : clientOptions
-
-  // Mismo queryKey que useReciboCajaForm — TanStack comparte caché, no dispara una segunda request
-  const { data: openItems } = useQuery({
-    queryKey: ['recibos-caja-open-items', clientId],
-    queryFn: () => getReciboCajaOpenItems(clientId),
-    enabled: Boolean(clientId),
-    staleTime: 30 * 1000,
-  })
 
   const receivableById = new Map((openItems?.receivables ?? []).map((r) => [r.id, r]))
 
@@ -216,6 +214,7 @@ export default function RecibosCajaNewPage() {
                       value={field.value}
                       onChange={(id, option) => {
                         field.onChange(id)
+                        changeClient()
                         setClientSelectedName(option.label)
                       }}
                       options={clientDisplayOptions}
@@ -239,6 +238,24 @@ export default function RecibosCajaNewPage() {
                 />
               </div>
             </div>
+
+            {hasClient && (
+              <Controller
+                name="customerBranchId"
+                control={control}
+                render={({ field }) => (
+                  <CustomerBranchSelect
+                    branches={branches}
+                    value={field.value}
+                    onChange={changeBranch}
+                    isLoading={isLoadingBranches}
+                    extraOption={
+                      hasUnbranchedItems ? { value: NO_BRANCH, label: 'Sin sucursal' } : undefined
+                    }
+                  />
+                )}
+              />
+            )}
           </div>
 
           {!hasClient && (
@@ -257,6 +274,16 @@ export default function RecibosCajaNewPage() {
             </div>
           )}
 
+          {hasClient && awaitingBranch && !isLoadingBranches && (
+            <div className="card-hard">
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <p className="text-content-muted text-sm font-medium">
+                  Elige una sucursal para ver sus cuentas por cobrar
+                </p>
+              </div>
+            </div>
+          )}
+
           {hasClient && isLoadingOpenItems && (
             <div className="card-hard p-6 space-y-3">
               {[...Array(3)].map((_, i) => (
@@ -265,7 +292,7 @@ export default function RecibosCajaNewPage() {
             </div>
           )}
 
-          {hasClient && !isLoadingOpenItems && (
+          {hasClient && !isLoadingOpenItems && !awaitingBranch && (
             <>
               {/* Cuentas por cobrar abiertas */}
               <div className="card-hard overflow-hidden">

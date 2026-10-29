@@ -5,6 +5,7 @@ interface CustomerBranchSelectProps {
   value: string
   onChange: (branchId: string) => void
   isLoading?: boolean
+  extraOption?: { value: string; label: string }
 }
 
 export function CustomerBranchSelect({
@@ -12,6 +13,7 @@ export function CustomerBranchSelect({
   value,
   onChange,
   isLoading,
+  extraOption,
 }: CustomerBranchSelectProps) {
   if (isLoading) return <div className="h-10 rounded-md bg-surface-hover animate-pulse" />
   if (branches.length === 0) return null
@@ -32,6 +34,7 @@ export function CustomerBranchSelect({
             {branch.name}
           </option>
         ))}
+        {extraOption && <option value={extraOption.value}>{extraOption.label}</option>}
       </select>
     </div>
   )
