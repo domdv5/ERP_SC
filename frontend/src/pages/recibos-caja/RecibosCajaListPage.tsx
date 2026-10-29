@@ -7,6 +7,7 @@ import { Wallet, Plus } from 'lucide-react'
 import { getRecibosCaja } from '@/services/recibos-caja.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import { usePermission } from '@/hooks/usePermission'
+import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import {
   Combobox,
   TableToolbar,
@@ -27,6 +28,7 @@ export default function RecibosCajaListPage() {
   const [search, setSearch] = useState('')
   const [clientId, setClientId] = useState('')
   const [clientSelectedName, setClientSelectedName] = useState('')
+  const [branchId, setBranchId] = useState('')
   const [clientSearch, setClientSearch] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -37,23 +39,31 @@ export default function RecibosCajaListPage() {
   const [debouncedClientSearch] = useDebounce(clientSearch, 400)
 
   // Ajuste de estado durante el render: resetea la página sin disparar un fetch intermedio con el filtro nuevo y la página vieja.
-  const [prevFilters, setPrevFilters] = useState({ debouncedSearch, clientId, dateFrom, dateTo })
+  const [prevFilters, setPrevFilters] = useState({
+    debouncedSearch,
+    clientId,
+    branchId,
+    dateFrom,
+    dateTo,
+  })
   if (
     prevFilters.debouncedSearch !== debouncedSearch ||
     prevFilters.clientId !== clientId ||
+    prevFilters.branchId !== branchId ||
     prevFilters.dateFrom !== dateFrom ||
     prevFilters.dateTo !== dateTo
   ) {
-    setPrevFilters({ debouncedSearch, clientId, dateFrom, dateTo })
+    setPrevFilters({ debouncedSearch, clientId, branchId, dateFrom, dateTo })
     setPage(1)
   }
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['recibos-caja', debouncedSearch, clientId, dateFrom, dateTo, page, limit],
+    queryKey: ['recibos-caja', debouncedSearch, clientId, branchId, dateFrom, dateTo, page, limit],
     queryFn: () =>
       getRecibosCaja({
         number: debouncedSearch || undefined,
         clientId: clientId || undefined,
+        customerBranchId: branchId || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         page,
@@ -62,6 +72,8 @@ export default function RecibosCajaListPage() {
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   })
+
+  const { branches: clientBranches } = useCustomerBranches(clientId || undefined)
 
   const items = data?.items ?? []
   const total = data?.meta.total ?? 0
@@ -135,6 +147,7 @@ export default function RecibosCajaListPage() {
                 onChange={(id, option) => {
                   setClientId(id)
                   setClientSelectedName(option.label)
+                  setBranchId('')
                 }}
                 options={clientDisplayOptions}
                 isLoading={isLoadingClients}
@@ -148,11 +161,26 @@ export default function RecibosCajaListPage() {
                 onClick={() => {
                   setClientId('')
                   setClientSelectedName('')
+                  setBranchId('')
                 }}
                 className="text-xs text-content-faint hover:text-content-muted underline"
               >
                 Quitar cliente
               </button>
+            )}
+            {clientId && (clientBranches.length > 0 || branchId) && (
+              <select
+                value={branchId}
+                onChange={(e) => setBranchId(e.target.value)}
+                className="input-hard text-sm px-3 py-1.5"
+              >
+                <option value="">Todas las sucursales</option>
+                {clientBranches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
             )}
             <div className="flex items-center gap-2">
               <label className="text-xs text-content-faint">Desde</label>
