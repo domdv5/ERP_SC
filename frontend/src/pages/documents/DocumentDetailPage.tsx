@@ -437,11 +437,9 @@ export default function DocumentDetailPage() {
         ? Number(item.product.avgCost)
         : Number(item.unitCost)
   const itemSubtotal = (item: (typeof doc.documentItems)[number]) =>
-    isPriceBasedType
-      ? Number(item.subtotal)
-      : usesAvgCostFallback
-        ? item.quantity * Number(item.product.avgCost)
-        : Number(item.subtotal)
+    !isPriceBasedType && usesAvgCostFallback
+      ? item.quantity * Number(item.product.avgCost)
+      : Number(item.subtotal)
 
   // El subtotal llega como texto; sin Number(), desde la 2ª línea la suma concatena en vez de sumar.
   const itemsTotal = doc.documentItems.reduce((sum, item) => sum + Number(itemSubtotal(item)), 0)
