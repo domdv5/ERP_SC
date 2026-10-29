@@ -50,18 +50,31 @@ export function useReciboCajaForm() {
 
   const branchId = watch('customerBranchId')
 
-  const { branches, isLoading: isLoadingBranches } = useCustomerBranches(clientId || undefined)
+  const { branches: activeBranches, isLoading: isLoadingActiveBranches } = useCustomerBranches(
+    clientId || undefined,
+  )
+
+  const { data: allOpenItems, isLoading: isLoadingAllOpenItems } = useQuery({
+    queryKey: ['recibos-caja-open-items', clientId, 'all'],
+    queryFn: () => getReciboCajaOpenItems(clientId),
+    enabled: Boolean(clientId),
+    staleTime: 30 * 1000,
+  })
+  const isLoadingBranches = isLoadingActiveBranches || isLoadingAllOpenItems
+
+  // Suma las sucursales inactivas que todavía tienen facturas pendientes: si no, esas facturas no se podrían cobrar.
+  const branches = [...activeBranches]
+  for (const receivable of allOpenItems?.receivables ?? []) {
+    const branch = receivable.document.customerBranch
+    if (branch && !branches.some((b) => b.id === branch.id)) branches.push(branch)
+  }
   const hasBranches = branches.length > 0
   const awaitingBranch = hasBranches && !branchId
 
   // Con sucursales solo se ofrece "Sin sucursal" si el cliente tiene facturas pendientes sin sucursal
-  const { data: unbranchedItems } = useQuery({
-    queryKey: ['recibos-caja-open-items', clientId, NO_BRANCH],
-    queryFn: () => getReciboCajaOpenItems(clientId, NO_BRANCH),
-    enabled: Boolean(clientId) && hasBranches,
-    staleTime: 30 * 1000,
-  })
-  const hasUnbranchedItems = (unbranchedItems?.receivables.length ?? 0) > 0
+  const hasUnbranchedItems = (allOpenItems?.receivables ?? []).some(
+    (receivable) => !receivable.document.customerBranch,
+  )
 
   const openItemsBranch = hasBranches ? branchId : undefined
   const { data: openItems, isLoading: isLoadingOpenItemsQuery } = useQuery({
