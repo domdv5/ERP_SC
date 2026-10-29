@@ -180,7 +180,9 @@ export async function calculateAvgCostAfterVoid(
     (await getGlobalStock(tx, productId)) - alreadyUndoneQuantity;
   const denominator = globalStock - quantity;
 
-  if (denominator <= 0) return currentAvgCost;
+  // Sin stock no hay promedio: vuelve a 0 como un producto que nunca se compró.
+  if (denominator === 0) return 0;
+  if (denominator < 0) return currentAvgCost;
 
   return (globalStock * currentAvgCost - quantity * unitCost) / denominator;
 }
