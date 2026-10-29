@@ -23,3 +23,5 @@ export const STATUS_LABELS: Record<AccountsReceivableStatus, { label: string; cl
 export const DOCUMENT_TYPE_LABELS: Partial<Record<DocumentType, string>> = {
   COT: 'Venta a crédito',
 }
+
+export const formatPaymentDays = (days: number) => `${days} ${days === 1 ? 'día' : 'días'}`

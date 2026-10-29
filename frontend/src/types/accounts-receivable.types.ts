@@ -41,6 +41,10 @@ export interface AccountsReceivable {
   paidAmount: string
   // Derivado: totalAmount - paidAmount
   balance: string
+  // Derivados: fecha del último pago (null si no hay pagos) y días de la venta al pago final, o hasta hoy si sigue abierta
+  lastPaymentDate: string | null
+  paymentDays: number
+  isPaymentOpen: boolean
 }
 
 // Fila del historial de abonos de una CxC, discriminada por `source`. Sin equivalente a saldo a
