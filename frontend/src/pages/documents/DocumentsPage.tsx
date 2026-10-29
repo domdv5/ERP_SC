@@ -326,7 +326,9 @@ export default function DocumentsPage() {
 
                       {/* Total */}
                       <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
-                        {doc.type === 'SAJ' || doc.type === 'T' ? '—' : formatCOP(doc.total)}
+                        {doc.type === 'SAJ' || doc.type === 'T'
+                          ? '—'
+                          : formatCOP(Number(doc.total))}
                       </td>
 
                       {/* Status */}

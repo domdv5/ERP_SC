@@ -13,7 +13,7 @@ import {
   type SelectedCredit,
 } from '@/pages/documents/pos-checkout.utils'
 import type {
-  Document,
+  DocumentDetail,
   DocumentType,
   PaymentMethod,
   UpdateDocumentPayload,
@@ -27,7 +27,7 @@ interface UseConfirmSaleArgs {
   isCredit: boolean
   draftId: string | null
   setDraftId: (id: string) => void
-  setDraftNumber: (number: number) => void
+  setDraftNumber: (number: string) => void
   thirdPartyId: string
   customerBranchId: string
   needsBranch: boolean
@@ -79,7 +79,7 @@ export function useConfirmSale({
 
   const isSubmitting = isCreating || isUpdating || isConfirming
 
-  const invalidateAfterSale = (confirmed: Document) => {
+  const invalidateAfterSale = (confirmed: DocumentDetail) => {
     invalidateAfterDocumentChange(queryClient, [confirmed.id, confirmed.sourceDocument?.id])
   }
 
@@ -112,7 +112,7 @@ export function useConfirmSale({
       items,
     }
 
-    let doc: Document
+    let doc: DocumentDetail
     try {
       if (draftId) {
         doc = await updateMutateAsync({ docId: draftId, payload })

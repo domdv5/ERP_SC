@@ -1,7 +1,7 @@
 import { api } from './api'
 import type { ApiResponse } from '@/types'
 import type {
-  Document,
+  DocumentDetail,
   DocumentListItem,
   DocumentMeta,
   GetDocumentsParams,
@@ -33,21 +33,21 @@ export async function getMissingStock(id: string): Promise<MissingStockItem[]> {
   return res.data.data
 }
 
-export async function getDocument(id: string): Promise<Document> {
-  const res = await api.get<ApiResponse<Document>>(`/documents/${id}`)
+export async function getDocument(id: string): Promise<DocumentDetail> {
+  const res = await api.get<ApiResponse<DocumentDetail>>(`/documents/${id}`)
   return res.data.data
 }
 
-export async function createDocument(payload: CreateDocumentPayload): Promise<Document> {
-  const res = await api.post<ApiResponse<Document>>('/documents', payload)
+export async function createDocument(payload: CreateDocumentPayload): Promise<DocumentDetail> {
+  const res = await api.post<ApiResponse<DocumentDetail>>('/documents', payload)
   return res.data.data
 }
 
 export async function updateDocument(
   id: string,
   payload: UpdateDocumentPayload,
-): Promise<Document> {
-  const res = await api.patch<ApiResponse<Document>>(`/documents/${id}`, payload)
+): Promise<DocumentDetail> {
+  const res = await api.patch<ApiResponse<DocumentDetail>>(`/documents/${id}`, payload)
   return res.data.data
 }
 
@@ -56,18 +56,18 @@ export async function updateDocument(
 export async function confirmDocument(
   id: string,
   payload?: ConfirmDocumentPayload,
-): Promise<Document> {
-  const res = await api.post<ApiResponse<Document>>(`/documents/${id}/confirm`, payload)
+): Promise<DocumentDetail> {
+  const res = await api.post<ApiResponse<DocumentDetail>>(`/documents/${id}/confirm`, payload)
   return res.data.data
 }
 
-export async function voidDocument(id: string): Promise<Document> {
-  const res = await api.post<ApiResponse<Document>>(`/documents/${id}/void`)
+export async function voidDocument(id: string): Promise<DocumentDetail> {
+  const res = await api.post<ApiResponse<DocumentDetail>>(`/documents/${id}/void`)
   return res.data.data
 }
 
-export async function duplicateDocument(id: string): Promise<Document> {
-  const res = await api.post<ApiResponse<Document>>(`/documents/${id}/duplicate`)
+export async function duplicateDocument(id: string): Promise<DocumentDetail> {
+  const res = await api.post<ApiResponse<DocumentDetail>>(`/documents/${id}/duplicate`)
   return res.data.data
 }
 
@@ -76,8 +76,8 @@ export async function duplicateDocument(id: string): Promise<Document> {
 export async function convertDocument(
   id: string,
   payload: ConvertDocumentPayload,
-): Promise<Document> {
-  const res = await api.post<ApiResponse<Document>>(`/documents/${id}/convert`, payload)
+): Promise<DocumentDetail> {
+  const res = await api.post<ApiResponse<DocumentDetail>>(`/documents/${id}/convert`, payload)
   return res.data.data
 }
 
@@ -114,8 +114,11 @@ export async function getPendingOfficialPurchases(
   return res.data.data
 }
 
-export async function releaseItems(id: string, payload: ReleaseItemsPayload): Promise<Document> {
-  const res = await api.post<ApiResponse<Document>>(`/documents/${id}/release-items`, payload)
+export async function releaseItems(
+  id: string,
+  payload: ReleaseItemsPayload,
+): Promise<DocumentDetail> {
+  const res = await api.post<ApiResponse<DocumentDetail>>(`/documents/${id}/release-items`, payload)
   return res.data.data
 }
 

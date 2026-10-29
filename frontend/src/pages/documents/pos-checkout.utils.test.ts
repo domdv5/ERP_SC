@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Document } from '@/types/document.types'
+import type { DocumentDetail } from '@/types/document.types'
 
 vi.mock('@/services/documents.service', () => ({
   getDocument: vi.fn(),
@@ -53,7 +53,7 @@ describe('hasPendingItems', () => {
     convertedQuantity,
   })
   const doc = (...items: ReturnType<typeof item>[]) =>
-    ({ documentItems: items }) as unknown as Pick<Document, 'documentItems'>
+    ({ documentItems: items }) as unknown as Pick<DocumentDetail, 'documentItems'>
 
   it('sin líneas → false', () => {
     expect(hasPendingItems(doc())).toBe(false)
@@ -77,7 +77,7 @@ describe('findActivePendingPreventa', () => {
     ({
       id,
       documentItems: [{ quantity, releasedQuantity: 0, convertedQuantity: converted }],
-    }) as unknown as Document
+    }) as unknown as DocumentDetail
 
   beforeEach(() => {
     vi.mocked(getDocuments).mockReset()

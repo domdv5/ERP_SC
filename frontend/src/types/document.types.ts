@@ -1,165 +1,36 @@
-// POS = venta de contado, COT = venta a crédito (valida cupo y genera CxC al confirmar).
-// REM = remisión, gemela de PV: reserva lógica de stock, convertible a POS/COT.
-// CMO = compra oficial, POSO = POS oficial: circuito separado del inventario, valor digitado sin IVA (el IVA se guarda aparte).
-export type DocumentType =
-  'CM' | 'DVC' | 'EAI' | 'SAJ' | 'T' | 'PV' | 'POS' | 'COT' | 'REM' | 'DVV' | 'CMO' | 'POSO'
-export type DocumentStatus = 'draft' | 'confirmed' | 'voided'
-export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia'
-// Motivo del ajuste — obligatorio solo para documentos EAI (Entrada por Ajuste de Inventario).
-export type EaiAdjustmentReason = 'negativo' | 'inventario_general' | 'traspaso_costo' | 'otro'
-// saldo_a_favor/cambio_producto generan nota de saldo a favor; devolucion_dinero solo revierte inventario.
-export type DvvRefundMethod = 'saldo_a_favor' | 'cambio_producto' | 'devolucion_dinero'
+export type {
+  AppliedCustomerCredit,
+  CustomerCredit,
+  CustomerCreditApplication,
+  DocumentBin,
+  DocumentCustomerBranch,
+  DocumentDetail,
+  DocumentItem,
+  DocumentListItem,
+  DocumentMeta,
+  DocumentPayment,
+  DocumentSourceRef,
+  DocumentStatus,
+  DocumentThirdParty,
+  DocumentThirdPartyDetail,
+  DocumentType,
+  DocumentUser,
+  DocumentWarehouse,
+  DvvRefundMethod,
+  EaiAdjustmentReason,
+  PaymentMethod,
+  PvConversionStatus,
+  PvDerivedDocRef,
+  PvStatus,
+} from '@contracts/documents'
 
-export interface DocumentWarehouse {
-  id: string
-  name: string
-}
-
-export interface DocumentThirdParty {
-  id: string
-  name: string
-  // Solo si es proveedor: marcas activas (limitan buscador/escaneo en compras) y discountNotes (aviso de solo lectura).
-  supplier?: { brands: { id: string; name: string }[]; discountNotes?: string | null } | null
-}
-
-export interface DocumentCustomerBranch {
-  id: string
-  name: string
-  address?: string | null
-}
-
-export interface DocumentUser {
-  id: number
-  name: string
-}
-
-export interface DocumentBin {
-  id: string
-  name: string
-  zone: {
-    name: string
-  }
-}
-
-export interface DocumentSourceRef {
-  id: string
-  type: DocumentType
-  number: number
-}
-
-export type PvConversionStatus = 'none' | 'pending' | 'converted'
-
-// Referencia liviana a una venta derivada de una preventa o remisión. El backend la incluye
-// en el bloque de estado de conversión de esos documentos.
-export interface PvDerivedDocRef {
-  id: string
-  type: DocumentType
-  // El backend ya lo manda con ceros a la izquierda (ej. "000012"); mostrarlo tal cual junto al tipo.
-  number: string
-  status: DocumentStatus
-}
-
-// Solo en PV/REM. converted = hay derivada confirmada; pending = hay derivada sin anular; none = ninguna o todas anuladas. `documents` trae todas, anuladas incluidas.
-export interface PvStatus {
-  conversion: {
-    status: PvConversionStatus
-    documents: PvDerivedDocRef[]
-  }
-}
-
-export interface DocumentItem {
-  id: string
-  productId: string
-  quantity: number
-  unitPrice: number
-  unitCost: number
-  subtotal: number
-  addedAt: string
-  // Solo CMO/POSO: IVA de la línea (el backend lo serializa como texto o número).
-  taxAmount?: number | string | null
-  // Nota de talla por línea, solo en traslados: permite registrar un mismo producto repartido
-  // en varios bultos, cada uno con una talla distinta.
-  observaciones?: string | null
-  // Solo preventas y remisiones: cantidad ya liberada de la reserva.
-  releasedQuantity?: number
-  // Solo preventas y remisiones: cantidad ya convertida a una venta.
-  convertedQuantity?: number
-  product: {
-    id: string
-    code: string
-    description: string
-    avgCost: string
-    unitOfMeasure: 'unidad' | 'docena'
-  }
-}
-
-export interface DocumentListItem {
-  id: string
-  type: DocumentType
-  number: number
-  date: string
-  status: DocumentStatus
-  total: number
-  // Solo en entradas por ajuste: el motivo y, cuando el motivo es "otro", la explicación libre.
-  adjustmentReason?: EaiAdjustmentReason | null
-  adjustmentReasonOther?: string | null
-  notes: string | null
-  thirdParty: DocumentThirdParty | null
-  // Solo ventas (PV, REM, COT, POS, DVV) de clientes con sucursales.
-  customerBranch?: DocumentCustomerBranch | null
-  user: DocumentUser
-  warehouse: DocumentWarehouse | null
-  destWarehouse: DocumentWarehouse | null
-  // Solo POS/POSO de contado y solo en el detalle (el listado no lo trae); el monto puede llegar como string (Decimal).
-  payments?: { method: PaymentMethod; amount: number | string }[]
-  _count: { documentItems: number }
-  createdAt: string
-  // Historial del listado: quién y cuándo editó, confirmó y anuló (null si no aplica).
-  updatedBy?: DocumentUser | null
-  editedAt?: string | null
-  confirmedBy?: DocumentUser | null
-  confirmedAt?: string | null
-  voidedBy?: DocumentUser | null
-  voidedAt?: string | null
-  // Preventas y remisiones: estado de conversión a venta y sus documentos derivados. null en el resto.
-  pv: PvStatus | null
-}
-
-export interface Document extends DocumentListItem {
-  documentItems: DocumentItem[]
-  destBin: DocumentBin | null
-  sourceBin: DocumentBin | null
-  sourceDocument: DocumentSourceRef | null
-  confirmedBy: DocumentUser | null
-  voidedBy: DocumentUser | null
-  // Solo en el detalle: updatedBy = último editor del borrador; convertedBy/convertedAt = quién y cuándo convirtió (solo PV/REM).
-  updatedBy?: DocumentUser | null
-  convertedBy?: DocumentUser | null
-  convertedAt?: string | null
-  // Preventas y remisiones: vendedora responsable, distinta del cliente.
-  seller: DocumentThirdParty | null
-  // Solo compras (CM): quién recibió la mercancía.
-  receiver?: DocumentThirdParty | null
-  // Solo en devoluciones en venta (DVV): modalidad de la devolución.
-  refundMethod?: DvvRefundMethod | null
-  // Solo en DVV con modalidad "saldo a favor" o "cambio de producto": las notas de saldo a
-  // favor que generó esta devolución (vacío en "devolución de dinero").
-  customerCredits?: CustomerCredit[]
-  // Solo en ventas POS/COT: los saldos a favor que se aplicaron a esta venta.
-  appliedCustomerCredits?: AppliedCustomerCredit[]
-  // Solo CM: marcada como compra oficial; exige supplierInvoiceNumber. En CMO solo viaja la factura.
-  officialPurchase?: boolean
-  supplierInvoiceNumber?: string | null
-  // Solo CM: sus CMO no anuladas (borradores incluidos); null en otros tipos.
-  officialPurchases?: Array<{
-    id: string
-    type: DocumentType
-    number: number | string
-    status: DocumentStatus
-  }> | null
-  // Solo CMO/POSO: IVA total del documento; total = subtotal + IVA.
-  taxTotal?: number | string | null
-}
+import type {
+  DocumentType,
+  DocumentStatus,
+  EaiAdjustmentReason,
+  DvvRefundMethod,
+  PaymentMethod,
+} from '@contracts/documents'
 
 // Fila de la bandeja "Compras oficiales pendientes": CM confirmada oficial sin CMO confirmada enlazada.
 export interface PendingOfficialPurchase {
@@ -193,37 +64,6 @@ export interface GetPendingOfficialPurchasesParams {
   dateTo?: string
 }
 
-// Nota de saldo a favor generada por una devolución en venta. `balance` es lo que queda
-// disponible tras las aplicaciones; `applications` lista en qué ventas se usó.
-export interface CustomerCredit {
-  id: string
-  amount: number
-  balance: number
-  status: string
-  createdAt: string
-  applications: CustomerCreditApplication[]
-}
-
-export interface CustomerCreditApplication {
-  id: string
-  amount: number
-  saleDocumentId: string
-  saleDocument: { type: DocumentType }
-  appliedAt: string
-}
-
-// Aplicación de un saldo a favor vista desde la venta que lo consumió (bloque del detalle de
-// POS/COT). Enlaza con la DVV que originó el saldo.
-export interface AppliedCustomerCredit {
-  id: string
-  amount: number
-  appliedAt: string
-  customerCredit: {
-    id: string
-    sourceDocument: { id: string; type: DocumentType; number: number }
-  }
-}
-
 // Saldo a favor disponible de un cliente, tal como lo devuelve el endpoint de saldos
 // disponibles del checkout. Solo trae los que están disponibles y con saldo mayor a cero.
 export interface AvailableCustomerCredit {
@@ -238,15 +78,6 @@ export interface AvailableCustomerCredit {
 export interface AvailableCustomerCreditsResponse {
   credits: AvailableCustomerCredit[]
   totalAvailable: number
-}
-
-export interface DocumentMeta {
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-  draftCount: number
-  confirmedCount: number
 }
 
 export interface GetDocumentsParams {

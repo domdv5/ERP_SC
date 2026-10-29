@@ -12,7 +12,7 @@ import {
   findActivePendingPreventa,
   type PaymentLine,
 } from '@/pages/documents/pos-checkout.utils'
-import type { Document, DocumentSourceRef, DocumentType } from '@/types/document.types'
+import type { DocumentDetail, DocumentSourceRef, DocumentType } from '@/types/document.types'
 import { extractErrorMessage } from './useCreditLimit'
 import type { SaleMode } from './useSaleMode'
 import type { SaleParties } from './useSaleParties'
@@ -57,11 +57,11 @@ export function useSaleDraft({
       undefined
 
   const [draftId, setDraftId] = useState<string | null>(null)
-  const [draftNumber, setDraftNumber] = useState<number | null>(null)
+  const [draftNumber, setDraftNumber] = useState<string | null>(null)
   const [sourceDocument, setSourceDocument] = useState<DocumentSourceRef | null>(null)
 
   // ── preventa activa pendiente de convertir ────────────────────────────────
-  const [pendingPreventa, setPendingPreventa] = useState<Document | null>(null)
+  const [pendingPreventa, setPendingPreventa] = useState<DocumentDetail | null>(null)
   const [checkingPreventa, setCheckingPreventa] = useState(false)
 
   // Corre en el onChange del buscador, no en un efecto: un efecto se re-disparía en bucle cuando la conversión fija el cliente por código.
@@ -106,7 +106,7 @@ export function useSaleDraft({
   }, [fromSourceDoc])
 
   // Carga en el checkout un documento de venta ya creado (conversión o borrador retomado).
-  function hydrateFromDocument(doc: Document) {
+  function hydrateFromDocument(doc: DocumentDetail) {
     setDraftId(doc.id)
     setDraftNumber(doc.number)
     setMode(doc.type === 'COT' ? 'COT' : 'POS')
@@ -119,7 +119,7 @@ export function useSaleDraft({
         productDesc: item.product.description,
         quantity: item.quantity,
         unitCost: undefined,
-        unitPrice: item.unitPrice,
+        unitPrice: Number(item.unitPrice),
         observaciones: undefined,
         addedAt: item.addedAt,
       })),

@@ -55,6 +55,11 @@ export function useExistingDocument({
       navigate(`/documents/pos/new?draft=${existingDoc.id}`, { replace: true })
       return
     }
+    // RMDVC y PE existen en el enum pero ningún flujo los crea ni los edita.
+    if (existingDoc.type === 'RMDVC' || existingDoc.type === 'PE') {
+      navigate(`/documents/${existingDoc.id}`, { replace: true })
+      return
+    }
     setTpSelectedName(existingDoc.thirdParty?.name ?? '')
     setSellerSelectedName(existingDoc.seller?.name ?? '')
     setReceiverSelectedName(existingDoc.receiver?.name ?? '')
@@ -80,7 +85,7 @@ export function useExistingDocument({
       sellerId: existingDoc.seller?.id ?? undefined,
       receiverId: existingDoc.receiver?.id ?? undefined,
       warehouseId: existingDoc.warehouse?.id ?? undefined,
-      sourceBinId: existingDoc.sourceBin?.id ?? undefined,
+      sourceBinId: existingDoc.sourceBinId ?? undefined,
       destWarehouseId: existingDoc.destWarehouse?.id ?? undefined,
       destBinId: existingDoc.destBin?.id ?? undefined,
       customerBranchId: existingDoc.customerBranch?.id ?? undefined,
@@ -96,8 +101,8 @@ export function useExistingDocument({
         productCode: item.product.code,
         productDesc: item.product.description,
         quantity: item.quantity,
-        unitCost: item.unitCost ?? undefined,
-        unitPrice: item.unitPrice ?? undefined,
+        unitCost: Number(item.unitCost),
+        unitPrice: Number(item.unitPrice),
         observaciones: item.observaciones ?? undefined,
         addedAt: item.addedAt,
       })),
