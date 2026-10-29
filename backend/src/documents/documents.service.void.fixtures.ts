@@ -4,9 +4,10 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { DocumentVoidService } from './document-void.service';
 import { DocumentsQueryService } from './documents-query.service';
 import { DocumentEffectsRegistry } from './strategies/document-effects.registry';
-import type { DocumentEffectStrategy } from './strategies/document-effect.strategy';
 import { CmEffectStrategy } from './strategies/cm-effect.strategy';
 import { EaiEffectStrategy } from './strategies/eai-effect.strategy';
+import { PvEffectStrategy } from './strategies/pv-effect.strategy';
+import { RemEffectStrategy } from './strategies/rem-effect.strategy';
 import {
   applyStockChange,
   calculateAvgCostAfterVoid,
@@ -20,19 +21,13 @@ export const SALE_TYPES = [
   DocumentType.POSO,
   DocumentType.REM,
 ];
-export const RESERVATION = new Set<DocumentType>([
-  DocumentType.PV,
-  DocumentType.REM,
-]);
 
-type VoidRules = Pick<
-  DocumentEffectStrategy,
-  'affectsCostOnVoid' | 'revertsLastCostOnVoid'
->;
 const noPrisma = {} as PrismaService;
-const VOID_RULES: Partial<Record<DocumentType, VoidRules>> = {
+const REAL_STRATEGIES: Partial<Record<DocumentType, object>> = {
   [DocumentType.CM]: new CmEffectStrategy(noPrisma),
   [DocumentType.EAI]: new EaiEffectStrategy(noPrisma),
+  [DocumentType.PV]: new PvEffectStrategy(noPrisma),
+  [DocumentType.REM]: new RemEffectStrategy(noPrisma),
 };
 
 export const makeUser = (permissions: string[]) =>
@@ -137,15 +132,9 @@ export function resetVoidHarness({
   prisma.$transaction.mockImplementation((fn: (client: typeof tx) => unknown) =>
     fn(tx),
   );
-  registry.get.mockImplementation((type: DocumentType) => {
-    const rules = VOID_RULES[type];
-    return {
-      affectsCostOnVoid: (unitCost: number) =>
-        rules?.affectsCostOnVoid(unitCost) ?? false,
-      revertsLastCostOnVoid: rules?.revertsLastCostOnVoid ?? false,
-      ...(RESERVATION.has(type) && { releaseItems: jest.fn() }),
-    };
-  });
+  registry.get.mockImplementation(
+    (type: DocumentType) => REAL_STRATEGIES[type] ?? {},
+  );
   tx.document.updateMany.mockResolvedValue({ count: 1 });
   tx.documentItem.findMany.mockResolvedValue([]);
   tx.inventoryMovement.findFirst.mockResolvedValue(null);

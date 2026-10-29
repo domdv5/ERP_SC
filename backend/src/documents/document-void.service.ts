@@ -3,7 +3,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { DocumentStatus, DocumentType, MovementType } from '@/common/enums';
 import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -12,15 +11,11 @@ import {
   assertAvailableForReservation,
   RESERVATION_TYPES,
 } from './helpers/reservation.helpers';
-import {
-  applyBinStockChange,
-  applyStockChange,
-  calculateAvgCostAfterVoid,
-  findLastPurchaseCostAfterVoid,
-} from './helpers/stock.helpers';
+import { applyBinStockChange, applyStockChange } from './helpers/stock.helpers';
 import { assertDocumentPermission } from './helpers/document-guards.helpers';
 import { DocumentsQueryService } from './documents-query.service';
 import {
+  DOCUMENT_TO_VOID_INCLUDE,
   DocumentEffectsRegistry,
   isReservationStrategy,
 } from './strategies/index';
@@ -45,28 +40,7 @@ export class DocumentVoidService {
   async void(id: string, user: JwtPayload) {
     const document = await this.prisma.document.findUnique({
       where: { id },
-      include: {
-        documentItems: {
-          select: { id: true, productId: true, quantity: true },
-        },
-        derivedDocuments: { select: { id: true, status: true } },
-        inventoryMovements: {
-          include: { documentItem: { select: { unitCost: true } } },
-        },
-        accountsPayable: {
-          include: {
-            payablePayments: true,
-            creditApplications: true,
-            egresoAllocations: true,
-          },
-        },
-        accountsReceivable: {
-          include: { receivablePayments: true, reciboCajaAllocations: true },
-        },
-        supplierCredits: { include: { applications: true } },
-        customerCredits: { include: { applications: true } },
-        appliedCustomerCredits: true,
-      },
+      include: DOCUMENT_TO_VOID_INCLUDE,
     });
 
     if (!document) {
@@ -164,39 +138,8 @@ export class DocumentVoidService {
           );
         }
 
-        // Anular una preventa/remisión libera toda la reserva de una vez; se anota igual que una liberación manual.
         const strategy = this.effectsRegistry.get(document.type);
-        if (isReservationStrategy(strategy)) {
-          // Relee las líneas dentro de la transacción: el dato de afuera podría estar viejo si alguien liberó justo antes.
-          const freshItems = await tx.documentItem.findMany({
-            where: { documentId: id },
-            select: {
-              id: true,
-              quantity: true,
-              releasedQuantity: true,
-              convertedQuantity: true,
-            },
-          });
-
-          const releases = freshItems
-            .map((item) => ({
-              documentItemId: item.id,
-              quantity:
-                item.quantity - item.releasedQuantity - item.convertedQuantity,
-            }))
-            .filter((release) => release.quantity > 0);
-
-          if (releases.length > 0) {
-            await tx.reservationRelease.createMany({
-              data: releases.map((release) => ({
-                documentItemId: release.documentItemId,
-                quantity: release.quantity,
-                userId: user.sub,
-                notes: 'Liberación automática por anulación del documento',
-              })),
-            });
-          }
-        }
+        await strategy.undoEffects?.(tx, document, user.sub);
 
         // Si nació de una conversión, devuelve las unidades convertidas al origen o esa reserva nunca vuelve a estar disponible.
         if (document.sourceDocumentId) {
@@ -228,87 +171,12 @@ export class DocumentVoidService {
           }
         }
 
-        // El costo solo se revierte en CM/EAI, y solo si el movimiento a anular es el último del producto (cacheado por producto, excluye este documento).
-        const recentConsumptionCache = new Map<
-          string,
-          Awaited<ReturnType<typeof tx.inventoryMovement.findFirst>>
-        >();
-
         // Se cachea por bodega: las líneas de un mismo documento casi siempre
         // comparten bodega, así no se repite la consulta del tipo de bodega.
         const warehouseTypeCache = new Map<string, string>();
 
         for (const movement of document.inventoryMovements) {
           const quantity = movement.quantity;
-          const isCostAffecting = strategy.affectsCostOnVoid(
-            Number(movement.documentItem?.unitCost ?? 0),
-          );
-
-          if (isCostAffecting) {
-            // Excluye líneas del mismo documento por fecha de creación; solo cuenta consumo real (no traslados ni anulaciones).
-            let mostRecentOther = recentConsumptionCache.get(
-              movement.productId,
-            );
-
-            if (mostRecentOther === undefined) {
-              mostRecentOther = await tx.inventoryMovement.findFirst({
-                where: {
-                  productId: movement.productId,
-                  documentId: { not: id },
-                  quantity: { lt: 0 },
-                  movementType: {
-                    notIn: [MovementType.transfer, MovementType.void],
-                  },
-                },
-                orderBy: { createdAt: 'desc' },
-              });
-              recentConsumptionCache.set(movement.productId, mostRecentOther);
-            }
-
-            if (
-              mostRecentOther &&
-              mostRecentOther.createdAt > movement.createdAt
-            ) {
-              throw new ConflictException(
-                `No se puede anular: el producto ${movement.productId} tuvo movimientos de stock posteriores a esta compra/ajuste, lo que impide recalcular el costo promedio de forma segura. Use un ajuste manual (EAI/SAJ) o una devolución a proveedor (DVC) en su lugar.`,
-              );
-            }
-
-            const product = await tx.product.findUniqueOrThrow({
-              where: { id: movement.productId },
-            });
-
-            const reversedAvgCost = await calculateAvgCostAfterVoid(
-              tx,
-              movement.productId,
-              Number(product.avgCost),
-              quantity,
-              Number(movement.unitCost),
-            );
-
-            // El último costo solo se revierte en compras; los ajustes de entrada
-            // nunca lo tocan.
-            const updateData: Prisma.ProductUpdateInput = {
-              avgCost: reversedAvgCost,
-            };
-
-            if (strategy.revertsLastCostOnVoid) {
-              const resolvedLastCost = await findLastPurchaseCostAfterVoid(
-                tx,
-                movement.productId,
-                id,
-                movement.createdAt,
-              );
-              if (resolvedLastCost !== undefined) {
-                updateData.lastCost = resolvedLastCost;
-              }
-            }
-
-            await tx.product.update({
-              where: { id: movement.productId },
-              data: updateData,
-            });
-          }
 
           // Si revertir quita stock de la tienda, hay que frenar si pisaría una reserva de preventa/remisión.
           if (quantity > 0) {

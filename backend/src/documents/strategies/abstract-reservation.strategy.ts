@@ -8,6 +8,7 @@ import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type {
   ConfirmContext,
+  DocumentToVoid,
   DocumentWithItems,
   ReservationEffectStrategy,
 } from './document-effect.strategy';
@@ -146,6 +147,43 @@ export abstract class AbstractReservationStrategy
           userId,
           notes: notes ?? null,
         },
+      });
+    }
+  }
+
+  // Anular libera toda la reserva pendiente de una vez; se anota igual que una liberación manual.
+  async undoEffects(
+    tx: Prisma.TransactionClient,
+    document: DocumentToVoid,
+    userId: string,
+  ) {
+    // Relee las líneas dentro de la transacción: el dato de afuera podría estar viejo si alguien liberó justo antes.
+    const freshItems = await tx.documentItem.findMany({
+      where: { documentId: document.id },
+      select: {
+        id: true,
+        quantity: true,
+        releasedQuantity: true,
+        convertedQuantity: true,
+      },
+    });
+
+    const releases = freshItems
+      .map((item) => ({
+        documentItemId: item.id,
+        quantity:
+          item.quantity - item.releasedQuantity - item.convertedQuantity,
+      }))
+      .filter((release) => release.quantity > 0);
+
+    if (releases.length > 0) {
+      await tx.reservationRelease.createMany({
+        data: releases.map((release) => ({
+          documentItemId: release.documentItemId,
+          quantity: release.quantity,
+          userId,
+          notes: 'Liberación automática por anulación del documento',
+        })),
       });
     }
   }

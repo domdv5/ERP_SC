@@ -11,6 +11,35 @@ export type DocumentWithItems = Prisma.DocumentGetPayload<{
   };
 }>;
 
+/** Includes que carga DocumentVoidService; compartidos para tipar el documento que recibe undoEffects. */
+export const DOCUMENT_TO_VOID_INCLUDE = {
+  documentItems: {
+    select: { id: true, productId: true, quantity: true },
+  },
+  derivedDocuments: { select: { id: true, status: true } },
+  inventoryMovements: {
+    include: { documentItem: { select: { unitCost: true } } },
+  },
+  accountsPayable: {
+    include: {
+      payablePayments: true,
+      creditApplications: true,
+      egresoAllocations: true,
+    },
+  },
+  accountsReceivable: {
+    include: { receivablePayments: true, reciboCajaAllocations: true },
+  },
+  supplierCredits: { include: { applications: true } },
+  customerCredits: { include: { applications: true } },
+  appliedCustomerCredits: true,
+} satisfies Prisma.DocumentInclude;
+
+/** Documento a anular, con los includes de DOCUMENT_TO_VOID_INCLUDE. */
+export type DocumentToVoid = Prisma.DocumentGetPayload<{
+  include: typeof DOCUMENT_TO_VOID_INCLUDE;
+}>;
+
 /** Datos extra que el service pasa a confirm() según el body del endpoint (solo lo usan POS/COT, para saldos a favor). */
 export type ConfirmContext = {
   appliedCustomerCredits?: { customerCreditId: string; amount: number }[];
@@ -37,12 +66,6 @@ export interface DocumentEffectStrategy {
   /** Si el documento guarda quién recibe la mercancía (solo compras). */
   readonly tracksReceiver: boolean;
 
-  /** Si la línea anulada recalcula el costo promedio del producto; unitCost es el costo de la línea. */
-  affectsCostOnVoid(unitCost: number): boolean;
-
-  /** Si al anular también se revierte el último costo de compra del producto. */
-  readonly revertsLastCostOnVoid: boolean;
-
   /** Validaciones específicas del tipo al crear el borrador. */
   validateCreate?(createDocumentDto: CreateDocumentDto): Promise<void> | void;
 
@@ -52,6 +75,13 @@ export interface DocumentEffectStrategy {
     document: DocumentWithItems,
     userId: string,
     context?: ConfirmContext,
+  ): Promise<void>;
+
+  /** Efectos propios del tipo al anular, tras reclamar el estado y antes de revertir el stock; lo común lo hace el service. */
+  undoEffects?(
+    tx: Prisma.TransactionClient,
+    document: DocumentToVoid,
+    userId: string,
   ): Promise<void>;
 
   /** Hora en que se agregó un ítem al documento: la del carrito si el tipo la registra, si no la del servidor. */
