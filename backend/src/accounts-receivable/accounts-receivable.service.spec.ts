@@ -256,3 +256,145 @@ describe('AccountsReceivableService: sucursales del cliente', () => {
     );
   });
 });
+
+describe('AccountsReceivableService.findClients', () => {
+  const prisma = {
+    $queryRaw: jest.fn(),
+    $transaction: jest.fn((queries: unknown[]) => Promise.all(queries)),
+  };
+  const service = new AccountsReceivableService(
+    prisma as unknown as PrismaService,
+  );
+  const sqlOf = (call: unknown[]) =>
+    Prisma.sql(call[0] as TemplateStringsArray, ...call.slice(1)).sql;
+
+  const groupRow = {
+    client_id: 'c1',
+    client_name: 'Cliente Uno',
+    receivable_count: 4,
+    total_amount: decimal('1000.10'),
+    paid_amount: decimal('400.05'),
+    last_sale_date: saleDate,
+    last_payment_date: new Date('2026-09-20T00:00:00.000Z'),
+    last_movement_at: new Date('2026-09-21T15:00:00.000Z'),
+  };
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.$transaction.mockImplementation((queries: unknown[]) =>
+      Promise.all(queries),
+    );
+    prisma.$queryRaw.mockResolvedValueOnce([groupRow]).mockResolvedValueOnce([
+      {
+        client_count: 41,
+        total_amount: decimal('9000.50'),
+        paid_amount: decimal('2000.25'),
+      },
+    ]);
+  });
+
+  it('una fila por cliente con saldo derivado y las fechas del grupo', async () => {
+    const result = await service.findClients({ page: 1, limit: 20 });
+
+    expect(result.items).toEqual([
+      {
+        client: { id: 'c1', name: 'Cliente Uno' },
+        receivableCount: 4,
+        totalAmount: decimal('1000.10'),
+        paidAmount: decimal('400.05'),
+        balance: decimal('600.05'),
+        lastSaleDate: saleDate,
+        lastPaymentDate: new Date('2026-09-20T00:00:00.000Z'),
+        lastMovementAt: new Date('2026-09-21T15:00:00.000Z'),
+      },
+    ]);
+  });
+
+  it('lastPaymentDate es null si el cliente no tiene pagos', async () => {
+    prisma.$queryRaw.mockReset();
+    prisma.$queryRaw
+      .mockResolvedValueOnce([{ ...groupRow, last_payment_date: null }])
+      .mockResolvedValueOnce([
+        { client_count: 1, total_amount: '1', paid_amount: '0' },
+      ]);
+
+    const result = await service.findClients({});
+
+    expect(result.items[0].lastPaymentDate).toBeNull();
+  });
+
+  it('meta cuenta clientes y totaliza sobre todos los clientes filtrados', async () => {
+    const { meta } = await service.findClients({ page: 3, limit: 20 });
+
+    expect(meta).toEqual({
+      total: 41,
+      page: 3,
+      limit: 20,
+      totalPages: 3,
+      totals: {
+        totalAmount: decimal('9000.50'),
+        paidAmount: decimal('2000.25'),
+        balance: decimal('7000.25'),
+      },
+    });
+  });
+
+  it('pagina sobre los grupos: limit y offset salen como parámetros', async () => {
+    await service.findClients({ page: 3, limit: 20 });
+
+    const [itemsCall] = prisma.$queryRaw.mock.calls;
+    expect(itemsCall.slice(1)).toEqual(expect.arrayContaining([20, 40]));
+  });
+
+  it.each([
+    ['with_balance', '> 0'],
+    ['settled', '= 0'],
+  ] as const)(
+    'status=%s filtra con HAVING sobre el saldo sumado',
+    async (status, operator) => {
+      await service.findClients({ status });
+
+      for (const call of prisma.$queryRaw.mock.calls) {
+        expect(sqlOf(call)).toContain(
+          `HAVING SUM(s.total_amount) - SUM(s.paid_amount) ${operator}`,
+        );
+      }
+    },
+  );
+
+  it('sin status no aplica HAVING', async () => {
+    await service.findClients({});
+
+    for (const call of prisma.$queryRaw.mock.calls) {
+      expect(sqlOf(call)).not.toContain('HAVING');
+    }
+  });
+
+  it('search y fechas viajan como parámetros, no concatenados', async () => {
+    await service.findClients({
+      search: "x'; DROP TABLE y;--",
+      dateFrom: '2026-09-01',
+      dateTo: '2026-09-30',
+    });
+
+    const [itemsCall] = prisma.$queryRaw.mock.calls;
+    const sql = sqlOf(itemsCall);
+    expect(sql).not.toContain('DROP TABLE');
+    expect(sql).toContain('d.date >=');
+    expect(sql).toContain('d.date <=');
+    expect(Prisma.sql(itemsCall[0], ...itemsCall.slice(1)).values).toEqual(
+      expect.arrayContaining([
+        "x'; DROP TABLE y;--",
+        '2026-09-01',
+        '2026-09-30',
+      ]),
+    );
+  });
+
+  it('rechaza dateFrom posterior a dateTo', async () => {
+    await expect(
+      service.findClients({ dateFrom: '2026-10-01', dateTo: '2026-09-01' }),
+    ).rejects.toThrow('dateFrom no puede ser posterior a dateTo');
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
+  });
+});

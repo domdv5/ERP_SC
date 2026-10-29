@@ -5,9 +5,11 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { buildDateColumnRange } from '@/common/utils/date-range.util';
 import {
   FindAllAccountsPayableDto,
   FindAvailableSupplierCreditsDto,
+  FindPayableSuppliersDto,
 } from './dto/index';
 
 const LIST_INCLUDE = {
@@ -116,6 +118,23 @@ function withDerivedFields<
   };
 }
 
+type SupplierGroupRow = {
+  supplier_id: string;
+  supplier_name: string;
+  payable_count: number;
+  total_amount: Prisma.Decimal;
+  paid_amount: Prisma.Decimal;
+  last_purchase_date: Date;
+  last_payment_date: Date | null;
+  last_movement_at: Date;
+};
+
+type SupplierGroupTotalsRow = {
+  supplier_count: number;
+  total_amount: Prisma.Decimal;
+  paid_amount: Prisma.Decimal;
+};
+
 @Injectable()
 export class AccountsPayableService {
   constructor(private readonly prisma: PrismaService) {}
@@ -175,6 +194,124 @@ export class AccountsPayableService {
         limit,
         totalPages: Math.ceil(total / limit),
         totals: buildTotals(totals),
+      },
+    };
+  }
+
+  /** Una fila por proveedor con sus CxP sumadas; el filtro de estado se aplica sobre el saldo sumado (HAVING). */
+  async findSuppliers(findPayableSuppliersDto: FindPayableSuppliersDto) {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      status,
+      dateFrom,
+      dateTo,
+    } = findPayableSuppliersDto;
+    buildDateColumnRange(dateFrom, dateTo);
+
+    const filters = Prisma.sql`
+      ${search ? Prisma.sql`AND position(lower(${search}) in lower(tp.name)) > 0` : Prisma.empty}
+      ${dateFrom ? Prisma.sql`AND d.date >= ${dateFrom}::date` : Prisma.empty}
+      ${dateTo ? Prisma.sql`AND d.date <= ${dateTo}::date` : Prisma.empty}`;
+    const having =
+      status === 'with_balance'
+        ? Prisma.sql`HAVING SUM(s.total_amount) - SUM(s.paid_amount) > 0`
+        : status === 'settled'
+          ? Prisma.sql`HAVING SUM(s.total_amount) - SUM(s.paid_amount) = 0`
+          : Prisma.empty;
+
+    const groupedSuppliers = Prisma.sql`
+      scoped AS (
+        SELECT ap.id, ap.supplier_id, tp.name AS supplier_name, ap.total_amount,
+               ap.paid_amount, ap.updated_at, d.date AS purchase_date
+        FROM accounts_payable ap
+        JOIN document d ON d.id = ap.document_id
+        JOIN third_parties tp ON tp.id = ap.supplier_id
+        WHERE TRUE ${filters}
+      ),
+      grouped AS (
+        SELECT s.supplier_id, s.supplier_name,
+               COUNT(*)::int AS payable_count,
+               SUM(s.total_amount) AS total_amount,
+               SUM(s.paid_amount) AS paid_amount,
+               MAX(s.purchase_date) AS last_purchase_date,
+               MAX(s.updated_at) AS last_movement_at
+        FROM scoped s
+        GROUP BY s.supplier_id, s.supplier_name
+        ${having}
+      )`;
+
+    // Pagos = históricos, egresos y aplicaciones de saldo a favor sin egreso (las con egreso ya cuentan vía el egreso).
+    const [rows, [totals]] = await this.prisma.$transaction([
+      this.prisma.$queryRaw<SupplierGroupRow[]>`
+        WITH ${groupedSuppliers},
+        page AS (
+          SELECT * FROM grouped
+          ORDER BY last_movement_at DESC, supplier_name ASC, supplier_id ASC
+          LIMIT ${limit} OFFSET ${(page - 1) * limit}
+        ),
+        payment_dates AS (
+          SELECT s.supplier_id, pp.payment_date AS paid_on
+          FROM scoped s
+          JOIN payable_payments pp ON pp.account_payable_id = s.id
+          WHERE s.supplier_id IN (SELECT supplier_id FROM page)
+          UNION ALL
+          SELECT s.supplier_id, e.date AS paid_on
+          FROM scoped s
+          JOIN egreso_allocation ea ON ea.account_payable_id = s.id
+          JOIN egreso e ON e.id = ea.egreso_id
+          WHERE s.supplier_id IN (SELECT supplier_id FROM page)
+          UNION ALL
+          SELECT s.supplier_id,
+                 (sca.applied_at AT TIME ZONE 'America/Bogota')::date AS paid_on
+          FROM scoped s
+          JOIN supplier_credit_application sca ON sca.account_payable_id = s.id
+          WHERE sca.egreso_id IS NULL
+            AND s.supplier_id IN (SELECT supplier_id FROM page)
+        )
+        SELECT p.*,
+               (SELECT MAX(pd.paid_on) FROM payment_dates pd
+                WHERE pd.supplier_id = p.supplier_id) AS last_payment_date
+        FROM page p
+        ORDER BY p.last_movement_at DESC, p.supplier_name ASC, p.supplier_id ASC`,
+      this.prisma.$queryRaw<SupplierGroupTotalsRow[]>`
+        WITH ${groupedSuppliers}
+        SELECT COUNT(*)::int AS supplier_count,
+               COALESCE(SUM(total_amount), 0) AS total_amount,
+               COALESCE(SUM(paid_amount), 0) AS paid_amount
+        FROM grouped`,
+    ]);
+
+    const total = totals.supplier_count;
+    const totalAmount = new Prisma.Decimal(totals.total_amount);
+    const paidAmount = new Prisma.Decimal(totals.paid_amount);
+
+    return {
+      items: rows.map((row) => {
+        const rowTotal = new Prisma.Decimal(row.total_amount);
+        const rowPaid = new Prisma.Decimal(row.paid_amount);
+        return {
+          supplier: { id: row.supplier_id, name: row.supplier_name },
+          payableCount: row.payable_count,
+          totalAmount: rowTotal,
+          paidAmount: rowPaid,
+          balance: rowTotal.minus(rowPaid),
+          lastPurchaseDate: row.last_purchase_date,
+          lastPaymentDate: row.last_payment_date,
+          lastMovementAt: row.last_movement_at,
+        };
+      }),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        totals: {
+          totalAmount,
+          paidAmount,
+          balance: totalAmount.minus(paidAmount),
+        },
       },
     };
   }

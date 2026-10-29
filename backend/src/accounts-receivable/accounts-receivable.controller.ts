@@ -3,6 +3,7 @@ import { AccountsReceivableService } from './accounts-receivable.service';
 import {
   ClientStatementQueryDto,
   FindAllAccountsReceivableDto,
+  FindReceivableClientsDto,
 } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 
@@ -16,6 +17,13 @@ export class AccountsReceivableController {
   @Permissions('ar.read')
   findAll(@Query() findAllAccountsReceivableDto: FindAllAccountsReceivableDto) {
     return this.accountsReceivableService.findAll(findAllAccountsReceivableDto);
+  }
+
+  // Declarado antes de :id para que "clients" no se tome como id.
+  @Get('clients')
+  @Permissions('ar.read')
+  findClients(@Query() findReceivableClientsDto: FindReceivableClientsDto) {
+    return this.accountsReceivableService.findClients(findReceivableClientsDto);
   }
 
   // "clients" debe declararse antes de :id para que no lo capture como id.
