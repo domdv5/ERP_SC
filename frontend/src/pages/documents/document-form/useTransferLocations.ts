@@ -82,6 +82,19 @@ export function useTransferLocations(
   const currentSourceBinId = watch('sourceBinId')
   const currentDestBinId = watch('destBinId')
 
+  // Al abrir un borrador llega el bulto pero no la zona: se deduce de la zona que contiene ese bulto.
+  useEffect(() => {
+    if (selectedSourceZoneId || !currentSourceBinId) return
+    const zone = sourceZones.find((z) => z.bins.some((b) => b.id === currentSourceBinId))
+    if (zone) setSelectedSourceZoneId(zone.id)
+  }, [selectedSourceZoneId, currentSourceBinId, sourceZones])
+
+  useEffect(() => {
+    if (selectedZoneId || !currentDestBinId) return
+    const zone = destZones.find((z) => z.bins.some((b) => b.id === currentDestBinId))
+    if (zone) setSelectedZoneId(zone.id)
+  }, [selectedZoneId, currentDestBinId, destZones])
+
   // Productos actualmente en el documento — un bulto origen solo califica si ya tiene stock
   // de alguno de estos productos (normalmente se traslada un solo producto por bulto).
   const watchedItems = watch('items')
