@@ -34,4 +34,32 @@ jobs:
 
       - run: pnpm test
 
+      # ts-jest solo transpila: sin esto un spec con @ts-expect-error roto o un contrato incumplido pasa igual
+      - run: pnpm exec tsc --noEmit -p tsconfig.json
+
+      - run: pnpm run build
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm test
+
+      # tsc + vite build: rompe si una pantalla no cumple el contrato de backend/src/contracts
       - run: pnpm run build
