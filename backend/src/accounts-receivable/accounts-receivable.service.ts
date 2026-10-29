@@ -5,7 +5,12 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { todayInBogota } from '@/common/utils/date-range.util';
 import { FindAllAccountsReceivableDto } from './dto/index';
+import {
+  calculatePaymentDays,
+  findLastPaymentDate,
+} from './helpers/payment-days.helper';
 
 const LIST_INCLUDE = {
   client: { include: { thirdParty: { select: { id: true, name: true } } } },
@@ -20,6 +25,8 @@ const LIST_INCLUDE = {
       customerBranch: { select: { id: true, name: true } },
     },
   },
+  receivablePayments: { select: { paymentDate: true } },
+  reciboCajaAllocations: { select: { reciboCaja: { select: { date: true } } } },
 } satisfies Prisma.AccountsReceivableInclude;
 
 const DETAIL_INCLUDE = {
@@ -94,12 +101,25 @@ function buildTotals(totals: {
 }
 
 /** Agrega el saldo derivado (totalAmount - paidAmount) sobre una fila, mismo patrón que AccountsPayableService. */
-function withDerivedFields<
-  T extends Pick<ListRow, 'totalAmount' | 'paidAmount'>,
->(row: T) {
+function withDerivedFields(row: ListRow, today: Date) {
+  const { receivablePayments, reciboCajaAllocations, ...rest } = row;
+  const lastPaymentDate = findLastPaymentDate([
+    ...receivablePayments.map((payment) => payment.paymentDate),
+    ...reciboCajaAllocations.map((allocation) => allocation.reciboCaja.date),
+  ]);
+  const { days, isOpen } = calculatePaymentDays(
+    row.document.date,
+    lastPaymentDate,
+    row.status,
+    today,
+  );
+
   return {
-    ...row,
+    ...rest,
     balance: row.totalAmount.minus(row.paidAmount),
+    lastPaymentDate,
+    paymentDays: days,
+    isPaymentOpen: isOpen,
   };
 }
 
@@ -233,7 +253,7 @@ export class AccountsReceivableService {
     ]);
 
     return {
-      items: rawItems.map(withDerivedFields),
+      items: rawItems.map((row) => withDerivedFields(row, todayInBogota())),
       meta: {
         total,
         page,
@@ -318,7 +338,7 @@ export class AccountsReceivableService {
           !customerBranchId ||
           receivable.document.customerBranchId === customerBranchId,
       )
-      .map(withDerivedFields);
+      .map((receivable) => withDerivedFields(receivable, todayInBogota()));
 
     const totalDebt = receivables.reduce(
       (sum, receivable) => sum.plus(receivable.totalAmount),

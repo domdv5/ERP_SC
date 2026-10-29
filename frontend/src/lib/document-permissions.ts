@@ -21,14 +21,14 @@ export function canCheckMissingStock(
   )
 }
 
-// Tipos que el usuario ve en el listado: crea (document.create.*) o anula (document.void.*), igual que el backend.
+// Tipos que el usuario ve en el listado: crea, anula o convierte (document.create/void/convert.*), igual que el backend.
+const VISIBILITY_PREFIXES = ['document.create.', 'document.void.', 'document.convert.']
+
 export function visibleDocumentTypes(permissions: readonly string[]): DocumentType[] {
   const types = new Set<DocumentType>()
   for (const p of permissions) {
-    if (p.startsWith('document.create.'))
-      types.add(p.slice('document.create.'.length) as DocumentType)
-    else if (p.startsWith('document.void.'))
-      types.add(p.slice('document.void.'.length) as DocumentType)
+    const prefix = VISIBILITY_PREFIXES.find((pre) => p.startsWith(pre))
+    if (prefix) types.add(p.slice(prefix.length) as DocumentType)
   }
   return [...types]
 }

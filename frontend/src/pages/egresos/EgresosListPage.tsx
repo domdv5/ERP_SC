@@ -14,6 +14,7 @@ import {
   EmptyState,
   ErrorState,
   TablePagination,
+  DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
@@ -30,6 +31,7 @@ export default function EgresosListPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
 
   const [debouncedSearch] = useDebounce(search, 400)
   const [debouncedSupplierSearch] = useDebounce(supplierSearch, 400)
@@ -40,7 +42,7 @@ export default function EgresosListPage() {
   }, [debouncedSearch, supplierId, dateFrom, dateTo])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['egresos', debouncedSearch, supplierId, dateFrom, dateTo, page],
+    queryKey: ['egresos', debouncedSearch, supplierId, dateFrom, dateTo, page, limit],
     queryFn: () =>
       getEgresos({
         number: debouncedSearch || undefined,
@@ -48,7 +50,7 @@ export default function EgresosListPage() {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         page,
-        limit: 20,
+        limit,
       }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
@@ -253,7 +255,12 @@ export default function EgresosListPage() {
             page={page}
             totalPages={totalPages}
             total={total}
+            limit={limit}
             onPageChange={setPage}
+            onLimitChange={(value) => {
+              setLimit(value)
+              setPage(1)
+            }}
           />
         )}
       </div>

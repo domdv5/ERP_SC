@@ -6,6 +6,10 @@ describe('canViewDocument', () => {
     expect(canViewDocument('T', ['document.create.T'])).toBe(true)
   })
 
+  it('ve un tipo que solo convierte', () => {
+    expect(canViewDocument('PV', ['document.convert.PV'])).toBe(true)
+  })
+
   it('ve un tipo que solo anula', () => {
     expect(canViewDocument('COT', ['document.void.COT'])).toBe(true)
   })

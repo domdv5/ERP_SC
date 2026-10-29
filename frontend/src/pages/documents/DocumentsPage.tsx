@@ -12,6 +12,7 @@ import {
   EmptyState,
   ErrorState,
   TablePagination,
+  DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
 import { formatCOP, docNumber, formatDateTimeBogota } from '@/lib/format'
@@ -96,6 +97,7 @@ export default function DocumentsPage() {
   const [typeFilter, setTypeFilter] = useState<DocumentType | ''>('')
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | ''>('')
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
 
   const [debouncedSearch] = useDebounce(search, 400)
 
@@ -105,7 +107,7 @@ export default function DocumentsPage() {
   }, [debouncedSearch, typeFilter, statusFilter])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['documents', debouncedSearch, typeFilter, statusFilter, page, allowedTypes],
+    queryKey: ['documents', debouncedSearch, typeFilter, statusFilter, page, limit, allowedTypes],
     queryFn: () =>
       getDocuments({
         search: debouncedSearch || undefined,
@@ -114,7 +116,7 @@ export default function DocumentsPage() {
         types: !typeFilter && allowedTypes.length > 0 ? allowedTypes.join(',') : undefined,
         status: statusFilter || undefined,
         page,
-        limit: 20,
+        limit,
       }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
@@ -388,7 +390,12 @@ export default function DocumentsPage() {
             page={page}
             totalPages={totalPages}
             total={total}
+            limit={limit}
             onPageChange={setPage}
+            onLimitChange={(value) => {
+              setLimit(value)
+              setPage(1)
+            }}
           />
         )}
       </div>

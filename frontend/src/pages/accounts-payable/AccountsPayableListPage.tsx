@@ -12,6 +12,7 @@ import {
   EmptyState,
   ErrorState,
   TablePagination,
+  DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber } from '@/lib/format'
@@ -40,6 +41,7 @@ export default function AccountsPayableListPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
 
   const [debouncedSupplierSearch] = useDebounce(supplierSearch, 400)
 
@@ -90,7 +92,7 @@ export default function AccountsPayableListPage() {
   const hasInvalidDateRange = Boolean(dateFrom && dateTo && dateFrom > dateTo)
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['accounts-payable', supplierId, statusFilter, dateFrom, dateTo, page],
+    queryKey: ['accounts-payable', supplierId, statusFilter, dateFrom, dateTo, page, limit],
     queryFn: () =>
       getAccountsPayable({
         supplierId: supplierId || undefined,
@@ -98,7 +100,7 @@ export default function AccountsPayableListPage() {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         page,
-        limit: 20,
+        limit,
       }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
@@ -371,7 +373,12 @@ export default function AccountsPayableListPage() {
             page={page}
             totalPages={totalPages}
             total={total}
+            limit={limit}
             onPageChange={setPage}
+            onLimitChange={(value) => {
+              setLimit(value)
+              setPage(1)
+            }}
           />
         )}
       </div>

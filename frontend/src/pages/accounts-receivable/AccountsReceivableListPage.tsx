@@ -13,12 +13,14 @@ import {
   EmptyState,
   ErrorState,
   TablePagination,
+  DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { StatusBadge } from './components/StatusBadge'
 import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-receivable.utils'
+import { PaymentDaysCell } from './components/PaymentDaysCell'
 import type { AccountsReceivableStatus } from '@/types'
 import type { ThirdParty } from '@/types/third-party.types'
 
@@ -42,6 +44,7 @@ export default function AccountsReceivableListPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
 
   const [debouncedClientSearch] = useDebounce(clientSearch, 400)
 
@@ -96,7 +99,16 @@ export default function AccountsReceivableListPage() {
   const hasInvalidDateRange = Boolean(dateFrom && dateTo && dateFrom > dateTo)
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['accounts-receivable', clientId, branchId, statusFilter, dateFrom, dateTo, page],
+    queryKey: [
+      'accounts-receivable',
+      clientId,
+      branchId,
+      statusFilter,
+      dateFrom,
+      dateTo,
+      page,
+      limit,
+    ],
     queryFn: () =>
       getAccountsReceivable({
         clientId: clientId || undefined,
@@ -105,7 +117,7 @@ export default function AccountsReceivableListPage() {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         page,
-        limit: 20,
+        limit,
       }),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
@@ -313,6 +325,8 @@ export default function AccountsReceivableListPage() {
                     'Pagado',
                     'Saldo',
                     'Vencimiento',
+                    'Último pago',
+                    'Días',
                     'Estado',
                   ].map((h) => (
                     <th
@@ -375,6 +389,12 @@ export default function AccountsReceivableListPage() {
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
                       {formatDate(account.dueDate)}
                     </td>
+                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                      {formatDate(account.lastPaymentDate)}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                      <PaymentDaysCell days={account.paymentDays} isOpen={account.isPaymentOpen} />
+                    </td>
                     <td className="px-5 py-3.5">
                       <StatusBadge status={account.status} />
                     </td>
@@ -390,7 +410,12 @@ export default function AccountsReceivableListPage() {
             page={page}
             totalPages={totalPages}
             total={total}
+            limit={limit}
             onPageChange={setPage}
+            onLimitChange={(value) => {
+              setLimit(value)
+              setPage(1)
+            }}
           />
         )}
       </div>

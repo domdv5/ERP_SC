@@ -114,6 +114,7 @@ export async function seedRolePermissions(prisma: PrismaClient) {
       'document.create.COT',
       'document.create.REM',
       'document.create.DVV',
+      'document.convert.PV',
       'document.convert.REM',
       'document.create.POSO',
       'cash.create',

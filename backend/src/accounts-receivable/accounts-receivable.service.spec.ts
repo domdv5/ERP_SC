@@ -5,6 +5,8 @@ import { AccountsReceivableService } from './accounts-receivable.service';
 
 const decimal = (value: string) => new Prisma.Decimal(value);
 
+const saleDate = new Date('2026-09-01T00:00:00.000Z');
+
 describe('AccountsReceivableService.getClientStatement', () => {
   const prisma = {
     customer: { findUnique: jest.fn() },
@@ -44,13 +46,19 @@ describe('AccountsReceivableService.getClientStatement', () => {
         id: 'a',
         totalAmount: decimal('100.10'),
         paidAmount: decimal('40'),
-        document: { customerBranchId: null },
+        status: 'partial',
+        document: { customerBranchId: null, date: saleDate },
+        receivablePayments: [],
+        reciboCajaAllocations: [],
       },
       {
         id: 'b',
         totalAmount: decimal('50'),
         paidAmount: decimal('50'),
-        document: { customerBranchId: null },
+        status: 'paid',
+        document: { customerBranchId: null, date: saleDate },
+        receivablePayments: [],
+        reciboCajaAllocations: [],
       },
     ]);
     prisma.customerCredit.findMany.mockResolvedValue([
@@ -71,6 +79,49 @@ describe('AccountsReceivableService.getClientStatement', () => {
       '0',
     ]);
     expect(result.credits).toHaveLength(3);
+  });
+
+  it('cada CxC trae la fecha del último pago (pago histórico o recibo de caja) y los días, sin los pagos crudos', async () => {
+    prisma.customer.findUnique.mockResolvedValue({
+      id: 'c1',
+      thirdParty: { id: 'c1', name: 'Cliente Uno' },
+    });
+    prisma.accountsReceivable.findMany.mockResolvedValue([
+      {
+        id: 'paid',
+        totalAmount: decimal('50'),
+        paidAmount: decimal('50'),
+        status: 'paid',
+        document: { customerBranchId: null, date: saleDate },
+        receivablePayments: [
+          { paymentDate: new Date('2026-09-05T00:00:00.000Z') },
+        ],
+        reciboCajaAllocations: [
+          { reciboCaja: { date: new Date('2026-09-15T00:00:00.000Z') } },
+        ],
+      },
+      {
+        id: 'pending',
+        totalAmount: decimal('20'),
+        paidAmount: decimal('0'),
+        status: 'pending',
+        document: { customerBranchId: null, date: saleDate },
+        receivablePayments: [],
+        reciboCajaAllocations: [],
+      },
+    ]);
+    prisma.customerCredit.findMany.mockResolvedValue([]);
+
+    const result = await service.getClientStatement('c1');
+    const [paid, pending] = result.receivables;
+
+    expect(paid.lastPaymentDate).toEqual(new Date('2026-09-15T00:00:00.000Z'));
+    expect(paid.paymentDays).toBe(14);
+    expect(paid.isPaymentOpen).toBe(false);
+    expect(pending.lastPaymentDate).toBeNull();
+    expect(pending.isPaymentOpen).toBe(true);
+    expect(paid).not.toHaveProperty('receivablePayments');
+    expect(paid).not.toHaveProperty('reciboCajaAllocations');
   });
 });
 
@@ -99,7 +150,14 @@ describe('AccountsReceivableService: sucursales del cliente', () => {
     id,
     totalAmount: decimal(total),
     paidAmount: decimal(paid),
-    document: { customerBranchId: branch?.id ?? null, customerBranch: branch },
+    status: 'pending',
+    document: {
+      customerBranchId: branch?.id ?? null,
+      customerBranch: branch,
+      date: saleDate,
+    },
+    receivablePayments: [],
+    reciboCajaAllocations: [],
   });
   const centro = { id: 'b1', name: 'Centro' };
   const norte = { id: 'b2', name: 'Norte' };

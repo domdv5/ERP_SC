@@ -4,11 +4,11 @@ import { DocumentType } from '@/common/enums';
 // Cartera y libro oficial enlazan a documentos de cualquier tipo, así que quien los lee ve todos.
 const SEE_ALL_PERMISSIONS = ['ar.read', 'ap.read', 'official.read'];
 
-/** Tipos que el rol ve: los que puede crear o anular (document.create.{T} / document.void.{T}). */
+/** Tipos que el rol ve: los que puede crear, anular o convertir (document.create/void/convert.{T}). */
 export function findVisibleDocumentTypes(
   permissions: string[],
 ): DocumentType[] {
-  const prefixes = ['document.create.', 'document.void.'];
+  const prefixes = ['document.create.', 'document.void.', 'document.convert.'];
   const valid = new Set<string>(Object.values(DocumentType));
   const types = permissions.flatMap((p) => {
     const prefix = prefixes.find((pre) => p.startsWith(pre));
