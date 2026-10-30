@@ -18,8 +18,8 @@ Se registra en el estado de cuenta y se usa solo en recibos de caja, por cliente
 - T1 S2,S5,S6 schema + migración (kind, sucursal, userId, anulación; aplicación a venta o recibo) + seed permiso — inline — commit: ecc7ff4 ✅
 - T2 S1,S3,S5,S6,S7 backend registrar/anular excedente + filtro de facturación + pruebas — inline — commit: 1631153 ✅
 - T3 S3,S4,S9 backend recibo con excedentes + pruebas — inline — commit: 4aaa70d ✅
-- T4 S1,S4,S6,S9 frontend estado de cuenta, recibo y detalle — react-code-crafter — commit:
-- T5 todas: verificación independiente + docs CLAUDE.md — commit:
+- T4 S1,S4,S6,S9 frontend estado de cuenta, recibo y detalle — react-code-crafter — commit: f77f840 ✅
+- T5 todas: verificación independiente + docs CLAUDE.md — commit: f77f840 + fix final ✅
 
 ## Log
 
@@ -27,3 +27,4 @@ Se registra en el estado de cuenta y se usa solo en recibos de caja, por cliente
 - L2 "por ahora si factura porque un cliente lelga a tenr tatnas que es muy difical saber cual, ademas si es tecto libre puede inducir al errror"; "un excedente no esta ligado a que lo genreo un recibo de cja, simplemnte el cleinte apgo de mas y lsito"; registrar en estado de cuenta: "dale".
 - L3 "1- clientes 2- son datos netamente de prueba 3 - El saldo por devolcuion es otro tema que no vamso a tocar porque hace falta aclarar unas cosas, este saldo a favor es difentes 4- solo recibos 5- solo adminsitracion y el dmin 6- no 7- El saldo a favor de un sucursal pertenece a esa sucursal solo se pueden aplciar a facturas de esa sucursar, juntos pero no revuletos ya que cada una manejka su propias ceuntas"
 - L4 Tabla por tipo; roles admin + accounts_admin "si"; anular no usado "si"; migración + seed RBAC confirmados "si". "para arrancar".
+- L5 Verificación: gentle-ai-verify S1-S9 pasan (migración revisada por lectura, aplicada en dev con CHECKs probados en tx revertida). Review nativa (risk, resilience, reliability) aprobada y reconocida (review-7bf6bcbef0f3106c). Corregidos: "Usar todo" ya no se pasa de la deuda; refresco recorta al saldo nuevo. Avisos para después: registrar excedente sin idempotencia (doble clic = dos excedentes; se corrige anulando), monto sin tope máximo.

@@ -131,7 +131,8 @@ export function useReciboCajaForm() {
       (openItems.excedentes ?? []).map((e) => ({
         customerCreditId: e.id,
         balance: Number(e.balance),
-        amount: previousExcedentes.get(e.id)?.amount ?? 0,
+        // Si otro recibo gastó parte del excedente, lo ya escrito no puede pasar del saldo nuevo
+        amount: Math.min(previousExcedentes.get(e.id)?.amount ?? 0, Number(e.balance)),
       })),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,7 +179,7 @@ export function useReciboCajaForm() {
     )
     const remaining = totalAbonos - discount - others
     const balance = watch(`excedentes.${index}.balance`)
-    setValue(`excedentes.${index}.amount`, remaining > 0 ? Math.min(balance, remaining) : balance)
+    setValue(`excedentes.${index}.amount`, Math.max(0, Math.min(balance, remaining)))
   }
 
   function toggleReceivable(accountReceivableId: string, selected: boolean) {
