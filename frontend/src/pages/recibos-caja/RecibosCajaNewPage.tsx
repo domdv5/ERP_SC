@@ -116,6 +116,7 @@ export default function RecibosCajaNewPage() {
     submitReciboCaja,
     isSubmitting,
   } = useReciboCajaForm()
+  const missingPayment = Math.round(expectedPayments) - Math.round(totalPayments)
 
   const [confirmOpen, setConfirmOpen] = useState(false)
   // Diferido hasta que se cierre el diálogo de confirmación, para no repoblar la tabla detrás de él
@@ -522,7 +523,7 @@ export default function RecibosCajaNewPage() {
           <div className="card-hard p-6 space-y-4">
             <div>
               <p className="text-xs text-content-faint font-accent uppercase tracking-wider">
-                {hasDiscount ? 'Debe recibir' : 'Dinero a cobrar'}
+                Total a cobrar
               </p>
               <p className="text-4xl text-content mt-1 font-display tabular-nums">
                 {formatCOP(expectedPayments)}
@@ -604,7 +605,7 @@ export default function RecibosCajaNewPage() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-content-secondary">Debe recibir</span>
+                        <span className="text-content-secondary">Total a cobrar</span>
                         <span className="font-mono font-medium text-content">
                           {formatCOP(expectedPayments)}
                         </span>
@@ -628,9 +629,14 @@ export default function RecibosCajaNewPage() {
                 </span>
               </div>
               {!cuadraOk && (
-                <p className="text-xs text-red-500 font-accent">
-                  Las formas de pago deben sumar {formatCOP(expectedPayments)}
-                </p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-red-500 font-medium">
+                    {missingPayment > 0 ? 'Falta por cobrar' : 'Sobra'}
+                  </span>
+                  <span className="font-mono font-medium text-red-500">
+                    {formatCOP(Math.abs(missingPayment))}
+                  </span>
+                </div>
               )}
             </div>
 
