@@ -164,6 +164,23 @@ Los agentes del proyecto existen dos veces: `.claude/agents/` (Claude Code) y `.
 | Repetir una tarea periódicamente: "ejecuta X cada N minutos", "repite este comando", "corre esto en loop" | `loop` |
 | Programar una tarea a una hora específica: "programa esto para las 3pm", "crea un cron job" | `schedule` |
 
+## Hábitos de trabajo con IA (evitar deuda de comprensión)
+
+El dueño del repo diseña y decide; la IA ejecuta. Objetivo: que el dueño entienda todo lo que entra al código.
+
+1. **Plan antes de tocar código** — cualquier cambio que toque lógica, datos o más de un archivo
+   (feature, bug, refactor, ajuste): mostrar el plan (qué se cambia, dónde, reglas que aplican,
+   riesgos) y esperar "dale" antes de escribir. Solo los cambios cosméticos de un archivo
+   (texto, color, espaciado) van directo.
+2. **"Por qué así" en cada entrega** — toda entrega cierra con 2-3 decisiones tomadas, cada una con
+   la alternativa descartada y el motivo, en lenguaje simple.
+3. **"Dónde mirar" en cada commit** — después de commitear, listar 3-5 `archivo:línea` con lo
+   importante del cambio para que el dueño lo lea en ~2 minutos.
+4. **Modo práctica (opcional)** — si el dueño dice "modo práctica", la pieza de lógica de negocio
+   no la escribe la IA: queda un `TODO(human)` en el archivo real con qué debe hacer, entradas y
+   salidas, y las pruebas ya escritas en rojo. El dueño la escribe; la IA corre las pruebas, revisa
+   y explica mejoras sin reescribirla. Sin "modo práctica", rige la regla TODO(human) de Routing Rules.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
