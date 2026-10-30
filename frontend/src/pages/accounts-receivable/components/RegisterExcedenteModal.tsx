@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Loader2, PiggyBank } from 'lucide-react'
@@ -43,6 +43,8 @@ function RegisterExcedenteForm({
   const [amount, setAmount] = useState<number | undefined>(undefined)
   const [date, setDate] = useState(todayInBogota())
   const [error, setError] = useState<string | null>(null)
+  // Se marca al instante, antes de que React redibuje el botón deshabilitado: un doble clic rápido no crea dos excedentes
+  const isSubmittingRef = useRef(false)
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: () =>
@@ -59,6 +61,8 @@ function RegisterExcedenteForm({
     if (!amount || amount <= 0) return setError('El valor debe ser mayor que 0')
     if (!date) return setError('La fecha es requerida')
     if (date > todayInBogota()) return setError('La fecha no puede ser futura')
+    if (isSubmittingRef.current) return
+    isSubmittingRef.current = true
     setError(null)
 
     try {
@@ -70,6 +74,8 @@ function RegisterExcedenteForm({
       onClose()
     } catch (err) {
       toast.error(extractErrorMessage(err) ?? 'Error al registrar el excedente')
+    } finally {
+      isSubmittingRef.current = false
     }
   }
 
