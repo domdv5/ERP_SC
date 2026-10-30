@@ -5,12 +5,20 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
-import { todayInBogota } from '@/common/utils/date-range.util';
-import { FindAllAccountsReceivableDto } from './dto/index';
+import {
+  buildDateColumnRange,
+  todayInBogota,
+} from '@/common/utils/date-range.util';
+import {
+  FindAllAccountsReceivableDto,
+  FindReceivableClientsDto,
+} from './dto/index';
 import {
   calculatePaymentDays,
   findLastPaymentDate,
 } from './helpers/payment-days.helper';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const LIST_INCLUDE = {
   client: { include: { thirdParty: { select: { id: true, name: true } } } },
@@ -195,6 +203,24 @@ function buildBranchTotals(
   return rows;
 }
 
+type ClientGroupRow = {
+  client_id: string;
+  client_name: string;
+  receivable_count: number;
+  total_amount: Prisma.Decimal;
+  paid_amount: Prisma.Decimal;
+  last_sale_date: Date;
+  last_payment_date: Date | null;
+  last_movement_at: Date;
+  oldest_pending_date: Date | null;
+};
+
+type ClientGroupTotalsRow = {
+  client_count: number;
+  total_amount: Prisma.Decimal;
+  paid_amount: Prisma.Decimal;
+};
+
 @Injectable()
 export class AccountsReceivableService {
   constructor(private readonly prisma: PrismaService) {}
@@ -260,6 +286,131 @@ export class AccountsReceivableService {
         limit,
         totalPages: Math.ceil(total / limit),
         totals: buildTotals(totals),
+      },
+    };
+  }
+
+  /** Una fila por cliente con sus CxC sumadas; el filtro de estado se aplica sobre el saldo sumado (HAVING). */
+  async findClients(findReceivableClientsDto: FindReceivableClientsDto) {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      status,
+      sort = 'recent',
+      dateFrom,
+      dateTo,
+    } = findReceivableClientsDto;
+    buildDateColumnRange(dateFrom, dateTo);
+
+    const filters = Prisma.sql`
+      ${search ? Prisma.sql`AND position(lower(${search}) in lower(tp.name)) > 0` : Prisma.empty}
+      ${dateFrom ? Prisma.sql`AND d.date >= ${dateFrom}::date` : Prisma.empty}
+      ${dateTo ? Prisma.sql`AND d.date <= ${dateTo}::date` : Prisma.empty}`;
+    const having =
+      status === 'with_balance'
+        ? Prisma.sql`HAVING SUM(s.total_amount) - SUM(s.paid_amount) > 0`
+        : status === 'settled'
+          ? Prisma.sql`HAVING SUM(s.total_amount) - SUM(s.paid_amount) = 0`
+          : Prisma.empty;
+
+    const orderBy =
+      sort === 'oldest_debt'
+        ? Prisma.sql`oldest_pending_date ASC NULLS LAST, client_name ASC, client_id ASC`
+        : Prisma.sql`last_movement_at DESC, client_name ASC, client_id ASC`;
+
+    const groupedClients = Prisma.sql`
+      scoped AS (
+        SELECT ar.id, ar.client_id, tp.name AS client_name, ar.total_amount,
+               ar.paid_amount, ar.updated_at, d.date AS sale_date
+        FROM accounts_receivable ar
+        JOIN document d ON d.id = ar.document_id
+        JOIN third_parties tp ON tp.id = ar.client_id
+        WHERE TRUE ${filters}
+      ),
+      grouped AS (
+        SELECT s.client_id, s.client_name,
+               COUNT(*)::int AS receivable_count,
+               SUM(s.total_amount) AS total_amount,
+               SUM(s.paid_amount) AS paid_amount,
+               MAX(s.sale_date) AS last_sale_date,
+               MAX(s.updated_at) AS last_movement_at,
+               MIN(s.sale_date) FILTER (WHERE s.total_amount - s.paid_amount > 0)
+                 AS oldest_pending_date
+        FROM scoped s
+        GROUP BY s.client_id, s.client_name
+        ${having}
+      )`;
+
+    const [rows, [totals]] = await this.prisma.$transaction([
+      this.prisma.$queryRaw<ClientGroupRow[]>`
+        WITH ${groupedClients},
+        page AS (
+          SELECT * FROM grouped
+          ORDER BY ${orderBy}
+          LIMIT ${limit} OFFSET ${(page - 1) * limit}
+        ),
+        payment_dates AS (
+          SELECT s.client_id, rp.payment_date AS paid_on
+          FROM scoped s
+          JOIN receivable_payments rp ON rp.account_receivable_id = s.id
+          WHERE s.client_id IN (SELECT client_id FROM page)
+          UNION ALL
+          SELECT s.client_id, rc.date AS paid_on
+          FROM scoped s
+          JOIN recibo_caja_allocation rca ON rca.account_receivable_id = s.id
+          JOIN recibo_caja rc ON rc.id = rca.recibo_caja_id
+          WHERE s.client_id IN (SELECT client_id FROM page)
+        )
+        SELECT p.*,
+               (SELECT MAX(pd.paid_on) FROM payment_dates pd
+                WHERE pd.client_id = p.client_id) AS last_payment_date
+        FROM page p
+        ORDER BY ${orderBy}`,
+      this.prisma.$queryRaw<ClientGroupTotalsRow[]>`
+        WITH ${groupedClients}
+        SELECT COUNT(*)::int AS client_count,
+               COALESCE(SUM(total_amount), 0) AS total_amount,
+               COALESCE(SUM(paid_amount), 0) AS paid_amount
+        FROM grouped`,
+    ]);
+
+    const total = totals.client_count;
+    const totalAmount = new Prisma.Decimal(totals.total_amount);
+    const paidAmount = new Prisma.Decimal(totals.paid_amount);
+
+    const today = todayInBogota();
+
+    return {
+      items: rows.map((row) => {
+        const rowTotal = new Prisma.Decimal(row.total_amount);
+        const rowPaid = new Prisma.Decimal(row.paid_amount);
+        return {
+          client: { id: row.client_id, name: row.client_name },
+          receivableCount: row.receivable_count,
+          totalAmount: rowTotal,
+          paidAmount: rowPaid,
+          balance: rowTotal.minus(rowPaid),
+          lastSaleDate: row.last_sale_date,
+          lastPaymentDate: row.last_payment_date,
+          lastMovementAt: row.last_movement_at,
+          oldestPendingDays: row.oldest_pending_date
+            ? Math.round(
+                (today.getTime() - row.oldest_pending_date.getTime()) / DAY_MS,
+              )
+            : null,
+        };
+      }),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        totals: {
+          totalAmount,
+          paidAmount,
+          balance: totalAmount.minus(paidAmount),
+        },
       },
     };
   }

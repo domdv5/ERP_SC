@@ -1,5 +1,5 @@
 import type { AccountsReceivableStatus, DocumentType } from '@/types'
-import { formatDateOnly } from '@/lib/format'
+import { formatDateOnly, formatPaymentDays } from '@/lib/format'
 
 export const formatDate = formatDateOnly
 
@@ -24,4 +24,4 @@ export const DOCUMENT_TYPE_LABELS: Partial<Record<DocumentType, string>> = {
   COT: 'Venta a crédito',
 }
 
-export const formatPaymentDays = (days: number) => `${days} ${days === 1 ? 'día' : 'días'}`
+export { formatPaymentDays }

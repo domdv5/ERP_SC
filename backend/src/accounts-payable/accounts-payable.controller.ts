@@ -3,6 +3,7 @@ import { AccountsPayableService } from './accounts-payable.service';
 import {
   FindAllAccountsPayableDto,
   FindAvailableSupplierCreditsDto,
+  FindPayableSuppliersDto,
 } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 
@@ -28,6 +29,13 @@ export class AccountsPayableController {
     return this.accountsPayableService.findAvailableSupplierCredits(
       findAvailableSupplierCreditsDto,
     );
+  }
+
+  // Mismo motivo de orden que "credits": "suppliers" no debe caer en :id.
+  @Get('suppliers')
+  @Permissions('ap.read')
+  findSuppliers(@Query() findPayableSuppliersDto: FindPayableSuppliersDto) {
+    return this.accountsPayableService.findSuppliers(findPayableSuppliersDto);
   }
 
   // Mismo motivo de orden que "credits" arriba: "suppliers" no debe caer en :id.

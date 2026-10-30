@@ -2,101 +2,98 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDebounce } from 'use-debounce'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { TrendingDown, Clock, CheckCircle2, RefreshCw } from 'lucide-react'
-import { getAccountsPayable } from '@/services/accounts-payable.service'
-import { getThirdParties } from '@/services/third-parties.service'
+import { TrendingDown, Receipt, CheckCircle2 } from 'lucide-react'
+import { getPayableSuppliers } from '@/services/accounts-payable.service'
 import {
-  Combobox,
   StatsGrid,
+  TableToolbar,
   TableSkeleton,
   EmptyState,
   ErrorState,
+  OldestDebtCell,
   TablePagination,
   DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
-import type { ComboboxOption } from '@/components/shared'
-import { formatCOP, docNumber } from '@/lib/format'
+import { formatCOP } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { StatusBadge } from './components/StatusBadge'
-import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-payable.utils'
-import type { AccountsPayableStatus } from '@/types'
-import type { ThirdParty } from '@/types/third-party.types'
+import { formatDate } from './accounts-payable.utils'
+import type { PayableSuppliersStatus, PayableSuppliersSort } from '@/types'
 
-const ALL_STATUSES: { value: AccountsPayableStatus | ''; label: string }[] = [
-  { value: '', label: 'Todos los estados' },
-  { value: 'pending', label: 'Pendiente' },
-  { value: 'partial', label: 'Parcial' },
-  { value: 'paid', label: 'Pagado' },
+const STATUS_OPTIONS: { value: PayableSuppliersStatus | ''; label: string }[] = [
+  { value: '', label: 'Todos' },
+  { value: 'with_balance', label: 'Con saldo' },
+  { value: 'settled', label: 'Al día' },
 ]
 
-const ALL_SUPPLIERS_OPTION: ComboboxOption = { id: '', label: 'Todos los proveedores' }
+const SORT_OPTIONS: { value: PayableSuppliersSort; label: string }[] = [
+  { value: 'recent', label: 'Más recientes' },
+  { value: 'oldest_debt', label: 'Deuda más antigua' },
+]
+
+const COLUMNS = [
+  'Proveedor',
+  'Facturas',
+  'Total',
+  'Pagado',
+  'Saldo',
+  'Última compra',
+  'Último pago',
+  'Deuda más antigua',
+  'Estado',
+]
 
 export default function AccountsPayableListPage() {
   const navigate = useNavigate()
 
-  const [supplierId, setSupplierId] = useState('')
-  const [supplierSearch, setSupplierSearch] = useState('')
-  const [supplierSelectedName, setSupplierSelectedName] = useState('')
-  const [statusFilter, setStatusFilter] = useState<AccountsPayableStatus | ''>('')
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<PayableSuppliersStatus | ''>('')
+  const [sort, setSort] = useState<PayableSuppliersSort>('recent')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
 
-  const [debouncedSupplierSearch] = useDebounce(supplierSearch, 400)
+  const [debouncedSearch] = useDebounce(search, 400)
 
   const [prevFilters, setPrevFilters] = useState({
-    supplierId,
+    debouncedSearch,
     statusFilter,
+    sort,
     dateFrom,
     dateTo,
   })
   if (
-    prevFilters.supplierId !== supplierId ||
+    prevFilters.debouncedSearch !== debouncedSearch ||
     prevFilters.statusFilter !== statusFilter ||
+    prevFilters.sort !== sort ||
     prevFilters.dateFrom !== dateFrom ||
     prevFilters.dateTo !== dateTo
   ) {
-    setPrevFilters({ supplierId, statusFilter, dateFrom, dateTo })
+    setPrevFilters({ debouncedSearch, statusFilter, sort, dateFrom, dateTo })
     setPage(1)
   }
-
-  // Filtro exacto por proveedor: selección de UN tercero vía Combobox, no búsqueda por texto libre.
-  const hasSupplierSearch = debouncedSupplierSearch.length >= 1
-  const { data: supplierData, isLoading: isLoadingSuppliers } = useQuery({
-    queryKey: ['third-parties-search-suppliers', debouncedSupplierSearch],
-    queryFn: () =>
-      getThirdParties({
-        search: debouncedSupplierSearch || undefined,
-        page: 1,
-        limit: 30,
-        isSupplier: true,
-      }),
-    staleTime: 2 * 60 * 1000,
-    enabled: hasSupplierSearch,
-  })
-
-  const supplierOptions: ComboboxOption[] = (supplierData?.items ?? []).map((tp: ThirdParty) => ({
-    id: tp.id,
-    label: tp.name,
-  }))
-  const supplierDisplayOptions: ComboboxOption[] = [
-    ALL_SUPPLIERS_OPTION,
-    ...(supplierId && !debouncedSupplierSearch
-      ? [{ id: supplierId, label: supplierSelectedName }, ...supplierOptions]
-      : supplierOptions),
-  ]
 
   // El input date nativo no impide escribir un rango invertido a mano; se corta antes de pedirlo
   // al backend (que igual lo rechazaría con 400) para no mostrar el ErrorState genérico.
   const hasInvalidDateRange = Boolean(dateFrom && dateTo && dateFrom > dateTo)
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['accounts-payable', supplierId, statusFilter, dateFrom, dateTo, page, limit],
+    queryKey: [
+      'accounts-payable',
+      'suppliers',
+      debouncedSearch,
+      statusFilter,
+      sort,
+      dateFrom,
+      dateTo,
+      page,
+      limit,
+    ],
     queryFn: () =>
-      getAccountsPayable({
-        supplierId: supplierId || undefined,
+      getPayableSuppliers({
+        search: debouncedSearch || undefined,
         status: statusFilter || undefined,
+        sort,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         page,
@@ -107,61 +104,39 @@ export default function AccountsPayableListPage() {
     enabled: !hasInvalidDateRange,
   })
 
-  // Conteos por estado para la fila de estadísticas: el listado no trae ese
-  // desglose, así que se pide una sola fila por cada estado (sin los filtros activos, son globales).
-  const { data: pendingData, isLoading: isPendingLoading } = useQuery({
-    queryKey: ['accounts-payable', 'count', 'pending'],
-    queryFn: () => getAccountsPayable({ status: 'pending', page: 1, limit: 1 }),
-    staleTime: 5 * 60 * 1000,
-  })
-
-  const { data: paidData, isLoading: isPaidLoading } = useQuery({
-    queryKey: ['accounts-payable', 'count', 'paid'],
-    queryFn: () => getAccountsPayable({ status: 'paid', page: 1, limit: 1 }),
-    staleTime: 5 * 60 * 1000,
-  })
-
-  const { data: partialData, isLoading: isPartialLoading } = useQuery({
-    queryKey: ['accounts-payable', 'count', 'partial'],
-    queryFn: () => getAccountsPayable({ status: 'partial', page: 1, limit: 1 }),
-    staleTime: 5 * 60 * 1000,
-  })
-
   // keepPreviousData mantiene la respuesta del filtro anterior mientras la query está
-  // deshabilitada por rango inválido; sin este corte, "Saldo total" y el contador quedan
+  // deshabilitada por rango inválido; sin este corte, las tarjetas y el contador quedan
   // mostrando números del filtro previo en vez de limpiarse.
   const items = hasInvalidDateRange ? [] : (data?.items ?? [])
   const total = hasInvalidDateRange ? 0 : (data?.meta.total ?? 0)
   const totalPages = hasInvalidDateRange ? 1 : (data?.meta.totalPages ?? 1)
-  const pendingCount = (pendingData?.meta.total ?? 0) + (partialData?.meta.total ?? 0)
-  const paidCount = paidData?.meta.total ?? 0
-  const balanceTotal = hasInvalidDateRange ? '0' : (data?.meta.totals.balance ?? '0')
+  const totals = hasInvalidDateRange ? undefined : data?.meta.totals
 
   const statCards = [
     {
       label: 'Saldo total',
-      value: formatCOP(Number(balanceTotal)),
+      value: formatCOP(Number(totals?.balance ?? 0)),
       icon: TrendingDown,
       bg: 'bg-brand-primary/10',
       fg: 'text-brand-primary dark:text-content',
     },
     {
-      label: 'Pendientes',
-      value: pendingCount,
-      icon: Clock,
+      label: 'Total comprado a crédito',
+      value: formatCOP(Number(totals?.totalAmount ?? 0)),
+      icon: Receipt,
       bg: 'bg-amber-500/10',
       fg: 'text-amber-500',
     },
     {
-      label: 'Pagadas',
-      value: paidCount,
+      label: 'Total pagado',
+      value: formatCOP(Number(totals?.paidAmount ?? 0)),
       icon: CheckCircle2,
       bg: 'bg-brand-secondary/10',
       fg: 'text-brand-secondary',
     },
   ]
 
-  const hasActiveFilters = Boolean(supplierId || statusFilter || dateFrom || dateTo)
+  const hasActiveFilters = Boolean(debouncedSearch || statusFilter || dateFrom || dateTo)
 
   return (
     <div className="space-y-6">
@@ -170,80 +145,68 @@ export default function AccountsPayableListPage() {
         <div>
           <h1 className="text-2xl text-content">Cuentas por Pagar</h1>
           <p className="text-content-muted text-sm mt-0.5 font-accent">
-            Obligaciones con proveedores y su estado de pago
+            Un proveedor por fila: entra a su estado de cuenta para ver facturas y pagos
           </p>
         </div>
       </div>
 
-      <StatsGrid
-        cards={statCards}
-        isLoading={isLoading || isPendingLoading || isPaidLoading || isPartialLoading}
-      />
+      <StatsGrid cards={statCards} isLoading={isLoading} />
 
       {/* Table */}
       <div className="card-hard overflow-hidden">
-        <div className="border-b-2 border-ui-border-medium">
-          <div className="px-5 py-4 flex items-center gap-3">
-            <div className="flex-1 max-w-xs">
-              <Combobox
-                value={supplierId}
-                onChange={(id, option) => {
-                  setSupplierId(id)
-                  setSupplierSelectedName(option.label)
-                }}
-                options={supplierDisplayOptions}
-                isLoading={isLoadingSuppliers}
-                placeholder="Filtrar por proveedor..."
-                searchValue={supplierSearch}
-                onSearchChange={setSupplierSearch}
-              />
-            </div>
-            <span className="text-xs text-content-faint ml-auto">
-              {isLoading ? '...' : `${items.length} de ${total} registros`}
-            </span>
-            <button
-              onClick={() => refetch()}
-              className="p-2 rounded-lg text-content-faint hover:text-content-muted hover:bg-surface-hover transition-colors"
-              title="Recargar"
-            >
-              <div className={cn(isLoading && 'animate-spin')}>
-                <RefreshCw className="w-4 h-4" />
-              </div>
-            </button>
-          </div>
-          <div className="px-5 pb-4 flex flex-wrap gap-3">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as AccountsPayableStatus | '')}
+        <TableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          placeholder="Buscar proveedor..."
+          isLoading={isLoading}
+          itemCount={items.length}
+          total={total}
+          onRefresh={() => refetch()}
+        />
+        <div className="px-5 py-3 border-b-2 border-ui-border-medium flex flex-wrap gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as PayableSuppliersStatus | '')}
+            className="input-hard text-sm px-3 py-1.5"
+          >
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as PayableSuppliersSort)}
+            className="input-hard text-sm px-3 py-1.5"
+            aria-label="Ordenar por"
+          >
+            {SORT_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <label className="flex items-center gap-1.5 text-xs text-content-muted">
+            Desde
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              max={dateTo || undefined}
               className="input-hard text-sm px-3 py-1.5"
-            >
-              {ALL_STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <label className="flex items-center gap-1.5 text-xs text-content-muted">
-              Desde
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                max={dateTo || undefined}
-                className="input-hard text-sm px-3 py-1.5"
-              />
-            </label>
-            <label className="flex items-center gap-1.5 text-xs text-content-muted">
-              Hasta
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                min={dateFrom || undefined}
-                className="input-hard text-sm px-3 py-1.5"
-              />
-            </label>
-          </div>
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-content-muted">
+            Hasta
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              min={dateFrom || undefined}
+              className="input-hard text-sm px-3 py-1.5"
+            />
+          </label>
         </div>
 
         {hasInvalidDateRange && (
@@ -283,18 +246,7 @@ export default function AccountsPayableListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b-2 border-ui-border-medium">
-                  {[
-                    'Proveedor',
-                    'Documento',
-                    'Fecha compra',
-                    'Recibido por',
-                    'Monto total',
-                    'Pagado',
-                    'Saldo a favor aplicado',
-                    'Saldo',
-                    'Vencimiento',
-                    'Estado',
-                  ].map((h) => (
+                  {COLUMNS.map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -305,64 +257,56 @@ export default function AccountsPayableListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
-                {items.map((account) => (
-                  <tr
-                    key={account.id}
-                    onClick={() => navigate(`/accounts-payable/${account.id}`)}
-                    className="hover:bg-surface-raised transition-colors group cursor-pointer"
-                  >
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 avatar-outline">
-                          {account.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
+                {items.map((row) => {
+                  const hasBalance = Number(row.balance) > 0
+                  return (
+                    <tr
+                      key={row.supplier.id}
+                      onClick={() => navigate(`/accounts-payable/suppliers/${row.supplier.id}`)}
+                      className="hover:bg-surface-raised transition-colors group cursor-pointer"
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 avatar-outline">
+                            {row.supplier.name[0]?.toUpperCase() ?? '?'}
+                          </div>
+                          <span className="font-medium text-content">{row.supplier.name}</span>
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/accounts-payable/suppliers/${account.supplier.id}`)
-                          }}
-                          className="font-medium link-plain text-left"
+                      </td>
+                      <td className="px-5 py-3.5 text-content-muted text-xs">{row.payableCount}</td>
+                      <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                        {formatCOP(Number(row.totalAmount))}
+                      </td>
+                      <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                        {formatCOP(Number(row.paidAmount))}
+                      </td>
+                      <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                        {formatCOP(Number(row.balance))}
+                      </td>
+                      <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                        {formatDate(row.lastPurchaseDate)}
+                      </td>
+                      <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                        {formatDate(row.lastPaymentDate)}
+                      </td>
+                      <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                        <OldestDebtCell days={row.oldestPendingDays} />
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={cn(
+                            'pill-stamp whitespace-nowrap',
+                            hasBalance
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+                              : 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
+                          )}
                         >
-                          {account.supplier.thirdParty.name}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex flex-col">
-                        <span className="font-mono text-xs font-medium text-content">
-                          {docNumber(account.document.type, account.document.number)}
+                          {hasBalance ? 'Con saldo' : 'Al día'}
                         </span>
-                        <span className="text-xs text-content-faint">
-                          {DOCUMENT_TYPE_LABELS[account.document.type] ?? account.document.type}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatDate(account.document.date)}
-                    </td>
-                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {account.document.receiver?.name ?? '—'}
-                    </td>
-                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
-                      {formatCOP(Number(account.totalAmount))}
-                    </td>
-                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatCOP(Number(account.paidAmount))}
-                    </td>
-                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatCOP(Number(account.creditApplied))}
-                    </td>
-                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
-                      {formatCOP(Number(account.balance))}
-                    </td>
-                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatDate(account.dueDate)}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <StatusBadge status={account.status} />
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
