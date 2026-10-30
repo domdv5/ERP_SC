@@ -199,7 +199,7 @@ describe('RecibosCajaService', () => {
           user,
         ),
       ).rejects.toThrow(
-        'Con descuento, cada factura del recibo debe quedar saldada',
+        'El descuento solo aplica si se pagan las facturas completas',
       );
       expectNothingSaved();
     });

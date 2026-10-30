@@ -30,7 +30,7 @@ describe('reciboCajaFormSchema — descuento', () => {
       payments: [{ method: 'efectivo_oficina', amount: 50000 }],
     })
     expect(messages(values)).toContain(
-      `Con descuento, el abono debe saldar la factura (${formatCOP(100000)})`,
+      `El descuento solo aplica si se paga la factura completa. Abono requerido: ${formatCOP(100000)}`,
     )
   })
 

@@ -101,7 +101,7 @@ export const reciboCajaFormSchema = baseSchema.superRefine((data, ctx) => {
       // El descuento solo se da sobre el total: no existe descuento en abonos parciales.
       ctx.addIssue({
         code: 'custom',
-        message: `Con descuento, el abono debe saldar la factura (${formatCOP(r.balance)})`,
+        message: `El descuento solo aplica si se paga la factura completa. Abono requerido: ${formatCOP(r.balance)}`,
         path: ['receivables', index, 'amount'],
       })
     }

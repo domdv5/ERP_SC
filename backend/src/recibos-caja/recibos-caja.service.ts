@@ -282,7 +282,7 @@ export class RecibosCajaService {
       // El descuento solo se da sobre el total: no existe descuento en abonos parciales.
       if (discountCents > 0 && requestedCents !== balanceCents) {
         throw new BadRequestException(
-          'Con descuento, cada factura del recibo debe quedar saldada',
+          'El descuento solo aplica si se pagan las facturas completas',
         );
       }
     }
