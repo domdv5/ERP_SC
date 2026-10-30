@@ -12,6 +12,7 @@ import {
   PiggyBank,
   Plus,
   Loader2,
+  Ban,
 } from 'lucide-react'
 import { getClientStatement, voidExcedente } from '@/services/accounts-receivable.service'
 import { usePermission } from '@/hooks/usePermission'
@@ -30,13 +31,27 @@ const CREDIT_STATUS_BADGE: Record<string, { label: string; className: string }> 
   },
   used: {
     label: 'Agotado',
-    className: 'bg-surface-hover text-content-muted',
+    className: 'bg-surface-hover text-content-secondary',
   },
   voided: {
     label: 'Anulado',
     className: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
   },
 }
+// Rótulo en gris y valor resaltado: con ambos en gris no se distinguen en modo oscuro.
+function MetaField({ label, value }: { label: string; value: string }) {
+  return (
+    <span>
+      <span className="text-content-muted">{label}:</span>{' '}
+      <span className="text-content font-semibold">{value}</span>
+    </span>
+  )
+}
+
+function MetaSeparator() {
+  return <span className="text-content-faint mx-1.5">·</span>
+}
+
 const creditStatusBadgeFor = (status: string) =>
   CREDIT_STATUS_BADGE[status] ?? {
     label: status,
@@ -434,33 +449,54 @@ export default function AccountsReceivableClientStatementPage() {
                         <p className="text-sm text-content font-medium flex items-center gap-2 flex-wrap">
                           <span>
                             {formatCOP(Number(credit.amount))}{' '}
-                            <span className="text-content-faint font-normal">
+                            <span className="text-content-muted font-normal">
                               (saldo disponible: {formatCOP(Number(credit.balance))})
                             </span>
                           </span>
-                          <span className="pill-stamp whitespace-nowrap bg-surface-hover text-content-muted">
+                          <span className="pill-stamp text-[11px] whitespace-nowrap bg-surface-hover text-content-secondary">
                             {isExcedente ? 'Excedente' : 'Devolución'}
                           </span>
                         </p>
-                        <p className="text-xs text-content-faint mt-0.5">
-                          {isExcedente
-                            ? [
-                                credit.customerBranch
-                                  ? `Sucursal: ${credit.customerBranch.name}`
-                                  : 'Sin sucursal',
-                                `Fecha: ${formatDate(credit.date)}`,
-                                credit.user ? `Registrado por ${credit.user.name}` : null,
-                              ]
-                                .filter(Boolean)
-                                .join(' · ')
-                            : credit.sourceDocument
-                              ? `Origen: ${docNumber(credit.sourceDocument.type, credit.sourceDocument.number)}`
-                              : 'Sin documento de origen'}
+                        <p className="text-sm text-content-muted mt-1">
+                          {isExcedente ? (
+                            <>
+                              <MetaField
+                                label="Sucursal"
+                                value={credit.customerBranch?.name ?? 'Sin sucursal'}
+                              />
+                              <MetaSeparator />
+                              <MetaField label="Fecha" value={formatDate(credit.date)} />
+                              {credit.user && (
+                                <>
+                                  <MetaSeparator />
+                                  <MetaField label="Registrado por" value={credit.user.name} />
+                                </>
+                              )}
+                            </>
+                          ) : credit.sourceDocument ? (
+                            <MetaField
+                              label="Origen"
+                              value={docNumber(
+                                credit.sourceDocument.type,
+                                credit.sourceDocument.number,
+                              )}
+                            />
+                          ) : (
+                            'Sin documento de origen'
+                          )}
                         </p>
                         {credit.status === 'voided' && credit.voidedAt && (
-                          <p className="text-xs text-content-faint mt-0.5">
-                            Anulado el {formatBogotaDate(credit.voidedAt)}
-                            {credit.voidedBy ? ` por ${credit.voidedBy.name}` : ''}
+                          <p className="text-sm text-content-muted mt-0.5">
+                            <MetaField
+                              label="Anulado el"
+                              value={formatBogotaDate(credit.voidedAt)}
+                            />
+                            {credit.voidedBy && (
+                              <>
+                                <MetaSeparator />
+                                <MetaField label="Por" value={credit.voidedBy.name} />
+                              </>
+                            )}
                           </p>
                         )}
                       </div>
@@ -470,12 +506,15 @@ export default function AccountsReceivableClientStatementPage() {
                         <button
                           type="button"
                           onClick={() => setVoidTargetId(credit.id)}
-                          className="text-xs font-medium text-red-500 hover:underline"
+                          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-red-500 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors"
                         >
+                          <Ban className="w-3.5 h-3.5" />
                           Anular
                         </button>
                       )}
-                      <span className={cn('pill-stamp whitespace-nowrap', badge.className)}>
+                      <span
+                        className={cn('pill-stamp text-[11px] whitespace-nowrap', badge.className)}
+                      >
                         {badge.label}
                       </span>
                     </div>
@@ -486,11 +525,9 @@ export default function AccountsReceivableClientStatementPage() {
                       {credit.applications.map((application) => (
                         <div
                           key={application.id}
-                          className="flex items-center gap-2 text-xs text-content-muted"
+                          className="flex items-center gap-2 text-sm text-content-muted"
                         >
-                          <span className="text-content-faint">
-                            {formatBogotaDate(application.appliedAt)}
-                          </span>
+                          <span>{formatBogotaDate(application.appliedAt)}</span>
                           <span>·</span>
                           <span className="text-content-secondary font-medium">
                             {formatCOP(Number(application.amount))}

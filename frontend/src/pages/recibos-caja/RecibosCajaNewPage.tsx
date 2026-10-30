@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { Controller } from 'react-hook-form'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Trash2, Loader2, Wallet } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Loader2, Wallet, ArrowDownToLine } from 'lucide-react'
 
 import { getThirdParties } from '@/services/third-parties.service'
 import { Combobox, CustomerBranchSelect, ThousandsInput } from '@/components/shared'
@@ -462,8 +462,9 @@ export default function RecibosCajaNewPage() {
                                   <button
                                     type="button"
                                     onClick={() => fillExcedente(index)}
-                                    className="text-xs font-medium text-brand-secondary hover:underline"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-brand-secondary border border-brand-secondary/30 rounded-lg hover:bg-brand-secondary/10 transition-colors whitespace-nowrap"
                                   >
+                                    <ArrowDownToLine className="w-3.5 h-3.5" />
                                     Usar todo
                                   </button>
                                 </div>
