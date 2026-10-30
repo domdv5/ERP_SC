@@ -176,7 +176,11 @@ El dueño del repo diseña y decide; la IA ejecuta. Objetivo: que el dueño enti
    la alternativa descartada y el motivo, en lenguaje simple.
 3. **"Dónde mirar" en cada commit** — después de commitear, listar 3-5 `archivo:línea` con lo
    importante del cambio para que el dueño lo lea en ~2 minutos.
-4. **Modo práctica (opcional)** — si el dueño dice "modo práctica", la pieza de lógica de negocio
+4. **"Mapa de revisión" en cada PR** — la descripción del PR lleva una tabla `archivo/función → riesgo
+   (🔴 alto / 🟡 medio / 🟢 bajo) → qué mirar → tiempo`. Alto = reglas de plata, migraciones, permisos,
+   concurrencia (leer a fondo); medio = nombres de las pruebas (leer como especificación); bajo =
+   estilos, tipos, cableado de pantallas (no leer: probar en la app). El dueño revisa por riesgo, no línea por línea.
+5. **Modo práctica (opcional)** — si el dueño dice "modo práctica", la pieza de lógica de negocio
    no la escribe la IA: queda un `TODO(human)` en el archivo real con qué debe hacer, entradas y
    salidas, y las pruebas ya escritas en rojo. El dueño la escribe; la IA corre las pruebas, revisa
    y explica mejoras sin reescribirla. Sin "modo práctica", rige la regla TODO(human) de Routing Rules.
