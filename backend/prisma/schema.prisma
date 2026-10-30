@@ -137,10 +137,11 @@ model CustomerBranch {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  customer    Customer     @relation(fields: [customerId], references: [id])
-  city        City?        @relation(fields: [cityCode], references: [code])
-  documents   Document[]
-  recibosCaja ReciboCaja[]
+  customer        Customer         @relation(fields: [customerId], references: [id])
+  city            City?            @relation(fields: [cityCode], references: [code])
+  documents       Document[]
+  recibosCaja     ReciboCaja[]
+  customerCredits CustomerCredit[]
 
   @@unique([customerId, name])
   @@map("customer_branch")
@@ -480,6 +481,8 @@ model User {
   systemConfigsActivated   SystemConfig[]       @relation("SystemConfigActivatedBy")
   systemConfigsDeactivated SystemConfig[]       @relation("SystemConfigDeactivatedBy")
   egresos                  Egreso[]
+  customerCreditsCreated   CustomerCredit[]     @relation("CustomerCreditCreatedBy")
+  customerCreditsVoided    CustomerCredit[]     @relation("CustomerCreditVoidedBy")
   recibosCaja              ReciboCaja[]
 
   @@map("user")
@@ -875,20 +878,37 @@ model SupplierCreditApplication {
 // ─── Customer credit (saldo a favor del cliente) ─────────────────────────────
 // Homólogo de SupplierCredit del lado cliente; no unificados (decisión de arquitectura), solo comparten lógica de servicio.
 
+/// Origen del saldo a favor: devolucion (DVV, se usa al facturar) o excedente (pago de más, solo en recibos de caja).
+enum CustomerCreditKind {
+  devolucion
+  excedente
+}
+
 model CustomerCredit {
-  id               String   @id @default(uuid(7)) @db.Uuid
-  customerId       String   @map("customer_id") @db.Uuid
+  id               String             @id @default(uuid(7)) @db.Uuid
+  customerId       String             @map("customer_id") @db.Uuid
+  kind             CustomerCreditKind @default(devolucion)
+  /// Solo excedentes: se aplica únicamente a CxC de esta sucursal (null = CxC sin sucursal).
+  customerBranchId String?            @map("customer_branch_id") @db.Uuid
+  /// Solo excedentes: fecha del pago de más y quién lo registró.
+  date             DateTime?          @db.Date
+  userId           String?            @map("user_id") @db.Uuid
+  voidedAt         DateTime?          @map("voided_at") @db.Timestamptz
+  voidedById       String?            @map("voided_by_id") @db.Uuid
   // Monto original del saldo a favor, en positivo.
-  amount           Decimal  @db.Decimal(16, 2)
+  amount           Decimal            @db.Decimal(16, 2)
   // Invariante: 0 <= balance <= amount; llega a 0 → status 'used'. Único CHECK a mano del schema ("customer_credit_balance_range_chk"), red final contra saldo corrupto.
-  balance          Decimal  @db.Decimal(16, 2)
-  sourceDocumentId String?  @map("source_document_id") @db.Uuid
-  /// available | used
-  status           String   @default("available") @db.VarChar(10)
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  balance          Decimal            @db.Decimal(16, 2)
+  sourceDocumentId String?            @map("source_document_id") @db.Uuid
+  /// available | used | voided (voided: excedente anulado sin haberse usado)
+  status           String             @default("available") @db.VarChar(10)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz
 
   customer       Customer                    @relation(fields: [customerId], references: [id])
   sourceDocument Document?                   @relation("DvvCustomerCredit", fields: [sourceDocumentId], references: [id])
+  customerBranch CustomerBranch?             @relation(fields: [customerBranchId], references: [id], onDelete: Restrict)
+  user           User?                       @relation("CustomerCreditCreatedBy", fields: [userId], references: [id], onDelete: Restrict)
+  voidedBy       User?                       @relation("CustomerCreditVoidedBy", fields: [voidedById], references: [id], onDelete: Restrict)
   applications   CustomerCreditApplication[]
 
   // Una DVV genera un único crédito — bloquea duplicados por doble confirm o retry.
@@ -896,24 +916,29 @@ model CustomerCredit {
   // Incluye createdAt para que la consulta de créditos disponibles del cliente
   // (WHERE customerId + status, ORDER BY createdAt) salga ordenada sin nodo Sort.
   @@index([customerId, status, createdAt])
+  @@index([customerBranchId])
   @@map("customer_credit")
 }
 
 model CustomerCreditApplication {
   id               String   @id @default(uuid(7)) @db.Uuid
   customerCreditId String   @map("customer_credit_id") @db.Uuid
-  // Ancla a la venta (POS/COT), no a una cuenta — el saldo se aplica al confirmar la venta, y POS no crea cuenta.
-  saleDocumentId   String   @map("sale_document_id") @db.Uuid
+  /// Exactamente uno de saleDocumentId (devolución aplicada al facturar) o reciboCajaId (excedente aplicado en un recibo) — CHECK a mano.
+  saleDocumentId   String?  @map("sale_document_id") @db.Uuid
+  reciboCajaId     String?  @map("recibo_caja_id") @db.Uuid
   amount           Decimal  @db.Decimal(16, 2)
   appliedAt        DateTime @default(now()) @map("applied_at") @db.Timestamptz
 
   customerCredit CustomerCredit @relation(fields: [customerCreditId], references: [id])
-  saleDocument   Document       @relation("CustomerCreditSaleApplication", fields: [saleDocumentId], references: [id])
+  saleDocument   Document?      @relation("CustomerCreditSaleApplication", fields: [saleDocumentId], references: [id], onDelete: Restrict)
+  reciboCaja     ReciboCaja?    @relation(fields: [reciboCajaId], references: [id], onDelete: Restrict)
 
   // Un mismo crédito no se aplica dos veces a la misma venta; el prefijo cubre
   // el lookup "¿este crédito ya tiene aplicaciones?" al anular la DVV.
   @@unique([customerCreditId, saleDocumentId])
+  @@unique([customerCreditId, reciboCajaId])
   @@index([saleDocumentId])
+  @@index([reciboCajaId])
   @@map("customer_credit_application")
 }
 
@@ -1026,11 +1051,12 @@ model ReciboCaja {
   idempotencyKey    String                    @unique @map("idempotency_key") @db.VarChar(100)
   createdAt         DateTime                  @default(now()) @map("created_at") @db.Timestamptz
 
-  client         Customer               @relation(fields: [clientId], references: [id])
-  customerBranch CustomerBranch?        @relation(fields: [customerBranchId], references: [id], onDelete: Restrict)
-  user           User                   @relation(fields: [userId], references: [id])
-  payments       ReciboCajaPayment[]
-  allocations    ReciboCajaAllocation[]
+  client             Customer                    @relation(fields: [clientId], references: [id])
+  customerBranch     CustomerBranch?             @relation(fields: [customerBranchId], references: [id], onDelete: Restrict)
+  user               User                        @relation(fields: [userId], references: [id])
+  payments           ReciboCajaPayment[]
+  allocations        ReciboCajaAllocation[]
+  creditApplications CustomerCreditApplication[]
 
   @@index([date])
   @@index([clientId, date])

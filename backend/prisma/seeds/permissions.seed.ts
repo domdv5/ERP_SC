@@ -77,6 +77,8 @@ export async function seedPermissions(prisma: PrismaClient) {
       // registrar pagos; ar.manage queda sembrado sin uso (ver backend/CLAUDE.md)
       { code: 'recibo.read', module: 'accounts' },
       { code: 'recibo.create', module: 'accounts' },
+      // Registrar/anular excedentes (saldo a favor por pago de más) — solo admin y accounts_admin
+      { code: 'excedente.create', module: 'accounts' },
 
       // Libro de control oficial (compras oficiales − POS oficiales)
       { code: 'official.read', module: 'accounts' },
