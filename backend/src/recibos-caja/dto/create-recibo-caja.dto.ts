@@ -29,6 +29,16 @@ export class ReciboCajaReceivableLineDto {
   amount!: number;
 }
 
+/** Excedente (saldo a favor por pago de más) usado como pago en este recibo. */
+export class ReciboCajaExcedenteLineDto {
+  @IsUUID()
+  customerCreditId!: string;
+
+  @IsNumber()
+  @IsPositive()
+  amount!: number;
+}
+
 export class ReciboCajaPaymentLineDto {
   @IsIn(OFFICE_PAYMENT_METHODS, {
     message:
@@ -111,4 +121,11 @@ export class CreateReciboCajaDto {
   @ValidateNested()
   @Type(() => ReciboCajaDiscountDto)
   discount?: ReciboCajaDiscountDto;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => ReciboCajaExcedenteLineDto)
+  excedentes?: ReciboCajaExcedenteLineDto[];
 }

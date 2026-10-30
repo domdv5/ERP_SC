@@ -7,6 +7,7 @@ import {
 import {
   Prisma,
   AccountsReceivableStatus,
+  CustomerCreditKind,
   ReciboCajaDiscountReason,
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -33,6 +34,14 @@ export const RECIBO_CAJA_DETAIL_INCLUDE = {
       },
     },
   },
+  creditApplications: {
+    select: {
+      id: true,
+      amount: true,
+      customerCreditId: true,
+      customerCredit: { select: { id: true, date: true, amount: true } },
+    },
+  },
 } satisfies Prisma.ReciboCajaInclude;
 
 type ExistingReciboCajaForIdempotency = {
@@ -42,7 +51,30 @@ type ExistingReciboCajaForIdempotency = {
   discountAmount: Prisma.Decimal;
   discountReason: ReciboCajaDiscountReason | null;
   allocations: { accountReceivableId: string; amount: Prisma.Decimal }[];
+  creditApplications: { customerCreditId: string; amount: Prisma.Decimal }[];
 };
+
+/** Suma los montos por id en centavos: una línea repetida en el body se valida como una sola. */
+function sumCentsById<T>(
+  lines: T[],
+  idOf: (line: T) => string,
+  amountOf: (line: T) => number,
+): Map<string, number> {
+  const centsById = new Map<string, number>();
+  for (const line of lines) {
+    const id = idOf(line);
+    centsById.set(id, (centsById.get(id) ?? 0) + toCents(amountOf(line)));
+  }
+  return centsById;
+}
+
+function sameCents(a: Map<string, number>, b: Map<string, number>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [id, cents] of a) {
+    if (b.get(id) !== cents) return false;
+  }
+  return true;
+}
 
 // Motivos que pueden saldar toda la deuda sin que entre dinero.
 const FULL_COVER_DISCOUNT_REASONS: ReciboCajaDiscountReason[] = [
@@ -100,6 +132,21 @@ function isSameEgresoRequest(
     toCents(existing.discountAmount) !== toCents(dto.discount?.amount ?? 0) ||
     existing.discountReason !== (dto.discount?.reason ?? null)
   ) {
+    return false;
+  }
+
+  const requestedExcedentes = sumCentsById(
+    dto.excedentes ?? [],
+    (line) => line.customerCreditId,
+    (line) => line.amount,
+  );
+  const existingExcedentes = new Map(
+    existing.creditApplications.map((a) => [
+      a.customerCreditId,
+      toCents(a.amount),
+    ]),
+  );
+  if (!sameCents(requestedExcedentes, existingExcedentes)) {
     return false;
   }
 
@@ -192,8 +239,17 @@ export class RecibosCajaService {
       );
     }
 
-    // Orden de bloqueo fijo (accounts_receivable -> sequence), mismo criterio que
-    // EgresosService para que dos recibos concurrentes nunca se traben en cruz.
+    // Orden de bloqueo global: customer_credit -> accounts_receivable -> sequence (el mismo que usa la venta al aplicar saldos).
+    const excedenteCentsById = sumCentsById(
+      dto.excedentes ?? [],
+      (line) => line.customerCreditId,
+      (line) => line.amount,
+    );
+    const excedenteIds = [...excedenteCentsById.keys()].sort();
+    if (excedenteIds.length > 0) {
+      await tx.$queryRaw`SELECT id FROM "customer_credit" WHERE id = ANY(${excedenteIds}::uuid[]) ORDER BY id FOR UPDATE`;
+    }
+
     const receivableIds = [
       ...new Set(dto.receivables.map((r) => r.accountReceivableId)),
     ].sort();
@@ -260,6 +316,17 @@ export class RecibosCajaService {
       );
     }
 
+    const excedentes = await this.findUsableExcedentes(
+      tx,
+      client.id,
+      dto.customerBranchId ?? null,
+      excedenteCentsById,
+    );
+    const excedentesTotalCents = [...excedenteCentsById.values()].reduce(
+      (sum, cents) => sum + cents,
+      0,
+    );
+
     const discountCents = dto.discount ? toCents(dto.discount.amount) : 0;
     let debtBeforeReceiptCents = 0;
 
@@ -306,11 +373,18 @@ export class RecibosCajaService {
 
     // Cuadre exacto en centavos, sin saldo a favor de por medio (regla de negocio explícita) —
     // toCents() ya redondea cada monto individual antes de sumar, no hay ruido de coma flotante que tolerar.
-    if (receivablesTotalCents !== paymentsTotalCents + discountCents) {
+    if (
+      receivablesTotalCents !==
+      paymentsTotalCents + excedentesTotalCents + discountCents
+    ) {
+      const parts = ['las formas de pago'];
+      if (excedentesTotalCents > 0) parts.push('los excedentes');
+      if (discountCents > 0) parts.push('el descuento');
+      const last = parts.pop()!;
+      const expected =
+        parts.length > 0 ? `${parts.join(', ')} más ${last}` : last;
       throw new BadRequestException(
-        discountCents > 0
-          ? 'El recibo de caja no cuadra: la suma de los abonos debe ser igual a las formas de pago más el descuento'
-          : 'El recibo de caja no cuadra: la suma de los abonos debe ser igual a las formas de pago',
+        `El recibo de caja no cuadra: la suma de los abonos debe ser igual a ${expected}`,
       );
     }
 
@@ -400,10 +474,75 @@ export class RecibosCajaService {
       });
     }
 
+    for (const excedente of excedentes) {
+      const usedCents = excedenteCentsById.get(excedente.id)!;
+      await tx.customerCreditApplication.create({
+        data: {
+          customerCreditId: excedente.id,
+          reciboCajaId: reciboCaja.id,
+          amount: usedCents / 100,
+        },
+      });
+      const newBalanceCents = toCents(excedente.balance) - usedCents;
+      await tx.customerCredit.update({
+        where: { id: excedente.id },
+        data: {
+          balance: newBalanceCents / 100,
+          status: newBalanceCents <= 0 ? 'used' : 'available',
+        },
+      });
+    }
+
     return tx.reciboCaja.findUniqueOrThrow({
       where: { id: reciboCaja.id },
       include: RECIBO_CAJA_DETAIL_INCLUDE,
     });
+  }
+
+  /** Valida los excedentes citados (ya bloqueados): del cliente, de la misma sucursal del recibo, disponibles y con saldo suficiente. */
+  private async findUsableExcedentes(
+    tx: Prisma.TransactionClient,
+    clientId: string,
+    customerBranchId: string | null,
+    requestedCentsById: Map<string, number>,
+  ) {
+    if (requestedCentsById.size === 0) return [];
+
+    const excedentes = await tx.customerCredit.findMany({
+      where: { id: { in: [...requestedCentsById.keys()] } },
+    });
+    if (excedentes.length !== requestedCentsById.size) {
+      throw new BadRequestException('Algún excedente citado no existe');
+    }
+
+    for (const excedente of excedentes) {
+      if (excedente.customerId !== clientId) {
+        throw new BadRequestException(
+          'El excedente no pertenece a este cliente',
+        );
+      }
+      if (excedente.kind !== CustomerCreditKind.excedente) {
+        throw new BadRequestException(
+          'En el recibo de caja solo se pueden usar excedentes',
+        );
+      }
+      if (excedente.status !== 'available') {
+        throw new BadRequestException('El excedente ya no está disponible');
+      }
+      // Cada sucursal maneja sus propias cuentas: sin sucursal solo paga CxC sin sucursal.
+      if (excedente.customerBranchId !== customerBranchId) {
+        throw new BadRequestException(
+          'El excedente pertenece a otra sucursal: solo se aplica a facturas de su sucursal',
+        );
+      }
+      if (requestedCentsById.get(excedente.id)! > toCents(excedente.balance)) {
+        throw new BadRequestException(
+          `El valor usado excede el saldo del excedente. Saldo disponible: ${Number(excedente.balance).toFixed(2)}`,
+        );
+      }
+    }
+
+    return excedentes;
   }
 
   /** La sucursal del recibo debe ser del cliente y coincidir con la de cada CxC citada (ambas null = sin sucursal). */
@@ -514,7 +653,7 @@ export class RecibosCajaService {
     return reciboCaja;
   }
 
-  /** CxC abiertas de un cliente, para armar el formulario de recibo de caja. Sin saldos a favor: este flujo no los usa (regla de negocio explícita). */
+  /** CxC abiertas y excedentes disponibles de un cliente, para armar el formulario de recibo de caja (los saldos de devolución no se usan aquí). */
   async findOpenItems(clientId: string, customerBranchId?: string) {
     const receivables = await this.prisma.accountsReceivable.findMany({
       where: {
@@ -541,11 +680,32 @@ export class RecibosCajaService {
       orderBy: { createdAt: 'asc' },
     });
 
+    const excedentes = await this.prisma.customerCredit.findMany({
+      where: {
+        customerId: clientId,
+        kind: CustomerCreditKind.excedente,
+        status: 'available',
+        ...(customerBranchId && {
+          customerBranchId:
+            customerBranchId === NO_BRANCH_FILTER ? null : customerBranchId,
+        }),
+      },
+      select: {
+        id: true,
+        amount: true,
+        balance: true,
+        date: true,
+        customerBranchId: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
     return {
       receivables: receivables.map((receivable) => ({
         ...receivable,
         balance: receivable.totalAmount.minus(receivable.paidAmount),
       })),
+      excedentes,
     };
   }
 }
