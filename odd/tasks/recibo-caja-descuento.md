@@ -14,7 +14,7 @@ Check "Descuento" → motivo + valor; el recibo salda completas sus facturas con
 - T1 S1-S5 schema + migración (enum motivo, descuento, deuda original, descuento por línea; CHECK total >= 0) — inline — commit: c037acb ✅
 - T2 S2-S5 backend: DTO, validaciones, reparto interno proporcional por línea, idempotencia, pruebas — inline — commit: b92eceb ✅ (fin del slice backend, ~480 líneas)
 - T3 S1-S5 frontend: validación del form (inline) + check/desplegable/input y detalle (react-code-crafter) + descuento en historial de la CxC — commit: ver abajo ✅
-- T4 S1-S5 verificación + docs CLAUDE.md — inline — commit:
+- T4 S1-S5 verificación + docs CLAUDE.md — inline — commit: 6f16bbf ✅
 
 ## Log
 
@@ -22,3 +22,4 @@ Check "Descuento" → motivo + valor; el recibo salda completas sus facturas con
 - L2 Respuestas: recibo puede ser 100% descuento; motivos fijos; migración confirmada.
 - L3 "los decunsto no se aplcian en los cobros aprciales sino ene tl toal entonces no hayq eu repartir nada ... solo ocurre cunado es por castigo de cartera o mercacia extraviada"
 - L4 "solo me mencionaron esos entonces dejesmolo asi" (Donación no cubre 100%). "listo de una y obviamente no dejar ir ams alla del 100% de la deuda cierto?"
+- L5 Verificación: gentle-ai-verify S1-S5 pasan; review nativa (risk + reliability) aprobada y reconocida (review-53e099bff718614e). Avisos no bloqueantes para después: cualquiera con `recibo.create` puede castigar cartera (¿permiso propio?); hook del form sin pruebas del descuento; descuento < medio centavo se descarta; falta prueba de idempotencia con mismo descuento positivo; resumen del detalle con descuento ocupa 2 filas.
