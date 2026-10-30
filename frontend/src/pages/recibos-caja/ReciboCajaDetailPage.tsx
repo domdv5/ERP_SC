@@ -1,10 +1,22 @@
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Wallet, Banknote, Landmark, Hash, StickyNote, User, Store } from 'lucide-react'
+import {
+  ArrowLeft,
+  Wallet,
+  Banknote,
+  Landmark,
+  Hash,
+  StickyNote,
+  User,
+  Store,
+  Receipt,
+  Percent,
+} from 'lucide-react'
 
 import { getReciboCaja } from '@/services/recibos-caja.service'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
+import { RECIBO_CAJA_DISCOUNT_REASON_LABELS } from './recibo-caja-form.schema'
 
 export default function ReciboCajaDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -69,6 +81,8 @@ export default function ReciboCajaDetailPage() {
     )
   }
 
+  const hasDiscount = Number(reciboCaja.discountAmount) > 0
+
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
@@ -127,12 +141,42 @@ export default function ReciboCajaDetailPage() {
               <Wallet className="w-4 h-4 text-content-muted" />
             </div>
             <div>
-              <p className="text-xs text-content-faint">Total</p>
+              <p className="text-xs text-content-faint">{hasDiscount ? 'Recibido' : 'Total'}</p>
               <p className="text-sm text-content font-medium">
                 {formatCOP(Number(reciboCaja.total))}
               </p>
             </div>
           </div>
+
+          {hasDiscount && (
+            <>
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                  <Receipt className="w-4 h-4 text-content-muted" />
+                </div>
+                <div>
+                  <p className="text-xs text-content-faint">Deuda original</p>
+                  <p className="text-sm text-content font-medium">
+                    {formatCOP(Number(reciboCaja.debtBeforeReceipt ?? 0))}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                  <Percent className="w-4 h-4 text-content-muted" />
+                </div>
+                <div>
+                  <p className="text-xs text-content-faint">Descuento</p>
+                  <p className="text-sm text-content font-medium">
+                    {formatCOP(Number(reciboCaja.discountAmount))}
+                    {reciboCaja.discountReason &&
+                      ` · ${RECIBO_CAJA_DISCOUNT_REASON_LABELS[reciboCaja.discountReason]}`}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
@@ -229,7 +273,7 @@ export default function ReciboCajaDetailPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ui-border">
-                {['Documento', 'Abonado'].map((h) => (
+                {['Documento', 'Abonado', ...(hasDiscount ? ['Descuento'] : [])].map((h) => (
                   <th
                     key={h}
                     className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -256,6 +300,13 @@ export default function ReciboCajaDetailPage() {
                   <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                     {formatCOP(Number(allocation.amount))}
                   </td>
+                  {hasDiscount && (
+                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                      {Number(allocation.discountAmount) > 0
+                        ? formatCOP(Number(allocation.discountAmount))
+                        : '—'}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

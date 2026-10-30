@@ -11,9 +11,9 @@ Check "Descuento" → motivo + valor; el recibo salda completas sus facturas con
 
 ## Tasks
 
-- T1 S1-S5 schema + migración (enum motivo, descuento, deuda original, descuento por línea; CHECK total >= 0) — inline — commit:
-- T2 S2-S5 backend: DTO, validaciones, reparto interno proporcional por línea, idempotencia, pruebas — inline — commit:
-- T3 S1-S5 frontend: validación del form (inline) + check/desplegable/input y detalle (react-code-crafter) — commit:
+- T1 S1-S5 schema + migración (enum motivo, descuento, deuda original, descuento por línea; CHECK total >= 0) — inline — commit: c037acb ✅
+- T2 S2-S5 backend: DTO, validaciones, reparto interno proporcional por línea, idempotencia, pruebas — inline — commit: b92eceb ✅ (fin del slice backend, ~480 líneas)
+- T3 S1-S5 frontend: validación del form (inline) + check/desplegable/input y detalle (react-code-crafter) + descuento en historial de la CxC — commit: ver abajo ✅
 - T4 S1-S5 verificación + docs CLAUDE.md — inline — commit:
 
 ## Log

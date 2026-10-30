@@ -138,6 +138,7 @@ function buildHistory(accountReceivable: DetailRow) {
       source: 'recibo_caja' as const,
       date: allocation.reciboCaja.date,
       amount: allocation.amount,
+      discountAmount: allocation.discountAmount,
       reciboCaja: allocation.reciboCaja,
     }),
   );

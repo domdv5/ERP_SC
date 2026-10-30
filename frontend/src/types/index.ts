@@ -98,6 +98,7 @@ export type {
 } from './accounts-receivable.types'
 export type {
   AccountsReceivableStatus,
+  ReciboCajaDiscountReason,
   ReciboCajaClient,
   ReciboCajaDocument,
   ReciboCajaListItem,

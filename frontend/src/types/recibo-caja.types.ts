@@ -2,6 +2,15 @@ import type { DocumentType } from './document.types'
 // Reusa el mismo enum de Egresos: "las mismas formas de pago que ya existen y se utilizan en los egresos" (regla de negocio explícita del backend)
 import type { EgresoPaymentMethod } from './egreso.types'
 
+export type ReciboCajaDiscountReason =
+  | 'descuento_comercial'
+  | 'oferta'
+  | 'donacion'
+  | 'fidelizacion'
+  | 'mercancia_extraviada'
+  | 'castigo_cartera'
+  | 'promocion'
+
 export type AccountsReceivableStatus = 'pending' | 'partial' | 'paid'
 
 export interface ReciboCajaClient {
@@ -67,6 +76,7 @@ export interface ReciboCajaAllocation {
   reciboCajaId: string
   accountReceivableId: string
   amount: string
+  discountAmount: string
   accountReceivable: ReciboCajaAllocationAccountReceivable
 }
 
@@ -77,6 +87,9 @@ export interface ReciboCaja {
   clientId: string
   userId: string
   total: string
+  discountAmount: string
+  discountReason: ReciboCajaDiscountReason | null
+  debtBeforeReceipt: string | null
   notes: string | null
   idempotencyKey: string
   createdAt: string
@@ -143,4 +156,5 @@ export interface CreateReciboCajaPayload {
   idempotencyKey: string
   receivables: CreateReciboCajaReceivablePayload[]
   payments?: CreateReciboCajaPaymentPayload[]
+  discount?: { reason: ReciboCajaDiscountReason; amount: number }
 }

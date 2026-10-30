@@ -53,6 +53,8 @@ export type AccountsReceivableHistoryEntry =
   | {
       source: 'recibo_caja'
       date: string
+      // Incluido en `amount`: parte del abono cubierta por descuento del recibo.
+      discountAmount: string
       amount: string
       reciboCaja: { id: string; number: string; date: string }
     }
