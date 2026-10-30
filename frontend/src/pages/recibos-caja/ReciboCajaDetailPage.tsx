@@ -1,6 +1,6 @@
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Wallet, Banknote, Landmark, Hash, StickyNote } from 'lucide-react'
+import { ArrowLeft, Wallet, Banknote, Landmark, Hash, StickyNote, User, Store } from 'lucide-react'
 
 import { getReciboCaja } from '@/services/recibos-caja.service'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
@@ -91,18 +91,37 @@ export default function ReciboCajaDetailPage() {
               {docNumber('RC', reciboCaja.number)}
             </h1>
             <p className="text-content-muted text-sm mt-1 font-accent">
-              <span className="text-content font-medium">{reciboCaja.client.thirdParty.name}</span>
-              {reciboCaja.customerBranch && (
-                <> &middot; Sucursal {reciboCaja.customerBranch.name}</>
-              )}{' '}
-              &middot; {formatDateOnly(reciboCaja.date)} &middot; Registrado por{' '}
-              {reciboCaja.user.name}
+              {formatDateOnly(reciboCaja.date)} &middot; Registrado por {reciboCaja.user.name}
             </p>
           </div>
         </div>
 
         {/* Resumen */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5 border-t border-ui-divide pt-5">
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 border-t border-ui-divide pt-5">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+              <User className="w-4 h-4 text-content-muted" />
+            </div>
+            <div>
+              <p className="text-xs text-content-faint">Cliente</p>
+              <p className="text-sm text-content font-medium">
+                {reciboCaja.client.thirdParty.name}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+              <Store className="w-4 h-4 text-content-muted" />
+            </div>
+            <div>
+              <p className="text-xs text-content-faint">Sucursal</p>
+              <p className="text-sm text-content font-medium">
+                {reciboCaja.customerBranch?.name ?? 'Sin sucursal'}
+              </p>
+            </div>
+          </div>
+
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
               <Wallet className="w-4 h-4 text-content-muted" />
