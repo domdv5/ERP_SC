@@ -66,9 +66,19 @@ describe('AccountsReceivableService.getClientStatement', () => {
       },
     ]);
     prisma.customerCredit.findMany.mockResolvedValue([
-      { id: 'k1', status: 'available', balance: decimal('30.5') },
-      { id: 'k2', status: 'used', balance: decimal('0') },
-      { id: 'k3', status: 'available', balance: decimal('9.5') },
+      {
+        id: 'k1',
+        kind: 'devolucion',
+        status: 'available',
+        balance: decimal('30.5'),
+      },
+      { id: 'k2', kind: 'devolucion', status: 'used', balance: decimal('0') },
+      {
+        id: 'k3',
+        kind: 'devolucion',
+        status: 'available',
+        balance: decimal('9.5'),
+      },
     ]);
 
     const result = await service.getClientStatement('c1');
@@ -217,6 +227,52 @@ describe('AccountsReceivableService: sucursales del cliente', () => {
       expect(result.totals.totalDebt.toString()).toBe('150');
       expect(result.branchTotals).toHaveLength(3);
       expect(result.branchTotals[2].totalDebt.toString()).toBe('30');
+    });
+
+    describe('excedentes', () => {
+      const credit = (
+        id: string,
+        kind: 'devolucion' | 'excedente',
+        status: string,
+        balance: string,
+        customerBranchId: string | null,
+      ) => ({ id, kind, status, balance: decimal(balance), customerBranchId });
+
+      beforeEach(() =>
+        prisma.customerCredit.findMany.mockResolvedValue([
+          credit('dvv', 'devolucion', 'available', '20', null),
+          credit('e1', 'excedente', 'available', '100', 'b1'),
+          credit('e2', 'excedente', 'voided', '0', 'b1'),
+          credit('e3', 'excedente', 'available', '5', null),
+          credit('e4', 'excedente', 'used', '0', 'b2'),
+        ]),
+      );
+
+      it('availableCredit suma solo devoluciones y availableExcedente solo excedentes disponibles', async () => {
+        const { totals } = await service.getClientStatement('c1');
+        expect(totals.availableCredit.toString()).toBe('20');
+        expect(totals.availableExcedente.toString()).toBe('105');
+      });
+
+      it('branchTotals trae el excedente disponible de cada sucursal', async () => {
+        const { branchTotals } = await service.getClientStatement('c1');
+        expect(
+          branchTotals.map((row) => [
+            row.branchId,
+            row.availableExcedente.toString(),
+          ]),
+        ).toEqual([
+          ['b1', '100'],
+          ['b2', '0'],
+          [null, '5'],
+        ]);
+      });
+
+      it('con customerBranchId solo deja los excedentes de esa sucursal', async () => {
+        const result = await service.getClientStatement('c1', 'b1');
+        expect(result.totals.availableExcedente.toString()).toBe('100');
+        expect(result.credits.map((c) => c.id)).toEqual(['dvv', 'e1', 'e2']);
+      });
     });
   });
 

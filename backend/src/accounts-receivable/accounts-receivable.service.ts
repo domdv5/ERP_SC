@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CustomerCreditKind, Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   buildDateColumnRange,
@@ -163,9 +163,22 @@ type BranchReceivable = Pick<ListRow, 'totalAmount' | 'paidAmount'> & {
 };
 
 /** Una fila por sucursal del cliente más "Sin sucursal" (branchId null) solo si hay CxC sin sucursal. */
+type BranchExcedente = {
+  status: string;
+  balance: Prisma.Decimal;
+  customerBranchId: string | null;
+};
+
+function sumAvailable(credits: { status: string; balance: Prisma.Decimal }[]) {
+  return credits
+    .filter((credit) => credit.status === 'available')
+    .reduce((sum, credit) => sum.plus(credit.balance), new Prisma.Decimal(0));
+}
+
 function buildBranchTotals(
   branches: { id: string; name: string }[],
   receivables: BranchReceivable[],
+  excedentes: BranchExcedente[],
 ) {
   const totalsFor = (
     branchId: string | null,
@@ -176,6 +189,7 @@ function buildBranchTotals(
     totalDebt: Prisma.Decimal;
     totalPaid: Prisma.Decimal;
     totalBalance: Prisma.Decimal;
+    availableExcedente: Prisma.Decimal;
   } => {
     const rows = receivables.filter(
       (receivable) => receivable.document.customerBranchId === branchId,
@@ -194,11 +208,17 @@ function buildBranchTotals(
       totalDebt,
       totalPaid,
       totalBalance: totalDebt.minus(totalPaid),
+      availableExcedente: sumAvailable(
+        excedentes.filter((credit) => credit.customerBranchId === branchId),
+      ),
     };
   };
 
   const rows = branches.map((branch) => totalsFor(branch.id, branch.name));
-  if (receivables.some((r) => r.document.customerBranchId === null)) {
+  if (
+    receivables.some((r) => r.document.customerBranchId === null) ||
+    excedentes.some((credit) => credit.customerBranchId === null)
+  ) {
     rows.push(totalsFor(null, 'Sin sucursal'));
   }
   return rows;
@@ -463,11 +483,15 @@ export class AccountsReceivableService {
           sourceDocument: {
             select: { id: true, type: true, number: true, date: true },
           },
+          customerBranch: { select: { id: true, name: true } },
+          user: { select: { id: true, name: true } },
+          voidedBy: { select: { id: true, name: true } },
           applications: {
             include: {
               saleDocument: {
                 select: { id: true, type: true, number: true, date: true },
               },
+              reciboCaja: { select: { id: true, number: true, date: true } },
             },
             orderBy: { appliedAt: 'desc' },
           },
@@ -481,9 +505,22 @@ export class AccountsReceivableService {
       }),
     ]);
 
-    const branchTotals = buildBranchTotals(branches, allReceivables);
+    const allExcedentes = rawCredits.filter(
+      (credit) => credit.kind === CustomerCreditKind.excedente,
+    );
+    const branchTotals = buildBranchTotals(
+      branches,
+      allReceivables,
+      allExcedentes,
+    );
 
-    // Los saldos a favor son del cliente (no de una sucursal), así que el filtro solo recorta las CxC.
+    // Las devoluciones son del cliente; los excedentes son de su sucursal y se recortan con el filtro.
+    const credits = rawCredits.filter(
+      (credit) =>
+        credit.kind === CustomerCreditKind.devolucion ||
+        !customerBranchId ||
+        credit.customerBranchId === customerBranchId,
+    );
     const receivables = allReceivables
       .filter(
         (receivable) =>
@@ -500,9 +537,12 @@ export class AccountsReceivableService {
       (sum, receivable) => sum.plus(receivable.paidAmount),
       new Prisma.Decimal(0),
     );
-    const availableCredit = rawCredits
-      .filter((credit) => credit.status === 'available')
-      .reduce((sum, credit) => sum.plus(credit.balance), new Prisma.Decimal(0));
+    const availableCredit = sumAvailable(
+      credits.filter((credit) => credit.kind === CustomerCreditKind.devolucion),
+    );
+    const availableExcedente = sumAvailable(
+      credits.filter((credit) => credit.kind === CustomerCreditKind.excedente),
+    );
 
     return {
       client: { id: client.thirdParty.id, name: client.thirdParty.name },
@@ -511,10 +551,11 @@ export class AccountsReceivableService {
         totalPaid,
         totalBalance: totalDebt.minus(totalPaid),
         availableCredit,
+        availableExcedente,
       },
       branchTotals,
       receivables,
-      credits: rawCredits,
+      credits,
     };
   }
 }
