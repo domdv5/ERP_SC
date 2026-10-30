@@ -1,10 +1,22 @@
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Wallet, Banknote, Landmark, Hash, StickyNote } from 'lucide-react'
+import {
+  ArrowLeft,
+  Wallet,
+  Banknote,
+  Landmark,
+  Hash,
+  StickyNote,
+  User,
+  Store,
+  Receipt,
+  Percent,
+} from 'lucide-react'
 
 import { getReciboCaja } from '@/services/recibos-caja.service'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
+import { RECIBO_CAJA_DISCOUNT_REASON_LABELS } from './recibo-caja-form.schema'
 
 export default function ReciboCajaDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -69,6 +81,8 @@ export default function ReciboCajaDetailPage() {
     )
   }
 
+  const hasDiscount = Number(reciboCaja.discountAmount) > 0
+
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
@@ -91,26 +105,33 @@ export default function ReciboCajaDetailPage() {
               {docNumber('RC', reciboCaja.number)}
             </h1>
             <p className="text-content-muted text-sm mt-1 font-accent">
-              <span className="text-content font-medium">{reciboCaja.client.thirdParty.name}</span>
-              {reciboCaja.customerBranch && (
-                <> &middot; Sucursal {reciboCaja.customerBranch.name}</>
-              )}{' '}
-              &middot; {formatDateOnly(reciboCaja.date)} &middot; Registrado por{' '}
-              {reciboCaja.user.name}
+              {formatDateOnly(reciboCaja.date)} &middot; Registrado por {reciboCaja.user.name}
             </p>
           </div>
         </div>
 
         {/* Resumen */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5 border-t border-ui-divide pt-5">
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 border-t border-ui-divide pt-5">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
-              <Wallet className="w-4 h-4 text-content-muted" />
+              <User className="w-4 h-4 text-content-muted" />
             </div>
             <div>
-              <p className="text-xs text-content-faint">Total</p>
+              <p className="text-xs text-content-faint">Cliente</p>
               <p className="text-sm text-content font-medium">
-                {formatCOP(Number(reciboCaja.total))}
+                {reciboCaja.client.thirdParty.name}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+              <Store className="w-4 h-4 text-content-muted" />
+            </div>
+            <div>
+              <p className="text-xs text-content-faint">Sucursal</p>
+              <p className="text-sm text-content font-medium">
+                {reciboCaja.customerBranch?.name ?? 'Sin sucursal'}
               </p>
             </div>
           </div>
@@ -127,7 +148,65 @@ export default function ReciboCajaDetailPage() {
               </p>
             </div>
           </div>
+          {!hasDiscount && (
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <Wallet className="w-4 h-4 text-content-muted" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint">Total</p>
+                <p className="text-sm text-content font-medium">
+                  {formatCOP(Number(reciboCaja.total))}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
+
+        {hasDiscount && (
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-5 border-t border-ui-divide pt-5">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <Receipt className="w-4 h-4 text-content-muted" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint">Deuda original</p>
+                <p className="text-sm text-content font-medium">
+                  {formatCOP(Number(reciboCaja.debtBeforeReceipt ?? 0))}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <Percent className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint">Descuento</p>
+                <p className="text-sm text-amber-700 dark:text-amber-400 font-semibold tabular-nums">
+                  − {formatCOP(Number(reciboCaja.discountAmount))}
+                </p>
+                {reciboCaja.discountReason && (
+                  <span className="pill-stamp mt-1 inline-block bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                    {RECIBO_CAJA_DISCOUNT_REASON_LABELS[reciboCaja.discountReason]}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+                <Wallet className="w-4 h-4 text-content-muted" />
+              </div>
+              <div>
+                <p className="text-xs text-content-faint">Recibido</p>
+                <p className="text-sm text-content font-semibold">
+                  {formatCOP(Number(reciboCaja.total))}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Formas de pago */}
@@ -210,7 +289,7 @@ export default function ReciboCajaDetailPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ui-border">
-                {['Documento', 'Abonado'].map((h) => (
+                {['Documento', 'Abonado', ...(hasDiscount ? ['Descuento'] : [])].map((h) => (
                   <th
                     key={h}
                     className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -237,6 +316,13 @@ export default function ReciboCajaDetailPage() {
                   <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                     {formatCOP(Number(allocation.amount))}
                   </td>
+                  {hasDiscount && (
+                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                      {Number(allocation.discountAmount) > 0
+                        ? formatCOP(Number(allocation.discountAmount))
+                        : '—'}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

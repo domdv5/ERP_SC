@@ -25,6 +25,9 @@ const emptyDefaults = (): ReciboCajaFormValues => ({
   notes: '',
   receivables: [],
   payments: [],
+  hasDiscount: false,
+  discountReason: '',
+  discountAmount: 0,
 })
 
 // Toda la lógica de negocio del form de Recibos de Caja (carga, cuadre, envío) — la página solo arma el layout
@@ -35,13 +38,19 @@ export function useReciboCajaForm() {
   // Se regenera por cliente (abajo): reusar la key entre clientes daría 409 en vez de crear el nuevo recibo
   const idempotencyKeyRef = useRef(crypto.randomUUID())
 
-  const { control, register, watch, setValue, reset, handleSubmit } = useForm<ReciboCajaFormValues>(
-    {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      resolver: zodResolver(reciboCajaFormSchema) as any,
-      defaultValues: emptyDefaults(),
-    },
-  )
+  const {
+    control,
+    register,
+    watch,
+    setValue,
+    reset,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ReciboCajaFormValues>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(reciboCajaFormSchema) as any,
+    defaultValues: emptyDefaults(),
+  })
 
   const receivablesArray = useFieldArray({ control, name: 'receivables' })
   const paymentsArray = useFieldArray({ control, name: 'payments' })
@@ -121,7 +130,10 @@ export function useReciboCajaForm() {
   const selectedReceivables = watchedReceivables.filter((r) => r.selected)
   const totalAbonos = selectedReceivables.reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
   const totalPayments = watchedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-  const cuadraOk = Math.round(totalPayments) === Math.round(totalAbonos)
+  const hasDiscount = watch('hasDiscount')
+  const discount = hasDiscount ? Number(watch('discountAmount')) || 0 : 0
+  const expectedPayments = totalAbonos - discount
+  const cuadraOk = Math.round(totalPayments) === Math.round(expectedPayments)
 
   function setReceivableAmount(accountReceivableId: string, next: number) {
     const index = watch('receivables').findIndex(
@@ -139,6 +151,22 @@ export function useReciboCajaForm() {
     )
     if (index < 0) return
     setValue(`receivables.${index}.selected`, selected)
+    // El descuento solo va sobre facturas saldadas completas
+    if (selected && watch('hasDiscount')) {
+      setValue(`receivables.${index}.amount`, watch(`receivables.${index}.balance`))
+    }
+  }
+
+  function toggleDiscount(enabled: boolean) {
+    setValue('hasDiscount', enabled)
+    if (!enabled) {
+      setValue('discountReason', '')
+      setValue('discountAmount', 0)
+      return
+    }
+    watch('receivables').forEach((r, index) => {
+      if (r.selected) setValue(`receivables.${index}.amount`, r.balance)
+    })
   }
 
   const { mutateAsync: createReciboCajaMutateAsync, isPending: isCreating } = useMutation({
@@ -158,12 +186,18 @@ export function useReciboCajaForm() {
       receivables: values.receivables
         .filter((r) => r.selected)
         .map((r) => ({ accountReceivableId: r.accountReceivableId, amount: r.amount })),
-      payments: values.payments.map((p) => ({
-        method: p.method,
-        amount: p.amount,
-        reference: p.reference || undefined,
-        bank: p.bank || undefined,
-      })),
+      payments: values.payments
+        .filter((p) => p.amount > 0)
+        .map((p) => ({
+          method: p.method,
+          amount: p.amount,
+          reference: p.reference || undefined,
+          bank: p.bank || undefined,
+        })),
+      discount:
+        values.hasDiscount && values.discountReason !== ''
+          ? { reason: values.discountReason, amount: values.discountAmount }
+          : undefined,
     }
 
     try {
@@ -190,8 +224,13 @@ export function useReciboCajaForm() {
     handleSubmit,
     receivablesFields: receivablesArray.fields,
     paymentsArray,
+    errors,
     setReceivableAmount,
     toggleReceivable,
+    toggleDiscount,
+    hasDiscount,
+    discount,
+    expectedPayments,
     totalAbonos,
     totalPayments,
     cuadraOk,

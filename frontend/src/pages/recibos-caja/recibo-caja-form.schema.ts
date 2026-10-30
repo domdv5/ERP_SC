@@ -26,6 +26,34 @@ const paymentLineSchema = z.object({
   bank: z.string().optional(),
 })
 
+export const RECIBO_CAJA_DISCOUNT_REASONS = [
+  'descuento_comercial',
+  'oferta',
+  'donacion',
+  'fidelizacion',
+  'mercancia_extraviada',
+  'castigo_cartera',
+  'promocion',
+] as const
+
+export type ReciboCajaDiscountReason = (typeof RECIBO_CAJA_DISCOUNT_REASONS)[number]
+
+export const RECIBO_CAJA_DISCOUNT_REASON_LABELS: Record<ReciboCajaDiscountReason, string> = {
+  descuento_comercial: 'Descuento Comercial',
+  oferta: 'Oferta',
+  donacion: 'Donación',
+  fidelizacion: 'Fidelización',
+  mercancia_extraviada: 'Mercancía Extraviada',
+  castigo_cartera: 'Castigo de Cartera',
+  promocion: 'Promoción',
+}
+
+// Únicos motivos que pueden saldar toda la deuda sin que entre dinero (mismo criterio que el backend).
+export const FULL_COVER_DISCOUNT_REASONS: readonly ReciboCajaDiscountReason[] = [
+  'castigo_cartera',
+  'mercancia_extraviada',
+]
+
 const baseSchema = z.object({
   clientId: z.string().min(1, 'Selecciona un cliente'),
   // '' = sin elegir, 'none' = facturas sin sucursal
@@ -34,6 +62,10 @@ const baseSchema = z.object({
   notes: z.string().optional(),
   receivables: z.array(receivableRowSchema),
   payments: z.array(paymentLineSchema),
+  hasDiscount: z.boolean(),
+  // '' = sin elegir
+  discountReason: z.union([z.enum(RECIBO_CAJA_DISCOUNT_REASONS), z.literal('')]),
+  discountAmount: moneyAmount,
 })
 
 export type ReciboCajaFormValues = z.infer<typeof baseSchema>
@@ -65,18 +97,61 @@ export const reciboCajaFormSchema = baseSchema.superRefine((data, ctx) => {
         message: `No puede superar el saldo (${formatCOP(r.balance)})`,
         path: ['receivables', index, 'amount'],
       })
+    } else if (data.hasDiscount && Math.round(r.amount) !== Math.round(r.balance)) {
+      // El descuento solo se da sobre el total: no existe descuento en abonos parciales.
+      ctx.addIssue({
+        code: 'custom',
+        message: `El descuento solo aplica si se paga la factura completa. Abono requerido: ${formatCOP(r.balance)}`,
+        path: ['receivables', index, 'amount'],
+      })
     }
   })
 
   const totalAbonos = selectedReceivables.reduce((sum, r) => sum + r.amount, 0)
   const totalPayments = data.payments.reduce((sum, p) => sum + p.amount, 0)
+  const discount = data.hasDiscount ? data.discountAmount : 0
+
+  if (data.hasDiscount) {
+    if (data.discountReason === '') {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Selecciona el motivo del descuento',
+        path: ['discountReason'],
+      })
+    }
+    if (discount <= 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'El descuento debe ser mayor que 0',
+        path: ['discountAmount'],
+      })
+    } else if (Math.round(discount) > Math.round(totalAbonos)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `El descuento no puede superar la deuda (${formatCOP(totalAbonos)})`,
+        path: ['discountAmount'],
+      })
+    } else if (
+      Math.round(discount) === Math.round(totalAbonos) &&
+      data.discountReason !== '' &&
+      !FULL_COVER_DISCOUNT_REASONS.includes(data.discountReason)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          'Solo Castigo de Cartera o Mercancía Extraviada pueden cubrir el total de la deuda',
+        path: ['discountAmount'],
+      })
+    }
+  }
 
   // Montos en pesos enteros: se compara redondeado para no fallar por residuos de coma
   // flotante (misma tolerancia que usa el backend con `toCents`).
-  if (Math.round(totalPayments) !== Math.round(totalAbonos)) {
+  const expectedPayments = totalAbonos - discount
+  if (Math.round(totalPayments) !== Math.round(expectedPayments)) {
     ctx.addIssue({
       code: 'custom',
-      message: `Las formas de pago deben sumar ${formatCOP(totalAbonos)}`,
+      message: `Las formas de pago deben sumar ${formatCOP(expectedPayments)}`,
       path: ['payments'],
     })
   }

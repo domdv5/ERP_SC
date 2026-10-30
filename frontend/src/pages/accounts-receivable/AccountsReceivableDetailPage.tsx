@@ -262,6 +262,11 @@ export default function AccountsReceivableDetailPage() {
                       </td>
                       <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                         {formatCOP(Number(entry.amount))}
+                        {entry.source === 'recibo_caja' && Number(entry.discountAmount) > 0 && (
+                          <span className="block text-content-faint font-normal">
+                            incl. descuento {formatCOP(Number(entry.discountAmount))}
+                          </span>
+                        )}
                       </td>
                       <td className="px-5 py-3.5">
                         {entry.source === 'recibo_caja' && (

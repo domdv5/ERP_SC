@@ -13,7 +13,11 @@ import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { useReciboCajaForm, NO_BRANCH } from './useReciboCajaForm'
-import { RECIBO_CAJA_PAYMENT_METHODS } from './recibo-caja-form.schema'
+import {
+  RECIBO_CAJA_PAYMENT_METHODS,
+  RECIBO_CAJA_DISCOUNT_REASONS,
+  RECIBO_CAJA_DISCOUNT_REASON_LABELS,
+} from './recibo-caja-form.schema'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
 import type { ThirdParty } from '@/types/third-party.types'
 
@@ -90,8 +94,13 @@ export default function RecibosCajaNewPage() {
     handleSubmit,
     receivablesFields,
     paymentsArray,
+    errors,
     setReceivableAmount,
     toggleReceivable,
+    toggleDiscount,
+    hasDiscount,
+    discount,
+    expectedPayments,
     totalAbonos,
     totalPayments,
     cuadraOk,
@@ -107,6 +116,7 @@ export default function RecibosCajaNewPage() {
     submitReciboCaja,
     isSubmitting,
   } = useReciboCajaForm()
+  const missingPayment = Math.round(expectedPayments) - Math.round(totalPayments)
 
   const [confirmOpen, setConfirmOpen] = useState(false)
   // Diferido hasta que se cierre el diálogo de confirmación, para no repoblar la tabla detrás de él
@@ -388,7 +398,7 @@ export default function RecibosCajaNewPage() {
                   <div>
                     <h2 className="text-content font-semibold">Formas de pago</h2>
                     <p className="text-content-muted text-xs mt-0.5 font-accent">
-                      Deben sumar {formatCOP(totalAbonos)}
+                      Deben sumar {formatCOP(expectedPayments)}
                     </p>
                   </div>
                   <button
@@ -513,12 +523,98 @@ export default function RecibosCajaNewPage() {
           <div className="card-hard p-6 space-y-4">
             <div>
               <p className="text-xs text-content-faint font-accent uppercase tracking-wider">
-                Dinero a cobrar
+                Total a cobrar
               </p>
               <p className="text-4xl text-content mt-1 font-display tabular-nums">
-                {formatCOP(totalAbonos)}
+                {formatCOP(expectedPayments)}
               </p>
             </div>
+
+            {hasClient && !awaitingBranch && (
+              <div className="border-t border-ui-divide pt-4 space-y-3">
+                <label className="flex items-center gap-2 text-sm font-medium text-content-secondary cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={hasDiscount}
+                    onChange={(e) => toggleDiscount(e.target.checked)}
+                    className="w-4 h-4 rounded border-ui-border-medium text-brand-secondary focus:ring-brand-secondary/30"
+                  />
+                  Descuento
+                </label>
+
+                {hasDiscount && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-content-secondary">
+                        Motivo <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        {...register('discountReason')}
+                        className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
+                      >
+                        <option value="">Selecciona...</option>
+                        {RECIBO_CAJA_DISCOUNT_REASONS.map((value) => (
+                          <option key={value} value={value}>
+                            {RECIBO_CAJA_DISCOUNT_REASON_LABELS[value]}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.discountReason && (
+                        <p className="text-xs text-red-500 font-accent">
+                          {errors.discountReason.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-content-secondary">
+                        Valor del descuento <span className="text-red-500">*</span>
+                      </label>
+                      <Controller
+                        name="discountAmount"
+                        control={control}
+                        render={({ field: discountField }) => (
+                          <ThousandsInput
+                            name={discountField.name}
+                            value={discountField.value}
+                            onChange={discountField.onChange}
+                            onBlur={discountField.onBlur}
+                            ref={discountField.ref}
+                            placeholder="0"
+                          />
+                        )}
+                      />
+                      {errors.discountAmount && (
+                        <p className="text-xs text-red-500 font-accent">
+                          {errors.discountAmount.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-content-secondary">Deuda</span>
+                        <span className="font-mono font-medium text-content">
+                          {formatCOP(totalAbonos)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-content-secondary">Descuento</span>
+                        <span className="font-mono font-medium text-content">
+                          − {formatCOP(discount)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-content-secondary">Total a cobrar</span>
+                        <span className="font-mono font-medium text-content">
+                          {formatCOP(expectedPayments)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="border-t border-ui-divide pt-4 space-y-1.5">
               <div className="flex items-center justify-between text-sm">
@@ -533,9 +629,14 @@ export default function RecibosCajaNewPage() {
                 </span>
               </div>
               {!cuadraOk && (
-                <p className="text-xs text-red-500 font-accent">
-                  Las formas de pago deben sumar {formatCOP(totalAbonos)}
-                </p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-red-500 font-medium">
+                    {missingPayment > 0 ? 'Falta por cobrar' : 'Sobra'}
+                  </span>
+                  <span className="font-mono font-medium text-red-500">
+                    {formatCOP(Math.abs(missingPayment))}
+                  </span>
+                </div>
               )}
             </div>
 
@@ -564,7 +665,11 @@ export default function RecibosCajaNewPage() {
       <ConfirmDialog
         open={confirmOpen}
         title="Registrar recibo de caja"
-        description={`Se registrará el cobro por ${formatCOP(totalAbonos)} a las cuentas por cobrar seleccionadas. Esta acción no se puede deshacer.`}
+        description={
+          hasDiscount
+            ? `Se registrará el cobro por ${formatCOP(expectedPayments)} con un descuento de ${formatCOP(discount)} sobre ${formatCOP(totalAbonos)} de deuda. Esta acción no se puede deshacer.`
+            : `Se registrará el cobro por ${formatCOP(totalAbonos)} a las cuentas por cobrar seleccionadas. Esta acción no se puede deshacer.`
+        }
         confirmLabel="Confirmar y registrar"
         isPending={isSubmitting}
         onConfirm={() => {
