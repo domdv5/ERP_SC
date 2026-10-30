@@ -176,10 +176,14 @@ El dueño del repo diseña y decide; la IA ejecuta. Objetivo: que el dueño enti
    la alternativa descartada y el motivo, en lenguaje simple.
 3. **"Dónde mirar" en cada commit** — después de commitear, listar 3-5 `archivo:línea` con lo
    importante del cambio para que el dueño lo lea en ~2 minutos.
-4. **"Mapa de revisión" en cada PR** — la descripción del PR lleva una tabla `archivo/función → riesgo
-   (🔴 alto / 🟡 medio / 🟢 bajo) → qué mirar → tiempo`. Alto = reglas de plata, migraciones, permisos,
-   concurrencia (leer a fondo); medio = nombres de las pruebas (leer como especificación); bajo =
-   estilos, tipos, cableado de pantallas (no leer: probar en la app). El dueño revisa por riesgo, no línea por línea.
+4. **"Mapa de revisión" en cada PR** — el dueño revisa por riesgo de contenido, no línea por línea ni por ruta:
+   - Lo clasifica un revisor que no escribió el código (subagente o lente `risk` de la review nativa), no el writer.
+   - Cada 🔴 trae `archivo:línea` + una frase de negocio verificable: qué cambia y qué se rompe si está mal.
+     Lo que no tenga consecuencia de negocio concreta no es 🔴 y no se le pide revisar.
+   - El PR lista, sacados con `git diff` (no escritos a mano), los nombres de las pruebas nuevas o
+     modificadas: son el resumen objetivo de qué comportamiento cambió.
+   - Calibración: cuando el dueño señale algo mal clasificado, se agrega como ejemplo aquí abajo.
+   - Ejemplos de calibración: (ninguno todavía).
 5. **Modo práctica (opcional)** — si el dueño dice "modo práctica", la pieza de lógica de negocio
    no la escribe la IA: queda un `TODO(human)` en el archivo real con qué debe hacer, entradas y
    salidas, y las pruebas ya escritas en rojo. El dueño la escribe; la IA corre las pruebas, revisa
