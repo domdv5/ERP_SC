@@ -18,6 +18,8 @@ import {
   findLastPaymentDate,
 } from './helpers/payment-days.helper';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const LIST_INCLUDE = {
   client: { include: { thirdParty: { select: { id: true, name: true } } } },
   seller: { select: { id: true, name: true } },
@@ -210,6 +212,7 @@ type ClientGroupRow = {
   last_sale_date: Date;
   last_payment_date: Date | null;
   last_movement_at: Date;
+  oldest_pending_date: Date | null;
 };
 
 type ClientGroupTotalsRow = {
@@ -294,6 +297,7 @@ export class AccountsReceivableService {
       limit = 20,
       search,
       status,
+      sort = 'recent',
       dateFrom,
       dateTo,
     } = findReceivableClientsDto;
@@ -310,6 +314,11 @@ export class AccountsReceivableService {
           ? Prisma.sql`HAVING SUM(s.total_amount) - SUM(s.paid_amount) = 0`
           : Prisma.empty;
 
+    const orderBy =
+      sort === 'oldest_debt'
+        ? Prisma.sql`oldest_pending_date ASC NULLS LAST, client_name ASC, client_id ASC`
+        : Prisma.sql`last_movement_at DESC, client_name ASC, client_id ASC`;
+
     const groupedClients = Prisma.sql`
       scoped AS (
         SELECT ar.id, ar.client_id, tp.name AS client_name, ar.total_amount,
@@ -325,7 +334,9 @@ export class AccountsReceivableService {
                SUM(s.total_amount) AS total_amount,
                SUM(s.paid_amount) AS paid_amount,
                MAX(s.sale_date) AS last_sale_date,
-               MAX(s.updated_at) AS last_movement_at
+               MAX(s.updated_at) AS last_movement_at,
+               MIN(s.sale_date) FILTER (WHERE s.total_amount - s.paid_amount > 0)
+                 AS oldest_pending_date
         FROM scoped s
         GROUP BY s.client_id, s.client_name
         ${having}
@@ -336,7 +347,7 @@ export class AccountsReceivableService {
         WITH ${groupedClients},
         page AS (
           SELECT * FROM grouped
-          ORDER BY last_movement_at DESC, client_name ASC, client_id ASC
+          ORDER BY ${orderBy}
           LIMIT ${limit} OFFSET ${(page - 1) * limit}
         ),
         payment_dates AS (
@@ -355,7 +366,7 @@ export class AccountsReceivableService {
                (SELECT MAX(pd.paid_on) FROM payment_dates pd
                 WHERE pd.client_id = p.client_id) AS last_payment_date
         FROM page p
-        ORDER BY p.last_movement_at DESC, p.client_name ASC, p.client_id ASC`,
+        ORDER BY ${orderBy}`,
       this.prisma.$queryRaw<ClientGroupTotalsRow[]>`
         WITH ${groupedClients}
         SELECT COUNT(*)::int AS client_count,
@@ -367,6 +378,8 @@ export class AccountsReceivableService {
     const total = totals.client_count;
     const totalAmount = new Prisma.Decimal(totals.total_amount);
     const paidAmount = new Prisma.Decimal(totals.paid_amount);
+
+    const today = todayInBogota();
 
     return {
       items: rows.map((row) => {
@@ -381,6 +394,11 @@ export class AccountsReceivableService {
           lastSaleDate: row.last_sale_date,
           lastPaymentDate: row.last_payment_date,
           lastMovementAt: row.last_movement_at,
+          oldestPendingDays: row.oldest_pending_date
+            ? Math.round(
+                (today.getTime() - row.oldest_pending_date.getTime()) / DAY_MS,
+              )
+            : null,
         };
       }),
       meta: {

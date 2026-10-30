@@ -57,6 +57,7 @@ export type {
   SupplierStatementTotals,
   GetPayableSuppliersParams,
   PayableSuppliersStatus,
+  PayableSuppliersSort,
   PayableSupplierSummary,
 } from './accounts-payable.types'
 export type {
@@ -92,6 +93,7 @@ export type {
   ClientCreditApplication,
   GetReceivableClientsParams,
   ReceivableClientsStatus,
+  ReceivableClientsSort,
   ReceivableClientSummary,
 } from './accounts-receivable.types'
 export type {

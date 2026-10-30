@@ -1,6 +1,10 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AccountsPayableService } from './accounts-payable.service';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { todayInBogota } from '@/common/utils/date-range.util';
+import { FindPayableSuppliersDto } from './dto/index';
 
 describe('AccountsPayableService: orden de las CxP', () => {
   const prisma = {
@@ -75,6 +79,7 @@ describe('AccountsPayableService.findSuppliers', () => {
     last_purchase_date: new Date('2026-09-01T00:00:00.000Z'),
     last_payment_date: new Date('2026-09-15T00:00:00.000Z'),
     last_movement_at: new Date('2026-09-16T15:00:00.000Z'),
+    oldest_pending_date: new Date('2026-09-01T00:00:00.000Z'),
   };
 
   beforeEach(() => {
@@ -104,6 +109,7 @@ describe('AccountsPayableService.findSuppliers', () => {
         lastPurchaseDate: new Date('2026-09-01T00:00:00.000Z'),
         lastPaymentDate: new Date('2026-09-15T00:00:00.000Z'),
         lastMovementAt: new Date('2026-09-16T15:00:00.000Z'),
+        oldestPendingDays: expect.any(Number),
       },
     ]);
   });
@@ -175,5 +181,75 @@ describe('AccountsPayableService.findSuppliers', () => {
       service.findSuppliers({ dateFrom: '2026-10-01', dateTo: '2026-09-01' }),
     ).rejects.toThrow('dateFrom no puede ser posterior a dateTo');
     expect(prisma.$queryRaw).not.toHaveBeenCalled();
+  });
+
+  it('oldestPendingDays cuenta los días desde la fecha más antigua con saldo hasta hoy en Bogotá', async () => {
+    prisma.$queryRaw.mockReset();
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          ...groupRow,
+          oldest_pending_date: new Date(
+            todayInBogota().getTime() - 45 * 24 * 60 * 60 * 1000,
+          ),
+        },
+      ])
+      .mockResolvedValueOnce([
+        { supplier_count: 1, total_amount: '1', paid_amount: '0' },
+      ]);
+
+    const result = await service.findSuppliers({});
+
+    expect(result.items[0].oldestPendingDays).toBe(45);
+  });
+
+  it('oldestPendingDays es null si no hay facturas con saldo', async () => {
+    prisma.$queryRaw.mockReset();
+    prisma.$queryRaw
+      .mockResolvedValueOnce([{ ...groupRow, oldest_pending_date: null }])
+      .mockResolvedValueOnce([
+        { supplier_count: 1, total_amount: '1', paid_amount: '0' },
+      ]);
+
+    const result = await service.findSuppliers({});
+
+    expect(result.items[0].oldestPendingDays).toBeNull();
+  });
+
+  it('la fecha más antigua solo considera facturas con saldo', async () => {
+    await service.findSuppliers({});
+
+    expect(sqlOf(prisma.$queryRaw.mock.calls[0])).toContain(
+      'FILTER (WHERE s.total_amount - s.paid_amount > 0)',
+    );
+  });
+
+  it('sin sort ordena por último movimiento en el page y en el resultado final', async () => {
+    await service.findSuppliers({});
+
+    const sql = sqlOf(prisma.$queryRaw.mock.calls[0]);
+    expect(sql.match(/ORDER BY .+/g)).toEqual([
+      'ORDER BY last_movement_at DESC, supplier_name ASC, supplier_id ASC',
+      'ORDER BY last_movement_at DESC, supplier_name ASC, supplier_id ASC',
+    ]);
+  });
+
+  it('sort=oldest_debt ordena por deuda más antigua (NULLS LAST) en el page y en el resultado final', async () => {
+    await service.findSuppliers({ sort: 'oldest_debt' });
+
+    const sql = sqlOf(prisma.$queryRaw.mock.calls[0]);
+    expect(sql.match(/ORDER BY .+/g)).toEqual([
+      'ORDER BY oldest_pending_date ASC NULLS LAST, supplier_name ASC, supplier_id ASC',
+      'ORDER BY oldest_pending_date ASC NULLS LAST, supplier_name ASC, supplier_id ASC',
+    ]);
+  });
+
+  it('el DTO rechaza un sort desconocido y acepta los válidos', async () => {
+    const errorsFor = (sort: string) =>
+      validate(plainToInstance(FindPayableSuppliersDto, { sort }));
+
+    expect(await errorsFor('bogus')).toHaveLength(1);
+    expect(await errorsFor('recent')).toHaveLength(0);
+    expect(await errorsFor('oldest_debt')).toHaveLength(0);
   });
 });

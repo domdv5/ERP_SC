@@ -32,6 +32,10 @@ export class FindReceivableClientsDto {
   status?: 'with_balance' | 'settled';
 
   @IsOptional()
+  @IsIn(['recent', 'oldest_debt'])
+  sort?: 'recent' | 'oldest_debt';
+
+  @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
     message: 'dateFrom debe tener formato YYYY-MM-DD',
   })

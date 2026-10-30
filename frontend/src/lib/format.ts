@@ -48,3 +48,5 @@ const dateTimeBogotaFormatter = new Intl.DateTimeFormat('es-CO', {
 
 export const formatDateTimeBogota = (iso?: string | null) =>
   iso ? dateTimeBogotaFormatter.format(new Date(iso)).replace(',', '') : '—'
+
+export const formatPaymentDays = (days: number) => `${days} ${days === 1 ? 'día' : 'días'}`

@@ -97,11 +97,14 @@ export interface AccountsPayableMeta {
 
 export type PayableSuppliersStatus = 'with_balance' | 'settled'
 
+export type PayableSuppliersSort = 'recent' | 'oldest_debt'
+
 export interface GetPayableSuppliersParams {
   page?: number
   limit?: number
   search?: string
   status?: PayableSuppliersStatus
+  sort?: PayableSuppliersSort
   // Formato YYYY-MM-DD; filtra las facturas por document.date
   dateFrom?: string
   dateTo?: string
@@ -117,6 +120,8 @@ export interface PayableSupplierSummary {
   lastPurchaseDate: string
   lastPaymentDate: string | null
   lastMovementAt: string
+  // Días desde la factura más antigua con saldo; null si no se le debe nada
+  oldestPendingDays: number | null
 }
 
 export interface SupplierStatementTotals {

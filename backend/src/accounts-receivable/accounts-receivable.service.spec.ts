@@ -2,6 +2,10 @@ import { NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AccountsReceivableService } from './accounts-receivable.service';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { todayInBogota } from '@/common/utils/date-range.util';
+import { FindReceivableClientsDto } from './dto/index';
 
 const decimal = (value: string) => new Prisma.Decimal(value);
 
@@ -277,6 +281,7 @@ describe('AccountsReceivableService.findClients', () => {
     last_sale_date: saleDate,
     last_payment_date: new Date('2026-09-20T00:00:00.000Z'),
     last_movement_at: new Date('2026-09-21T15:00:00.000Z'),
+    oldest_pending_date: new Date('2026-09-01T00:00:00.000Z'),
   };
 
   beforeEach(() => {
@@ -306,6 +311,7 @@ describe('AccountsReceivableService.findClients', () => {
         lastSaleDate: saleDate,
         lastPaymentDate: new Date('2026-09-20T00:00:00.000Z'),
         lastMovementAt: new Date('2026-09-21T15:00:00.000Z'),
+        oldestPendingDays: expect.any(Number),
       },
     ]);
   });
@@ -396,5 +402,75 @@ describe('AccountsReceivableService.findClients', () => {
       service.findClients({ dateFrom: '2026-10-01', dateTo: '2026-09-01' }),
     ).rejects.toThrow('dateFrom no puede ser posterior a dateTo');
     expect(prisma.$queryRaw).not.toHaveBeenCalled();
+  });
+
+  it('oldestPendingDays cuenta los días desde la fecha más antigua con saldo hasta hoy en Bogotá', async () => {
+    prisma.$queryRaw.mockReset();
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          ...groupRow,
+          oldest_pending_date: new Date(
+            todayInBogota().getTime() - 45 * 24 * 60 * 60 * 1000,
+          ),
+        },
+      ])
+      .mockResolvedValueOnce([
+        { client_count: 1, total_amount: '1', paid_amount: '0' },
+      ]);
+
+    const result = await service.findClients({});
+
+    expect(result.items[0].oldestPendingDays).toBe(45);
+  });
+
+  it('oldestPendingDays es null si no hay facturas con saldo', async () => {
+    prisma.$queryRaw.mockReset();
+    prisma.$queryRaw
+      .mockResolvedValueOnce([{ ...groupRow, oldest_pending_date: null }])
+      .mockResolvedValueOnce([
+        { client_count: 1, total_amount: '1', paid_amount: '0' },
+      ]);
+
+    const result = await service.findClients({});
+
+    expect(result.items[0].oldestPendingDays).toBeNull();
+  });
+
+  it('la fecha más antigua solo considera facturas con saldo', async () => {
+    await service.findClients({});
+
+    expect(sqlOf(prisma.$queryRaw.mock.calls[0])).toContain(
+      'FILTER (WHERE s.total_amount - s.paid_amount > 0)',
+    );
+  });
+
+  it('sin sort ordena por último movimiento en el page y en el resultado final', async () => {
+    await service.findClients({});
+
+    const sql = sqlOf(prisma.$queryRaw.mock.calls[0]);
+    expect(sql.match(/ORDER BY .+/g)).toEqual([
+      'ORDER BY last_movement_at DESC, client_name ASC, client_id ASC',
+      'ORDER BY last_movement_at DESC, client_name ASC, client_id ASC',
+    ]);
+  });
+
+  it('sort=oldest_debt ordena por deuda más antigua (NULLS LAST) en el page y en el resultado final', async () => {
+    await service.findClients({ sort: 'oldest_debt' });
+
+    const sql = sqlOf(prisma.$queryRaw.mock.calls[0]);
+    expect(sql.match(/ORDER BY .+/g)).toEqual([
+      'ORDER BY oldest_pending_date ASC NULLS LAST, client_name ASC, client_id ASC',
+      'ORDER BY oldest_pending_date ASC NULLS LAST, client_name ASC, client_id ASC',
+    ]);
+  });
+
+  it('el DTO rechaza un sort desconocido y acepta los válidos', async () => {
+    const errorsFor = (sort: string) =>
+      validate(plainToInstance(FindReceivableClientsDto, { sort }));
+
+    expect(await errorsFor('bogus')).toHaveLength(1);
+    expect(await errorsFor('recent')).toHaveLength(0);
+    expect(await errorsFor('oldest_debt')).toHaveLength(0);
   });
 });

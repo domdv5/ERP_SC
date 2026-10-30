@@ -10,18 +10,24 @@ import {
   TableSkeleton,
   EmptyState,
   ErrorState,
+  OldestDebtCell,
   TablePagination,
   DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import { formatCOP } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { formatDate } from './accounts-payable.utils'
-import type { PayableSuppliersStatus } from '@/types'
+import type { PayableSuppliersStatus, PayableSuppliersSort } from '@/types'
 
 const STATUS_OPTIONS: { value: PayableSuppliersStatus | ''; label: string }[] = [
   { value: '', label: 'Todos' },
   { value: 'with_balance', label: 'Con saldo' },
   { value: 'settled', label: 'Al día' },
+]
+
+const SORT_OPTIONS: { value: PayableSuppliersSort; label: string }[] = [
+  { value: 'recent', label: 'Más recientes' },
+  { value: 'oldest_debt', label: 'Deuda más antigua' },
 ]
 
 const COLUMNS = [
@@ -32,6 +38,7 @@ const COLUMNS = [
   'Saldo',
   'Última compra',
   'Último pago',
+  'Deuda más antigua',
   'Estado',
 ]
 
@@ -40,6 +47,7 @@ export default function AccountsPayableListPage() {
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<PayableSuppliersStatus | ''>('')
+  const [sort, setSort] = useState<PayableSuppliersSort>('recent')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
@@ -50,16 +58,18 @@ export default function AccountsPayableListPage() {
   const [prevFilters, setPrevFilters] = useState({
     debouncedSearch,
     statusFilter,
+    sort,
     dateFrom,
     dateTo,
   })
   if (
     prevFilters.debouncedSearch !== debouncedSearch ||
     prevFilters.statusFilter !== statusFilter ||
+    prevFilters.sort !== sort ||
     prevFilters.dateFrom !== dateFrom ||
     prevFilters.dateTo !== dateTo
   ) {
-    setPrevFilters({ debouncedSearch, statusFilter, dateFrom, dateTo })
+    setPrevFilters({ debouncedSearch, statusFilter, sort, dateFrom, dateTo })
     setPage(1)
   }
 
@@ -73,6 +83,7 @@ export default function AccountsPayableListPage() {
       'suppliers',
       debouncedSearch,
       statusFilter,
+      sort,
       dateFrom,
       dateTo,
       page,
@@ -82,6 +93,7 @@ export default function AccountsPayableListPage() {
       getPayableSuppliers({
         search: debouncedSearch || undefined,
         status: statusFilter || undefined,
+        sort,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         page,
@@ -158,6 +170,18 @@ export default function AccountsPayableListPage() {
             className="input-hard text-sm px-3 py-1.5"
           >
             {STATUS_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as PayableSuppliersSort)}
+            className="input-hard text-sm px-3 py-1.5"
+            aria-label="Ordenar por"
+          >
+            {SORT_OPTIONS.map((s) => (
               <option key={s.value} value={s.value}>
                 {s.label}
               </option>
@@ -264,6 +288,9 @@ export default function AccountsPayableListPage() {
                       </td>
                       <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
                         {formatDate(row.lastPaymentDate)}
+                      </td>
+                      <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                        <OldestDebtCell days={row.oldestPendingDays} />
                       </td>
                       <td className="px-5 py-3.5">
                         <span

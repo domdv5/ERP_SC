@@ -85,11 +85,14 @@ export interface AccountsReceivableMeta {
 
 export type ReceivableClientsStatus = 'with_balance' | 'settled'
 
+export type ReceivableClientsSort = 'recent' | 'oldest_debt'
+
 export interface GetReceivableClientsParams {
   page?: number
   limit?: number
   search?: string
   status?: ReceivableClientsStatus
+  sort?: ReceivableClientsSort
   // Formato YYYY-MM-DD; filtra las facturas por document.date
   dateFrom?: string
   dateTo?: string
@@ -105,6 +108,8 @@ export interface ReceivableClientSummary {
   lastSaleDate: string
   lastPaymentDate: string | null
   lastMovementAt: string
+  // Días desde la factura más antigua con saldo; null si no debe nada
+  oldestPendingDays: number | null
 }
 
 export interface ClientStatementTotals {

@@ -5,12 +5,17 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
-import { buildDateColumnRange } from '@/common/utils/date-range.util';
+import {
+  buildDateColumnRange,
+  todayInBogota,
+} from '@/common/utils/date-range.util';
 import {
   FindAllAccountsPayableDto,
   FindAvailableSupplierCreditsDto,
   FindPayableSuppliersDto,
 } from './dto/index';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const LIST_INCLUDE = {
   supplier: { include: { thirdParty: { select: { id: true, name: true } } } },
@@ -127,6 +132,7 @@ type SupplierGroupRow = {
   last_purchase_date: Date;
   last_payment_date: Date | null;
   last_movement_at: Date;
+  oldest_pending_date: Date | null;
 };
 
 type SupplierGroupTotalsRow = {
@@ -205,6 +211,7 @@ export class AccountsPayableService {
       limit = 20,
       search,
       status,
+      sort = 'recent',
       dateFrom,
       dateTo,
     } = findPayableSuppliersDto;
@@ -221,6 +228,11 @@ export class AccountsPayableService {
           ? Prisma.sql`HAVING SUM(s.total_amount) - SUM(s.paid_amount) = 0`
           : Prisma.empty;
 
+    const orderBy =
+      sort === 'oldest_debt'
+        ? Prisma.sql`oldest_pending_date ASC NULLS LAST, supplier_name ASC, supplier_id ASC`
+        : Prisma.sql`last_movement_at DESC, supplier_name ASC, supplier_id ASC`;
+
     const groupedSuppliers = Prisma.sql`
       scoped AS (
         SELECT ap.id, ap.supplier_id, tp.name AS supplier_name, ap.total_amount,
@@ -236,7 +248,9 @@ export class AccountsPayableService {
                SUM(s.total_amount) AS total_amount,
                SUM(s.paid_amount) AS paid_amount,
                MAX(s.purchase_date) AS last_purchase_date,
-               MAX(s.updated_at) AS last_movement_at
+               MAX(s.updated_at) AS last_movement_at,
+               MIN(s.purchase_date) FILTER (WHERE s.total_amount - s.paid_amount > 0)
+                 AS oldest_pending_date
         FROM scoped s
         GROUP BY s.supplier_id, s.supplier_name
         ${having}
@@ -248,7 +262,7 @@ export class AccountsPayableService {
         WITH ${groupedSuppliers},
         page AS (
           SELECT * FROM grouped
-          ORDER BY last_movement_at DESC, supplier_name ASC, supplier_id ASC
+          ORDER BY ${orderBy}
           LIMIT ${limit} OFFSET ${(page - 1) * limit}
         ),
         payment_dates AS (
@@ -274,7 +288,7 @@ export class AccountsPayableService {
                (SELECT MAX(pd.paid_on) FROM payment_dates pd
                 WHERE pd.supplier_id = p.supplier_id) AS last_payment_date
         FROM page p
-        ORDER BY p.last_movement_at DESC, p.supplier_name ASC, p.supplier_id ASC`,
+        ORDER BY ${orderBy}`,
       this.prisma.$queryRaw<SupplierGroupTotalsRow[]>`
         WITH ${groupedSuppliers}
         SELECT COUNT(*)::int AS supplier_count,
@@ -286,6 +300,8 @@ export class AccountsPayableService {
     const total = totals.supplier_count;
     const totalAmount = new Prisma.Decimal(totals.total_amount);
     const paidAmount = new Prisma.Decimal(totals.paid_amount);
+
+    const today = todayInBogota();
 
     return {
       items: rows.map((row) => {
@@ -300,6 +316,11 @@ export class AccountsPayableService {
           lastPurchaseDate: row.last_purchase_date,
           lastPaymentDate: row.last_payment_date,
           lastMovementAt: row.last_movement_at,
+          oldestPendingDays: row.oldest_pending_date
+            ? Math.round(
+                (today.getTime() - row.oldest_pending_date.getTime()) / DAY_MS,
+              )
+            : null,
         };
       }),
       meta: {
