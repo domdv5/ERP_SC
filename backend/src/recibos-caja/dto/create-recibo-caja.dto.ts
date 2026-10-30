@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsDateString,
+  IsEnum,
   IsIn,
   IsNumber,
   IsOptional,
@@ -14,7 +15,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { EgresoPaymentMethod } from '@prisma/client';
+import { EgresoPaymentMethod, ReciboCajaDiscountReason } from '@prisma/client';
 import { OFFICE_PAYMENT_METHODS } from '@/common/enums/office-payment-methods';
 import { IsValidChequeReference } from '@/common/validators/is-valid-cheque-reference.validator';
 
@@ -47,6 +48,17 @@ export class ReciboCajaPaymentLineDto {
   @IsString()
   @MaxLength(100)
   bank?: string;
+}
+
+export class ReciboCajaDiscountDto {
+  @IsEnum(ReciboCajaDiscountReason, {
+    message: 'Selecciona un motivo de descuento válido',
+  })
+  reason!: ReciboCajaDiscountReason;
+
+  @IsNumber()
+  @IsPositive()
+  amount!: number;
 }
 
 export class CreateReciboCajaDto {
@@ -94,4 +106,9 @@ export class CreateReciboCajaDto {
   @ValidateNested({ each: true })
   @Type(() => ReciboCajaPaymentLineDto)
   payments?: ReciboCajaPaymentLineDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ReciboCajaDiscountDto)
+  discount?: ReciboCajaDiscountDto;
 }

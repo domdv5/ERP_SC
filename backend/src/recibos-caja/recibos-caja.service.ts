@@ -4,7 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, AccountsReceivableStatus } from '@prisma/client';
+import {
+  Prisma,
+  AccountsReceivableStatus,
+  ReciboCajaDiscountReason,
+} from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import type { JwtPayload } from '@/common/types';
@@ -35,8 +39,36 @@ type ExistingReciboCajaForIdempotency = {
   clientId: string;
   customerBranchId: string | null;
   total: Prisma.Decimal;
+  discountAmount: Prisma.Decimal;
+  discountReason: ReciboCajaDiscountReason | null;
   allocations: { accountReceivableId: string; amount: Prisma.Decimal }[];
 };
+
+// Motivos que pueden saldar toda la deuda sin que entre dinero.
+const FULL_COVER_DISCOUNT_REASONS: ReciboCajaDiscountReason[] = [
+  ReciboCajaDiscountReason.castigo_cartera,
+  ReciboCajaDiscountReason.mercancia_extraviada,
+];
+
+/** Reparte el descuento entre las líneas proporcional a su abono; los centavos sobrantes van a los residuos más grandes para que la suma sea exacta. */
+function splitDiscountCents(
+  discountCents: number,
+  amountCentsById: Map<string, number>,
+): Map<string, number> {
+  const totalCents = [...amountCentsById.values()].reduce((a, b) => a + b, 0);
+  const shares = [...amountCentsById].map(([id, cents]) => {
+    const exact = (discountCents * cents) / totalCents;
+    return { id, cents: Math.floor(exact), remainder: exact % 1 };
+  });
+  let leftover =
+    discountCents - shares.reduce((sum, share) => sum + share.cents, 0);
+  for (const share of [...shares].sort((a, b) => b.remainder - a.remainder)) {
+    if (leftover === 0) break;
+    share.cents += 1;
+    leftover -= 1;
+  }
+  return new Map(shares.map((share) => [share.id, share.cents]));
+}
 
 /** Compara el reintento contra el recibo ya guardado con la misma idempotencyKey: receivables exacto, payments solo por total (el reparto interno lo decide el service). Mismo patrón que isSameEgresoRequest de EgresosService. */
 function isSameEgresoRequest(
@@ -64,6 +96,13 @@ function isSameEgresoRequest(
     existing.allocations.map((a) => [a.accountReceivableId, toCents(a.amount)]),
   );
 
+  if (
+    toCents(existing.discountAmount) !== toCents(dto.discount?.amount ?? 0) ||
+    existing.discountReason !== (dto.discount?.reason ?? null)
+  ) {
+    return false;
+  }
+
   if (requestedCentsByReceivableId.size !== existingCentsByReceivableId.size) {
     return false;
   }
@@ -88,7 +127,7 @@ export class RecibosCajaService {
     private readonly sequenceService: SequenceService,
   ) {}
 
-  /** Cobra una o varias CxC de un cliente: cuadre exacto (Σ abonos = Σ formas de pago, sin saldo a favor — regla de negocio explícita), idempotente por idempotencyKey. */
+  /** Cobra una o varias CxC de un cliente: cuadre exacto (Σ abonos = Σ formas de pago + descuento, sin saldo a favor — regla de negocio explícita), idempotente por idempotencyKey. */
   async create(dto: CreateReciboCajaDto, user: JwtPayload) {
     // Corto circuito rápido antes de la transacción pesada: la mayoría de los
     // reintentos (doble clic) llegan bien después de que el primero ya terminó.
@@ -221,11 +260,15 @@ export class RecibosCajaService {
       );
     }
 
+    const discountCents = dto.discount ? toCents(dto.discount.amount) : 0;
+    let debtBeforeReceiptCents = 0;
+
     const receivableById = new Map(receivables.map((r) => [r.id, r]));
     for (const [receivableId, requestedCents] of requestedCentsByReceivableId) {
       const receivable = receivableById.get(receivableId)!;
       const balanceCents =
         toCents(receivable.totalAmount) - toCents(receivable.paidAmount);
+      debtBeforeReceiptCents += balanceCents;
       if (requestedCents <= 0) {
         throw new BadRequestException(
           'El abono a cada cuenta por cobrar debe ser mayor a cero',
@@ -234,6 +277,12 @@ export class RecibosCajaService {
       if (requestedCents > balanceCents) {
         throw new BadRequestException(
           `El abono excede el saldo pendiente de una cuenta por cobrar. Saldo disponible: ${(balanceCents / 100).toFixed(2)}`,
+        );
+      }
+      // El descuento solo se da sobre el total: no existe descuento en abonos parciales.
+      if (discountCents > 0 && requestedCents !== balanceCents) {
+        throw new BadRequestException(
+          'Con descuento, cada factura del recibo debe quedar saldada',
         );
       }
     }
@@ -257,11 +306,28 @@ export class RecibosCajaService {
 
     // Cuadre exacto en centavos, sin saldo a favor de por medio (regla de negocio explícita) —
     // toCents() ya redondea cada monto individual antes de sumar, no hay ruido de coma flotante que tolerar.
-    if (receivablesTotalCents !== paymentsTotalCents) {
+    if (receivablesTotalCents !== paymentsTotalCents + discountCents) {
       throw new BadRequestException(
-        'El recibo de caja no cuadra: la suma de los abonos debe ser igual a las formas de pago',
+        discountCents > 0
+          ? 'El recibo de caja no cuadra: la suma de los abonos debe ser igual a las formas de pago más el descuento'
+          : 'El recibo de caja no cuadra: la suma de los abonos debe ser igual a las formas de pago',
       );
     }
+
+    if (
+      dto.discount &&
+      discountCents >= receivablesTotalCents &&
+      !FULL_COVER_DISCOUNT_REASONS.includes(dto.discount.reason)
+    ) {
+      throw new BadRequestException(
+        'Solo Castigo de Cartera o Mercancía Extraviada pueden cubrir el total de la deuda',
+      );
+    }
+
+    const discountCentsByReceivableId =
+      discountCents > 0
+        ? splitDiscountCents(discountCents, requestedCentsByReceivableId)
+        : new Map<string, number>();
 
     // Hoy en huso Bogotá, no UTC: con toISOString() un recibo nocturno caía en el día siguiente.
     const todayStr = new Date().toLocaleDateString('sv-SE', {
@@ -285,6 +351,9 @@ export class RecibosCajaService {
         customerBranchId: dto.customerBranchId ?? null,
         userId: user.sub,
         total: paymentsTotalCents / 100,
+        discountAmount: discountCents / 100,
+        discountReason: discountCents > 0 ? dto.discount!.reason : null,
+        debtBeforeReceipt: debtBeforeReceiptCents / 100,
         notes: dto.notes,
         idempotencyKey: dto.idempotencyKey,
       },
@@ -313,6 +382,8 @@ export class RecibosCajaService {
           reciboCajaId: reciboCaja.id,
           accountReceivableId: receivable.id,
           amount: amountCents / 100,
+          discountAmount:
+            (discountCentsByReceivableId.get(receivable.id) ?? 0) / 100,
         },
       });
 
