@@ -1,16 +1,29 @@
 import { useState } from 'react'
 import { useGoBack } from '@/hooks/useGoBack'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { ArrowLeft, Wallet, CreditCard, FileText, History, PiggyBank } from 'lucide-react'
-import { getClientStatement } from '@/services/accounts-receivable.service'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import {
+  ArrowLeft,
+  Wallet,
+  CreditCard,
+  FileText,
+  History,
+  PiggyBank,
+  Plus,
+  Loader2,
+  Ban,
+} from 'lucide-react'
+import { getClientStatement, voidExcedente } from '@/services/accounts-receivable.service'
+import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber, formatBogotaDate } from '@/lib/format'
 import { StatusBadge } from './components/StatusBadge'
 import { PaymentDaysCell } from './components/PaymentDaysCell'
+import { RegisterExcedenteModal } from './components/RegisterExcedenteModal'
 import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-receivable.utils'
 
-// Estado de una nota de saldo a favor: solo 'available' | 'used' en el backend.
+// Estado de una nota de saldo a favor: 'available' | 'used' | 'voided' en el backend.
 const CREDIT_STATUS_BADGE: Record<string, { label: string; className: string }> = {
   available: {
     label: 'Disponible',
@@ -18,20 +31,47 @@ const CREDIT_STATUS_BADGE: Record<string, { label: string; className: string }> 
   },
   used: {
     label: 'Agotado',
-    className: 'bg-surface-hover text-content-muted',
+    className: 'bg-surface-hover text-content-secondary',
+  },
+  voided: {
+    label: 'Anulado',
+    className: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
   },
 }
+// Rótulo en gris y valor resaltado: con ambos en gris no se distinguen en modo oscuro.
+function MetaField({ label, value }: { label: string; value: string }) {
+  return (
+    <span>
+      <span className="text-content-muted">{label}:</span>{' '}
+      <span className="text-content font-semibold">{value}</span>
+    </span>
+  )
+}
+
+function MetaSeparator() {
+  return <span className="text-content-faint mx-1.5">·</span>
+}
+
 const creditStatusBadgeFor = (status: string) =>
   CREDIT_STATUS_BADGE[status] ?? {
     label: status,
     className: 'bg-surface-hover text-content-muted',
   }
 
+function extractErrorMessage(err: unknown): string | undefined {
+  const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
+  return typeof message === 'string' ? message : undefined
+}
+
 export default function AccountsReceivableClientStatementPage() {
   const { clientId } = useParams<{ clientId: string }>()
   const navigate = useNavigate()
   const goBack = useGoBack('/accounts-receivable')
+  const queryClient = useQueryClient()
+  const canManageExcedente = usePermission('excedente.create')
   const [branchId, setBranchId] = useState('')
+  const [excedenteModalOpen, setExcedenteModalOpen] = useState(false)
+  const [voidTargetId, setVoidTargetId] = useState<string | null>(null)
 
   const {
     data: statement,
@@ -45,6 +85,23 @@ export default function AccountsReceivableClientStatementPage() {
     staleTime: 5 * 60 * 1000,
     enabled: Boolean(clientId),
   })
+
+  const { mutateAsync: voidExcedenteMutateAsync, isPending: isVoiding } = useMutation({
+    mutationFn: voidExcedente,
+  })
+
+  async function confirmVoid() {
+    if (!voidTargetId) return
+    try {
+      await voidExcedenteMutateAsync(voidTargetId)
+      queryClient.invalidateQueries({ queryKey: ['accounts-receivable'] })
+      queryClient.invalidateQueries({ queryKey: ['recibos-caja-open-items', clientId] })
+      toast.success('Excedente anulado correctamente')
+      setVoidTargetId(null)
+    } catch (err) {
+      toast.error(extractErrorMessage(err) ?? 'Error al anular el excedente')
+    }
+  }
 
   // ── loading / error states ────────────────────────────────────────────────
   if (isLoading) {
@@ -99,6 +156,7 @@ export default function AccountsReceivableClientStatementPage() {
   const totalPaid = Number(totals.totalPaid)
   const totalBalance = Number(totals.totalBalance)
   const availableCredit = Number(totals.availableCredit)
+  const availableExcedente = Number(totals.availableExcedente)
 
   return (
     <div className="space-y-6 pb-10">
@@ -117,16 +175,26 @@ export default function AccountsReceivableClientStatementPage() {
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
             {client.name[0]?.toUpperCase() ?? '?'}
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl text-content">{client.name}</h1>
             <p className="text-content-muted text-sm mt-1 font-accent">
               Estado de cuenta del cliente
             </p>
           </div>
+          {canManageExcedente && (
+            <button
+              type="button"
+              onClick={() => setExcedenteModalOpen(true)}
+              className="btn-primary flex items-center gap-1.5 px-4 py-2 text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Registrar excedente
+            </button>
+          )}
         </div>
 
         {/* Totals grid */}
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-5 border-t border-ui-divide pt-5">
+        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 border-t border-ui-divide pt-5">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
               <Wallet className="w-4 h-4 text-content-muted" />
@@ -169,8 +237,18 @@ export default function AccountsReceivableClientStatementPage() {
               <PiggyBank className="w-4 h-4 text-content-muted" />
             </div>
             <div>
-              <p className="text-xs text-content-faint">Saldo a favor disponible</p>
+              <p className="text-xs text-content-faint">Saldo a favor (devoluciones)</p>
               <p className="text-sm text-content font-medium">{formatCOP(availableCredit)}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+              <PiggyBank className="w-4 h-4 text-content-muted" />
+            </div>
+            <div>
+              <p className="text-xs text-content-faint">Saldo a favor por excedentes</p>
+              <p className="text-sm text-content font-medium">{formatCOP(availableExcedente)}</p>
             </div>
           </div>
         </div>
@@ -189,7 +267,7 @@ export default function AccountsReceivableClientStatementPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b-2 border-ui-border-medium">
-                  {['Sucursal', 'Deuda', 'Pagado', 'Saldo'].map((h) => (
+                  {['Sucursal', 'Deuda', 'Pagado', 'Saldo', 'Excedentes a favor'].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -211,6 +289,9 @@ export default function AccountsReceivableClientStatementPage() {
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                       {formatCOP(Number(branch.totalBalance))}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                      {formatCOP(Number(branch.availableExcedente))}
                     </td>
                   </tr>
                 ))}
@@ -350,6 +431,13 @@ export default function AccountsReceivableClientStatementPage() {
           <div className="divide-y divide-ui-divide">
             {credits.map((credit) => {
               const badge = creditStatusBadgeFor(credit.status)
+              const isExcedente = credit.kind === 'excedente'
+              const canVoid =
+                isExcedente &&
+                canManageExcedente &&
+                credit.status === 'available' &&
+                credit.applications.length === 0 &&
+                Number(credit.balance) === Number(credit.amount)
               return (
                 <div key={credit.id} className="px-6 py-4">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -358,22 +446,78 @@ export default function AccountsReceivableClientStatementPage() {
                         <PiggyBank className="w-4 h-4 text-content-muted" />
                       </div>
                       <div>
-                        <p className="text-sm text-content font-medium">
-                          {formatCOP(Number(credit.amount))}{' '}
-                          <span className="text-content-faint font-normal">
-                            (saldo disponible: {formatCOP(Number(credit.balance))})
+                        <p className="text-sm text-content font-medium flex items-center gap-2 flex-wrap">
+                          <span>
+                            {formatCOP(Number(credit.amount))}{' '}
+                            <span className="text-content-muted font-normal">
+                              (saldo disponible: {formatCOP(Number(credit.balance))})
+                            </span>
+                          </span>
+                          <span className="pill-stamp text-[11px] whitespace-nowrap bg-surface-hover text-content-secondary">
+                            {isExcedente ? 'Excedente' : 'Devolución'}
                           </span>
                         </p>
-                        <p className="text-xs text-content-faint mt-0.5">
-                          {credit.sourceDocument
-                            ? `Origen: ${docNumber(credit.sourceDocument.type, credit.sourceDocument.number)}`
-                            : 'Sin documento de origen'}
+                        <p className="text-sm text-content-muted mt-1">
+                          {isExcedente ? (
+                            <>
+                              <MetaField
+                                label="Sucursal"
+                                value={credit.customerBranch?.name ?? 'Sin sucursal'}
+                              />
+                              <MetaSeparator />
+                              <MetaField label="Fecha" value={formatDate(credit.date)} />
+                              {credit.user && (
+                                <>
+                                  <MetaSeparator />
+                                  <MetaField label="Registrado por" value={credit.user.name} />
+                                </>
+                              )}
+                            </>
+                          ) : credit.sourceDocument ? (
+                            <MetaField
+                              label="Origen"
+                              value={docNumber(
+                                credit.sourceDocument.type,
+                                credit.sourceDocument.number,
+                              )}
+                            />
+                          ) : (
+                            'Sin documento de origen'
+                          )}
                         </p>
+                        {credit.status === 'voided' && credit.voidedAt && (
+                          <p className="text-sm text-content-muted mt-0.5">
+                            <MetaField
+                              label="Anulado el"
+                              value={formatBogotaDate(credit.voidedAt)}
+                            />
+                            {credit.voidedBy && (
+                              <>
+                                <MetaSeparator />
+                                <MetaField label="Por" value={credit.voidedBy.name} />
+                              </>
+                            )}
+                          </p>
+                        )}
                       </div>
                     </div>
-                    <span className={cn('pill-stamp whitespace-nowrap', badge.className)}>
-                      {badge.label}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      {canVoid && (
+                        <button
+                          type="button"
+                          onClick={() => setVoidTargetId(credit.id)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-red-500 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors"
+                        >
+                          <Ban className="w-3.5 h-3.5" />
+                          Anular
+                        </button>
+                      )}
+                      <span
+                        className={cn('pill-stamp text-[11px] whitespace-nowrap', badge.className)}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
                   </div>
 
                   {credit.applications.length > 0 && (
@@ -381,22 +525,34 @@ export default function AccountsReceivableClientStatementPage() {
                       {credit.applications.map((application) => (
                         <div
                           key={application.id}
-                          className="flex items-center gap-2 text-xs text-content-muted"
+                          className="flex items-center gap-2 text-sm text-content-muted"
                         >
-                          <span className="text-content-faint">
-                            {formatBogotaDate(application.appliedAt)}
-                          </span>
+                          <span>{formatBogotaDate(application.appliedAt)}</span>
                           <span>·</span>
                           <span className="text-content-secondary font-medium">
                             {formatCOP(Number(application.amount))}
                           </span>
-                          <span>aplicado en venta</span>
-                          <span className="font-mono text-content-secondary">
-                            {docNumber(
-                              application.saleDocument.type,
-                              application.saleDocument.number,
-                            )}
-                          </span>
+                          {application.reciboCaja ? (
+                            <>
+                              <span>aplicado en recibo</span>
+                              <Link
+                                to={`/recibos-caja/${application.reciboCaja.id}`}
+                                className="font-mono link-plain"
+                              >
+                                {docNumber('RC', application.reciboCaja.number)}
+                              </Link>
+                            </>
+                          ) : application.saleDocument ? (
+                            <>
+                              <span>aplicado en venta</span>
+                              <span className="font-mono text-content-secondary">
+                                {docNumber(
+                                  application.saleDocument.type,
+                                  application.saleDocument.number,
+                                )}
+                              </span>
+                            </>
+                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -407,6 +563,50 @@ export default function AccountsReceivableClientStatementPage() {
           </div>
         )}
       </div>
+
+      <RegisterExcedenteModal
+        open={excedenteModalOpen}
+        clientId={clientId!}
+        defaultBranchId={branchId}
+        onClose={() => setExcedenteModalOpen(false)}
+      />
+
+      {voidTargetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={isVoiding ? undefined : () => setVoidTargetId(null)}
+          />
+          <div className="relative z-10 bg-surface rounded-2xl border-2 border-ui-border-medium shadow-2xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-base text-content mb-2">Anular excedente</h3>
+            <p className="text-sm text-content-secondary leading-relaxed">
+              El excedente quedará anulado y su valor dejará de estar disponible. Esta acción no se
+              puede deshacer; si te equivocaste de valor, registra uno nuevo.
+            </p>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setVoidTargetId(null)}
+                disabled={isVoiding}
+                className="btn-secondary px-4 py-2 text-sm disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void confirmVoid()
+                }}
+                disabled={isVoiding}
+                className="btn-primary flex items-center gap-2 px-4 py-2 text-sm disabled:opacity-60"
+              >
+                {isVoiding && <Loader2 className="w-4 h-4 animate-spin" />}
+                Anular excedente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

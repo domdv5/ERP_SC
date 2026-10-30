@@ -113,8 +113,9 @@ export interface DocumentPayment {
 export interface CustomerCreditApplication {
   id: string;
   amount: string;
-  saleDocumentId: string;
-  saleDocument: { type: DocumentType };
+  // null cuando el saldo se aplicó en un recibo de caja (excedentes), no en una venta.
+  saleDocumentId: string | null;
+  saleDocument: { type: DocumentType } | null;
   appliedAt: string;
 }
 

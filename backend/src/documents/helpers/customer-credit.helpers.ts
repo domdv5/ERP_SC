@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CustomerCreditKind, Prisma } from '@prisma/client';
 import { toCents } from '@/common/utils/money.util';
 
 export interface ApplyCustomerCreditsParams {
@@ -71,6 +71,12 @@ export async function applyCustomerCredits(
     if (credit.customerId !== customerId) {
       throw new BadRequestException(
         'El saldo a favor citado no pertenece a este cliente',
+      );
+    }
+
+    if (credit.kind !== CustomerCreditKind.devolucion) {
+      throw new BadRequestException(
+        'Los excedentes solo se pueden usar en recibos de caja',
       );
     }
 

@@ -1129,7 +1129,7 @@ export default function DocumentDetailPage() {
                       {credit.applications.map((app) => (
                         <DocumentLink
                           key={app.id}
-                          canView={canSeeType(app.saleDocument.type)}
+                          canView={app.saleDocument !== null && canSeeType(app.saleDocument.type)}
                           onOpen={() => navigate(`/documents/${app.saleDocumentId}`)}
                           className="flex items-center gap-2 text-sm"
                         >
