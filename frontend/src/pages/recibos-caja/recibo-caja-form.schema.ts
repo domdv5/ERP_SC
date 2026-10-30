@@ -54,6 +54,13 @@ export const FULL_COVER_DISCOUNT_REASONS: readonly ReciboCajaDiscountReason[] = 
   'mercancia_extraviada',
 ]
 
+// Excedente disponible de la sucursal; amount 0 = no se usa en este recibo.
+const excedenteRowSchema = z.object({
+  customerCreditId: z.string(),
+  balance: z.coerce.number(),
+  amount: moneyAmount,
+})
+
 const baseSchema = z.object({
   clientId: z.string().min(1, 'Selecciona un cliente'),
   // '' = sin elegir, 'none' = facturas sin sucursal
@@ -66,6 +73,7 @@ const baseSchema = z.object({
   // '' = sin elegir
   discountReason: z.union([z.enum(RECIBO_CAJA_DISCOUNT_REASONS), z.literal('')]),
   discountAmount: moneyAmount,
+  excedentes: z.array(excedenteRowSchema),
 })
 
 export type ReciboCajaFormValues = z.infer<typeof baseSchema>
@@ -111,6 +119,17 @@ export const reciboCajaFormSchema = baseSchema.superRefine((data, ctx) => {
   const totalPayments = data.payments.reduce((sum, p) => sum + p.amount, 0)
   const discount = data.hasDiscount ? data.discountAmount : 0
 
+  data.excedentes.forEach((e, index) => {
+    if (Math.round(e.amount) > Math.round(e.balance)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `No puede superar el saldo del excedente (${formatCOP(e.balance)})`,
+        path: ['excedentes', index, 'amount'],
+      })
+    }
+  })
+  const totalExcedentes = data.excedentes.reduce((sum, e) => sum + e.amount, 0)
+
   if (data.hasDiscount) {
     if (data.discountReason === '') {
       ctx.addIssue({
@@ -147,7 +166,14 @@ export const reciboCajaFormSchema = baseSchema.superRefine((data, ctx) => {
 
   // Montos en pesos enteros: se compara redondeado para no fallar por residuos de coma
   // flotante (misma tolerancia que usa el backend con `toCents`).
-  const expectedPayments = totalAbonos - discount
+  const expectedPayments = totalAbonos - discount - totalExcedentes
+  if (Math.round(expectedPayments) < 0) {
+    ctx.addIssue({
+      code: 'custom',
+      message: `Los excedentes y el descuento superan la deuda (${formatCOP(totalAbonos)})`,
+      path: ['excedentes'],
+    })
+  }
   if (Math.round(totalPayments) !== Math.round(expectedPayments)) {
     ctx.addIssue({
       code: 'custom',

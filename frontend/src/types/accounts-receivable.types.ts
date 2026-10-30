@@ -118,22 +118,38 @@ export interface ClientStatementTotals {
   totalDebt: string
   totalPaid: string
   totalBalance: string
+  // Solo devoluciones
   availableCredit: string
+  // Solo excedentes (filtrado por sucursal si se pidió)
+  availableExcedente: string
 }
 
+// Una aplicación va a una venta (devolución) o a un recibo de caja (excedente)
 export interface ClientCreditApplication {
   id: string
   amount: string
   appliedAt: string
-  saleDocument: AccountsReceivableDocument
+  saleDocument: AccountsReceivableDocument | null
+  reciboCaja: { id: string; number: string; date: string } | null
 }
+
+export type ClientCreditKind = 'devolucion' | 'excedente'
+
+export type ClientCreditStatus = 'available' | 'used' | 'voided'
 
 export interface ClientCredit {
   id: string
   amount: string
   balance: string
-  status: 'available' | 'used'
+  kind: ClientCreditKind
+  status: ClientCreditStatus
   createdAt: string
+  date: string
+  customerBranchId: string | null
+  customerBranch: { id: string; name: string } | null
+  user: { id: string; name: string } | null
+  voidedAt: string | null
+  voidedBy: { id: string; name: string } | null
   sourceDocument: AccountsReceivableDocument | null
   applications: ClientCreditApplication[]
 }
@@ -145,6 +161,7 @@ export interface ClientBranchTotal {
   totalDebt: string
   totalPaid: string
   totalBalance: string
+  availableExcedente: string
 }
 
 export interface ClientStatement {
@@ -153,4 +170,11 @@ export interface ClientStatement {
   branchTotals: ClientBranchTotal[]
   receivables: AccountsReceivable[]
   credits: ClientCredit[]
+}
+
+export interface CreateExcedentePayload {
+  customerBranchId?: string
+  amount: number
+  // YYYY-MM-DD
+  date?: string
 }

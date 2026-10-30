@@ -17,7 +17,7 @@ Se registra en el estado de cuenta y se usa solo en recibos de caja, por cliente
 
 - T1 S2,S5,S6 schema + migración (kind, sucursal, userId, anulación; aplicación a venta o recibo) + seed permiso — inline — commit: ecc7ff4 ✅
 - T2 S1,S3,S5,S6,S7 backend registrar/anular excedente + filtro de facturación + pruebas — inline — commit: 1631153 ✅
-- T3 S3,S4,S9 backend recibo con excedentes + pruebas — inline — commit:
+- T3 S3,S4,S9 backend recibo con excedentes + pruebas — inline — commit: 4aaa70d ✅
 - T4 S1,S4,S6,S9 frontend estado de cuenta, recibo y detalle — react-code-crafter — commit:
 - T5 todas: verificación independiente + docs CLAUDE.md — commit:
 

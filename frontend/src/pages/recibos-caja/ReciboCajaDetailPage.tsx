@@ -82,6 +82,8 @@ export default function ReciboCajaDetailPage() {
   }
 
   const hasDiscount = Number(reciboCaja.discountAmount) > 0
+  const creditApplications = reciboCaja.creditApplications ?? []
+  const totalExcedentes = creditApplications.reduce((sum, c) => sum + Number(c.amount), 0)
 
   return (
     <div className="space-y-6 pb-10">
@@ -274,6 +276,46 @@ export default function ReciboCajaDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Excedentes usados */}
+      {creditApplications.length > 0 && (
+        <div className="card-hard overflow-hidden">
+          <div className="px-6 py-4 border-b border-ui-border">
+            <h2 className="text-content font-semibold">Excedentes usados</h2>
+            <p className="text-content-muted text-xs mt-0.5 font-accent">
+              Total aplicado: {formatCOP(totalExcedentes)}
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-ui-border">
+                  {['Fecha del excedente', 'Valor usado'].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ui-divide">
+                {creditApplications.map((application) => (
+                  <tr key={application.id}>
+                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                      {formatDateOnly(application.customerCredit.date)}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                      {formatCOP(Number(application.amount))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Cuentas por cobrar abonadas */}
       <div className="card-hard overflow-hidden">

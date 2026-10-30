@@ -12,6 +12,8 @@ import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
+import { usePermission } from '@/hooks/usePermission'
+import { RegisterExcedenteModal } from '@/pages/accounts-receivable/components/RegisterExcedenteModal'
 import { useReciboCajaForm, NO_BRANCH } from './useReciboCajaForm'
 import {
   RECIBO_CAJA_PAYMENT_METHODS,
@@ -93,6 +95,10 @@ export default function RecibosCajaNewPage() {
     watch,
     handleSubmit,
     receivablesFields,
+    excedentesFields,
+    setExcedenteAmount,
+    fillExcedente,
+    totalExcedentes,
     paymentsArray,
     errors,
     setReceivableAmount,
@@ -118,6 +124,8 @@ export default function RecibosCajaNewPage() {
   } = useReciboCajaForm()
   const missingPayment = Math.round(expectedPayments) - Math.round(totalPayments)
 
+  const canCreateExcedente = usePermission('excedente.create')
+  const [excedenteModalOpen, setExcedenteModalOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   // Diferido hasta que se cierre el diálogo de confirmación, para no repoblar la tabla detrás de él
   const [needsOpenItemsRefetch, setNeedsOpenItemsRefetch] = useState(false)
@@ -157,6 +165,8 @@ export default function RecibosCajaNewPage() {
   const receivableById = new Map((openItems?.receivables ?? []).map((r) => [r.id, r]))
 
   const watchedReceivables = watch('receivables')
+  const watchedExcedentes = watch('excedentes')
+  const excedenteById = new Map((openItems?.excedentes ?? []).map((e) => [e.id, e]))
   const hasSelectedReceivable = watchedReceivables.some((r) => r.selected)
 
   const openConfirm = handleSubmit(
@@ -306,11 +316,23 @@ export default function RecibosCajaNewPage() {
             <>
               {/* Cuentas por cobrar abiertas */}
               <div className="card-hard overflow-hidden">
-                <div className="px-6 py-4 border-b border-ui-border">
-                  <h2 className="text-content font-semibold">Cuentas por cobrar abiertas</h2>
-                  <p className="text-content-muted text-xs mt-0.5 font-accent">
-                    Selecciona las que va a cubrir este recibo y ajusta el abono de cada una
-                  </p>
+                <div className="px-6 py-4 border-b border-ui-border flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <h2 className="text-content font-semibold">Cuentas por cobrar abiertas</h2>
+                    <p className="text-content-muted text-xs mt-0.5 font-accent">
+                      Selecciona las que va a cubrir este recibo y ajusta el abono de cada una
+                    </p>
+                  </div>
+                  {canCreateExcedente && (
+                    <button
+                      type="button"
+                      onClick={() => setExcedenteModalOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brand-secondary border border-brand-secondary/30 rounded-lg hover:bg-brand-secondary/10 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Registrar excedente
+                    </button>
+                  )}
                 </div>
 
                 {receivablesFields.length === 0 ? (
@@ -391,6 +413,79 @@ export default function RecibosCajaNewPage() {
                   </div>
                 )}
               </div>
+
+              {/* Saldos a favor por excedentes */}
+              {excedentesFields.length > 0 && (
+                <div className="card-hard overflow-hidden">
+                  <div className="px-6 py-4 border-b border-ui-border">
+                    <h2 className="text-content font-semibold">Saldos a favor (excedentes)</h2>
+                    <p className="text-content-muted text-xs mt-0.5 font-accent">
+                      Pagos de más del cliente en esta sucursal; lo que uses se resta del dinero a
+                      cobrar
+                    </p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-ui-border">
+                          {['Fecha', 'Saldo', 'Usar en este recibo'].map((h) => (
+                            <th
+                              key={h}
+                              className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
+                            >
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-ui-divide">
+                        {excedentesFields.map((field, index) => {
+                          const row = watchedExcedentes[index]
+                          const openExcedente = excedenteById.get(field.customerCreditId)
+                          const rowError = errors.excedentes?.[index]?.amount
+                          return (
+                            <tr key={field.id}>
+                              <td className="px-5 py-3 text-content-muted text-xs whitespace-nowrap">
+                                {openExcedente ? formatDateOnly(openExcedente.date) : '—'}
+                              </td>
+                              <td className="px-5 py-3 text-content-secondary text-xs whitespace-nowrap">
+                                {formatCOP(row?.balance ?? 0)}
+                              </td>
+                              <td className="px-5 py-3">
+                                <div className="flex items-center gap-2">
+                                  <ThousandsInput
+                                    value={row?.amount}
+                                    onChange={(v) => setExcedenteAmount(index, v ?? 0)}
+                                    placeholder="0"
+                                    className="w-32 py-1.5"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => fillExcedente(index)}
+                                    className="text-xs font-medium text-brand-secondary hover:underline"
+                                  >
+                                    Usar todo
+                                  </button>
+                                </div>
+                                {rowError && (
+                                  <p className="text-xs text-red-500 font-accent mt-1">
+                                    {rowError.message}
+                                  </p>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {errors.excedentes?.message && (
+                    <p className="px-6 py-3 text-xs text-red-500 font-accent">
+                      {errors.excedentes.message}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Formas de pago */}
               <div className="card-hard overflow-hidden">
@@ -590,26 +685,38 @@ export default function RecibosCajaNewPage() {
                         </p>
                       )}
                     </div>
+                  </div>
+                )}
 
-                    <div className="space-y-1.5 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-content-secondary">Deuda</span>
-                        <span className="font-mono font-medium text-content">
-                          {formatCOP(totalAbonos)}
-                        </span>
-                      </div>
+                {(hasDiscount || totalExcedentes > 0) && (
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-content-secondary">Deuda</span>
+                      <span className="font-mono font-medium text-content">
+                        {formatCOP(totalAbonos)}
+                      </span>
+                    </div>
+                    {hasDiscount && (
                       <div className="flex items-center justify-between">
                         <span className="text-content-secondary">Descuento</span>
                         <span className="font-mono font-medium text-content">
                           − {formatCOP(discount)}
                         </span>
                       </div>
+                    )}
+                    {totalExcedentes > 0 && (
                       <div className="flex items-center justify-between">
-                        <span className="text-content-secondary">Total a cobrar</span>
+                        <span className="text-content-secondary">Excedentes</span>
                         <span className="font-mono font-medium text-content">
-                          {formatCOP(expectedPayments)}
+                          − {formatCOP(totalExcedentes)}
                         </span>
                       </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-content-secondary">Total a cobrar</span>
+                      <span className="font-mono font-medium text-content">
+                        {formatCOP(expectedPayments)}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -666,8 +773,8 @@ export default function RecibosCajaNewPage() {
         open={confirmOpen}
         title="Registrar recibo de caja"
         description={
-          hasDiscount
-            ? `Se registrará el cobro por ${formatCOP(expectedPayments)} con un descuento de ${formatCOP(discount)} sobre ${formatCOP(totalAbonos)} de deuda. Esta acción no se puede deshacer.`
+          hasDiscount || totalExcedentes > 0
+            ? `Se registrará el cobro por ${formatCOP(expectedPayments)} sobre ${formatCOP(totalAbonos)} de deuda${hasDiscount ? `, con un descuento de ${formatCOP(discount)}` : ''}${totalExcedentes > 0 ? `${hasDiscount ? ' y' : ','} ${formatCOP(totalExcedentes)} de excedentes aplicados` : ''}. Esta acción no se puede deshacer.`
             : `Se registrará el cobro por ${formatCOP(totalAbonos)} a las cuentas por cobrar seleccionadas. Esta acción no se puede deshacer.`
         }
         confirmLabel="Confirmar y registrar"
@@ -676,6 +783,13 @@ export default function RecibosCajaNewPage() {
           void confirmAndSubmit()
         }}
         onCancel={closeConfirmDialog}
+      />
+
+      <RegisterExcedenteModal
+        open={excedenteModalOpen}
+        clientId={clientId}
+        defaultBranchId={watch('customerBranchId')}
+        onClose={() => setExcedenteModalOpen(false)}
       />
     </div>
   )
