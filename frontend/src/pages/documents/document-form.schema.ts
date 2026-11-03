@@ -70,7 +70,7 @@ export const formSchema = z
     if (data.type === 'CM' || data.type === 'DVC' || data.type === 'CMO') {
       if (!data.thirdPartyId) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'El proveedor es requerido',
           path: ['thirdPartyId'],
         })
@@ -81,7 +81,7 @@ export const formSchema = z
       (data.type === 'CMO' && !data.supplierInvoiceNumber?.trim())
     ) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'El número de factura del proveedor es requerido',
         path: ['supplierInvoiceNumber'],
       })
@@ -90,7 +90,7 @@ export const formSchema = z
       data.items.forEach((item, index) => {
         if (item.unitCost === undefined || item.unitCost <= 0) {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: 'custom',
             message: 'El valor unitario (sin IVA) es obligatorio y debe ser mayor a cero',
             path: ['items', index, 'unitCost'],
           })
@@ -101,14 +101,14 @@ export const formSchema = z
     if (data.type === 'PV' || data.type === 'REM') {
       if (!data.thirdPartyId) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'El cliente es requerido',
           path: ['thirdPartyId'],
         })
       }
       if (!data.sellerId) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'La vendedora es requerida',
           path: ['sellerId'],
         })
@@ -116,7 +116,7 @@ export const formSchema = z
     }
     if (data.type === 'CM' && !data.receiverId) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'Indica quién recibió la mercancía',
         path: ['receiverId'],
       })
@@ -126,21 +126,21 @@ export const formSchema = z
     if (data.type === 'DVV') {
       if (!data.thirdPartyId) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'El cliente es requerido',
           path: ['thirdPartyId'],
         })
       }
       if (!data.refundMethod) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'La modalidad de devolución es requerida',
           path: ['refundMethod'],
         })
       }
       if (data.refundMethod === 'saldo_a_favor' && !data.creditUsableIn) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'Elige dónde se usa el saldo a favor: en facturación o en administración',
           path: ['creditUsableIn'],
         })
@@ -150,7 +150,7 @@ export const formSchema = z
       data.items.forEach((item, index) => {
         if (item.unitCost === undefined || item.unitCost <= 0) {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: 'custom',
             message: 'El costo unitario es obligatorio y debe ser mayor a cero',
             path: ['items', index, 'unitCost'],
           })
@@ -158,14 +158,14 @@ export const formSchema = z
       })
       if (!data.adjustmentReason) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'El motivo del ajuste es requerido',
           path: ['adjustmentReason'],
         })
       }
       if (data.adjustmentReason === 'otro' && !data.adjustmentReasonOther?.trim()) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'Describe el motivo del ajuste',
           path: ['adjustmentReasonOther'],
         })
@@ -174,21 +174,21 @@ export const formSchema = z
     if (data.type === 'T') {
       if (!data.warehouseId) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'La bodega origen es requerida',
           path: ['warehouseId'],
         })
       }
       if (!data.destWarehouseId) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'La bodega destino es requerida',
           path: ['destWarehouseId'],
         })
       }
       if (data.warehouseId && data.destWarehouseId && data.warehouseId === data.destWarehouseId) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'Las bodegas origen y destino deben ser distintas',
           path: ['destWarehouseId'],
         })
@@ -197,7 +197,7 @@ export const formSchema = z
         const distinctProductIds = new Set(data.items.map((item) => item.productId))
         if (distinctProductIds.size > 1) {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: 'custom',
             message: 'Un traslado a bulto solo puede contener un único producto',
             path: ['destBinId'],
           })
