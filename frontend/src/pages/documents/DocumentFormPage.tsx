@@ -232,7 +232,7 @@ export default function DocumentFormPage() {
           </button>
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || items.isScanPending}
             className="btn-primary flex items-center gap-2 px-5 py-2 text-sm disabled:opacity-60"
           >
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}

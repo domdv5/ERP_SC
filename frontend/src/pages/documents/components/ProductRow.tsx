@@ -36,8 +36,6 @@ interface ProductRowProps {
   initialUnitOfMeasure?: 'unidad' | 'docena'
   // Ya conocido al crear la fila (p. ej. por escaneo); alimenta el aviso de "cantidad mayor al disponible".
   initialAvailableStock?: number
-  // Referencia al input de cantidad para el ciclo de foco escanear → cantidad → escanear; opcional, la fila funciona igual sin esto.
-  quantityInputRef?: (el: HTMLInputElement | null) => void
   // Devuelve el foco al escáner al confirmar cantidad con Enter, se haya creado la fila por escaneo o a mano.
   onQuantityConfirmed?: () => void
   // Marcas del proveedor elegido (solo compras/devoluciones); sin valor cuando el tipo no usa este filtro.
@@ -57,7 +55,6 @@ export function ProductRow({
   initialAvgCost,
   initialUnitOfMeasure,
   initialAvailableStock,
-  quantityInputRef,
   onQuantityConfirmed,
   supplierBrandIds,
 }: ProductRowProps) {
@@ -251,29 +248,18 @@ export function ProductRow({
 
         {/* Cantidad */}
         <td className="px-3 py-2 w-28">
-          {(() => {
-            const { ref: quantityRegisterRef, ...quantityRegisterRest } = register(
-              `items.${index}.quantity`,
-            )
-            return (
-              <input
-                type="number"
-                min={1}
-                step={1}
-                {...quantityRegisterRest}
-                ref={(el) => {
-                  quantityRegisterRef(el)
-                  quantityInputRef?.(el)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter') return
-                  e.preventDefault()
-                  onQuantityConfirmed?.()
-                }}
-                className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
-              />
-            )
-          })()}
+          <input
+            type="number"
+            min={1}
+            step={1}
+            {...register(`items.${index}.quantity`)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return
+              e.preventDefault()
+              onQuantityConfirmed?.()
+            }}
+            className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
+          />
         </td>
 
         {/* Observaciones (talla) — solo en traslados */}

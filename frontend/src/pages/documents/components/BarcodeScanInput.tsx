@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import type { Product } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
+import { createScanQueue, findRowIndexByCode } from './scan-queue'
 
 export interface BarcodeScanInputHandle {
   focus: () => void
@@ -23,8 +24,8 @@ interface BarcodeScanInputProps {
     unitOfMeasure: 'unidad' | 'docena',
     availableStock: number,
   ) => void
-  // Foco a la fila afectada (nueva o sumada) tras un escaneo correcto
-  focusQuantityInput: (index: number) => void
+  // true mientras haya lecturas en la fila; el documento no se guarda hasta que vuelva a false
+  onPendingChange?: (hasPending: boolean) => void
   // Marcas del proveedor elegido (solo compras/devoluciones); otra marca bloquea el escaneo, no solo avisa
   supplierBrandIds?: string[]
   disabled?: boolean
@@ -32,7 +33,7 @@ interface BarcodeScanInputProps {
   supplierName?: string
 }
 
-// Input siempre enfocado para lector de código de barras: Enter busca por código exacto y suma cantidad o agrega fila
+// Input siempre enfocado para lector de código de barras: cada Enter entra a la fila y suma cantidad o agrega fila
 // No reusa el Combobox compartido porque ese solo funciona con mouse, incompatible con un lector
 export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanInputProps>(
   function BarcodeScanInput(
@@ -42,7 +43,7 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
       getValues,
       setValue,
       onProductScanned,
-      focusQuantityInput,
+      onPendingChange,
       supplierBrandIds,
       disabled,
       supplierName,
@@ -50,8 +51,6 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
     ref,
   ) {
     const inputRef = useRef<HTMLInputElement>(null)
-    // Evita duplicar el ítem si el lector dispara un segundo Enter mientras el primero sigue en curso
-    const isProcessingRef = useRef(false)
 
     useImperativeHandle(ref, () => ({
       focus: () => {
@@ -64,82 +63,93 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
       inputRef.current?.focus()
     }, [disabled])
 
-    const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (disabled) return
-      if (e.key !== 'Enter') return
-      e.preventDefault()
-      if (isProcessingRef.current) return
+    const addOneTo = (index: number, productCode: string) => {
+      const currentQty = Number(getValues(`items.${index}.quantity`)) || 0
+      setValue(`items.${index}.quantity`, currentQty + 1)
+      setValue(`items.${index}.addedAt`, new Date().toISOString())
+      toast.success(`${productCode} — cantidad +1`)
+    }
 
-      const input = inputRef.current
-      const code = input?.value.trim() ?? ''
-      if (!code) {
-        // Sin código no hay fila a la que saltar; el foco se queda acá (ya lo tenía).
-        inputRef.current?.focus()
+    const processCode = async (code: string) => {
+      const currentItems = getValues('items')
+      // Producto ya en el documento: +1 sin ir al servidor; su precio y costo ya quedaron en la fila
+      const rowIndex = findRowIndexByCode(currentItems, code)
+      if (rowIndex >= 0) {
+        addOneTo(rowIndex, currentItems[rowIndex].productCode)
         return
       }
 
-      isProcessingRef.current = true
+      let product: Product
       try {
-        let product: Product
-        try {
-          product = await getProductByCode(code)
-        } catch (error) {
-          if ((error as { response?: { status?: number } })?.response?.status === 404) {
-            toast.error('Código no encontrado')
-            // Caso de error: no hay fila de cantidad a la que saltar, el foco se queda acá.
-            inputRef.current?.focus()
-            return
-          }
-          throw error
-        }
-
-        // Bloqueo total, no solo aviso: marca distinta del proveedor elegido es siempre un error real
-        if (supplierBrandIds !== undefined && !supplierBrandIds.includes(product.brandId)) {
-          toast.error(
-            `${product.code} no pertenece a las marcas de ${supplierName ?? 'este proveedor'}`,
-          )
-          inputRef.current?.focus()
-          return
-        }
-
-        const currentItems = getValues('items')
-        const existingIndex = currentItems.findIndex((item) => item.productId === product.id)
-
-        if (existingIndex >= 0) {
-          const currentQty = Number(currentItems[existingIndex].quantity) || 0
-          setValue(`items.${existingIndex}.quantity`, currentQty + 1)
-          setValue(`items.${existingIndex}.addedAt`, new Date().toISOString())
-          toast.success(`${product.code} — cantidad +1`)
-          focusQuantityInput(existingIndex)
+        product = await getProductByCode(code)
+      } catch (error) {
+        if ((error as { response?: { status?: number } })?.response?.status === 404) {
+          toast.error(`Código no encontrado: ${code}`)
         } else {
-          const avgCost = Number(product.avgCost)
-          const salePrice = Number(product.salePrice)
-          const shouldPrefillCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
-          const shouldPrefillPrice =
-            docType === 'PV' || docType === 'POS' || docType === 'COT' || docType === 'POSO'
-          const newIndex = currentItems.length
-          append({
-            productId: product.id,
-            productCode: product.code,
-            productDesc: product.description,
-            quantity: 1,
-            unitCost: shouldPrefillCost ? avgCost : undefined,
-            unitPrice: shouldPrefillPrice ? salePrice : undefined,
-            observaciones: undefined,
-            addedAt: new Date().toISOString(),
-          })
-          onProductScanned(product.id, avgCost, product.unitOfMeasure, product.availableStock)
-          toast.success(`${product.code} agregado`)
-          focusQuantityInput(newIndex)
+          toast.error('Error al buscar el producto')
         }
-      } catch {
-        toast.error('Error al buscar el producto')
-        // Caso de error: mismo criterio que cuando no se encuentra el código, no hay fila a la que saltar.
-        inputRef.current?.focus()
-      } finally {
-        if (input) input.value = ''
-        isProcessingRef.current = false
+        return
       }
+
+      // Bloqueo total, no solo aviso: marca distinta del proveedor elegido es siempre un error real
+      if (supplierBrandIds !== undefined && !supplierBrandIds.includes(product.brandId)) {
+        toast.error(
+          `${product.code} no pertenece a las marcas de ${supplierName ?? 'este proveedor'}`,
+        )
+        return
+      }
+
+      const itemsNow = getValues('items')
+      const existingIndex = itemsNow.findIndex((item) => item.productId === product.id)
+      if (existingIndex >= 0) {
+        addOneTo(existingIndex, product.code)
+        return
+      }
+
+      const avgCost = Number(product.avgCost)
+      const salePrice = Number(product.salePrice)
+      const shouldPrefillCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
+      const shouldPrefillPrice =
+        docType === 'PV' || docType === 'POS' || docType === 'COT' || docType === 'POSO'
+      append(
+        {
+          productId: product.id,
+          productCode: product.code,
+          productDesc: product.description,
+          quantity: 1,
+          unitCost: shouldPrefillCost ? avgCost : undefined,
+          unitPrice: shouldPrefillPrice ? salePrice : undefined,
+          observaciones: undefined,
+          addedAt: new Date().toISOString(),
+        },
+        // El foco se queda en el escaneo para poder pistolear seguido
+        { shouldFocus: false },
+      )
+      onProductScanned(product.id, avgCost, product.unitOfMeasure, product.availableStock)
+      toast.success(`${product.code} agregado`)
+    }
+
+    // La fila se crea una sola vez: lee siempre la versión de processCode con las props actuales
+    const processCodeRef = useRef(processCode)
+    processCodeRef.current = processCode
+    const onPendingChangeRef = useRef(onPendingChange)
+    onPendingChangeRef.current = onPendingChange
+    const queueRef = useRef<ReturnType<typeof createScanQueue> | null>(null)
+    queueRef.current ??= createScanQueue(
+      (code) => processCodeRef.current(code),
+      (pending) => onPendingChangeRef.current?.(pending > 0),
+    )
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (disabled) return
+      if (e.key !== 'Enter') return
+      e.preventDefault()
+      const input = e.currentTarget
+      const code = input.value.trim()
+      // Se limpia ya, no al terminar: la siguiente lectura no se mezcla con esta
+      input.value = ''
+      if (!code) return
+      queueRef.current?.enqueue(code)
     }
 
     return (
@@ -153,9 +163,7 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
             ref={inputRef}
             type="text"
             defaultValue=""
-            onKeyDown={(e) => {
-              void handleKeyDown(e)
-            }}
+            onKeyDown={handleKeyDown}
             placeholder={
               disabled ? 'Selecciona un proveedor primero' : 'Escanear código de barras...'
             }
