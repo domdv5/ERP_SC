@@ -22,6 +22,9 @@ interface ComboboxProps {
   error?: string | boolean
 }
 
+// Alto del menú abierto: buscador + lista (max-h-52) + bordes
+const MENU_HEIGHT = 270
+
 // Menú con createPortal a document.body para no quedar recortado por overflow:hidden del padre
 // Sin soporte de teclado (solo mouse) — por eso el escaneo de código de barras usa BarcodeScanInput aparte
 export function Combobox({
@@ -56,7 +59,14 @@ export function Combobox({
   const updatePosition = () => {
     if (!triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
-    setDropdownStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+    const spaceBelow = window.innerHeight - rect.bottom
+    // Sin espacio abajo (p. ej. última fila de la tabla) abre hacia arriba para no quedar cortado
+    const opensUp = spaceBelow < MENU_HEIGHT && rect.top > spaceBelow
+    setDropdownStyle(
+      opensUp
+        ? { bottom: window.innerHeight - rect.top + 4, left: rect.left, width: rect.width }
+        : { top: rect.bottom + 4, left: rect.left, width: rect.width },
+    )
   }
 
   useEffect(() => {
