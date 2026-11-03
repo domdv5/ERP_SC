@@ -22,6 +22,9 @@ interface ComboboxProps {
   error?: string | boolean
 }
 
+// Alto del menú abierto: buscador + lista (max-h-52) + bordes
+const MENU_HEIGHT = 270
+
 // Menú con createPortal a document.body para no quedar recortado por overflow:hidden del padre
 // Sin soporte de teclado (solo mouse) — por eso el escaneo de código de barras usa BarcodeScanInput aparte
 export function Combobox({
@@ -56,7 +59,21 @@ export function Combobox({
   const updatePosition = () => {
     if (!triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
-    setDropdownStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+    const spaceBelow = window.innerHeight - rect.bottom
+    // Sin espacio abajo (p. ej. última fila de la tabla) abre hacia arriba para no quedar cortado
+    const opensUp = spaceBelow < MENU_HEIGHT && rect.top > spaceBelow
+    // Si ningún lado alcanza (ventana muy baja), la lista se achica al espacio disponible
+    const maxHeight = Math.min(MENU_HEIGHT, (opensUp ? rect.top : spaceBelow) - 8)
+    setDropdownStyle(
+      opensUp
+        ? {
+            bottom: window.innerHeight - rect.top + 4,
+            left: rect.left,
+            width: rect.width,
+            maxHeight,
+          }
+        : { top: rect.bottom + 4, left: rect.left, width: rect.width, maxHeight },
+    )
   }
 
   useEffect(() => {
@@ -123,7 +140,7 @@ export function Combobox({
           <div
             ref={dropdownRef}
             style={{ position: 'fixed', zIndex: 9999, ...dropdownStyle }}
-            className="bg-surface border-2 border-ui-border-medium rounded-md shadow-md overflow-hidden"
+            className="flex flex-col bg-surface border-2 border-ui-border-medium rounded-md shadow-md overflow-hidden"
           >
             <div className="p-2 border-b-2 border-ui-border">
               <div className="relative">
@@ -137,7 +154,7 @@ export function Combobox({
                 />
               </div>
             </div>
-            <div className="max-h-52 overflow-y-auto">
+            <div className="max-h-52 min-h-0 overflow-y-auto">
               {isLoading && (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="w-4 h-4 animate-spin text-content-faint" />
