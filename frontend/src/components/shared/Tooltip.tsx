@@ -1,6 +1,9 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+// Alto aproximado del globo más un margen
+const MIN_SPACE_ABOVE = 40
+
 interface TooltipProps {
   content: ReactNode
   children: ReactNode
@@ -10,11 +13,20 @@ interface TooltipProps {
 // Globo con createPortal para que el overflow de las tablas no lo corte; se abre con mouse, foco o toque
 export function Tooltip({ content, children, label }: TooltipProps) {
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
+  const [position, setPosition] = useState<{ top: number; left: number; below: boolean } | null>(
+    null,
+  )
 
   const show = () => {
     const rect = triggerRef.current?.getBoundingClientRect()
-    if (rect) setPosition({ top: rect.top - 6, left: rect.left + rect.width / 2 })
+    if (!rect) return
+    // Cerca del borde superior el globo va debajo del ícono para no salirse de la pantalla
+    const below = rect.top < MIN_SPACE_ABOVE
+    setPosition({
+      top: below ? rect.bottom + 6 : rect.top - 6,
+      left: rect.left + rect.width / 2,
+      below,
+    })
   }
   const hide = () => setPosition(null)
 
@@ -41,7 +53,7 @@ export function Tooltip({ content, children, label }: TooltipProps) {
               position: 'fixed',
               top: position.top,
               left: position.left,
-              transform: 'translate(-50%, -100%)',
+              transform: position.below ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
               zIndex: 9999,
             }}
             className="pointer-events-none whitespace-nowrap rounded-md border-2 border-ui-border-medium bg-surface px-2.5 py-1 text-xs text-content shadow-md"

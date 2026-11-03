@@ -7,9 +7,9 @@ import type { FormValues } from '@/pages/documents/document-form.schema'
 // El escaneo no trae precio mínimo ni producto completo; se pide el detalle de cada código del carrito aparte.
 export function useCartProducts(cartItems: FormValues['items']) {
   // Clave por códigos, no por referencia: elegir producto en una fila vacía no cambia la referencia del arreglo
-  const codesKey = cartItems.map((i) => i.productCode ?? '').join('|')
+  const codesKey = JSON.stringify(cartItems.map((i) => i.productCode ?? ''))
   const uniqueProductCodes = useMemo(
-    () => Array.from(new Set(codesKey.split('|').filter(Boolean))),
+    () => Array.from(new Set((JSON.parse(codesKey) as string[]).filter(Boolean))),
     [codesKey],
   )
 
