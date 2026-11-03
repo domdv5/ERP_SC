@@ -47,6 +47,7 @@ const makeExisting = (overrides: Record<string, unknown> = {}) => ({
     { method: 'efectivo_almacen', amount: new Prisma.Decimal('96800.00') },
   ],
   refundMethod: null,
+  creditUsableIn: null,
   notes: null,
   warehouseId: 'store-1',
   destWarehouseId: null,

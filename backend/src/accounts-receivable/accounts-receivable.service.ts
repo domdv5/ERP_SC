@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CustomerCreditKind, Prisma } from '@prisma/client';
+import { CustomerCreditUsableIn, Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   buildDateColumnRange,
@@ -163,7 +163,7 @@ type BranchReceivable = Pick<ListRow, 'totalAmount' | 'paidAmount'> & {
 };
 
 /** Una fila por sucursal del cliente más "Sin sucursal" (branchId null) solo si hay CxC sin sucursal. */
-type BranchExcedente = {
+type BranchCredit = {
   status: string;
   balance: Prisma.Decimal;
   customerBranchId: string | null;
@@ -178,7 +178,7 @@ function sumAvailable(credits: { status: string; balance: Prisma.Decimal }[]) {
 function buildBranchTotals(
   branches: { id: string; name: string }[],
   receivables: BranchReceivable[],
-  excedentes: BranchExcedente[],
+  branchCredits: BranchCredit[],
 ) {
   const totalsFor = (
     branchId: string | null,
@@ -189,7 +189,7 @@ function buildBranchTotals(
     totalDebt: Prisma.Decimal;
     totalPaid: Prisma.Decimal;
     totalBalance: Prisma.Decimal;
-    availableExcedente: Prisma.Decimal;
+    availableBranchCredit: Prisma.Decimal;
   } => {
     const rows = receivables.filter(
       (receivable) => receivable.document.customerBranchId === branchId,
@@ -208,8 +208,8 @@ function buildBranchTotals(
       totalDebt,
       totalPaid,
       totalBalance: totalDebt.minus(totalPaid),
-      availableExcedente: sumAvailable(
-        excedentes.filter((credit) => credit.customerBranchId === branchId),
+      availableBranchCredit: sumAvailable(
+        branchCredits.filter((credit) => credit.customerBranchId === branchId),
       ),
     };
   };
@@ -217,7 +217,7 @@ function buildBranchTotals(
   const rows = branches.map((branch) => totalsFor(branch.id, branch.name));
   if (
     receivables.some((r) => r.document.customerBranchId === null) ||
-    excedentes.some((credit) => credit.customerBranchId === null)
+    branchCredits.some((credit) => credit.customerBranchId === null)
   ) {
     rows.push(totalsFor(null, 'Sin sucursal'));
   }
@@ -505,19 +505,19 @@ export class AccountsReceivableService {
       }),
     ]);
 
-    const allExcedentes = rawCredits.filter(
-      (credit) => credit.kind === CustomerCreditKind.excedente,
+    const administracionCredits = rawCredits.filter(
+      (credit) => credit.usableIn === CustomerCreditUsableIn.administracion,
     );
     const branchTotals = buildBranchTotals(
       branches,
       allReceivables,
-      allExcedentes,
+      administracionCredits,
     );
 
-    // Las devoluciones son del cliente; los excedentes son de su sucursal y se recortan con el filtro.
+    // Los de facturación son del cliente; los de administración son de su sucursal y se recortan con el filtro.
     const credits = rawCredits.filter(
       (credit) =>
-        credit.kind === CustomerCreditKind.devolucion ||
+        credit.usableIn === CustomerCreditUsableIn.facturacion ||
         !customerBranchId ||
         credit.customerBranchId === customerBranchId,
     );
@@ -538,10 +538,14 @@ export class AccountsReceivableService {
       new Prisma.Decimal(0),
     );
     const availableCredit = sumAvailable(
-      credits.filter((credit) => credit.kind === CustomerCreditKind.devolucion),
+      credits.filter(
+        (credit) => credit.usableIn === CustomerCreditUsableIn.facturacion,
+      ),
     );
-    const availableExcedente = sumAvailable(
-      credits.filter((credit) => credit.kind === CustomerCreditKind.excedente),
+    const availableBranchCredit = sumAvailable(
+      credits.filter(
+        (credit) => credit.usableIn === CustomerCreditUsableIn.administracion,
+      ),
     );
 
     return {
@@ -551,7 +555,7 @@ export class AccountsReceivableService {
         totalPaid,
         totalBalance: totalDebt.minus(totalPaid),
         availableCredit,
-        availableExcedente,
+        availableBranchCredit,
       },
       branchTotals,
       receivables,

@@ -28,7 +28,7 @@ const emptyDefaults = (): ReciboCajaFormValues => ({
   hasDiscount: false,
   discountReason: '',
   discountAmount: 0,
-  excedentes: [],
+  credits: [],
 })
 
 // Toda la lógica de negocio del form de Recibos de Caja (carga, cuadre, envío) — la página solo arma el layout
@@ -55,7 +55,7 @@ export function useReciboCajaForm() {
 
   const receivablesArray = useFieldArray({ control, name: 'receivables' })
   const paymentsArray = useFieldArray({ control, name: 'payments' })
-  const excedentesArray = useFieldArray({ control, name: 'excedentes' })
+  const creditsArray = useFieldArray({ control, name: 'credits' })
 
   const clientId = watch('clientId')
 
@@ -99,14 +99,14 @@ export function useReciboCajaForm() {
   function changeClient() {
     setValue('customerBranchId', '')
     receivablesArray.replace([])
-    excedentesArray.replace([])
+    creditsArray.replace([])
   }
 
   // Cambiar de sucursal descarta las filas: el recibo solo cobra facturas de una sucursal
   function changeBranch(next: string) {
     setValue('customerBranchId', next)
     receivablesArray.replace([])
-    excedentesArray.replace([])
+    creditsArray.replace([])
   }
 
   // Cambiar de cliente reinicia las filas: las CxC de uno no aplican a otro
@@ -114,7 +114,7 @@ export function useReciboCajaForm() {
     if (!openItems) return
     // Un refresco del mismo cliente (ej. tras registrar un excedente) conserva lo ya marcado y escrito
     const previousReceivables = new Map(watch('receivables').map((r) => [r.accountReceivableId, r]))
-    const previousExcedentes = new Map(watch('excedentes').map((e) => [e.customerCreditId, e]))
+    const previousCredits = new Map(watch('credits').map((e) => [e.customerCreditId, e]))
     // balance llega como string (Decimal de Prisma); sin Number() acá zod rechaza el default con "expected number"
     receivablesArray.replace(
       openItems.receivables.map((r) => {
@@ -127,13 +127,15 @@ export function useReciboCajaForm() {
         }
       }),
     )
-    excedentesArray.replace(
-      (openItems.excedentes ?? []).map((e) => ({
-        customerCreditId: e.id,
-        balance: Number(e.balance),
-        // Si otro recibo gastó parte del excedente, lo ya escrito no puede pasar del saldo nuevo
-        amount: Math.min(previousExcedentes.get(e.id)?.amount ?? 0, Number(e.balance)),
-      })),
+    creditsArray.replace(
+      (openItems.credits ?? [])
+        .filter((e) => e.usableIn === 'administracion')
+        .map((e) => ({
+          customerCreditId: e.id,
+          balance: Number(e.balance),
+          // Si otro recibo gastó parte del saldo a favor, lo ya escrito no puede pasar del saldo nuevo
+          amount: Math.min(previousCredits.get(e.id)?.amount ?? 0, Number(e.balance)),
+        })),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openItems])
@@ -150,9 +152,9 @@ export function useReciboCajaForm() {
   const totalPayments = watchedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
   const hasDiscount = watch('hasDiscount')
   const discount = hasDiscount ? Number(watch('discountAmount')) || 0 : 0
-  const watchedExcedentes = watch('excedentes')
-  const totalExcedentes = watchedExcedentes.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
-  const expectedPayments = totalAbonos - discount - totalExcedentes
+  const watchedCredits = watch('credits')
+  const totalCredits = watchedCredits.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+  const expectedPayments = totalAbonos - discount - totalCredits
   const cuadraOk = Math.round(totalPayments) === Math.round(expectedPayments)
 
   function setReceivableAmount(accountReceivableId: string, next: number) {
@@ -165,21 +167,21 @@ export function useReciboCajaForm() {
     setValue(`receivables.${index}.amount`, clamped)
   }
 
-  function setExcedenteAmount(index: number, next: number) {
-    const balance = watch(`excedentes.${index}.balance`)
+  function setCreditAmount(index: number, next: number) {
+    const balance = watch(`credits.${index}.balance`)
     const clamped = Number.isNaN(next) || next < 0 ? 0 : Math.min(next, balance)
-    setValue(`excedentes.${index}.amount`, clamped)
+    setValue(`credits.${index}.amount`, clamped)
   }
 
-  // Usa lo que falta de la deuda (tras descuento y otros excedentes), sin pasar del saldo del excedente
-  function fillExcedente(index: number) {
-    const others = watch('excedentes').reduce(
+  // Usa lo que falta de la deuda (tras descuento y otros saldos a favor), sin pasar del saldo del saldo a favor
+  function fillCredit(index: number) {
+    const others = watch('credits').reduce(
       (sum, e, i) => (i === index ? sum : sum + (Number(e.amount) || 0)),
       0,
     )
     const remaining = totalAbonos - discount - others
-    const balance = watch(`excedentes.${index}.balance`)
-    setValue(`excedentes.${index}.amount`, Math.max(0, Math.min(balance, remaining)))
+    const balance = watch(`credits.${index}.balance`)
+    setValue(`credits.${index}.amount`, Math.max(0, Math.min(balance, remaining)))
   }
 
   function toggleReceivable(accountReceivableId: string, selected: boolean) {
@@ -235,7 +237,7 @@ export function useReciboCajaForm() {
         values.hasDiscount && values.discountReason !== ''
           ? { reason: values.discountReason, amount: values.discountAmount }
           : undefined,
-      excedentes: values.excedentes
+      credits: values.credits
         .filter((e) => e.amount > 0)
         .map((e) => ({ customerCreditId: e.customerCreditId, amount: e.amount })),
     }
@@ -263,10 +265,10 @@ export function useReciboCajaForm() {
     reset,
     handleSubmit,
     receivablesFields: receivablesArray.fields,
-    excedentesFields: excedentesArray.fields,
-    setExcedenteAmount,
-    fillExcedente,
-    totalExcedentes,
+    creditFields: creditsArray.fields,
+    setCreditAmount,
+    fillCredit,
+    totalCredits,
     paymentsArray,
     errors,
     setReceivableAmount,

@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { resolveStoredCreditUsableIn } from './credit-usable-in.helpers';
 import type { CreateDocumentDto } from '../dto/index';
 import type { DocumentEffectStrategy } from '@/documents/strategies/document-effect.strategy';
 
@@ -16,6 +17,7 @@ export type ExistingDocumentForIdempotency = {
   receiverId: string | null;
   customerBranchId: string | null;
   refundMethod: string | null;
+  creditUsableIn: string | null;
   notes: string | null;
   warehouseId: string | null;
   destWarehouseId: string | null;
@@ -66,6 +68,7 @@ function signature(doc: ExistingDocumentForIdempotency): string {
     doc.receiverId ?? null,
     doc.customerBranchId ?? null,
     doc.refundMethod ?? null,
+    doc.creditUsableIn ?? null,
     doc.notes ?? null,
     doc.warehouseId ?? null,
     doc.destWarehouseId ?? null,
@@ -106,6 +109,10 @@ export function isSameDocumentRequest(
       : null,
     payments: dto.payments ?? [],
     refundMethod: dto.refundMethod ?? null,
+    creditUsableIn: resolveStoredCreditUsableIn(
+      dto.refundMethod,
+      dto.creditUsableIn,
+    ),
     notes: dto.notes ?? null,
     // La tienda la asigna el backend; solo el traslado trae su bodega en el pedido.
     warehouseId:

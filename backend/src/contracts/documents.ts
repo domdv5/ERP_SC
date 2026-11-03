@@ -23,6 +23,7 @@ export type EaiAdjustmentReason =
   'negativo' | 'inventario_general' | 'traspaso_costo' | 'otro';
 export type DvvRefundMethod =
   'saldo_a_favor' | 'cambio_producto' | 'devolucion_dinero';
+export type CreditUsableIn = 'facturacion' | 'administracion';
 export type PvConversionStatus = 'none' | 'pending' | 'converted';
 
 export interface DocumentWarehouse {
@@ -152,6 +153,7 @@ interface DocumentBase {
   adjustmentReason: EaiAdjustmentReason | null;
   adjustmentReasonOther: string | null;
   refundMethod: DvvRefundMethod | null;
+  creditUsableIn: CreditUsableIn | null;
   officialPurchase: boolean;
   supplierInvoiceNumber: string | null;
   // Solo CMO/POSO: IVA total del documento.

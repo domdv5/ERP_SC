@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CustomerCreditKind } from '@prisma/client';
+import { CustomerCreditKind, CustomerCreditUsableIn } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { JwtPayload } from '@/common/types';
 import { toCents } from '@/common/utils/money.util';
@@ -50,6 +50,7 @@ export class ExcedentesService {
       data: {
         customerId: clientId,
         kind: CustomerCreditKind.excedente,
+        usableIn: CustomerCreditUsableIn.administracion,
         customerBranchId: dto.customerBranchId ?? null,
         amount,
         balance: amount,

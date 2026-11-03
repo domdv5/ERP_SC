@@ -4,6 +4,7 @@ export {
   DocumentStatus,
   EaiAdjustmentReason,
   DvvRefundMethod,
+  CustomerCreditUsableIn,
   WithholdingAgentType,
   TaxRegime,
   PaymentMethod,

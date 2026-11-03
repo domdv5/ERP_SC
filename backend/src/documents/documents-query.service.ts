@@ -350,10 +350,9 @@ export class DocumentsQueryService {
   /** Saldos a favor del cliente disponibles para aplicar en una venta (distinto del cupo de crédito). */
   async findAvailableCustomerCredits(customerId: string) {
     const credits = await this.prisma.customerCredit.findMany({
-      // Los excedentes solo se usan en recibos de caja, nunca al facturar.
       where: {
         customerId,
-        kind: 'devolucion',
+        usableIn: 'facturacion',
         status: 'available',
         balance: { gt: 0 },
       },

@@ -92,6 +92,7 @@ export function useExistingDocument({
       adjustmentReason: existingDoc.adjustmentReason ?? undefined,
       adjustmentReasonOther: existingDoc.adjustmentReasonOther ?? undefined,
       refundMethod: existingDoc.refundMethod ?? undefined,
+      creditUsableIn: existingDoc.creditUsableIn ?? undefined,
       officialPurchase: existingDoc.officialPurchase ?? false,
       supplierInvoiceNumber: existingDoc.supplierInvoiceNumber ?? undefined,
       sourceDocumentId: existingDoc.type === 'CMO' ? existingDoc.sourceDocument?.id : undefined,

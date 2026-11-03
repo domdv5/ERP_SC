@@ -121,7 +121,7 @@ export interface ClientStatementTotals {
   // Solo devoluciones
   availableCredit: string
   // Solo excedentes (filtrado por sucursal si se pidió)
-  availableExcedente: string
+  availableBranchCredit: string
 }
 
 // Una aplicación va a una venta (devolución) o a un recibo de caja (excedente)
@@ -135,6 +135,9 @@ export interface ClientCreditApplication {
 
 export type ClientCreditKind = 'devolucion' | 'excedente'
 
+// Dónde se usa: facturación (venta, del cliente) o administración (recibo de caja, de la sucursal).
+export type ClientCreditUsableIn = 'facturacion' | 'administracion'
+
 export type ClientCreditStatus = 'available' | 'used' | 'voided'
 
 export interface ClientCredit {
@@ -142,6 +145,7 @@ export interface ClientCredit {
   amount: string
   balance: string
   kind: ClientCreditKind
+  usableIn: ClientCreditUsableIn
   status: ClientCreditStatus
   createdAt: string
   date: string
@@ -161,7 +165,7 @@ export interface ClientBranchTotal {
   totalDebt: string
   totalPaid: string
   totalBalance: string
-  availableExcedente: string
+  availableBranchCredit: string
 }
 
 export interface ClientStatement {

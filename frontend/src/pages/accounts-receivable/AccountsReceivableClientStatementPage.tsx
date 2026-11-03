@@ -156,7 +156,7 @@ export default function AccountsReceivableClientStatementPage() {
   const totalPaid = Number(totals.totalPaid)
   const totalBalance = Number(totals.totalBalance)
   const availableCredit = Number(totals.availableCredit)
-  const availableExcedente = Number(totals.availableExcedente)
+  const availableBranchCredit = Number(totals.availableBranchCredit)
 
   return (
     <div className="space-y-6 pb-10">
@@ -247,8 +247,8 @@ export default function AccountsReceivableClientStatementPage() {
               <PiggyBank className="w-4 h-4 text-content-muted" />
             </div>
             <div>
-              <p className="text-xs text-content-faint">Saldo a favor por excedentes</p>
-              <p className="text-sm text-content font-medium">{formatCOP(availableExcedente)}</p>
+              <p className="text-xs text-content-faint">Saldo a favor de administración</p>
+              <p className="text-sm text-content font-medium">{formatCOP(availableBranchCredit)}</p>
             </div>
           </div>
         </div>
@@ -267,14 +267,16 @@ export default function AccountsReceivableClientStatementPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b-2 border-ui-border-medium">
-                  {['Sucursal', 'Deuda', 'Pagado', 'Saldo', 'Excedentes a favor'].map((h) => (
-                    <th
-                      key={h}
-                      className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
-                    >
-                      {h}
-                    </th>
-                  ))}
+                  {['Sucursal', 'Deuda', 'Pagado', 'Saldo', 'Saldo a favor (administración)'].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
+                      >
+                        {h}
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
@@ -291,7 +293,7 @@ export default function AccountsReceivableClientStatementPage() {
                       {formatCOP(Number(branch.totalBalance))}
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatCOP(Number(branch.availableExcedente))}
+                      {formatCOP(Number(branch.availableBranchCredit))}
                     </td>
                   </tr>
                 ))}
@@ -456,6 +458,11 @@ export default function AccountsReceivableClientStatementPage() {
                           <span className="pill-stamp text-[11px] whitespace-nowrap bg-surface-hover text-content-secondary">
                             {isExcedente ? 'Excedente' : 'Devolución'}
                           </span>
+                          <span className="pill-stamp text-[11px] whitespace-nowrap bg-surface-hover text-content-secondary">
+                            {credit.usableIn === 'administracion'
+                              ? 'Se usa en administración'
+                              : 'Se usa en facturación'}
+                          </span>
                         </p>
                         <p className="text-sm text-content-muted mt-1">
                           {isExcedente ? (
@@ -474,13 +481,24 @@ export default function AccountsReceivableClientStatementPage() {
                               )}
                             </>
                           ) : credit.sourceDocument ? (
-                            <MetaField
-                              label="Origen"
-                              value={docNumber(
-                                credit.sourceDocument.type,
-                                credit.sourceDocument.number,
+                            <>
+                              <MetaField
+                                label="Origen"
+                                value={docNumber(
+                                  credit.sourceDocument.type,
+                                  credit.sourceDocument.number,
+                                )}
+                              />
+                              {credit.usableIn === 'administracion' && (
+                                <>
+                                  <MetaSeparator />
+                                  <MetaField
+                                    label="Sucursal"
+                                    value={credit.customerBranch?.name ?? 'Sin sucursal'}
+                                  />
+                                </>
                               )}
-                            />
+                            </>
                           ) : (
                             'Sin documento de origen'
                           )}

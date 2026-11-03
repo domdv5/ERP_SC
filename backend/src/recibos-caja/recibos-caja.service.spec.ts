@@ -350,11 +350,11 @@ describe('RecibosCajaService', () => {
     });
   });
 
-  describe('create — excedentes', () => {
-    const excedente = (overrides: object = {}) => ({
+  describe('create — saldos a favor', () => {
+    const credit = (overrides: object = {}) => ({
       id: 'cc1',
       customerId: CLIENT,
-      kind: 'excedente',
+      usableIn: 'administracion',
       status: 'available',
       customerBranchId: null,
       balance: new Prisma.Decimal(50),
@@ -363,7 +363,7 @@ describe('RecibosCajaService', () => {
 
     const dtoWith = (
       payments: number[],
-      excedentes: { customerCreditId: string; amount: number }[],
+      credits: { customerCreditId: string; amount: number }[],
     ): CreateReciboCajaDto =>
       ({
         clientId: CLIENT,
@@ -373,7 +373,7 @@ describe('RecibosCajaService', () => {
           method: 'efectivo_oficina',
           amount,
         })),
-        excedentes,
+        credits,
       }) as CreateReciboCajaDto;
 
     const expectNothingSaved = () => {
@@ -384,8 +384,8 @@ describe('RecibosCajaService', () => {
 
     beforeEach(() => mockReceivable(null));
 
-    it('usa el excedente como pago y descuenta su saldo', async () => {
-      tx.customerCredit.findMany.mockResolvedValue([excedente()]);
+    it('usa el saldo a favor como pago y descuenta su saldo', async () => {
+      tx.customerCredit.findMany.mockResolvedValue([credit()]);
       await service.create(
         dtoWith([70], [{ customerCreditId: 'cc1', amount: 30 }]),
         user,
@@ -406,9 +406,9 @@ describe('RecibosCajaService', () => {
       });
     });
 
-    it('el excedente puede cubrir todo sin formas de pago y queda usado', async () => {
+    it('el saldo a favor puede cubrir todo sin formas de pago y queda usado', async () => {
       tx.customerCredit.findMany.mockResolvedValue([
-        excedente({ balance: new Prisma.Decimal(100) }),
+        credit({ balance: new Prisma.Decimal(100) }),
       ]);
       await service.create(
         dtoWith([], [{ customerCreditId: 'cc1', amount: 100 }]),
@@ -423,9 +423,9 @@ describe('RecibosCajaService', () => {
       });
     });
 
-    it('rechaza un excedente de otra sucursal', async () => {
+    it('rechaza un saldo a favor de otra sucursal', async () => {
       tx.customerCredit.findMany.mockResolvedValue([
-        excedente({ customerBranchId: BRANCH_A }),
+        credit({ customerBranchId: BRANCH_A }),
       ]);
       await expect(
         service.create(
@@ -433,61 +433,81 @@ describe('RecibosCajaService', () => {
           user,
         ),
       ).rejects.toThrow(
-        'El excedente pertenece a otra sucursal: solo se aplica a facturas de su sucursal',
+        'El saldo a favor pertenece a otra sucursal: solo se aplica a facturas de su sucursal',
       );
       expectNothingSaved();
     });
 
-    it('rechaza un saldo de devolución', async () => {
+    it('rechaza un saldo de administración que viene de una devolución de otra sucursal', async () => {
       tx.customerCredit.findMany.mockResolvedValue([
-        excedente({ kind: 'devolucion' }),
+        credit({ kind: 'devolucion', customerBranchId: BRANCH_A }),
       ]);
       await expect(
         service.create(
           dtoWith([70], [{ customerCreditId: 'cc1', amount: 30 }]),
           user,
         ),
-      ).rejects.toThrow('En el recibo de caja solo se pueden usar excedentes');
+      ).rejects.toThrow(
+        'El saldo a favor pertenece a otra sucursal: solo se aplica a facturas de su sucursal',
+      );
       expectNothingSaved();
     });
 
-    it('rechaza un excedente de otro cliente', async () => {
+    it('rechaza un saldo de facturación', async () => {
       tx.customerCredit.findMany.mockResolvedValue([
-        excedente({ customerId: 'otro' }),
+        credit({ usableIn: 'facturacion' }),
       ]);
       await expect(
         service.create(
           dtoWith([70], [{ customerCreditId: 'cc1', amount: 30 }]),
           user,
         ),
-      ).rejects.toThrow('El excedente no pertenece a este cliente');
+      ).rejects.toThrow(
+        'Este saldo a favor es de facturación: solo se usa en una venta',
+      );
       expectNothingSaved();
     });
 
-    it.each(['used', 'voided'])('rechaza un excedente %s', async (status) => {
-      tx.customerCredit.findMany.mockResolvedValue([excedente({ status })]);
+    it('rechaza un saldo a favor de otro cliente', async () => {
+      tx.customerCredit.findMany.mockResolvedValue([
+        credit({ customerId: 'otro' }),
+      ]);
       await expect(
         service.create(
           dtoWith([70], [{ customerCreditId: 'cc1', amount: 30 }]),
           user,
         ),
-      ).rejects.toThrow('El excedente ya no está disponible');
+      ).rejects.toThrow('El saldo a favor no pertenece a este cliente');
       expectNothingSaved();
     });
 
-    it('rechaza usar más que el saldo del excedente', async () => {
-      tx.customerCredit.findMany.mockResolvedValue([excedente()]);
+    it.each(['used', 'voided'])(
+      'rechaza un saldo a favor %s',
+      async (status) => {
+        tx.customerCredit.findMany.mockResolvedValue([credit({ status })]);
+        await expect(
+          service.create(
+            dtoWith([70], [{ customerCreditId: 'cc1', amount: 30 }]),
+            user,
+          ),
+        ).rejects.toThrow('El saldo a favor ya no está disponible');
+        expectNothingSaved();
+      },
+    );
+
+    it('rechaza usar más que el saldo del saldo a favor', async () => {
+      tx.customerCredit.findMany.mockResolvedValue([credit()]);
       await expect(
         service.create(
           dtoWith([40], [{ customerCreditId: 'cc1', amount: 60 }]),
           user,
         ),
-      ).rejects.toThrow('El valor usado excede el saldo del excedente');
+      ).rejects.toThrow('El valor usado excede el saldo a favor');
       expectNothingSaved();
     });
 
-    it('rechaza si pagos + excedentes no cuadran con los abonos', async () => {
-      tx.customerCredit.findMany.mockResolvedValue([excedente()]);
+    it('rechaza si pagos + saldos a favor no cuadran con los abonos', async () => {
+      tx.customerCredit.findMany.mockResolvedValue([credit()]);
       await expect(
         service.create(
           dtoWith([80], [{ customerCreditId: 'cc1', amount: 30 }]),
@@ -497,7 +517,7 @@ describe('RecibosCajaService', () => {
       expectNothingSaved();
     });
 
-    it('idempotencia: misma clave con otros excedentes es 409', async () => {
+    it('idempotencia: misma clave con otros saldos a favor es 409', async () => {
       prisma.reciboCaja.findUnique.mockResolvedValue({
         clientId: CLIENT,
         customerBranchId: null,
@@ -540,17 +560,50 @@ describe('RecibosCajaService', () => {
       prisma.customerCredit.findMany.mockResolvedValue([]);
     });
 
-    it('trae solo excedentes disponibles de la sucursal indicada', async () => {
+    it('trae solo saldos de administración disponibles de la sucursal indicada', async () => {
       await service.findOpenItems(CLIENT, BRANCH_A);
       expect(creditWhereOf()).toEqual({
         customerId: CLIENT,
-        kind: 'excedente',
+        usableIn: 'administracion',
         status: 'available',
         customerBranchId: BRANCH_A,
       });
     });
 
-    it('"none" trae los excedentes sin sucursal', async () => {
+    it('trae la devolución de administración de la sucursal con su origen y fecha de la DVV', async () => {
+      const dvvDate = new Date('2026-11-01');
+      prisma.customerCredit.findMany.mockResolvedValue([
+        {
+          id: 'cc1',
+          amount: new Prisma.Decimal(50),
+          balance: new Prisma.Decimal(50),
+          date: null,
+          createdAt: new Date('2026-11-02'),
+          kind: 'devolucion',
+          usableIn: 'administracion',
+          customerBranchId: BRANCH_A,
+          sourceDocument: {
+            id: 'd1',
+            type: 'DVV',
+            number: '000001',
+            date: dvvDate,
+          },
+        },
+      ]);
+      const { credits } = await service.findOpenItems(CLIENT, BRANCH_A);
+      expect(credits).toHaveLength(1);
+      expect(credits[0]).toEqual(
+        expect.objectContaining({ kind: 'devolucion', date: dvvDate }),
+      );
+      expect(credits[0]).not.toHaveProperty('createdAt');
+    });
+
+    it('no pide saldos de facturación', async () => {
+      await service.findOpenItems(CLIENT, BRANCH_A);
+      expect(creditWhereOf().usableIn).toBe('administracion');
+    });
+
+    it('"none" trae los saldos a favor sin sucursal', async () => {
       await service.findOpenItems(CLIENT, 'none');
       expect(creditWhereOf()).toEqual(
         expect.objectContaining({ customerBranchId: null }),

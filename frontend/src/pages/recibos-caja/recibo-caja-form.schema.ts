@@ -54,8 +54,8 @@ export const FULL_COVER_DISCOUNT_REASONS: readonly ReciboCajaDiscountReason[] = 
   'mercancia_extraviada',
 ]
 
-// Excedente disponible de la sucursal; amount 0 = no se usa en este recibo.
-const excedenteRowSchema = z.object({
+// Saldo a favor disponible de la sucursal; amount 0 = no se usa en este recibo.
+const creditRowSchema = z.object({
   customerCreditId: z.string(),
   balance: z.coerce.number(),
   amount: moneyAmount,
@@ -73,7 +73,7 @@ const baseSchema = z.object({
   // '' = sin elegir
   discountReason: z.union([z.enum(RECIBO_CAJA_DISCOUNT_REASONS), z.literal('')]),
   discountAmount: moneyAmount,
-  excedentes: z.array(excedenteRowSchema),
+  credits: z.array(creditRowSchema),
 })
 
 export type ReciboCajaFormValues = z.infer<typeof baseSchema>
@@ -119,16 +119,16 @@ export const reciboCajaFormSchema = baseSchema.superRefine((data, ctx) => {
   const totalPayments = data.payments.reduce((sum, p) => sum + p.amount, 0)
   const discount = data.hasDiscount ? data.discountAmount : 0
 
-  data.excedentes.forEach((e, index) => {
+  data.credits.forEach((e, index) => {
     if (Math.round(e.amount) > Math.round(e.balance)) {
       ctx.addIssue({
         code: 'custom',
-        message: `No puede superar el saldo del excedente (${formatCOP(e.balance)})`,
-        path: ['excedentes', index, 'amount'],
+        message: `No puede superar el saldo a favor (${formatCOP(e.balance)})`,
+        path: ['credits', index, 'amount'],
       })
     }
   })
-  const totalExcedentes = data.excedentes.reduce((sum, e) => sum + e.amount, 0)
+  const totalCredits = data.credits.reduce((sum, e) => sum + e.amount, 0)
 
   if (data.hasDiscount) {
     if (data.discountReason === '') {
@@ -166,12 +166,12 @@ export const reciboCajaFormSchema = baseSchema.superRefine((data, ctx) => {
 
   // Montos en pesos enteros: se compara redondeado para no fallar por residuos de coma
   // flotante (misma tolerancia que usa el backend con `toCents`).
-  const expectedPayments = totalAbonos - discount - totalExcedentes
+  const expectedPayments = totalAbonos - discount - totalCredits
   if (Math.round(expectedPayments) < 0) {
     ctx.addIssue({
       code: 'custom',
-      message: `Los excedentes y el descuento superan la deuda (${formatCOP(totalAbonos)})`,
-      path: ['excedentes'],
+      message: `Los saldos a favor y el descuento superan la deuda (${formatCOP(totalAbonos)})`,
+      path: ['credits'],
     })
   }
   if (Math.round(totalPayments) !== Math.round(expectedPayments)) {

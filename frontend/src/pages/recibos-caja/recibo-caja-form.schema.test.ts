@@ -11,7 +11,7 @@ const form = (overrides: Partial<ReciboCajaFormValues>): ReciboCajaFormValues =>
   hasDiscount: true,
   discountReason: 'oferta',
   discountAmount: 10000,
-  excedentes: [],
+  credits: [],
   ...overrides,
 })
 
@@ -75,59 +75,57 @@ describe('reciboCajaFormSchema — descuento', () => {
   })
 })
 
-describe('reciboCajaFormSchema — excedentes', () => {
+describe('reciboCajaFormSchema — saldos a favor', () => {
   const base = {
     hasDiscount: false,
     discountReason: '' as const,
     discountAmount: 0,
   }
 
-  it('los excedentes cuentan como pago', () => {
+  it('los saldos a favor cuentan como pago', () => {
     const values = form({
       ...base,
       payments: [{ method: 'efectivo_oficina', amount: 70000 }],
-      excedentes: [{ customerCreditId: 'cc1', balance: 50000, amount: 30000 }],
+      credits: [{ customerCreditId: 'cc1', balance: 50000, amount: 30000 }],
     })
     expect(messages(values)).toEqual([])
   })
 
-  it('un excedente puede cubrir todo sin formas de pago', () => {
+  it('un saldo a favor puede cubrir todo sin formas de pago', () => {
     const values = form({
       ...base,
       payments: [],
-      excedentes: [{ customerCreditId: 'cc1', balance: 100000, amount: 100000 }],
+      credits: [{ customerCreditId: 'cc1', balance: 100000, amount: 100000 }],
     })
     expect(messages(values)).toEqual([])
   })
 
-  it('no deja usar más que el saldo del excedente', () => {
+  it('no deja usar más que el saldo a favor', () => {
     const values = form({
       ...base,
       payments: [{ method: 'efectivo_oficina', amount: 40000 }],
-      excedentes: [{ customerCreditId: 'cc1', balance: 50000, amount: 60000 }],
+      credits: [{ customerCreditId: 'cc1', balance: 50000, amount: 60000 }],
     })
-    expect(messages(values)).toContain(
-      `No puede superar el saldo del excedente (${formatCOP(50000)})`,
-    )
+    expect(messages(values)).toContain(`No puede superar el saldo a favor (${formatCOP(50000)})`)
   })
 
-  it('exige que pagos + excedentes cuadren con la deuda', () => {
+  it('exige que pagos + saldos a favor cuadren con la deuda', () => {
     const values = form({
       ...base,
       payments: [{ method: 'efectivo_oficina', amount: 80000 }],
-      excedentes: [{ customerCreditId: 'cc1', balance: 50000, amount: 30000 }],
+      credits: [{ customerCreditId: 'cc1', balance: 50000, amount: 30000 }],
     })
     expect(messages(values)).toContain(`Las formas de pago deben sumar ${formatCOP(70000)}`)
   })
 
-  it('rechaza excedentes que superan la deuda', () => {
+  it('rechaza saldos a favor que superan la deuda', () => {
     const values = form({
       ...base,
       payments: [],
-      excedentes: [{ customerCreditId: 'cc1', balance: 200000, amount: 150000 }],
+      credits: [{ customerCreditId: 'cc1', balance: 200000, amount: 150000 }],
     })
     expect(messages(values)).toContain(
-      `Los excedentes y el descuento superan la deuda (${formatCOP(100000)})`,
+      `Los saldos a favor y el descuento superan la deuda (${formatCOP(100000)})`,
     )
   })
 })

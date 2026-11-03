@@ -32,6 +32,10 @@ export function buildDocumentPayload(
         : null,
     // Solo la devolución en venta manda modalidad; el backend la exige para ese tipo.
     refundMethod: values.type === 'DVV' ? values.refundMethod || undefined : undefined,
+    creditUsableIn:
+      values.type === 'DVV' && values.refundMethod === 'saldo_a_favor'
+        ? values.creditUsableIn || undefined
+        : undefined,
     // Solo CM manda el flag (el backend lo rechaza en otros tipos); '' limpia la factura al desmarcarlo.
     officialPurchase: values.type === 'CM' ? Boolean(values.officialPurchase) : undefined,
     supplierInvoiceNumber:

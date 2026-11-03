@@ -31,7 +31,7 @@ const releaseSchema = baseSchema.superRefine((data, ctx) => {
   const anyChecked = data.items.some((item) => item.checked)
   if (!anyChecked) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       message: 'Selecciona al menos un ítem para liberar',
       path: ['items'],
     })
@@ -40,13 +40,13 @@ const releaseSchema = baseSchema.superRefine((data, ctx) => {
     if (!item.checked) return
     if (item.quantity <= 0) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'La cantidad debe ser mayor a 0',
         path: ['items', index, 'quantity'],
       })
     } else if (item.quantity > item.pending) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: `La cantidad no puede superar la cantidad pendiente (${item.pending})`,
         path: ['items', index, 'quantity'],
       })

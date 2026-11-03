@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CustomerCreditUsableIn, Prisma } from '@prisma/client';
 import { DocumentType, DvvRefundMethod, MovementType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
+import { resolveCreditUsableIn } from '@/documents/helpers/credit-usable-in.helpers';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
 
@@ -29,6 +30,10 @@ export class DvvEffectStrategy extends BaseEffectStrategy {
         'La devolución en venta requiere una modalidad de devolución',
       );
     }
+    resolveCreditUsableIn(
+      createDocumentDto.refundMethod,
+      createDocumentDto.creditUsableIn,
+    );
     // Sin validación de marcas: una devolución del cliente puede traer cualquier producto.
   }
 
@@ -59,6 +64,10 @@ export class DvvEffectStrategy extends BaseEffectStrategy {
         'La devolución en venta requiere una modalidad de devolución',
       );
     }
+    const usableIn = resolveCreditUsableIn(
+      document.refundMethod,
+      document.creditUsableIn,
+    );
 
     // Entrada real de stock. No se recalcula el costo promedio: la devolución no
     // es una compra, solo repone unidades al costo vivo del producto.
@@ -76,9 +85,7 @@ export class DvvEffectStrategy extends BaseEffectStrategy {
     }
 
     // devolucion_dinero no genera saldo a favor (reembolso manual); saldo_a_favor y cambio_producto sí, con efecto idéntico (se separan solo para reportería).
-    if (document.refundMethod === DvvRefundMethod.devolucion_dinero) {
-      return;
-    }
+    if (!usableIn) return;
 
     // Redondeado a pesos enteros (hasta ~1 peso de diferencia con el total): un saldo con decimales nunca se podría aplicar.
     const amount = Math.round(Number(document.total));
@@ -89,6 +96,12 @@ export class DvvEffectStrategy extends BaseEffectStrategy {
         amount,
         balance: amount,
         status: 'available',
+        usableIn,
+        // Administración: como los excedentes, solo abona a CxC de la sucursal de la DVV.
+        customerBranchId:
+          usableIn === CustomerCreditUsableIn.administracion
+            ? document.customerBranchId
+            : null,
       },
     });
   }

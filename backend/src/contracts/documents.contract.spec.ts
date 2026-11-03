@@ -20,6 +20,7 @@ function buildResult() {
         adjustmentReason: null,
         adjustmentReasonOther: null,
         refundMethod: null,
+        creditUsableIn: null,
         officialPurchase: false,
         supplierInvoiceNumber: null,
         taxTotal: null,

@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { CustomerCreditKind, Prisma } from '@prisma/client';
+import { CustomerCreditUsableIn, Prisma } from '@prisma/client';
 import { toCents } from '@/common/utils/money.util';
 
 export interface ApplyCustomerCreditsParams {
@@ -74,9 +74,9 @@ export async function applyCustomerCredits(
       );
     }
 
-    if (credit.kind !== CustomerCreditKind.devolucion) {
+    if (credit.usableIn !== CustomerCreditUsableIn.facturacion) {
       throw new BadRequestException(
-        'Los excedentes solo se pueden usar en recibos de caja',
+        'Este saldo a favor es de administración: solo se usa en recibos de caja',
       );
     }
 

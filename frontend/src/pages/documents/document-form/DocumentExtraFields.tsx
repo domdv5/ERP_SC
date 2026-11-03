@@ -1,5 +1,5 @@
 import type { UseFormRegister } from 'react-hook-form'
-import { DVV_REFUND_METHOD_OPTIONS } from '../document.constants'
+import { CREDIT_USABLE_IN_OPTIONS, DVV_REFUND_METHOD_OPTIONS } from '../document.constants'
 import type { FormValues } from '../document-form.schema'
 
 interface DocumentExtraFieldsProps {
@@ -7,6 +7,8 @@ interface DocumentExtraFieldsProps {
   docType: FormValues['type']
   needsAdjustmentReason: boolean
   currentAdjustmentReason: FormValues['adjustmentReason']
+  currentRefundMethod: FormValues['refundMethod']
+  currentCreditUsableIn: FormValues['creditUsableIn']
 }
 
 export function DocumentExtraFields({
@@ -14,6 +16,8 @@ export function DocumentExtraFields({
   docType,
   needsAdjustmentReason,
   currentAdjustmentReason,
+  currentRefundMethod,
+  currentCreditUsableIn,
 }: DocumentExtraFieldsProps) {
   return (
     <>
@@ -35,6 +39,31 @@ export function DocumentExtraFields({
               </option>
             ))}
           </select>
+        </div>
+      )}
+
+      {/* Destino del saldo — solo DVV con saldo a favor; sin opción marcada para que el operador elija. */}
+      {docType === 'DVV' && currentRefundMethod === 'saldo_a_favor' && (
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-content-secondary">
+            ¿Dónde se usa este saldo? <span className="text-red-500">*</span>
+          </label>
+          <select
+            {...register('creditUsableIn')}
+            className="input-hard w-full sm:w-72 px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
+          >
+            <option value="">Selecciona dónde se usa</option>
+            {CREDIT_USABLE_IN_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {currentCreditUsableIn && (
+            <p className="text-xs text-content-muted font-accent">
+              {CREDIT_USABLE_IN_OPTIONS.find((o) => o.value === currentCreditUsableIn)?.helper}
+            </p>
+          )}
         </div>
       )}
 
