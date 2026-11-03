@@ -7,7 +7,7 @@ import {
 import {
   Prisma,
   AccountsReceivableStatus,
-  CustomerCreditKind,
+  CustomerCreditUsableIn,
   ReciboCajaDiscountReason,
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -378,7 +378,7 @@ export class RecibosCajaService {
       paymentsTotalCents + excedentesTotalCents + discountCents
     ) {
       const parts = ['las formas de pago'];
-      if (excedentesTotalCents > 0) parts.push('los excedentes');
+      if (excedentesTotalCents > 0) parts.push('los saldos a favor');
       if (discountCents > 0) parts.push('el descuento');
       const last = parts.pop()!;
       const expected =
@@ -499,7 +499,7 @@ export class RecibosCajaService {
     });
   }
 
-  /** Valida los excedentes citados (ya bloqueados): del cliente, de la misma sucursal del recibo, disponibles y con saldo suficiente. */
+  /** Valida los saldos a favor de administración citados (ya bloqueados): del cliente, de la misma sucursal del recibo, disponibles y con saldo suficiente. */
   private async findUsableExcedentes(
     tx: Prisma.TransactionClient,
     clientId: string,
@@ -512,32 +512,32 @@ export class RecibosCajaService {
       where: { id: { in: [...requestedCentsById.keys()] } },
     });
     if (excedentes.length !== requestedCentsById.size) {
-      throw new BadRequestException('Algún excedente citado no existe');
+      throw new BadRequestException('Algún saldo a favor citado no existe');
     }
 
     for (const excedente of excedentes) {
       if (excedente.customerId !== clientId) {
         throw new BadRequestException(
-          'El excedente no pertenece a este cliente',
+          'El saldo a favor no pertenece a este cliente',
         );
       }
-      if (excedente.kind !== CustomerCreditKind.excedente) {
+      if (excedente.usableIn !== CustomerCreditUsableIn.administracion) {
         throw new BadRequestException(
-          'En el recibo de caja solo se pueden usar excedentes',
+          'Este saldo a favor es de facturación: solo se usa en una venta',
         );
       }
       if (excedente.status !== 'available') {
-        throw new BadRequestException('El excedente ya no está disponible');
+        throw new BadRequestException('El saldo a favor ya no está disponible');
       }
       // Cada sucursal maneja sus propias cuentas: sin sucursal solo paga CxC sin sucursal.
       if (excedente.customerBranchId !== customerBranchId) {
         throw new BadRequestException(
-          'El excedente pertenece a otra sucursal: solo se aplica a facturas de su sucursal',
+          'El saldo a favor pertenece a otra sucursal: solo se aplica a facturas de su sucursal',
         );
       }
       if (requestedCentsById.get(excedente.id)! > toCents(excedente.balance)) {
         throw new BadRequestException(
-          `El valor usado excede el saldo del excedente. Saldo disponible: ${Number(excedente.balance).toFixed(2)}`,
+          `El valor usado excede el saldo a favor. Saldo disponible: ${Number(excedente.balance).toFixed(2)}`,
         );
       }
     }
@@ -653,7 +653,7 @@ export class RecibosCajaService {
     return reciboCaja;
   }
 
-  /** CxC abiertas y excedentes disponibles de un cliente, para armar el formulario de recibo de caja (los saldos de devolución no se usan aquí). */
+  /** CxC abiertas y saldos a favor de administración disponibles de un cliente (excedentes y devoluciones), para armar el formulario de recibo de caja. */
   async findOpenItems(clientId: string, customerBranchId?: string) {
     const receivables = await this.prisma.accountsReceivable.findMany({
       where: {
@@ -683,7 +683,7 @@ export class RecibosCajaService {
     const excedentes = await this.prisma.customerCredit.findMany({
       where: {
         customerId: clientId,
-        kind: CustomerCreditKind.excedente,
+        usableIn: CustomerCreditUsableIn.administracion,
         status: 'available',
         ...(customerBranchId && {
           customerBranchId:
@@ -695,7 +695,13 @@ export class RecibosCajaService {
         amount: true,
         balance: true,
         date: true,
+        createdAt: true,
+        kind: true,
+        usableIn: true,
         customerBranchId: true,
+        sourceDocument: {
+          select: { id: true, type: true, number: true, date: true },
+        },
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -705,7 +711,11 @@ export class RecibosCajaService {
         ...receivable,
         balance: receivable.totalAmount.minus(receivable.paidAmount),
       })),
-      excedentes,
+      // Las devoluciones no tienen `date` propia: se muestra la fecha de la DVV.
+      excedentes: excedentes.map(({ createdAt, ...credit }) => ({
+        ...credit,
+        date: credit.date ?? credit.sourceDocument?.date ?? createdAt,
+      })),
     };
   }
 }

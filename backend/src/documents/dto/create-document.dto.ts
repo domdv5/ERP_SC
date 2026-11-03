@@ -17,6 +17,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
+  CustomerCreditUsableIn,
   DocumentType,
   DvvRefundMethod,
   EaiAdjustmentReason,
@@ -134,6 +135,11 @@ export class CreateDocumentDto {
   @IsOptional()
   @IsEnum(DvvRefundMethod)
   refundMethod?: DvvRefundMethod;
+
+  // Solo DVV con saldo_a_favor: dónde se usa el saldo; la obligatoriedad la impone la estrategia.
+  @IsOptional()
+  @IsEnum(CustomerCreditUsableIn)
+  creditUsableIn?: CustomerCreditUsableIn;
 
   // Solo CM: marca la compra como oficial (con factura); exige supplierInvoiceNumber.
   @IsOptional()

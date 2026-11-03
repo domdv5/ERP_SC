@@ -17,6 +17,7 @@ import {
   UpdateDocumentDto,
 } from './dto/index';
 import { matchItemsByProduct } from './helpers/conversion.helpers';
+import { resolveStoredCreditUsableIn } from './helpers/credit-usable-in.helpers';
 import {
   DUPLICATE_REQUEST_MESSAGE,
   isIdempotencyKeyConflict,
@@ -67,6 +68,7 @@ export class DocumentsService {
       adjustmentReasonOther,
       payments,
       refundMethod,
+      creditUsableIn,
       officialPurchase,
       supplierInvoiceNumber,
       sourceDocumentId,
@@ -142,6 +144,10 @@ export class DocumentsService {
             adjustmentReason,
             adjustmentReasonOther,
             refundMethod: refundMethod ?? null,
+            creditUsableIn: resolveStoredCreditUsableIn(
+              refundMethod,
+              creditUsableIn,
+            ),
             officialPurchase: officialPurchase ?? false,
             supplierInvoiceNumber: supplierInvoiceNumber?.trim() || null,
             sourceDocumentId: sourceDocumentId ?? null,
@@ -231,6 +237,7 @@ export class DocumentsService {
       supplierInvoiceNumber,
       receiverId,
       customerBranchId,
+      creditUsableIn,
       ...rest
     } = updateDocumentDto;
 
@@ -275,6 +282,13 @@ export class DocumentsService {
         where: { id },
         data: {
           ...rest,
+          ...((rest.refundMethod !== undefined ||
+            creditUsableIn !== undefined) && {
+            creditUsableIn: resolveStoredCreditUsableIn(
+              rest.refundMethod ?? document.refundMethod,
+              creditUsableIn ?? document.creditUsableIn,
+            ),
+          }),
           ...(strategy.tracksReceiver &&
             receiverId !== undefined && { receiverId }),
           ...(strategy.tracksCustomerBranch &&

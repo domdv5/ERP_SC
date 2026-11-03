@@ -69,13 +69,21 @@ describe('AccountsReceivableService.getClientStatement', () => {
       {
         id: 'k1',
         kind: 'devolucion',
+        usableIn: 'facturacion',
         status: 'available',
         balance: decimal('30.5'),
       },
-      { id: 'k2', kind: 'devolucion', status: 'used', balance: decimal('0') },
+      {
+        id: 'k2',
+        kind: 'devolucion',
+        usableIn: 'facturacion',
+        status: 'used',
+        balance: decimal('0'),
+      },
       {
         id: 'k3',
         kind: 'devolucion',
+        usableIn: 'facturacion',
         status: 'available',
         balance: decimal('9.5'),
       },
@@ -236,7 +244,14 @@ describe('AccountsReceivableService: sucursales del cliente', () => {
         status: string,
         balance: string,
         customerBranchId: string | null,
-      ) => ({ id, kind, status, balance: decimal(balance), customerBranchId });
+      ) => ({
+        id,
+        kind,
+        usableIn: kind === 'devolucion' ? 'facturacion' : 'administracion',
+        status,
+        balance: decimal(balance),
+        customerBranchId,
+      });
 
       beforeEach(() =>
         prisma.customerCredit.findMany.mockResolvedValue([

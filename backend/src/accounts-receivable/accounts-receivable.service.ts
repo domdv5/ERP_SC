@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CustomerCreditKind, Prisma } from '@prisma/client';
+import { CustomerCreditUsableIn, Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   buildDateColumnRange,
@@ -505,19 +505,19 @@ export class AccountsReceivableService {
       }),
     ]);
 
-    const allExcedentes = rawCredits.filter(
-      (credit) => credit.kind === CustomerCreditKind.excedente,
+    const administracionCredits = rawCredits.filter(
+      (credit) => credit.usableIn === CustomerCreditUsableIn.administracion,
     );
     const branchTotals = buildBranchTotals(
       branches,
       allReceivables,
-      allExcedentes,
+      administracionCredits,
     );
 
-    // Las devoluciones son del cliente; los excedentes son de su sucursal y se recortan con el filtro.
+    // Los de facturación son del cliente; los de administración son de su sucursal y se recortan con el filtro.
     const credits = rawCredits.filter(
       (credit) =>
-        credit.kind === CustomerCreditKind.devolucion ||
+        credit.usableIn === CustomerCreditUsableIn.facturacion ||
         !customerBranchId ||
         credit.customerBranchId === customerBranchId,
     );
@@ -538,10 +538,14 @@ export class AccountsReceivableService {
       new Prisma.Decimal(0),
     );
     const availableCredit = sumAvailable(
-      credits.filter((credit) => credit.kind === CustomerCreditKind.devolucion),
+      credits.filter(
+        (credit) => credit.usableIn === CustomerCreditUsableIn.facturacion,
+      ),
     );
     const availableExcedente = sumAvailable(
-      credits.filter((credit) => credit.kind === CustomerCreditKind.excedente),
+      credits.filter(
+        (credit) => credit.usableIn === CustomerCreditUsableIn.administracion,
+      ),
     );
 
     return {

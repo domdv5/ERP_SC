@@ -48,6 +48,7 @@ describe('ExcedentesService', () => {
         data: {
           customerId: CLIENT,
           kind: 'excedente',
+          usableIn: 'administracion',
           customerBranchId: BRANCH,
           amount: 7000000,
           balance: 7000000,

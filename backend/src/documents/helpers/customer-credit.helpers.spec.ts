@@ -8,10 +8,10 @@ describe('applyCustomerCredits — tipo de saldo', () => {
     customerCreditApplication: { create: jest.fn() },
   };
 
-  const credit = (kind: 'devolucion' | 'excedente') => ({
+  const credit = (usableIn: 'facturacion' | 'administracion') => ({
     id: 'cc1',
     customerId: 'c1',
-    kind,
+    usableIn,
     status: 'available',
     balance: new Prisma.Decimal(50000),
   });
@@ -29,17 +29,17 @@ describe('applyCustomerCredits — tipo de saldo', () => {
     tx.$queryRaw.mockResolvedValue([]);
   });
 
-  it('rechaza un excedente al facturar y no toca el saldo', async () => {
-    tx.customerCredit.findMany.mockResolvedValue([credit('excedente')]);
+  it('rechaza un saldo de administración al facturar y no toca el saldo', async () => {
+    tx.customerCredit.findMany.mockResolvedValue([credit('administracion')]);
     await expect(apply()).rejects.toThrow(
-      'Los excedentes solo se pueden usar en recibos de caja',
+      'Este saldo a favor es de administración: solo se usa en recibos de caja',
     );
     expect(tx.customerCreditApplication.create).not.toHaveBeenCalled();
     expect(tx.customerCredit.update).not.toHaveBeenCalled();
   });
 
-  it('sigue aplicando un saldo de devolución', async () => {
-    tx.customerCredit.findMany.mockResolvedValue([credit('devolucion')]);
+  it('aplica un saldo de facturación', async () => {
+    tx.customerCredit.findMany.mockResolvedValue([credit('facturacion')]);
     await apply();
     expect(tx.customerCreditApplication.create).toHaveBeenCalledWith({
       data: { customerCreditId: 'cc1', saleDocumentId: 'sale1', amount: 30000 },
