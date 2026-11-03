@@ -10,6 +10,7 @@ import { formatCOP, formatDateTimeBogota } from '@/lib/format'
 import { splitOfficialPrice } from '@/lib/tax'
 import { cn } from '@/lib/utils'
 import type { FormValues } from '@/pages/documents/document-form.schema'
+import { AvailableStockHint } from './AvailableStockHint'
 import type { Product } from '@/types/product.types'
 
 interface POSCartLineProps {
@@ -69,7 +70,6 @@ export function POSCartLine({
   const subtotal = showTax ? split.subtotal : lineTotal
 
   const isBelowFloor = minSalePrice !== undefined && unitPrice > 0 && unitPrice < minSalePrice
-  const exceedsAvailable = availableStock !== undefined && quantity > availableStock
 
   return (
     <>
@@ -154,7 +154,7 @@ export function POSCartLine({
         </td>
       </tr>
 
-      {(isBelowFloor || exceedsAvailable) && (
+      {(isBelowFloor || availableStock !== undefined) && (
         <tr>
           <td className="px-4 pt-0 pb-2" colSpan={showTax ? 7 : 6}>
             <div className="flex flex-wrap gap-x-4">
@@ -163,9 +163,7 @@ export function POSCartLine({
                   Por debajo del precio mínimo ({formatCOP(minSalePrice!)})
                 </HintText>
               )}
-              {exceedsAvailable && (
-                <HintText variant="warning">Supera el disponible ({availableStock})</HintText>
-              )}
+              <AvailableStockHint available={availableStock} quantity={quantity} />
             </div>
           </td>
         </tr>

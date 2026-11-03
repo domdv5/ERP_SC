@@ -19,6 +19,8 @@ import { computeOfficialLineTax } from '@/lib/tax'
 import type { Product, StockByWarehouse } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
+import { AvailableStockHint } from './AvailableStockHint'
+import { takesStockOut } from './available-stock'
 
 interface ProductRowProps {
   index: number
@@ -101,8 +103,8 @@ export function ProductRow({
   // PV/REM/DVV no llevan costo (son venta): el campo editable es el precio de venta.
   const showPrice = docType === 'PV' || docType === 'REM' || docType === 'DVV'
   const priceSubtotal = Number(quantity) * Number(unitPrice)
-  // Solo aplica a PV/REM (sacan stock); en DVV el stock entra, así que el dato confundiría.
-  const showSaleAvailability = showPrice && docType !== 'DVV'
+  // Disponible neteado de reservas en todo documento que saca mercancía, salvo traslados (usan la bodega origen).
+  const showSaleAvailability = takesStockOut(docType) && docType !== 'T'
 
   // Disponible de la bodega origen, no del bulto concreto (el backend valida a nivel de bulto al confirmar).
   const showTransferAvailability = docType === 'T'
@@ -113,29 +115,14 @@ export function ProductRow({
         null)
       : null
 
-  // PV/REM: disponible ya neteado de reservas, puede ser negativo. Traslados: stock crudo de la bodega origen. Fuentes distintas, no mezclar.
-  const showPvAvailableWarning =
-    showSaleAvailability &&
-    selectedAvailableStock !== null &&
-    Number(quantity) > selectedAvailableStock
-  const showTransferAvailableWarning =
-    showTransferAvailability &&
-    availableInSourceWarehouse !== null &&
-    Number(quantity) > availableInSourceWarehouse
-  const showAvailableStockWarning = showPvAvailableWarning || showTransferAvailableWarning
+  // Ventas/salidas: disponible ya neteado de reservas, puede ser negativo. Traslados: stock crudo de la bodega origen. Fuentes distintas, no mezclar.
+  const displayAvailableStock = showSaleAvailability
+    ? selectedAvailableStock
+    : availableInSourceWarehouse
 
   // Avisos secundarios en fila aparte para no empujar los inputs de la fila principal fuera de columna.
   const showUnitOfMeasureHint = docType === 'T' && selectedUnitOfMeasure === 'docena'
-  const showPvAvailableHint =
-    showSaleAvailability && selectedAvailableStock !== null && !showPvAvailableWarning
-  const showTransferAvailableHint =
-    showTransferAvailability && availableInSourceWarehouse !== null && !showTransferAvailableWarning
-  const showAvailableStockHint = showPvAvailableHint || showTransferAvailableHint
-  const hasSecondaryRow =
-    showUnitOfMeasureHint || showAvailableStockHint || showAvailableStockWarning
-
-  // Elige qué número mostrar en el aviso de disponibilidad; venta y traslado nunca se dan a la vez.
-  const displayAvailableStock = showPrice ? selectedAvailableStock : availableInSourceWarehouse
+  const hasSecondaryRow = showUnitOfMeasureHint || displayAvailableStock !== null
 
   const hasSearch = debouncedProductSearch.length >= 1
   const thirdPartyId = watch('thirdPartyId')
@@ -156,8 +143,8 @@ export function ProductRow({
   const productOptions: ComboboxOption[] = (productData?.items ?? []).map((p: Product) => ({
     id: p.id,
     label: `${p.code} — ${p.description}`,
-    // PV/REM: disponible ya neteado; traslados: disponible en la bodega origen; resto: costo promedio.
-    sublabel: showPrice
+    // Ventas/salidas: disponible ya neteado; traslados: disponible en la bodega origen; entradas: costo promedio.
+    sublabel: showSaleAvailability
       ? `Disponible: ${p.availableStock}`
       : showTransferAvailability && sourceWarehouseId
         ? `Disponible: ${p.stockByWarehouse.find((s) => s.warehouseId === sourceWarehouseId)?.quantity ?? 0}`
@@ -387,14 +374,7 @@ export function ProductRow({
       {hasSecondaryRow && (
         <tr>
           <td className="px-3 pt-0 pb-2 min-w-[260px]">
-            {showAvailableStockHint && (
-              <HintText variant={displayAvailableStock! < 0 ? 'warning' : 'positive'}>
-                Disponible: {displayAvailableStock}
-              </HintText>
-            )}
-            {showAvailableStockWarning && (
-              <HintText variant="warning">Supera el disponible ({displayAvailableStock})</HintText>
-            )}
+            <AvailableStockHint available={displayAvailableStock} quantity={Number(quantity)} />
           </td>
           <td className="px-3 pt-0 pb-2 w-28">
             {showUnitOfMeasureHint && <HintText variant="neutral">Se maneja por docena</HintText>}
