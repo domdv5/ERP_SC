@@ -9,6 +9,13 @@ import type { ThirdParty } from '@/types/third-party.types'
 import type { FormValues } from '../document-form.schema'
 import type { DocumentTypeFlags } from './documentTypeFlags'
 
+// Las marcas bajo el nombre: en la empresa se reconoce al proveedor por ellas
+function supplierSublabel(tp: ThirdParty) {
+  if (!tp.isSupplier) return undefined
+  const brandNames = tp.supplier?.brands.map((brand) => brand.name) ?? []
+  return brandNames.length > 0 ? `Marcas: ${brandNames.join(', ')}` : 'Proveedor'
+}
+
 export function useDocumentParties(
   watch: UseFormWatch<FormValues>,
   { needsSupplier, needsCustomer, needsSeller, needsReceiver }: DocumentTypeFlags,
@@ -84,7 +91,7 @@ export function useDocumentParties(
   const tpOptions: ComboboxOption[] = (tpData?.items ?? []).map((tp: ThirdParty) => ({
     id: tp.id,
     label: tp.name,
-    sublabel: needsCustomer ? undefined : tp.isSupplier ? 'Proveedor' : undefined,
+    sublabel: needsCustomer ? undefined : supplierSublabel(tp),
   }))
 
   const currentTpId = watch('thirdPartyId') ?? ''

@@ -65,6 +65,17 @@ export class ThirdPartiesService {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
           { documentNumber: { contains: search, mode: 'insensitive' } },
+          // En la empresa se conoce más la marca que el proveedor: la marca también lo encuentra
+          {
+            supplier: {
+              brands: {
+                some: {
+                  active: true,
+                  name: { contains: search, mode: 'insensitive' },
+                },
+              },
+            },
+          },
         ],
       }),
     };
