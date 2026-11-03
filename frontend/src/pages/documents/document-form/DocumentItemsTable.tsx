@@ -77,7 +77,7 @@ export function DocumentItemsTable({
             <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 min-w-[260px]">
               Producto
             </th>
-            <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-28">
+            <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-32">
               Cantidad
             </th>
             {showObservacionesColumn && (

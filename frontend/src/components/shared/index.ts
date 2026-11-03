@@ -17,4 +17,5 @@ export { TablePagination, PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from './TablePa
 export { TableSkeleton } from './TableSkeleton'
 export { TableToolbar } from './TableToolbar'
 export { ThousandsInput } from './ThousandsInput'
+export { Tooltip } from './Tooltip'
 export type { StatCard } from './StatsGrid'

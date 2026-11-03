@@ -96,14 +96,17 @@ export function POSCartLine({
           )}
         </td>
 
-        <td className="px-4 py-3 w-24">
-          <input
-            type="number"
-            min={1}
-            step={1}
-            {...register(`items.${index}.quantity`)}
-            className="input-hard w-full px-2.5 py-1.5 text-sm text-center text-content transition-all border-ui-border-medium"
-          />
+        <td className="px-4 py-3 w-28">
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number"
+              min={1}
+              step={1}
+              {...register(`items.${index}.quantity`)}
+              className="input-hard w-full min-w-0 px-2.5 py-1.5 text-sm text-center text-content transition-all border-ui-border-medium"
+            />
+            <AvailableStockHint available={availableStock} quantity={quantity} />
+          </div>
         </td>
 
         <td className="px-4 py-3 w-32">
@@ -154,7 +157,7 @@ export function POSCartLine({
         </td>
       </tr>
 
-      {(isBelowFloor || availableStock !== undefined) && (
+      {isBelowFloor && (
         <tr>
           <td className="px-4 pt-0 pb-2" colSpan={showTax ? 7 : 6}>
             <div className="flex flex-wrap gap-x-4">
@@ -163,7 +166,6 @@ export function POSCartLine({
                   Por debajo del precio mínimo ({formatCOP(minSalePrice!)})
                 </HintText>
               )}
-              <AvailableStockHint available={availableStock} quantity={quantity} />
             </div>
           </td>
         </tr>

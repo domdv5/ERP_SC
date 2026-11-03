@@ -123,7 +123,7 @@ export function SaleCart({
                 <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3">
                   Producto
                 </th>
-                <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-24">
+                <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-28">
                   Cant.
                 </th>
                 <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-32">

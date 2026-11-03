@@ -1,4 +1,6 @@
-import { HintText } from '@/components/shared'
+import { Package } from 'lucide-react'
+import { Tooltip } from '@/components/shared'
+import { cn } from '@/lib/utils'
 import { getAvailableStockHint } from './available-stock'
 
 interface AvailableStockHintProps {
@@ -6,9 +8,20 @@ interface AvailableStockHintProps {
   quantity: number
 }
 
-// Mismo aviso de disponible en todas las filas de producto (documentos y carrito de venta)
+// Ícono junto a la cantidad: el color avisa siempre (verde alcanza, ámbar no alcanza) y el número va en el tooltip
 export function AvailableStockHint({ available, quantity }: AvailableStockHintProps) {
   const hint = getAvailableStockHint(available, quantity)
   if (!hint) return null
-  return <HintText variant={hint.variant}>{hint.text}</HintText>
+  return (
+    <Tooltip content={hint.text} label={hint.text}>
+      <Package
+        className={cn(
+          'w-4 h-4',
+          hint.variant === 'warning'
+            ? 'text-amber-500 dark:text-amber-400'
+            : 'text-emerald-700 dark:text-brand-secondary',
+        )}
+      />
+    </Tooltip>
+  )
 }

@@ -122,7 +122,7 @@ export function ProductRow({
 
   // Avisos secundarios en fila aparte para no empujar los inputs de la fila principal fuera de columna.
   const showUnitOfMeasureHint = docType === 'T' && selectedUnitOfMeasure === 'docena'
-  const hasSecondaryRow = showUnitOfMeasureHint || displayAvailableStock !== null
+  const hasSecondaryRow = showUnitOfMeasureHint
 
   const hasSearch = debouncedProductSearch.length >= 1
   const thirdPartyId = watch('thirdPartyId')
@@ -234,19 +234,22 @@ export function ProductRow({
         </td>
 
         {/* Cantidad */}
-        <td className="px-3 py-2 w-28">
-          <input
-            type="number"
-            min={1}
-            step={1}
-            {...register(`items.${index}.quantity`)}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter') return
-              e.preventDefault()
-              onQuantityConfirmed?.()
-            }}
-            className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
-          />
+        <td className="px-3 py-2 w-32">
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number"
+              min={1}
+              step={1}
+              {...register(`items.${index}.quantity`)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return
+                e.preventDefault()
+                onQuantityConfirmed?.()
+              }}
+              className="input-hard w-full min-w-0 px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
+            />
+            <AvailableStockHint available={displayAvailableStock} quantity={Number(quantity)} />
+          </div>
         </td>
 
         {/* Observaciones (talla) — solo en traslados */}
@@ -373,10 +376,8 @@ export function ProductRow({
           ella. Solo se muestra si hay algo que mostrar. */}
       {hasSecondaryRow && (
         <tr>
-          <td className="px-3 pt-0 pb-2 min-w-[260px]">
-            <AvailableStockHint available={displayAvailableStock} quantity={Number(quantity)} />
-          </td>
-          <td className="px-3 pt-0 pb-2 w-28">
+          <td className="px-3 pt-0 pb-2 min-w-[260px]"></td>
+          <td className="px-3 pt-0 pb-2 w-32">
             {showUnitOfMeasureHint && <HintText variant="neutral">Se maneja por docena</HintText>}
           </td>
           {showObservaciones && <td className="px-3 pt-0 pb-2 w-40" />}
