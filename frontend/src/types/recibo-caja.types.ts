@@ -141,13 +141,17 @@ export interface ReciboCajaOpenReceivable {
   balance: string
 }
 
-// Excedente disponible de la misma sucursal; `balance` ya descuenta lo usado
+// Saldo a favor de administración de la misma sucursal; `balance` ya descuenta lo usado
 export interface ReciboCajaOpenExcedente {
   id: string
   amount: string
   balance: string
   date: string
   customerBranchId: string | null
+  usableIn: 'facturacion' | 'administracion'
+  kind: 'devolucion' | 'excedente'
+  // Documento (DVV) que lo originó; null en los excedentes
+  sourceDocument: { id: string; type: string; number: string } | null
 }
 
 export interface ReciboCajaOpenItems {

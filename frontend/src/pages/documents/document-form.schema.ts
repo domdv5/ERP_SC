@@ -56,6 +56,8 @@ export const formSchema = z
     refundMethod: z
       .enum(['saldo_a_favor', 'cambio_producto', 'devolucion_dinero'] as const)
       .optional(),
+    // Solo DVV con saldo a favor: dónde se usa el saldo. Sin valor por defecto, el operador debe elegir.
+    creditUsableIn: z.enum(['facturacion', 'administracion'] as const).optional(),
     // CM: marca de compra oficial. CM oficial y CMO: factura del proveedor (obligatoria, se valida abajo).
     officialPurchase: z.boolean().optional(),
     supplierInvoiceNumber: z.string().max(50, 'Máximo 50 caracteres').optional(),
@@ -134,6 +136,13 @@ export const formSchema = z
           code: z.ZodIssueCode.custom,
           message: 'La modalidad de devolución es requerida',
           path: ['refundMethod'],
+        })
+      }
+      if (data.refundMethod === 'saldo_a_favor' && !data.creditUsableIn) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Elige dónde se usa el saldo a favor: en facturación o en administración',
+          path: ['creditUsableIn'],
         })
       }
     }

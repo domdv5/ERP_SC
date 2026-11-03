@@ -18,6 +18,7 @@ import type {
   DocumentType,
   DocumentStatus,
   EaiAdjustmentReason,
+  CreditUsableIn,
   DvvRefundMethod,
   PaymentMethod,
 } from '@/types/document.types'
@@ -65,6 +66,20 @@ export const DVV_REFUND_METHOD_OPTIONS: { value: DvvRefundMethod; label: string 
   { value: 'saldo_a_favor', label: 'Saldo a favor del cliente' },
   { value: 'cambio_producto', label: 'Cambio de producto' },
   { value: 'devolucion_dinero', label: 'Devolución de dinero' },
+]
+
+// Destino del saldo a favor de una devolución en venta.
+export const CREDIT_USABLE_IN_OPTIONS: {
+  value: CreditUsableIn
+  label: string
+  helper: string
+}[] = [
+  { value: 'facturacion', label: 'En facturación', helper: 'Se descuenta en una próxima venta' },
+  {
+    value: 'administracion',
+    label: 'En administración',
+    helper: 'Se abona a deudas en el recibo de caja',
+  },
 ]
 
 // Motivo del ajuste — solo en entradas por ajuste. Etiquetas pensadas para el operador de

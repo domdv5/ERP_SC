@@ -205,6 +205,8 @@ export default function DocumentFormPage() {
             docType={docType}
             needsAdjustmentReason={needsAdjustmentReason}
             currentAdjustmentReason={currentAdjustmentReason}
+            currentRefundMethod={watch('refundMethod')}
+            currentCreditUsableIn={watch('creditUsableIn')}
           />
         </div>
 

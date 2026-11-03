@@ -128,12 +128,14 @@ export function useReciboCajaForm() {
       }),
     )
     excedentesArray.replace(
-      (openItems.excedentes ?? []).map((e) => ({
-        customerCreditId: e.id,
-        balance: Number(e.balance),
-        // Si otro recibo gastó parte del excedente, lo ya escrito no puede pasar del saldo nuevo
-        amount: Math.min(previousExcedentes.get(e.id)?.amount ?? 0, Number(e.balance)),
-      })),
+      (openItems.excedentes ?? [])
+        .filter((e) => e.usableIn === 'administracion')
+        .map((e) => ({
+          customerCreditId: e.id,
+          balance: Number(e.balance),
+          // Si otro recibo gastó parte del excedente, lo ya escrito no puede pasar del saldo nuevo
+          amount: Math.min(previousExcedentes.get(e.id)?.amount ?? 0, Number(e.balance)),
+        })),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openItems])

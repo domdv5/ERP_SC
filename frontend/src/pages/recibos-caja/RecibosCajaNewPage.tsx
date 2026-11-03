@@ -22,6 +22,7 @@ import {
 } from './recibo-caja-form.schema'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
 import type { ThirdParty } from '@/types/third-party.types'
+import type { ReciboCajaOpenExcedente } from '@/types/recibo-caja.types'
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
 // Mismo patrón que EgresoNewPage.tsx: overlay + card, sin librería de modales.
@@ -34,6 +35,11 @@ interface ConfirmDialogProps {
   isPending: boolean
   onConfirm: () => void
   onCancel: () => void
+}
+
+function creditOriginLabel(credit: ReciboCajaOpenExcedente) {
+  if (credit.kind === 'excedente' || !credit.sourceDocument) return 'Excedente'
+  return `Devolución ${docNumber(credit.sourceDocument.type, credit.sourceDocument.number)}`
 }
 
 function ConfirmDialog({
@@ -418,17 +424,17 @@ export default function RecibosCajaNewPage() {
               {excedentesFields.length > 0 && (
                 <div className="card-hard overflow-hidden">
                   <div className="px-6 py-4 border-b border-ui-border">
-                    <h2 className="text-content font-semibold">Saldos a favor (excedentes)</h2>
+                    <h2 className="text-content font-semibold">Saldos a favor</h2>
                     <p className="text-content-muted text-xs mt-0.5 font-accent">
-                      Pagos de más del cliente en esta sucursal; lo que uses se resta del dinero a
-                      cobrar
+                      Excedentes y devoluciones del cliente en esta sucursal; lo que uses se resta
+                      del dinero a cobrar
                     </p>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-ui-border">
-                          {['Fecha', 'Saldo', 'Usar en este recibo'].map((h) => (
+                          {['Fecha', 'Origen', 'Saldo', 'Usar en este recibo'].map((h) => (
                             <th
                               key={h}
                               className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -447,6 +453,9 @@ export default function RecibosCajaNewPage() {
                             <tr key={field.id}>
                               <td className="px-5 py-3 text-content-muted text-xs whitespace-nowrap">
                                 {openExcedente ? formatDateOnly(openExcedente.date) : '—'}
+                              </td>
+                              <td className="px-5 py-3 text-content-secondary text-xs whitespace-nowrap">
+                                {openExcedente ? creditOriginLabel(openExcedente) : '—'}
                               </td>
                               <td className="px-5 py-3 text-content-secondary text-xs whitespace-nowrap">
                                 {formatCOP(row?.balance ?? 0)}

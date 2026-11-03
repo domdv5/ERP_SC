@@ -49,6 +49,7 @@ import {
   DOC_STATUS_BADGE,
   PV_CONVERSION_BADGE,
   DVV_REFUND_METHOD_OPTIONS,
+  CREDIT_USABLE_IN_OPTIONS,
   PAYMENT_METHOD_OPTIONS,
 } from './document.constants'
 import { ReleaseItemsDialog } from './components/ReleaseItemsDialog'
@@ -94,6 +95,9 @@ const PRINTABLE_TYPES: ReadonlySet<DocumentType> = new Set<DocumentType>([
 
 const TYPE_LABELS = DOC_TYPE_BADGE
 const STATUS_LABELS = DOC_STATUS_BADGE
+
+const creditUsableInLabelFor = (value: string) =>
+  CREDIT_USABLE_IN_OPTIONS.find((o) => o.value === value)?.label ?? value
 
 const refundMethodLabelFor = (method: string) =>
   DVV_REFUND_METHOD_OPTIONS.find((o) => o.value === method)?.label ?? method
@@ -809,7 +813,10 @@ export default function DocumentDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-content-faint font-accent">Modalidad de devolución</p>
-                <p className="text-sm text-content">{refundMethodLabelFor(doc.refundMethod)}</p>
+                <p className="text-sm text-content">
+                  {refundMethodLabelFor(doc.refundMethod)}
+                  {doc.creditUsableIn && ` · ${creditUsableInLabelFor(doc.creditUsableIn)}`}
+                </p>
               </div>
             </div>
           )}

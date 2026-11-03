@@ -25,12 +25,16 @@ export type {
 } from '@contracts/documents'
 
 import type {
+  DocumentDetail,
   DocumentType,
   DocumentStatus,
   EaiAdjustmentReason,
   DvvRefundMethod,
   PaymentMethod,
 } from '@contracts/documents'
+
+// Destino del saldo a favor de una DVV; sale del contrato para no duplicar el union.
+export type CreditUsableIn = NonNullable<DocumentDetail['creditUsableIn']>
 
 // Fila de la bandeja "Compras oficiales pendientes": CM confirmada oficial sin CMO confirmada enlazada.
 export interface PendingOfficialPurchase {
@@ -129,6 +133,8 @@ export interface CreateDocumentPayload {
   payments?: { method: PaymentMethod; amount: number }[]
   // Solo DVV, obligatorio: define si deja saldo a favor, es cambio de producto, o devuelve dinero.
   refundMethod?: DvvRefundMethod
+  // Solo DVV con saldo a favor, obligatorio ahí; el backend lo rechaza sin valor. No se cambia después.
+  creditUsableIn?: CreditUsableIn
   // Solo en creación COT: backend netea la CxC y valida cupo sobre el neto (POS los aplica recién al confirmar).
   customerCredits?: { customerCreditId: string; amount: number }[]
   // Solo CM: el backend rechaza el flag en otros tipos; con true exige supplierInvoiceNumber.
