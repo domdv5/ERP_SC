@@ -121,7 +121,7 @@ export interface ClientStatementTotals {
   // Solo devoluciones
   availableCredit: string
   // Solo excedentes (filtrado por sucursal si se pidió)
-  availableExcedente: string
+  availableBranchCredit: string
 }
 
 // Una aplicación va a una venta (devolución) o a un recibo de caja (excedente)
@@ -165,7 +165,7 @@ export interface ClientBranchTotal {
   totalDebt: string
   totalPaid: string
   totalBalance: string
-  availableExcedente: string
+  availableBranchCredit: string
 }
 
 export interface ClientStatement {

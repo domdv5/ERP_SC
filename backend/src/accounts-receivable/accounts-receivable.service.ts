@@ -163,7 +163,7 @@ type BranchReceivable = Pick<ListRow, 'totalAmount' | 'paidAmount'> & {
 };
 
 /** Una fila por sucursal del cliente más "Sin sucursal" (branchId null) solo si hay CxC sin sucursal. */
-type BranchExcedente = {
+type BranchCredit = {
   status: string;
   balance: Prisma.Decimal;
   customerBranchId: string | null;
@@ -178,7 +178,7 @@ function sumAvailable(credits: { status: string; balance: Prisma.Decimal }[]) {
 function buildBranchTotals(
   branches: { id: string; name: string }[],
   receivables: BranchReceivable[],
-  excedentes: BranchExcedente[],
+  branchCredits: BranchCredit[],
 ) {
   const totalsFor = (
     branchId: string | null,
@@ -189,7 +189,7 @@ function buildBranchTotals(
     totalDebt: Prisma.Decimal;
     totalPaid: Prisma.Decimal;
     totalBalance: Prisma.Decimal;
-    availableExcedente: Prisma.Decimal;
+    availableBranchCredit: Prisma.Decimal;
   } => {
     const rows = receivables.filter(
       (receivable) => receivable.document.customerBranchId === branchId,
@@ -208,8 +208,8 @@ function buildBranchTotals(
       totalDebt,
       totalPaid,
       totalBalance: totalDebt.minus(totalPaid),
-      availableExcedente: sumAvailable(
-        excedentes.filter((credit) => credit.customerBranchId === branchId),
+      availableBranchCredit: sumAvailable(
+        branchCredits.filter((credit) => credit.customerBranchId === branchId),
       ),
     };
   };
@@ -217,7 +217,7 @@ function buildBranchTotals(
   const rows = branches.map((branch) => totalsFor(branch.id, branch.name));
   if (
     receivables.some((r) => r.document.customerBranchId === null) ||
-    excedentes.some((credit) => credit.customerBranchId === null)
+    branchCredits.some((credit) => credit.customerBranchId === null)
   ) {
     rows.push(totalsFor(null, 'Sin sucursal'));
   }
@@ -542,7 +542,7 @@ export class AccountsReceivableService {
         (credit) => credit.usableIn === CustomerCreditUsableIn.facturacion,
       ),
     );
-    const availableExcedente = sumAvailable(
+    const availableBranchCredit = sumAvailable(
       credits.filter(
         (credit) => credit.usableIn === CustomerCreditUsableIn.administracion,
       ),
@@ -555,7 +555,7 @@ export class AccountsReceivableService {
         totalPaid,
         totalBalance: totalDebt.minus(totalPaid),
         availableCredit,
-        availableExcedente,
+        availableBranchCredit,
       },
       branchTotals,
       receivables,

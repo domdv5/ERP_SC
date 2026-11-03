@@ -80,7 +80,7 @@ export interface ReciboCajaAllocation {
   accountReceivable: ReciboCajaAllocationAccountReceivable
 }
 
-// Excedente del cliente usado como parte del pago de este recibo
+// Saldo a favor del cliente usado como parte del pago de este recibo
 export interface ReciboCajaCreditApplication {
   id: string
   amount: string
@@ -142,7 +142,7 @@ export interface ReciboCajaOpenReceivable {
 }
 
 // Saldo a favor de administración de la misma sucursal; `balance` ya descuenta lo usado
-export interface ReciboCajaOpenExcedente {
+export interface ReciboCajaOpenCredit {
   id: string
   amount: string
   balance: string
@@ -156,7 +156,7 @@ export interface ReciboCajaOpenExcedente {
 
 export interface ReciboCajaOpenItems {
   receivables: ReciboCajaOpenReceivable[]
-  excedentes: ReciboCajaOpenExcedente[]
+  credits: ReciboCajaOpenCredit[]
 }
 
 export interface CreateReciboCajaReceivablePayload {
@@ -171,7 +171,7 @@ export interface CreateReciboCajaPaymentPayload {
   bank?: string
 }
 
-export interface CreateReciboCajaExcedentePayload {
+export interface CreateReciboCajaCreditPayload {
   customerCreditId: string
   amount: number
 }
@@ -185,5 +185,5 @@ export interface CreateReciboCajaPayload {
   receivables: CreateReciboCajaReceivablePayload[]
   payments?: CreateReciboCajaPaymentPayload[]
   discount?: { reason: ReciboCajaDiscountReason; amount: number }
-  excedentes?: CreateReciboCajaExcedentePayload[]
+  credits?: CreateReciboCajaCreditPayload[]
 }

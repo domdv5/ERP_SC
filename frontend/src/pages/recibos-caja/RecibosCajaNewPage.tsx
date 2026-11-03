@@ -22,7 +22,7 @@ import {
 } from './recibo-caja-form.schema'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
 import type { ThirdParty } from '@/types/third-party.types'
-import type { ReciboCajaOpenExcedente } from '@/types/recibo-caja.types'
+import type { ReciboCajaOpenCredit } from '@/types/recibo-caja.types'
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
 // Mismo patrón que EgresoNewPage.tsx: overlay + card, sin librería de modales.
@@ -37,7 +37,7 @@ interface ConfirmDialogProps {
   onCancel: () => void
 }
 
-function creditOriginLabel(credit: ReciboCajaOpenExcedente) {
+function creditOriginLabel(credit: ReciboCajaOpenCredit) {
   if (credit.kind === 'excedente' || !credit.sourceDocument) return 'Excedente'
   return `Devolución ${docNumber(credit.sourceDocument.type, credit.sourceDocument.number)}`
 }
@@ -101,10 +101,10 @@ export default function RecibosCajaNewPage() {
     watch,
     handleSubmit,
     receivablesFields,
-    excedentesFields,
-    setExcedenteAmount,
-    fillExcedente,
-    totalExcedentes,
+    creditFields,
+    setCreditAmount,
+    fillCredit,
+    totalCredits,
     paymentsArray,
     errors,
     setReceivableAmount,
@@ -171,8 +171,8 @@ export default function RecibosCajaNewPage() {
   const receivableById = new Map((openItems?.receivables ?? []).map((r) => [r.id, r]))
 
   const watchedReceivables = watch('receivables')
-  const watchedExcedentes = watch('excedentes')
-  const excedenteById = new Map((openItems?.excedentes ?? []).map((e) => [e.id, e]))
+  const watchedCredits = watch('credits')
+  const creditById = new Map((openItems?.credits ?? []).map((e) => [e.id, e]))
   const hasSelectedReceivable = watchedReceivables.some((r) => r.selected)
 
   const openConfirm = handleSubmit(
@@ -420,8 +420,8 @@ export default function RecibosCajaNewPage() {
                 )}
               </div>
 
-              {/* Saldos a favor por excedentes */}
-              {excedentesFields.length > 0 && (
+              {/* Saldos a favor */}
+              {creditFields.length > 0 && (
                 <div className="card-hard overflow-hidden">
                   <div className="px-6 py-4 border-b border-ui-border">
                     <h2 className="text-content font-semibold">Saldos a favor</h2>
@@ -445,17 +445,17 @@ export default function RecibosCajaNewPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-ui-divide">
-                        {excedentesFields.map((field, index) => {
-                          const row = watchedExcedentes[index]
-                          const openExcedente = excedenteById.get(field.customerCreditId)
-                          const rowError = errors.excedentes?.[index]?.amount
+                        {creditFields.map((field, index) => {
+                          const row = watchedCredits[index]
+                          const openCredit = creditById.get(field.customerCreditId)
+                          const rowError = errors.credits?.[index]?.amount
                           return (
                             <tr key={field.id}>
                               <td className="px-5 py-3 text-content-muted text-xs whitespace-nowrap">
-                                {openExcedente ? formatDateOnly(openExcedente.date) : '—'}
+                                {openCredit ? formatDateOnly(openCredit.date) : '—'}
                               </td>
                               <td className="px-5 py-3 text-content-secondary text-xs whitespace-nowrap">
-                                {openExcedente ? creditOriginLabel(openExcedente) : '—'}
+                                {openCredit ? creditOriginLabel(openCredit) : '—'}
                               </td>
                               <td className="px-5 py-3 text-content-secondary text-xs whitespace-nowrap">
                                 {formatCOP(row?.balance ?? 0)}
@@ -464,13 +464,13 @@ export default function RecibosCajaNewPage() {
                                 <div className="flex items-center gap-2">
                                   <ThousandsInput
                                     value={row?.amount}
-                                    onChange={(v) => setExcedenteAmount(index, v ?? 0)}
+                                    onChange={(v) => setCreditAmount(index, v ?? 0)}
                                     placeholder="0"
                                     className="w-32 py-1.5"
                                   />
                                   <button
                                     type="button"
-                                    onClick={() => fillExcedente(index)}
+                                    onClick={() => fillCredit(index)}
                                     className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-brand-secondary border border-brand-secondary/30 rounded-lg hover:bg-brand-secondary/10 transition-colors whitespace-nowrap"
                                   >
                                     <ArrowDownToLine className="w-3.5 h-3.5" />
@@ -489,9 +489,9 @@ export default function RecibosCajaNewPage() {
                       </tbody>
                     </table>
                   </div>
-                  {errors.excedentes?.message && (
+                  {errors.credits?.message && (
                     <p className="px-6 py-3 text-xs text-red-500 font-accent">
-                      {errors.excedentes.message}
+                      {errors.credits.message}
                     </p>
                   )}
                 </div>
@@ -698,7 +698,7 @@ export default function RecibosCajaNewPage() {
                   </div>
                 )}
 
-                {(hasDiscount || totalExcedentes > 0) && (
+                {(hasDiscount || totalCredits > 0) && (
                   <div className="space-y-1.5 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-content-secondary">Deuda</span>
@@ -714,11 +714,11 @@ export default function RecibosCajaNewPage() {
                         </span>
                       </div>
                     )}
-                    {totalExcedentes > 0 && (
+                    {totalCredits > 0 && (
                       <div className="flex items-center justify-between">
-                        <span className="text-content-secondary">Excedentes</span>
+                        <span className="text-content-secondary">Saldos a favor</span>
                         <span className="font-mono font-medium text-content">
-                          − {formatCOP(totalExcedentes)}
+                          − {formatCOP(totalCredits)}
                         </span>
                       </div>
                     )}
@@ -783,8 +783,8 @@ export default function RecibosCajaNewPage() {
         open={confirmOpen}
         title="Registrar recibo de caja"
         description={
-          hasDiscount || totalExcedentes > 0
-            ? `Se registrará el cobro por ${formatCOP(expectedPayments)} sobre ${formatCOP(totalAbonos)} de deuda${hasDiscount ? `, con un descuento de ${formatCOP(discount)}` : ''}${totalExcedentes > 0 ? `${hasDiscount ? ' y' : ','} ${formatCOP(totalExcedentes)} de excedentes aplicados` : ''}. Esta acción no se puede deshacer.`
+          hasDiscount || totalCredits > 0
+            ? `Se registrará el cobro por ${formatCOP(expectedPayments)} sobre ${formatCOP(totalAbonos)} de deuda${hasDiscount ? `, con un descuento de ${formatCOP(discount)}` : ''}${totalCredits > 0 ? `${hasDiscount ? ' y' : ','} ${formatCOP(totalCredits)} de credits aplicados` : ''}. Esta acción no se puede deshacer.`
             : `Se registrará el cobro por ${formatCOP(totalAbonos)} a las cuentas por cobrar seleccionadas. Esta acción no se puede deshacer.`
         }
         confirmLabel="Confirmar y registrar"

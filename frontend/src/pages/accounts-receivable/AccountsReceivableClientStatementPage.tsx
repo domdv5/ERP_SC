@@ -156,7 +156,7 @@ export default function AccountsReceivableClientStatementPage() {
   const totalPaid = Number(totals.totalPaid)
   const totalBalance = Number(totals.totalBalance)
   const availableCredit = Number(totals.availableCredit)
-  const availableExcedente = Number(totals.availableExcedente)
+  const availableBranchCredit = Number(totals.availableBranchCredit)
 
   return (
     <div className="space-y-6 pb-10">
@@ -248,7 +248,7 @@ export default function AccountsReceivableClientStatementPage() {
             </div>
             <div>
               <p className="text-xs text-content-faint">Saldo a favor de administración</p>
-              <p className="text-sm text-content font-medium">{formatCOP(availableExcedente)}</p>
+              <p className="text-sm text-content font-medium">{formatCOP(availableBranchCredit)}</p>
             </div>
           </div>
         </div>
@@ -293,7 +293,7 @@ export default function AccountsReceivableClientStatementPage() {
                       {formatCOP(Number(branch.totalBalance))}
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatCOP(Number(branch.availableExcedente))}
+                      {formatCOP(Number(branch.availableBranchCredit))}
                     </td>
                   </tr>
                 ))}
