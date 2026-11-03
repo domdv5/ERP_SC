@@ -35,7 +35,6 @@ interface DocumentItemsTableProps {
   getValues: UseFormGetValues<FormValues>
   scannedProductInfo: ScannedProductInfo
   selectedSupplierBrandIds: string[]
-  quantityInputRefs: React.RefObject<Map<number, HTMLInputElement>>
   barcodeInputRef: React.RefObject<{ focus: () => void } | null>
 }
 
@@ -59,7 +58,6 @@ export function DocumentItemsTable({
   getValues,
   scannedProductInfo,
   selectedSupplierBrandIds,
-  quantityInputRefs,
   barcodeInputRef,
 }: DocumentItemsTableProps) {
   const watchedItems = watch('items')
@@ -134,10 +132,6 @@ export function DocumentItemsTable({
               initialUnitOfMeasure={scannedProductInfo[field.productId]?.unitOfMeasure}
               initialAvailableStock={scannedProductInfo[field.productId]?.availableStock}
               supplierBrandIds={needsSupplier ? selectedSupplierBrandIds : undefined}
-              quantityInputRef={(el) => {
-                if (el) quantityInputRefs.current.set(index, el)
-                else quantityInputRefs.current.delete(index)
-              }}
               onQuantityConfirmed={() => barcodeInputRef.current?.focus()}
             />
           ))}

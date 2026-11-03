@@ -23,6 +23,7 @@ interface SaleCartProps {
   cartItems: FormValues['items']
   productDetailByCode: Map<string, { minSalePrice: number; availableStock: number; id: string }>
   minSalePriceByProductId: Map<string, number>
+  onScanPendingChange: (hasPending: boolean) => void
 }
 
 export function SaleCart({
@@ -35,6 +36,7 @@ export function SaleCart({
   cartItems,
   productDetailByCode,
   minSalePriceByProductId,
+  onScanPendingChange,
 }: SaleCartProps) {
   const queryClient = useQueryClient()
   const { control, register, watch, setValue, getValues } = form
@@ -103,7 +105,7 @@ export function SaleCart({
         getValues={getValues}
         setValue={setValue}
         onProductScanned={() => {}}
-        focusQuantityInput={() => {}}
+        onPendingChange={onScanPendingChange}
         supplierBrandIds={undefined}
       />
 

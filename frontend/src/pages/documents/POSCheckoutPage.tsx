@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { CalendarDays, User, UserCog } from 'lucide-react'
@@ -99,6 +100,8 @@ export default function POSCheckoutPage() {
     creditExceeded,
   })
   const canConfirm = missingItems.length === 0
+  // Lecturas del lector todavía en fila: no se confirma la venta hasta procesarlas
+  const [isScanPending, setIsScanPending] = useState(false)
 
   const { handleConfirm, isSubmitting, missingStock, setMissingStock } = useConfirmSale({
     canConfirm,
@@ -309,6 +312,7 @@ export default function POSCheckoutPage() {
             cartItems={cartItems}
             productDetailByCode={productDetailByCode}
             minSalePriceByProductId={minSalePriceByProductId}
+            onScanPendingChange={setIsScanPending}
           />
         </div>
 
@@ -322,7 +326,7 @@ export default function POSCheckoutPage() {
           itemCount={fields.length}
           totalUnits={totalUnits}
           missingItems={missingItems}
-          canConfirm={canConfirm}
+          canConfirm={canConfirm && !isScanPending}
           isSubmitting={isSubmitting}
           onConfirm={() => {
             void handleConfirm()

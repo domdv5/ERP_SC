@@ -39,9 +39,8 @@ export function DocumentItemsEditor({
     remove,
     scannedProductInfo,
     setScannedProductInfo,
-    quantityInputRefs,
     barcodeInputRef,
-    setPendingQuantityFocusIndex,
+    setIsScanPending,
   } = items
 
   return (
@@ -84,7 +83,7 @@ export function DocumentItemsEditor({
             [productId]: { avgCost, unitOfMeasure, availableStock },
           }))
         }
-        focusQuantityInput={(index) => setPendingQuantityFocusIndex(index)}
+        onPendingChange={setIsScanPending}
         supplierBrandIds={typeFlags.needsSupplier ? selectedSupplierBrandIds : undefined}
         disabled={typeFlags.needsSupplier && !watch('thirdPartyId')}
         supplierName={tpSelectedName}
@@ -107,7 +106,6 @@ export function DocumentItemsEditor({
           getValues={getValues}
           scannedProductInfo={scannedProductInfo}
           selectedSupplierBrandIds={selectedSupplierBrandIds}
-          quantityInputRefs={quantityInputRefs}
           barcodeInputRef={barcodeInputRef}
         />
       )}
