@@ -26,7 +26,7 @@ describe('resolveCreditUsableIn', () => {
       resolveCreditUsableIn(DvvRefundMethod.saldo_a_favor, null),
     ).toThrow(
       new BadRequestException(
-        'Elegí dónde se usa el saldo a favor: en facturación o en administración',
+        'Seleccione dónde se usará el saldo a favor: en facturación o en administración',
       ),
     );
   });

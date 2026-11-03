@@ -6,7 +6,7 @@ import { DvvEffectStrategy } from './dvv-effect.strategy';
 import type { DocumentWithItems } from './document-effect.strategy';
 
 const MISSING_DESTINATION =
-  'Elegí dónde se usa el saldo a favor: en facturación o en administración';
+  'Seleccione dónde se usará el saldo a favor: en facturación o en administración';
 
 describe('DvvEffectStrategy: destino del saldo a favor', () => {
   const prisma = {};

@@ -13,7 +13,7 @@ export function resolveCreditUsableIn(
   }
   if (!creditUsableIn) {
     throw new BadRequestException(
-      'Elegí dónde se usa el saldo a favor: en facturación o en administración',
+      'Seleccione dónde se usará el saldo a favor: en facturación o en administración',
     );
   }
   return creditUsableIn;
