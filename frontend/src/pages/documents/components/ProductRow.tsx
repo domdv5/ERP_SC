@@ -160,8 +160,8 @@ export function ProductRow({
   const handleCopyAvgCost = async () => {
     if (selectedAvgCost === null) return
     try {
-      // Valor numérico sin formato: se pega directo en el campo de costo de la entrada por ajuste de destino.
-      await navigator.clipboard.writeText(String(selectedAvgCost))
+      // En pesos enteros y sin formato: ThousandsInput de la EAI destino descarta el punto decimal al pegar.
+      await navigator.clipboard.writeText(String(Math.round(selectedAvgCost)))
       toast.success('Costo copiado')
     } catch {
       toast.error('No se pudo copiar el costo')
