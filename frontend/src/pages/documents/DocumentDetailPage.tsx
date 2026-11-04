@@ -40,7 +40,12 @@ import type { DocumentType } from '@/types/document.types'
 import { usePermission } from '@/hooks/usePermission'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
-import { canCheckMissingStock, canVoidDocument, canViewDocument } from '@/lib/document-permissions'
+import {
+  canChangeDocument,
+  canCheckMissingStock,
+  canVoidDocument,
+  canViewDocument,
+} from '@/lib/document-permissions'
 import { useAuthStore } from '@/stores/auth.store'
 import { invalidateAfterDocumentChange } from '@/lib/invalidation'
 import {
@@ -563,7 +568,7 @@ export default function DocumentDetailPage() {
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 shrink-0">
-            {isDraft && (
+            {isDraft && canChangeDocument(doc.type, userPermissions ?? []) && (
               <>
                 <button
                   onClick={() =>

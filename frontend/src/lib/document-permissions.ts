@@ -1,10 +1,35 @@
 import type { DocumentStatus, DocumentType } from '@/types/document.types'
 
-// Ventas que se anulan con document.void.{TIPO}; el resto de tipos sigue con su permiso de siempre.
+// Record exige listar todos los tipos: si el contrato agrega uno, no compila hasta sumarlo aquí.
+const DOCUMENT_TYPE_KEYS: Record<DocumentType, true> = {
+  CM: true,
+  DVC: true,
+  RMDVC: true,
+  PE: true,
+  EAI: true,
+  SAJ: true,
+  COT: true,
+  POS: true,
+  REM: true,
+  DVV: true,
+  T: true,
+  PV: true,
+  CMO: true,
+  POSO: true,
+}
+const ALL_DOCUMENT_TYPES = Object.keys(DOCUMENT_TYPE_KEYS) as DocumentType[]
+
+// Ventas que se anulan con document.void.{TIPO}; el resto se anula con el mismo permiso que lo crea, igual que el backend.
 const VOID_PERMISSION_TYPES: ReadonlySet<DocumentType> = new Set(['POS', 'COT', 'POSO', 'REM'])
 
 export function canVoidDocument(type: DocumentType, permissions: readonly string[]): boolean {
-  return !VOID_PERMISSION_TYPES.has(type) || permissions.includes(`document.void.${type}`)
+  const action = VOID_PERMISSION_TYPES.has(type) ? 'void' : 'create'
+  return permissions.includes(`document.${action}.${type}`)
+}
+
+// Editar, eliminar y confirmar un borrador exigen document.create.{TIPO} en el backend.
+export function canChangeDocument(type: DocumentType, permissions: readonly string[]): boolean {
+  return permissions.includes(`document.create.${type}`)
 }
 
 // Tipos que validan disponible al confirmar (findMissingStock en el backend); el endpoint exige document.create.{TIPO}.
@@ -21,10 +46,14 @@ export function canCheckMissingStock(
   )
 }
 
-// Tipos que el usuario ve en el listado: crea, anula o convierte (document.create/void/convert.*), igual que el backend.
+// Cartera y libro oficial enlazan a cualquier tipo, así que quien los lee ve todos, igual que el backend.
+const SEE_ALL_PERMISSIONS = ['ar.read', 'ap.read', 'official.read']
+
 const VISIBILITY_PREFIXES = ['document.create.', 'document.void.', 'document.convert.']
 
+// Tipos que el usuario ve en el listado y en el detalle: todos con cartera o libro oficial; si no, los que crea, anula o convierte.
 export function visibleDocumentTypes(permissions: readonly string[]): DocumentType[] {
+  if (SEE_ALL_PERMISSIONS.some((p) => permissions.includes(p))) return ALL_DOCUMENT_TYPES
   const types = new Set<DocumentType>()
   for (const p of permissions) {
     const prefix = VISIBILITY_PREFIXES.find((pre) => p.startsWith(pre))
@@ -33,12 +62,6 @@ export function visibleDocumentTypes(permissions: readonly string[]): DocumentTy
   return [...types]
 }
 
-// Mismo criterio que el backend para el detalle: cartera y libro oficial ven cualquier tipo.
-const SEE_ALL_PERMISSIONS = ['ar.read', 'ap.read', 'official.read']
-
 export function canViewDocument(type: DocumentType, permissions: readonly string[]): boolean {
-  return (
-    SEE_ALL_PERMISSIONS.some((p) => permissions.includes(p)) ||
-    visibleDocumentTypes(permissions).includes(type)
-  )
+  return visibleDocumentTypes(permissions).includes(type)
 }

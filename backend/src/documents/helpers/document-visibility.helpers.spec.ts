@@ -17,6 +17,15 @@ describe('findVisibleDocumentTypes', () => {
       ]).sort(),
     ).toEqual([DocumentType.CM, DocumentType.POS].sort());
   });
+
+  it.each(['ar.read', 'ap.read', 'official.read'])(
+    'con %s lista todos los tipos (mismo alcance que el detalle)',
+    (permission) => {
+      expect(findVisibleDocumentTypes([permission]).sort()).toEqual(
+        Object.values(DocumentType).sort(),
+      );
+    },
+  );
 });
 
 describe('assertCanViewDocument', () => {

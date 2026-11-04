@@ -134,8 +134,6 @@ export async function seedRolePermissions(prisma: PrismaClient) {
       'thirdparty.role.receiver',
       'customer.credit.update',
       'document.read',
-      'document.create.CM',
-      'document.create.DVC',
       'document.create.CMO',
       'document.void.POS',
       'document.void.COT',

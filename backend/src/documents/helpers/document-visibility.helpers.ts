@@ -4,10 +4,13 @@ import { DocumentType } from '@/common/enums';
 // Cartera y libro oficial enlazan a documentos de cualquier tipo, así que quien los lee ve todos.
 const SEE_ALL_PERMISSIONS = ['ar.read', 'ap.read', 'official.read'];
 
-/** Tipos que el rol ve: los que puede crear, anular o convertir (document.create/void/convert.{T}). */
+/** Tipos que el rol ve: todos con cartera o libro oficial; si no, los que crea, anula o convierte. */
 export function findVisibleDocumentTypes(
   permissions: string[],
 ): DocumentType[] {
+  if (SEE_ALL_PERMISSIONS.some((p) => permissions.includes(p))) {
+    return Object.values(DocumentType);
+  }
   const prefixes = ['document.create.', 'document.void.', 'document.convert.'];
   const valid = new Set<string>(Object.values(DocumentType));
   const types = permissions.flatMap((p) => {
@@ -21,7 +24,6 @@ export function assertCanViewDocument(
   permissions: string[],
   type: DocumentType,
 ) {
-  if (SEE_ALL_PERMISSIONS.some((p) => permissions.includes(p))) return;
   if (!findVisibleDocumentTypes(permissions).includes(type)) {
     throw new ForbiddenException(
       `No tiene permiso para ver documentos de tipo ${type}`,
