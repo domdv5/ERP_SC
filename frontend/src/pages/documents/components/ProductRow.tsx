@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
-import { Trash2, Copy } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Controller,
@@ -157,17 +157,6 @@ export function ProductRow({
       ? [{ id: productId, label: `${productCode} — ${productDesc}` }]
       : productOptions
 
-  const handleCopyAvgCost = async () => {
-    if (selectedAvgCost === null) return
-    try {
-      // En pesos enteros y sin formato: ThousandsInput de la EAI destino descarta el punto decimal al pegar.
-      await navigator.clipboard.writeText(String(Math.round(selectedAvgCost)))
-      toast.success('Costo copiado')
-    } catch {
-      toast.error('No se pudo copiar el costo')
-    }
-  }
-
   return (
     <>
       <tr className="group">
@@ -290,25 +279,13 @@ export function ProductRow({
         {showCostReadonly && (
           <td className="px-3 py-2 w-36">
             {/* Mismo campo que el costo editable, bloqueado, para que se lea igual en todos los documentos */}
-            <div className="flex items-center gap-1">
-              <ThousandsInput
-                value={selectedAvgCost ?? undefined}
-                onChange={() => {}}
-                placeholder="—"
-                disabled
-                className="bg-surface-raised min-w-0"
-              />
-              {selectedAvgCost !== null && (
-                <button
-                  type="button"
-                  onClick={handleCopyAvgCost}
-                  aria-label="Copiar costo"
-                  className="shrink-0 p-1 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+            <ThousandsInput
+              value={selectedAvgCost ?? undefined}
+              onChange={() => {}}
+              placeholder="—"
+              disabled
+              className="disabled:opacity-100"
+            />
           </td>
         )}
 
