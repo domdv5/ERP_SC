@@ -69,7 +69,6 @@ export const ROLE_LABELS: Record<string, string> = {
   preventa: 'Gestión de preventa',
   billing: 'Facturación',
   accounts_admin: 'Admin. de Cuentas',
-  accounts_assistant: 'Asistente de Cuentas',
 }
 
 export function getRoleLabel(name: string): string {
