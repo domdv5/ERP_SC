@@ -15,6 +15,7 @@ import { Combobox, HintText, ThousandsInput } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { getProducts } from '@/services/products.service'
 import { formatCOP, formatDateTimeBogota } from '@/lib/format'
+import { suggestedUnitCost } from '@/lib/suggested-unit-cost'
 import { computeOfficialLineTax } from '@/lib/tax'
 import type { Product, StockByWarehouse } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
@@ -211,9 +212,9 @@ export function ProductRow({
               setSelectedUnitOfMeasure(product?.unitOfMeasure ?? null)
               setSelectedAvailableStock(product?.availableStock ?? null)
               setSelectedStockByWarehouse(product?.stockByWarehouse ?? null)
-              // En CMO el costo promedio no sirve de sugerencia: el valor va sin IVA y lo digita el usuario.
-              if (showCost && product?.avgCost && docType !== 'CMO') {
-                setValue(`items.${index}.unitCost`, Number(product.avgCost))
+              const suggestedCost = product ? suggestedUnitCost(docType, product) : undefined
+              if (showCost && suggestedCost !== undefined) {
+                setValue(`items.${index}.unitCost`, suggestedCost)
               }
               if (showPrice && product?.salePrice) {
                 setValue(`items.${index}.unitPrice`, Number(product.salePrice))
@@ -288,23 +289,26 @@ export function ProductRow({
         {/* Costo unitario — de solo lectura en salidas por ajuste y traslados: el backend siempre usa el costo promedio del producto */}
         {showCostReadonly && (
           <td className="px-3 py-2 w-36">
-            <span className="inline-flex items-center gap-1 text-sm text-content-muted">
-              {selectedAvgCost !== null ? (
-                <>
-                  {`Costo: ${formatCOP(selectedAvgCost)}`}
-                  <button
-                    type="button"
-                    onClick={handleCopyAvgCost}
-                    aria-label="Copiar costo"
-                    className="p-1 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
-                </>
-              ) : (
-                <span className="text-content-faint">—</span>
+            {/* Mismo campo que el costo editable, bloqueado, para que se lea igual en todos los documentos */}
+            <div className="flex items-center gap-1">
+              <ThousandsInput
+                value={selectedAvgCost ?? undefined}
+                onChange={() => {}}
+                placeholder="—"
+                disabled
+                className="bg-surface-raised min-w-0"
+              />
+              {selectedAvgCost !== null && (
+                <button
+                  type="button"
+                  onClick={handleCopyAvgCost}
+                  aria-label="Copiar costo"
+                  className="shrink-0 p-1 rounded-lg text-content-faint hover:text-brand-secondary hover:bg-brand-secondary/10 transition-colors"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
               )}
-            </span>
+            </div>
           </td>
         )}
 
