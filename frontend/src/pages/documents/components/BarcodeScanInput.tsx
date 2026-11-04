@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import type { Product } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
+import { suggestedUnitCost } from '@/lib/suggested-unit-cost'
 import { createScanQueue, findRowIndexByCode } from './scan-queue'
 
 export interface BarcodeScanInputHandle {
@@ -108,7 +109,6 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
 
       const avgCost = Number(product.avgCost)
       const salePrice = Number(product.salePrice)
-      const shouldPrefillCost = docType === 'CM' || docType === 'DVC' || docType === 'EAI'
       const shouldPrefillPrice =
         docType === 'PV' || docType === 'POS' || docType === 'COT' || docType === 'POSO'
       append(
@@ -117,7 +117,7 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
           productCode: product.code,
           productDesc: product.description,
           quantity: 1,
-          unitCost: shouldPrefillCost ? avgCost : undefined,
+          unitCost: suggestedUnitCost(docType, product),
           unitPrice: shouldPrefillPrice ? salePrice : undefined,
           observaciones: undefined,
           addedAt: new Date().toISOString(),

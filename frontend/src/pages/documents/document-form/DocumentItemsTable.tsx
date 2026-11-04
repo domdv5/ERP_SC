@@ -91,12 +91,6 @@ export function DocumentItemsTable({
                 {isOfficialPurchaseDoc && (
                   <span className="text-content-faint normal-case">(sin IVA)</span>
                 )}
-                {docType === 'EAI' && (
-                  <span className="text-content-faint normal-case">(opc.)</span>
-                )}
-                {(docType === 'SAJ' || docType === 'T') && (
-                  <span className="text-content-faint normal-case">(prom.)</span>
-                )}
               </th>
             )}
             <th className="text-right text-xs font-semibold text-content-faint uppercase tracking-wider px-3 py-3 w-32">

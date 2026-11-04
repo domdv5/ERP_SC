@@ -454,14 +454,11 @@ export default function DocumentDetailPage() {
   const itemsTotal = doc.documentItems.reduce((sum, item) => sum + Number(itemSubtotal(item)), 0)
   // Nota de talla por línea: solo traslados, donde un mismo producto se reparte en varios bultos.
   const showObservaciones = doc.type === 'T'
-  // SAJ/T muestran el costo promedio, nunca uno tipeado por el usuario (ver usesAvgCostFallback arriba).
   const costHeaderLabel = isPriceBasedType
     ? doc.type === 'POSO'
       ? 'Precio unit. (con IVA)'
       : 'Precio unit.'
-    : usesAvgCostFallback
-      ? 'Costo unit. (prom.)'
-      : 'Costo unit.'
+    : 'Costo unit.'
   const baseItemHeaders = showObservaciones
     ? ['Código', 'Descripción', 'Cantidad', 'Observaciones', costHeaderLabel, 'Subtotal']
     : isReservationType
