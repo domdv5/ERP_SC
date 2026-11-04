@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { canViewDocument } from './document-permissions'
+import {
+  canChangeDocument,
+  canViewDocument,
+  canVoidDocument,
+  visibleDocumentTypes,
+} from './document-permissions'
 
 describe('canViewDocument', () => {
   it('ve un tipo que crea', () => {
@@ -20,5 +25,60 @@ describe('canViewDocument', () => {
 
   it.each(['ar.read', 'ap.read', 'official.read'])('con %s ve cualquier tipo', (permission) => {
     expect(canViewDocument('DVV', [permission])).toBe(true)
+  })
+})
+
+describe('visibleDocumentTypes', () => {
+  it('lista solo los tipos que el rol crea, anula o convierte', () => {
+    expect(
+      visibleDocumentTypes(['document.create.T', 'document.void.POS', 'document.read']).sort(),
+    ).toEqual(['POS', 'T'])
+  })
+
+  it.each(['ar.read', 'ap.read', 'official.read'])('con %s lista los 14 tipos', (permission) => {
+    expect(visibleDocumentTypes([permission]).sort()).toEqual([
+      'CM',
+      'CMO',
+      'COT',
+      'DVC',
+      'DVV',
+      'EAI',
+      'PE',
+      'POS',
+      'POSO',
+      'PV',
+      'REM',
+      'RMDVC',
+      'SAJ',
+      'T',
+    ])
+  })
+})
+
+describe('canChangeDocument', () => {
+  it('edita, elimina y confirma solo los tipos que crea', () => {
+    expect(canChangeDocument('CMO', ['document.create.CMO'])).toBe(true)
+  })
+
+  it('no cambia un tipo que solo puede ver', () => {
+    expect(canChangeDocument('CM', ['document.create.CMO', 'ap.read', 'document.read'])).toBe(false)
+  })
+})
+
+describe('canVoidDocument', () => {
+  it('anula una venta con document.void.{TIPO}', () => {
+    expect(canVoidDocument('POS', ['document.void.POS'])).toBe(true)
+  })
+
+  it('crear una venta no alcanza para anularla', () => {
+    expect(canVoidDocument('POS', ['document.create.POS'])).toBe(false)
+  })
+
+  it('anula un tipo que no es venta si lo crea', () => {
+    expect(canVoidDocument('CMO', ['document.create.CMO'])).toBe(true)
+  })
+
+  it('no anula un tipo que no es venta si solo lo ve', () => {
+    expect(canVoidDocument('CM', ['ap.read', 'document.void.POS', 'document.read'])).toBe(false)
   })
 })
