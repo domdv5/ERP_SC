@@ -12,6 +12,14 @@ export async function seedRoles(prisma: PrismaClient) {
     },
   });
 
+  // Rol eliminado (2026-11-04): el seed no borra filas solo, se quitan con sus permisos y asignaciones
+  const removedRole = { role: { name: 'accounts_assistant' } };
+  await prisma.$transaction([
+    prisma.userRole.deleteMany({ where: removedRole }),
+    prisma.rolePermission.deleteMany({ where: removedRole }),
+    prisma.role.deleteMany({ where: { name: 'accounts_assistant' } }),
+  ]);
+
   await prisma.role.createMany({
     data: [
       {
@@ -41,12 +49,8 @@ export async function seedRoles(prisma: PrismaClient) {
 
       {
         name: 'accounts_admin',
-        description: 'Manages accounts payable, accounts receivable, and system users',
-      },
-
-      {
-        name: 'accounts_assistant',
-        description: 'Manages accounts payable and accounts receivable',
+        description:
+          'Manages accounts payable, accounts receivable, and system users',
       },
     ],
 
