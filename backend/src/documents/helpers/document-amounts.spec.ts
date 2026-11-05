@@ -209,7 +209,7 @@ describe('assertOfficialFieldsAllowed', () => {
           officialPurchase: true,
         }),
       ),
-    ).toBe('Solo una compra (CM) puede marcarse como oficial');
+    ).toBe('Solo una compra (CM) puede marcarse con factura');
   });
 
   it('supplierInvoiceNumber solo en CM y CMO; en blanco se ignora', () => {
@@ -240,6 +240,8 @@ describe('assertOfficialFieldsAllowed', () => {
       messageOf(() =>
         assertOfficialFieldsAllowed(DocumentType.CM, { sourceDocumentId: 'd' }),
       ),
-    ).toBe('Solo una compra oficial (CMO) puede enlazar una compra de origen');
+    ).toBe(
+      'Solo una factura de compra (CMO) puede enlazar una compra de origen',
+    );
   });
 });

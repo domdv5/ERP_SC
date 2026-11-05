@@ -29,7 +29,7 @@ export function OfficialInvoiceFields({
                 {...register('officialPurchase')}
                 className="w-4 h-4 rounded border-ui-border-medium accent-brand-secondary"
               />
-              Con factura (compra oficial)
+              Con factura
             </label>
           )}
           {(docType === 'CMO' || isOfficialPurchase) && (

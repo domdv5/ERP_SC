@@ -63,21 +63,21 @@ export default function OfficialLedgerPage() {
 
   const statCards = [
     {
-      label: 'Compras oficiales (unid.)',
+      label: 'Facturas de compra (unid.)',
       value: formatQty(totals?.purchased ?? 0),
       icon: ShoppingCart,
       bg: 'bg-brand-secondary/10',
       fg: 'text-brand-secondary',
     },
     {
-      label: 'Ventas oficiales (unid.)',
+      label: 'Facturas de venta (unid.)',
       value: formatQty(totals?.sold ?? 0),
       icon: BookOpen,
       bg: 'bg-brand-primary/10',
       fg: 'text-brand-primary dark:text-content',
     },
     {
-      label: 'Saldo oficial (unid.)',
+      label: 'Saldo (unid.)',
       value: formatQty(totals?.closingBalance ?? 0),
       icon: Scale,
       bg: (totals?.closingBalance ?? 0) < 0 ? 'bg-red-500/10' : 'bg-amber-500/10',
@@ -94,7 +94,7 @@ export default function OfficialLedgerPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl text-content">Libro de control oficial</h1>
+        <h1 className="text-2xl text-content">Libro de facturas</h1>
       </div>
 
       <StatsGrid cards={statCards} isLoading={isLoading} />
@@ -143,7 +143,7 @@ export default function OfficialLedgerPage() {
         )}
 
         {!hasInvalidDateRange && isError && (
-          <ErrorState message="Error al cargar el libro oficial" onRetry={refetch} />
+          <ErrorState message="Error al cargar el libro de facturas" onRetry={refetch} />
         )}
 
         {!hasInvalidDateRange && isLoading && (
@@ -156,12 +156,12 @@ export default function OfficialLedgerPage() {
             title={
               hasActiveFilters
                 ? 'Sin resultados para estos filtros'
-                : 'El libro oficial no tiene movimientos'
+                : 'El libro de facturas no tiene movimientos'
             }
             description={
               hasActiveFilters
                 ? 'Prueba con otro producto o rango de fechas'
-                : 'Los productos aparecen al confirmar compras oficiales o ventas oficiales'
+                : 'Los productos aparecen al confirmar facturas de compra o de venta'
             }
           />
         )}

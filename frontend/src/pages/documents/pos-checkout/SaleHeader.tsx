@@ -6,7 +6,6 @@ import type { DocumentSourceRef, DocumentType } from '@/types/document.types'
 
 interface SaleHeaderProps {
   docType: DocumentType
-  official: boolean
   isCredit: boolean
   draftId: string | null
   draftNumber: string | null
@@ -16,7 +15,6 @@ interface SaleHeaderProps {
 
 export function SaleHeader({
   docType,
-  official,
   isCredit,
   draftId,
   draftNumber,
@@ -47,11 +45,9 @@ export function SaleHeader({
         <p className="text-content-muted text-sm mt-0.5 font-accent">
           {draftId && draftNumber !== null
             ? `Borrador ${docNumber(docType, draftNumber)} en curso`
-            : official
-              ? 'Venta oficial de contado (precios con IVA)'
-              : isCredit
-                ? 'Venta a crédito'
-                : 'Venta de contado'}
+            : isCredit
+              ? 'Venta a crédito'
+              : 'Venta de contado'}
         </p>
       </div>
       {sourceDocument && (

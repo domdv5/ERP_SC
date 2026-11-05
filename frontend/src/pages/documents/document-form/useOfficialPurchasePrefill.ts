@@ -49,7 +49,7 @@ export function useOfficialPurchasePrefill({
       fromCMDoc.status !== 'confirmed' ||
       !fromCMDoc.officialPurchase
     ) {
-      toast.error('La compra de origen no es una compra oficial confirmada')
+      toast.error('La compra de origen no es una compra con factura confirmada')
       return
     }
     setTpSelectedName(fromCMDoc.thirdParty?.name ?? '')

@@ -112,9 +112,9 @@ export default function OfficialPurchasesPendingPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl text-content">Compras oficiales pendientes</h1>
+        <h1 className="text-2xl text-content">Compras sin factura registrada</h1>
         <p className="text-content-muted text-sm mt-0.5 font-accent">
-          Compras marcadas como oficiales que aún no tienen su compra oficial registrada
+          Compras con factura que aún no tienen su factura de compra registrada
         </p>
       </div>
 
@@ -189,12 +189,12 @@ export default function OfficialPurchasesPendingPage() {
             title={
               hasActiveFilters
                 ? 'Sin resultados para estos filtros'
-                : 'No hay compras oficiales pendientes'
+                : 'No hay compras sin factura registrada'
             }
             description={
               hasActiveFilters
                 ? 'Prueba con otra factura, proveedor o rango de fechas'
-                : 'Aparecen aquí las compras oficiales confirmadas que aún no tienen compra oficial'
+                : 'Aparecen aquí las compras con factura confirmadas que aún no tienen su factura de compra'
             }
           />
         )}
@@ -256,7 +256,7 @@ export default function OfficialPurchasesPendingPage() {
                         className="btn-primary inline-flex items-center gap-1.5 px-3 py-1.5 text-xs opacity-0 group-hover:opacity-100 focus-visible:opacity-100 whitespace-nowrap"
                       >
                         <FileCheck2 className="w-3.5 h-3.5" />
-                        Crear compra oficial
+                        Crear factura de compra
                       </button>
                     </td>
                   </tr>

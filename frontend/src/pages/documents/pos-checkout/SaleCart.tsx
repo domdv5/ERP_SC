@@ -127,8 +127,7 @@ export function SaleCart({
                   Cant.
                 </th>
                 <th className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-32">
-                  Precio unit.{' '}
-                  {official && <span className="text-content-faint normal-case">(con IVA)</span>}
+                  Precio unit.
                 </th>
                 <th className="text-right text-xs font-semibold text-content-faint uppercase tracking-wider px-4 py-3 w-32">
                   Subtotal

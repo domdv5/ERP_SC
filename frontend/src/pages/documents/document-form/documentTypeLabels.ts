@@ -3,11 +3,11 @@
 const TYPE_LABEL: Record<string, string> = {
   REM: 'remisión',
   DVV: 'devolución en venta',
-  CMO: 'compra oficial',
+  CMO: 'factura de compra',
 }
 export const FIXED_TYPE_LABEL: Record<string, string> = {
   REM: 'Remisión',
   DVV: 'Devolución en venta',
-  CMO: 'Compra oficial',
+  CMO: 'Factura de compra',
 }
 export const typeLabelFor = (t: string) => TYPE_LABEL[t] ?? 'operación'

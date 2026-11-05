@@ -88,7 +88,7 @@ export class CmoEffectStrategy extends BaseEffectStrategy {
   private assertInvoiceNumber(supplierInvoiceNumber?: string | null) {
     if (!supplierInvoiceNumber?.trim()) {
       throw new BadRequestException(
-        'La compra oficial requiere el número de factura del proveedor',
+        'La factura de compra requiere el número de factura del proveedor',
       );
     }
   }
@@ -128,7 +128,7 @@ export class CmoEffectStrategy extends BaseEffectStrategy {
       !source.officialPurchase
     ) {
       throw new BadRequestException(
-        'La compra de origen debe ser una compra (CM) confirmada y marcada como oficial',
+        'La compra de origen debe ser una compra (CM) confirmada y marcada con factura',
       );
     }
 
@@ -151,7 +151,7 @@ export class CmoEffectStrategy extends BaseEffectStrategy {
 
     if (linked > 0) {
       throw new ConflictException(
-        'La compra de origen ya tiene una compra oficial confirmada enlazada',
+        'La compra de origen ya tiene una factura de compra confirmada enlazada',
       );
     }
   }

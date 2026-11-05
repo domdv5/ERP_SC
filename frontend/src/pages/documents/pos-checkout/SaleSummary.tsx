@@ -37,13 +37,7 @@ export function SaleSummary({
       <div className="card-hard p-6 space-y-4">
         <div>
           <p className="text-xs text-content-faint font-accent uppercase tracking-wider">
-            {official
-              ? 'Total a pagar (con IVA)'
-              : creditsApplied > 0
-                ? isCredit
-                  ? 'Total a crédito (neto)'
-                  : 'Total a pagar'
-                : 'Total a pagar'}
+            {creditsApplied > 0 && isCredit ? 'Total a crédito (neto)' : 'Total a pagar'}
           </p>
           <p className="text-4xl text-content mt-1 font-display tabular-nums">
             {formatCOP(totalToPay)}
