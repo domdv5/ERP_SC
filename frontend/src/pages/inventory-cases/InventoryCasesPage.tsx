@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDebounce } from 'use-debounce'
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { CheckCircle2, Clock, ClipboardList, Inbox, TriangleAlert } from 'lucide-react'
 import { getInventoryCases } from '@/services/inventory-cases.service'
 import {
@@ -14,6 +14,7 @@ import {
   DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import { formatBogotaDate } from '@/lib/format'
+import { invalidateInventoryCases } from '@/lib/invalidation'
 import { cn } from '@/lib/utils'
 import type { InventoryCaseStatus } from '@/types/inventory-case.types'
 import { CaseStatusPill } from './components/CaseStatusPill'
@@ -81,7 +82,8 @@ export default function InventoryCasesPage() {
 
   const hasInvalidDateRange = Boolean(dateFrom && dateTo && dateFrom > dateTo)
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const queryClient = useQueryClient()
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: [
       'inventory-cases',
       'list',
@@ -163,10 +165,10 @@ export default function InventoryCasesPage() {
             search={search}
             onSearchChange={setSearch}
             placeholder="Buscar por código o producto..."
-            isLoading={isLoading}
+            isLoading={isFetching}
             itemCount={items.length}
             total={total}
-            onRefresh={refetch}
+            onRefresh={() => invalidateInventoryCases(queryClient)}
           />
           <div className="px-5 py-4 flex flex-wrap items-center gap-3">
             <div
