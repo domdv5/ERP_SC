@@ -10,6 +10,7 @@ import {
   MovementType,
   Prisma,
 } from '@prisma/client';
+import { DocumentStatus } from '@/common/enums';
 import { matchContract } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import type {
@@ -17,7 +18,11 @@ import type {
   InventoryCaseListResponse,
   InventoryCaseReport,
 } from '@/contracts/index';
-import { CloseInventoryCaseDto, FindInventoryCasesDto } from './dto/index';
+import {
+  CLOSE_MESSAGES,
+  CloseInventoryCaseDto,
+  FindInventoryCasesDto,
+} from './dto/index';
 import {
   buildBogotaDayRange,
   buildReport,
@@ -179,19 +184,15 @@ export class InventoryCasesService {
     const { cause, originDocumentId } = closeInventoryCaseDto;
 
     if (cause === InventoryCaseCause.ajuste_anulado) {
-      throw new BadRequestException(
-        'La causa "Ajuste anulado" solo la asigna el sistema al anular el ajuste',
-      );
+      throw new BadRequestException(CLOSE_MESSAGES.systemCause);
     }
 
     const justification = closeInventoryCaseDto.justification?.trim();
     if (!justification) {
-      throw new BadRequestException('La justificación es obligatoria');
+      throw new BadRequestException(CLOSE_MESSAGES.justificationRequired);
     }
     if (justification.length > 1000) {
-      throw new BadRequestException(
-        'La justificación no puede superar los 1000 caracteres',
-      );
+      throw new BadRequestException(CLOSE_MESSAGES.justificationTooLong);
     }
 
     const found = await this.findCaseToChange(id);
@@ -239,6 +240,12 @@ export class InventoryCasesService {
     if (found.cause === InventoryCaseCause.ajuste_anulado) {
       throw new BadRequestException(
         'No se puede reabrir un caso cerrado por anulación del ajuste',
+      );
+    }
+    // Cerrado a mano y anulado después: reabrirlo dejaría un caso abierto sobre un ajuste que ya no existe.
+    if (found.document.status === DocumentStatus.voided) {
+      throw new BadRequestException(
+        'No se puede reabrir: el ajuste de este caso fue anulado',
       );
     }
 
@@ -340,6 +347,7 @@ export class InventoryCasesService {
       select: {
         status: true,
         cause: true,
+        document: { select: { status: true } },
         productId: true,
         warehouseId: true,
         quantity: true,
@@ -369,33 +377,28 @@ export class InventoryCasesService {
     });
     if (!adjustment) return { movements: [], suggestedOriginDocumentId: null };
 
-    const [latest, origin] = await Promise.all([
-      this.prisma.inventoryMovement.findMany({
-        where: {
-          productId,
-          warehouseId,
-          createdAt: { lte: adjustment.createdAt },
-        },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        take: TRAIL_SIZE,
-        select: MOVEMENT_SELECT,
-      }),
-      this.prisma.inventoryMovement.findFirst({
-        where: {
-          productId,
-          warehouseId,
-          quantity: -item.quantity,
-          documentId: { not: null },
-          createdAt: { lt: adjustment.createdAt },
-        },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        select: { documentId: true },
-      }),
-    ]);
+    const latest = await this.prisma.inventoryMovement.findMany({
+      where: {
+        productId,
+        warehouseId,
+        createdAt: { lte: adjustment.createdAt },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: TRAIL_SIZE,
+      select: MOVEMENT_SELECT,
+    });
+
+    // Solo entre los movimientos mostrados: close() acepta como origen únicamente esos.
+    const origin = latest.find(
+      (movement) =>
+        movement.createdAt < adjustment.createdAt &&
+        movement.quantity === -item.quantity &&
+        movement.document,
+    );
 
     return {
       movements: latest.reverse(),
-      suggestedOriginDocumentId: origin?.documentId ?? null,
+      suggestedOriginDocumentId: origin?.document?.id ?? null,
     };
   }
 }

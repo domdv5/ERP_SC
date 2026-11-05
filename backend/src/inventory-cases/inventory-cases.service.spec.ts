@@ -470,6 +470,52 @@ describe('InventoryCasesService', () => {
       expect(detail.suggestedOriginDocumentId).toBe('d-match');
     });
 
+    it('no sugiere una salida que quedó fuera de los 10 movimientos mostrados', async () => {
+      kardex = [
+        makeMovement({
+          id: 'm-far',
+          createdAt: at('2026-10-01T10:00:00.000Z'),
+          quantity: -3,
+          documentId: 'd-far',
+          document: docRef('d-far'),
+        }),
+        ...Array.from({ length: 10 }, (_, index) =>
+          makeMovement({
+            id: `m-near-${index}`,
+            createdAt: at(
+              `2026-11-0${index < 4 ? 1 : 2}T${10 + index}:00:00.000Z`,
+            ),
+            quantity: 1,
+          }),
+        ),
+        EAI_MOVEMENT,
+      ];
+
+      const detail = await service.findOne('case-1');
+
+      expect(detail.movements.map((m) => m.id)).not.toContain('m-far');
+      expect(detail.suggestedOriginDocumentId).toBeNull();
+    });
+
+    it('la sugerencia siempre es un documento de los movimientos mostrados', async () => {
+      kardex = [
+        makeMovement({
+          id: 'm-match',
+          createdAt: at('2026-11-03T10:00:00.000Z'),
+          quantity: -3,
+          documentId: 'd-match',
+          document: docRef('d-match'),
+        }),
+        EAI_MOVEMENT,
+      ];
+
+      const detail = await service.findOne('case-1');
+
+      expect(detail.movements.map((m) => m.document?.id)).toContain(
+        detail.suggestedOriginDocumentId,
+      );
+    });
+
     it('no sugiere nada si ninguna salida coincide con la cantidad', async () => {
       kardex = [
         makeMovement({
@@ -709,6 +755,25 @@ describe('InventoryCasesService', () => {
       );
       expect(prisma.inventoryCase.updateMany).not.toHaveBeenCalled();
     });
+
+    it.each(['error_conteo', 'otro'])(
+      'rechaza reabrir un caso (causa %s) cuyo ajuste fue anulado después',
+      async (cause) => {
+        prisma.inventoryCase.findUnique.mockResolvedValue({
+          ...baseCase,
+          status: 'closed',
+          cause,
+          document: { ...baseCase.document, status: 'voided' },
+        });
+
+        await expect(service.reopen('case-1', 'admin-1')).rejects.toThrow(
+          new BadRequestException(
+            'No se puede reabrir: el ajuste de este caso fue anulado',
+          ),
+        );
+        expect(prisma.inventoryCase.updateMany).not.toHaveBeenCalled();
+      },
+    );
 
     it('rechaza reabrir un caso que está abierto', async () => {
       prisma.inventoryCase.findUnique.mockResolvedValue(baseCase);
