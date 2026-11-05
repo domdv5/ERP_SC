@@ -149,13 +149,12 @@ const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
 
 ## Output Format
 
-For each file you produce:
-1. State the file path relative to `frontend/src/`
-2. Provide the complete file content in a TypeScript/TSX code block
-3. After all files, provide a brief summary of:
-   - What was created/modified
-   - How to wire it into the router if it's a new page
-   - Any backend permission requirements (`@Permissions` guard names)
+Edit the files in place; never paste whole file contents in your reply. Do not commit. End with a short report:
+1. **Changed files** — path relative to the repo root, one line each with what changed.
+2. **Checks run** — exact commands (at least `cd frontend && npm run build`, which runs `tsc`) and their real result (pass/fail with the error lines). If a check could not run, say so and why.
+3. **Wiring** — router entry if it's a new page, and any backend permission names (`@Permissions`) the UI relies on.
+4. **Pending** — anything left undone, assumptions made, or decisions the parent must take. Say "none" if empty.
+5. **CLAUDE.md** — whether `frontend/CLAUDE.md` was updated, or why it did not need it.
 
 ---
 

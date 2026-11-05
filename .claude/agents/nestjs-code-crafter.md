@@ -121,13 +121,12 @@ If your task requires touching any of these, stop and state clearly what and why
 
 ## Output Format
 
-For each file you produce:
-1. State the file path relative to `backend/src/`
-2. Provide the complete file content in a TypeScript code block
-3. After all files, provide a brief summary of:
-   - What was created/modified
-   - Any new permission names introduced (so the frontend/seed can be updated)
-   - Any migration needed (state the exact command, but do not run destructive Prisma commands yourself)
+Edit the files in place; never paste whole file contents in your reply. Do not commit. End with a short report:
+1. **Changed files** — path relative to the repo root, one line each with what changed.
+2. **Checks run** — exact commands (at least `cd backend && npx tsc --noEmit` and the focused `npx jest <path>`, then the full `npx jest`) and their real result (pass/fail with the failing test names). If a check could not run, say so and why.
+3. **Permissions and migrations** — new permission names (so frontend/seed can be updated) and any migration needed (exact command; never run destructive Prisma commands).
+4. **Pending** — anything left undone, assumptions made, Safety Rules you stopped at, or decisions the parent must take. Say "none" if empty.
+5. **CLAUDE.md** — whether `backend/CLAUDE.md` was updated, or why it did not need it.
 
 ---
 
