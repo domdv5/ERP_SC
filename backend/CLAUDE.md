@@ -272,6 +272,8 @@ RBAC roles defined in seed: `admin`, `purchasing`, `warehouse`, `preventa`, `bil
 
 **Facturación oficial (2026-10-05)**: `document.create.CMO` → `admin`, `accounts_admin`; `document.create.POSO` → `admin`, `billing`; `official.read` → `admin`, `accounts_admin`. Esos roles ya tenían `document.read` y `product.read`/`thirdparty.read`, así que no hizo falta ningún permiso extra para crear/confirmar/listar/ver detalle de CMO/POSO.
 
+**Casos de diferencias de inventario (2026-11-05)**: `inventory_case.read`, `inventory_case.close` → `admin`, `inventory_manager` (rol nuevo "Encargado de inventario", con `product.read` y `document.read`); `inventory_case.reopen` → solo `admin`. `inventory_case.read` está en `SEE_ALL_PERMISSIONS` (`document-visibility.helpers.ts`): el kardex del caso enlaza documentos de cualquier tipo.
+
 El rol `preventa` reemplaza al histórico `basket_management` — el `seedRoles` renombra la fila en el lugar (`updateMany`) antes del `createMany` para conservar las asignaciones `UserRole` existentes. Foco del rol: lectura de producto/tercero, ciclo completo de preventa (`document.create.PV`/`document.release.PV`/`document.convert.PV`) e `inventory.manage`.
 
 `inventory.manage` (module `warehouses`) — gatea `GET /products/by-code/:code/locations` (consulta de ubicación física de stock, `StockLookupPage` del frontend). Lo tienen: `admin`, `purchasing`, `warehouse`, `preventa`.

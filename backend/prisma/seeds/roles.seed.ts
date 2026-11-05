@@ -52,6 +52,12 @@ export async function seedRoles(prisma: PrismaClient) {
         description:
           'Manages accounts payable, accounts receivable, and system users',
       },
+
+      {
+        name: 'inventory_manager',
+        description:
+          'Investiga y cierra los casos de diferencias de inventario',
+      },
     ],
 
     skipDuplicates: true,

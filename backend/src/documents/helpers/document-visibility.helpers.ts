@@ -1,10 +1,15 @@
 import { ForbiddenException } from '@nestjs/common';
 import { DocumentType } from '@/common/enums';
 
-// Cartera y libro oficial enlazan a documentos de cualquier tipo, así que quien los lee ve todos.
-const SEE_ALL_PERMISSIONS = ['ar.read', 'ap.read', 'official.read'];
+// Cartera, libro oficial y casos de inventario enlazan a documentos de cualquier tipo, así que quien los lee ve todos.
+const SEE_ALL_PERMISSIONS = [
+  'ar.read',
+  'ap.read',
+  'official.read',
+  'inventory_case.read',
+];
 
-/** Tipos que el rol ve: todos con cartera o libro oficial; si no, los que crea, anula o convierte. */
+/** Tipos que el rol ve: todos con cartera, libro oficial o casos de inventario; si no, los que crea, anula o convierte. */
 export function findVisibleDocumentTypes(
   permissions: string[],
 ): DocumentType[] {

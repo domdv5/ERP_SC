@@ -83,6 +83,11 @@ export async function seedPermissions(prisma: PrismaClient) {
       // Libro de control oficial (compras oficiales − POS oficiales)
       { code: 'official.read', module: 'accounts' },
 
+      // Casos de diferencias de inventario — reabrir solo el admin
+      { code: 'inventory_case.read', module: 'inventory-cases' },
+      { code: 'inventory_case.close', module: 'inventory-cases' },
+      { code: 'inventory_case.reopen', module: 'inventory-cases' },
+
       // Caja
       { code: 'cash.create', module: 'cash' },
       { code: 'cash.read', module: 'cash' },

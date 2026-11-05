@@ -61,8 +61,8 @@ describe('assertCanViewDocument', () => {
     );
   });
 
-  it.each(['ar.read', 'ap.read', 'official.read'])(
-    'con %s ve cualquier tipo (cartera y libro oficial enlazan a todos)',
+  it.each(['ar.read', 'ap.read', 'official.read', 'inventory_case.read'])(
+    'con %s ve cualquier tipo (cartera, libro oficial y casos de inventario enlazan a todos)',
     (permission) => {
       expect(() =>
         assertCanViewDocument([permission], DocumentType.DVV),
