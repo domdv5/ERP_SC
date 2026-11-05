@@ -1,4 +1,5 @@
 import type { PrismaService } from '@/prisma/prisma.service';
+import type { SequenceService } from '@/common/sequence/sequence.service';
 import type { DocumentEffectStrategy } from './document-effect.strategy';
 import { CmEffectStrategy } from './cm-effect.strategy';
 import { CmoEffectStrategy } from './cmo-effect.strategy';
@@ -14,6 +15,14 @@ import { SajEffectStrategy } from './saj-effect.strategy';
 import { TransferEffectStrategy } from './transfer-effect.strategy';
 
 const prisma = {} as PrismaService;
+const sequenceService = {} as SequenceService;
+// Todas se construyen igual; solo la EAI usa el segundo argumento.
+type StrategyClass = new (
+  prisma: PrismaService,
+  sequenceService: SequenceService,
+) => DocumentEffectStrategy;
+const build = (Strategy: StrategyClass) =>
+  new Strategy(prisma, sequenceService);
 const NOW = new Date('2026-10-22T17:00:00.000Z');
 const SCANNED = '2026-10-22T16:54:08.000Z';
 
@@ -108,7 +117,7 @@ describe('tracksReceiver', () => {
   it.each(ALL_STRATEGIES.filter((Strategy) => Strategy !== CmEffectStrategy))(
     '%p no guarda receptor',
     (Strategy) => {
-      expect(new Strategy(prisma).tracksReceiver).toBe(false);
+      expect(build(Strategy).tracksReceiver).toBe(false);
     },
   );
 });
@@ -122,14 +131,14 @@ describe('undoEffects', () => {
   ];
 
   it.each(WITH_UNDO)('%p define efectos propios al anular', (Strategy) => {
-    const strategy: DocumentEffectStrategy = new Strategy(prisma);
+    const strategy = build(Strategy);
     expect(typeof strategy.undoEffects).toBe('function');
   });
 
   it.each(ALL_STRATEGIES.filter((Strategy) => !WITH_UNDO.includes(Strategy)))(
     '%p no define efectos propios al anular',
     (Strategy) => {
-      const strategy: DocumentEffectStrategy = new Strategy(prisma);
+      const strategy = build(Strategy);
       expect(strategy.undoEffects).toBeUndefined();
     },
   );

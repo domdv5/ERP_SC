@@ -374,5 +374,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
         userId: params.userId,
       },
     });
+
+    return { previousStock, newStock };
   }
 }

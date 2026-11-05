@@ -1,6 +1,7 @@
 import { DocumentStatus, DocumentType } from '@/common/enums';
 import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
+import type { SequenceService } from '@/common/sequence/sequence.service';
 import { DocumentVoidService } from './document-void.service';
 import { DocumentsQueryService } from './documents-query.service';
 import { DocumentEffectsRegistry } from './strategies/document-effects.registry';
@@ -25,7 +26,7 @@ export const SALE_TYPES = [
 const noPrisma = {} as PrismaService;
 const REAL_STRATEGIES: Partial<Record<DocumentType, object>> = {
   [DocumentType.CM]: new CmEffectStrategy(noPrisma),
-  [DocumentType.EAI]: new EaiEffectStrategy(noPrisma),
+  [DocumentType.EAI]: new EaiEffectStrategy(noPrisma, {} as SequenceService),
   [DocumentType.PV]: new PvEffectStrategy(noPrisma),
   [DocumentType.REM]: new RemEffectStrategy(noPrisma),
 };
@@ -82,6 +83,7 @@ export function createVoidHarness() {
     accountsReceivable: { findMany: jest.fn(), deleteMany: jest.fn() },
     supplierCredit: { findUnique: jest.fn(), deleteMany: jest.fn() },
     customerCredit: { deleteMany: jest.fn() },
+    inventoryCase: { updateMany: jest.fn() },
   };
   const prisma = {
     document: { findUnique: jest.fn() },
