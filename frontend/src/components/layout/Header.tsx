@@ -12,7 +12,6 @@ import { useSystemStatus } from '@/hooks/useSystemStatus'
 import { setReadOnlyMode } from '@/services/system.service'
 import { ReadOnlyConfirmDialog } from './ReadOnlyConfirmDialog'
 import { ChangePasswordDialog } from './ChangePasswordDialog'
-import { NotificationBell } from './NotificationBell'
 
 export function Header() {
   const navigate = useNavigate()
@@ -124,8 +123,6 @@ export function Header() {
             {readOnlyMode ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
           </button>
         )}
-
-        <NotificationBell />
 
         {/* User dropdown */}
         <div className="relative" ref={menuRef}>
