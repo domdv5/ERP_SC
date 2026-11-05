@@ -79,6 +79,7 @@ describe('InventoryCasesService', () => {
       updateMany: jest.fn(),
     },
     inventoryMovement: { findFirst: jest.fn(), findMany: jest.fn() },
+    warehouse: { findMany: jest.fn() },
   };
   const service = new InventoryCasesService(prisma as unknown as PrismaService);
 
@@ -352,6 +353,25 @@ describe('InventoryCasesService', () => {
 
       expect(meta.closedThisMonth).toBe(0);
       expect(meta.avgDaysToClose).toBeNull();
+    });
+  });
+
+  describe('findWarehouses', () => {
+    it('devuelve las bodegas activas con id y nombre, ordenadas por nombre', async () => {
+      prisma.warehouse.findMany.mockResolvedValue([
+        { id: 'w1', name: 'Almacén' },
+        { id: 'w2', name: 'Bodega' },
+      ]);
+
+      await expect(service.findWarehouses()).resolves.toEqual([
+        { id: 'w1', name: 'Almacén' },
+        { id: 'w2', name: 'Bodega' },
+      ]);
+      expect(prisma.warehouse.findMany).toHaveBeenCalledWith({
+        where: { active: true },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
     });
   });
 

@@ -3,6 +3,7 @@ import { DocumentType } from '@/common/enums';
 import {
   assertCanViewDocument,
   findVisibleDocumentTypes,
+  STOCK_MOVING_TYPES,
 } from './document-visibility.helpers';
 
 describe('findVisibleDocumentTypes', () => {
@@ -16,6 +17,34 @@ describe('findVisibleDocumentTypes', () => {
         'document.create.NOEXISTE',
       ]).sort(),
     ).toEqual([DocumentType.CM, DocumentType.POS].sort());
+  });
+
+  describe('con inventory_case.read', () => {
+    it('lista exactamente los tipos que mueven inventario', () => {
+      expect(findVisibleDocumentTypes(['inventory_case.read']).sort()).toEqual(
+        [
+          DocumentType.CM,
+          DocumentType.DVC,
+          DocumentType.EAI,
+          DocumentType.SAJ,
+          DocumentType.T,
+          DocumentType.POS,
+          DocumentType.COT,
+          DocumentType.DVV,
+        ].sort(),
+      );
+    });
+
+    it('se une a los tipos que el rol ya ve por sus permisos', () => {
+      const visible = findVisibleDocumentTypes([
+        'inventory_case.read',
+        'document.create.PV',
+      ]);
+
+      expect(visible).toContain(DocumentType.PV);
+      expect(visible).toEqual(expect.arrayContaining(STOCK_MOVING_TYPES));
+      expect(visible).not.toContain(DocumentType.CMO);
+    });
   });
 
   it.each(['ar.read', 'ap.read', 'official.read'])(
@@ -61,8 +90,30 @@ describe('assertCanViewDocument', () => {
     );
   });
 
-  it.each(['ar.read', 'ap.read', 'official.read', 'inventory_case.read'])(
-    'con %s ve cualquier tipo (cartera, libro oficial y casos de inventario enlazan a todos)',
+  it.each(STOCK_MOVING_TYPES)(
+    'con solo inventory_case.read ve el tipo %s',
+    (type) => {
+      expect(() =>
+        assertCanViewDocument(['inventory_case.read'], type),
+      ).not.toThrow();
+    },
+  );
+
+  it.each([DocumentType.CMO, DocumentType.POSO, DocumentType.PV])(
+    'con solo inventory_case.read rechaza con 403 el tipo %s',
+    (type) => {
+      expect(() =>
+        assertCanViewDocument(['inventory_case.read'], type),
+      ).toThrow(
+        new ForbiddenException(
+          `No tiene permiso para ver documentos de tipo ${type}`,
+        ),
+      );
+    },
+  );
+
+  it.each(['ar.read', 'ap.read', 'official.read'])(
+    'con %s ve cualquier tipo (cartera y libro oficial enlazan a todos)',
     (permission) => {
       expect(() =>
         assertCanViewDocument([permission], DocumentType.DVV),

@@ -60,6 +60,12 @@ export interface InventoryCaseListResponse {
   };
 }
 
+// Bodegas activas para el filtro de la bandeja.
+export interface InventoryCaseWarehouse {
+  id: string;
+  name: string;
+}
+
 export interface InventoryCaseOpenCount {
   count: number;
 }

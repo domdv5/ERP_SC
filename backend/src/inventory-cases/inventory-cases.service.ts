@@ -17,6 +17,7 @@ import type {
   InventoryCaseDetail,
   InventoryCaseListResponse,
   InventoryCaseReport,
+  InventoryCaseWarehouse,
 } from '@/contracts/index';
 import {
   CLOSE_MESSAGES,
@@ -86,6 +87,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const matchListContract = matchContract<InventoryCaseListResponse>();
 const matchDetailContract = matchContract<InventoryCaseDetail>();
 const matchReportContract = matchContract<InventoryCaseReport>();
+const matchWarehousesContract = matchContract<InventoryCaseWarehouse[]>();
 
 @Injectable()
 export class InventoryCasesService {
@@ -143,6 +145,16 @@ export class InventoryCasesService {
           : null,
       },
     });
+  }
+
+  async findWarehouses() {
+    return matchWarehousesContract(
+      await this.prisma.warehouse.findMany({
+        where: { active: true },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      }),
+    );
   }
 
   async getOpenCount() {

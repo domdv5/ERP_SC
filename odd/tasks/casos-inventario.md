@@ -15,7 +15,7 @@ Rama: `feat/casos-inventario`. Mockups aprobados: `design/diferencias-inventario
 - **S8** Un caso cerrado solo lo reabre el admin, y queda registrado quién lo reabrió y cuándo.
 - **S9** Al anular una EAI, sus casos abiertos se cierran solos con la causa "Ajuste anulado".
 - **S10** Informe de causas: periodo, ranking de causas, casos por bodega, productos con más casos, y unidades y costo aproximado de lo ajustado.
-- **S11** Permisos: ver casos, cerrarlos y reabrirlos. Rol nuevo "Encargado de inventario" que ve y cierra; el admin tiene todo. Cambia el seed de RBAC (Safety Rule, confirmada con el "dale" del 2026-11-05).
+- **S11** Permisos: ver casos, cerrarlos y reabrirlos. Rol nuevo "Encargado de inventario" que ve y cierra; el admin tiene todo. El encargado ve solo los documentos que mueven inventario (compras, ventas, devoluciones, traslados y ajustes; no facturas de compra/venta, preventas ni tesorería). Cambia el seed de RBAC (Safety Rule, confirmada con el "dale" del 2026-11-05).
 - **S12** Sin SSE ni WebSockets: el caso se crea en la transacción del confirm, y el front lo ve al recargar o volver a la pestaña. Contador de casos abiertos en el menú.
 - **S13** Dos bodegas reales: Almacén (vende) y Bodega (solo almacena). Sin tallas.
 
@@ -28,7 +28,8 @@ Rama: `feat/casos-inventario`. Mockups aprobados: `design/diferencias-inventario
 - [x] T4 S4-S8,S10,S12 — Módulo `inventory-cases`: bandeja, detalle con pistas y posible origen, cerrar, reabrir, informe, contador. Pruebas y backend/CLAUDE.md. Route: inline (posible origen) + nestjs-code-crafter (scaffolding). Commit: —
   Hecho (sin commit aún): módulo `inventory-cases` con contrato; 33 pruebas en `inventory-cases.service.spec.ts`, suite completa en verde.
 - [ ] T5 — PR backend con mapa de revisión independiente. Commit: —
-- [ ] T6 S3-S8,S10,S12,S13 — Frontend: bandeja, detalle con cierre, informe, ítem del menú con contador. frontend/CLAUDE.md. Route: react-code-crafter. Commit: —
+- [x] T6 S3-S8,S10,S12,S13 — Frontend: bandeja, detalle con cierre, informe, ítem del menú con contador. frontend/CLAUDE.md. Route: react-code-crafter. Commit: —
+  Hecho (sin commit aún): `pages/inventory-cases/` (bandeja, detalle con cierre/reapertura, informe) + ítem del menú con contador; `npm run build` y Vitest en verde.
 - [ ] T7 — PR frontend con mapa de revisión independiente. Commit: —
 
 ## Log
@@ -37,3 +38,4 @@ Rama: `feat/casos-inventario`. Mockups aprobados: `design/diferencias-inventario
 - **L2** Elegida la opción B (casos con pistas automáticas). Mockups revisados con comentarios: sin tallas, columnas código/marca, fecha de cierre, stock antes → después, 2 bodegas.
 - **L3** Decisiones 1-9 aprobadas ("asi esta bien!"); los mapas de revisión en cada PR ("y tener en cuenta el mapa"); arranque con "dale".
 - **L4** ajuste_anulado excluido de contadores e informe y no reabrible ("dale")
+- **L5** Visibilidad del encargado: solo tipos que mueven inventario (respuesta "2"); endpoint de bodegas para el filtro.

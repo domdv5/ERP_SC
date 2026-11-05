@@ -35,6 +35,12 @@ export class InventoryCasesController {
     return this.inventoryCasesService.getOpenCount();
   }
 
+  @Get('warehouses')
+  @Permissions('inventory_case.read')
+  findWarehouses() {
+    return this.inventoryCasesService.findWarehouses();
+  }
+
   @Get('report')
   @Permissions('inventory_case.read')
   getReport(@Query() query: InventoryCaseReportQueryDto) {
