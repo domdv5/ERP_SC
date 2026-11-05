@@ -130,7 +130,7 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: 'Facturación oficial',
+    label: 'Facturas',
     items: [
       // La bandeja exige document.create.CMO en el backend (no official.read): el gate espeja ese permiso.
       {
@@ -141,13 +141,13 @@ export const navGroups: NavGroup[] = [
       },
       {
         to: CMO_NEW_PATH,
-        label: 'Nueva compra oficial',
+        label: 'Nueva factura de compra',
         icon: FileCheck2,
         permission: 'document.create.CMO',
       },
       {
         to: '/official-ledger',
-        label: 'Libro oficial',
+        label: 'Libro de facturas',
         icon: BookOpen,
         permission: 'official.read',
       },

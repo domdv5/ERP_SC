@@ -142,7 +142,7 @@ export class CmEffectStrategy extends BaseEffectStrategy {
   ) {
     if (officialPurchase && !supplierInvoiceNumber?.trim()) {
       throw new BadRequestException(
-        'La compra oficial requiere el número de factura del proveedor',
+        'La compra con factura requiere el número de factura del proveedor',
       );
     }
   }

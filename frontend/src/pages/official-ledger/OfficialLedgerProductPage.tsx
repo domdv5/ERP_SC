@@ -41,7 +41,7 @@ export default function OfficialLedgerProductPage() {
       className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
     >
       <ArrowLeft className="w-4 h-4" />
-      Volver al libro oficial
+      Volver al libro de facturas
     </button>
   )
 
@@ -159,7 +159,7 @@ export default function OfficialLedgerProductPage() {
           <EmptyState
             icon={BookOpen}
             title="Sin movimientos en este rango"
-            description="Este producto no tiene compras ni ventas oficiales confirmadas en las fechas elegidas"
+            description="Este producto no tiene facturas de compra ni de venta confirmadas en las fechas elegidas"
           />
         ) : (
           <div className="overflow-x-auto">

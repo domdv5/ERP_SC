@@ -303,7 +303,7 @@ export default function DocumentDetailPage() {
       setVoidOpen(false)
       toast.success(
         isOfficialType
-          ? 'Operación anulada. Ya no cuenta en el libro oficial.'
+          ? 'Operación anulada. Ya no cuenta en el libro de facturas.'
           : 'Operación anulada. Los movimientos de inventario fueron revertidos.',
       )
     },
@@ -454,11 +454,7 @@ export default function DocumentDetailPage() {
   const itemsTotal = doc.documentItems.reduce((sum, item) => sum + Number(itemSubtotal(item)), 0)
   // Nota de talla por línea: solo traslados, donde un mismo producto se reparte en varios bultos.
   const showObservaciones = doc.type === 'T'
-  const costHeaderLabel = isPriceBasedType
-    ? doc.type === 'POSO'
-      ? 'Precio unit. (con IVA)'
-      : 'Precio unit.'
-    : 'Costo unit.'
+  const costHeaderLabel = isPriceBasedType ? 'Precio unit.' : 'Costo unit.'
   const baseItemHeaders = showObservaciones
     ? ['Código', 'Descripción', 'Cantidad', 'Observaciones', costHeaderLabel, 'Subtotal']
     : isReservationType
@@ -492,7 +488,7 @@ export default function DocumentDetailPage() {
           <XCircle className="w-5 h-5 text-red-500 shrink-0" />
           <p className="text-sm text-red-600 dark:text-red-400 font-medium">
             {isOfficialType
-              ? 'Esta operación fue anulada. Ya no cuenta en el libro de control oficial.'
+              ? 'Esta operación fue anulada. Ya no cuenta en el libro de facturas.'
               : 'Esta operación fue anulada. Los movimientos de inventario fueron revertidos.'}
           </p>
         </div>
@@ -780,7 +776,7 @@ export default function DocumentDetailPage() {
                 <Link2 className="w-4 h-4 text-content-muted" />
               </div>
               <div>
-                <p className="text-xs text-content-faint font-accent">Compra oficial</p>
+                <p className="text-xs text-content-faint font-accent">Factura de compra</p>
                 {doc.officialPurchases && doc.officialPurchases.length > 0 ? (
                   <div className="flex flex-col gap-0.5">
                     {doc.officialPurchases.map((cmo) => (
@@ -800,7 +796,7 @@ export default function DocumentDetailPage() {
                   </div>
                 ) : (
                   doc.status === 'confirmed' && (
-                    <p className="text-sm text-content-muted">Sin compra oficial registrada</p>
+                    <p className="text-sm text-content-muted">Sin factura de compra registrada</p>
                   )
                 )}
               </div>
@@ -1210,7 +1206,7 @@ export default function DocumentDetailPage() {
       <ConfirmDialog
         open={confirmOpen}
         title="Confirmar operación"
-        description={`Al confirmar ${docRef}, ${isOfficialType ? 'quedará registrada en el libro de control oficial; no se mueve inventario ni cuentas.' : 'se ejecutarán los movimientos de inventario correspondientes.'} Esta acción no se puede deshacer directamente (solo anulando la operación después).`}
+        description={`Al confirmar ${docRef}, ${isOfficialType ? 'quedará registrada en el libro de facturas; no se mueve inventario ni cuentas.' : 'se ejecutarán los movimientos de inventario correspondientes.'} Esta acción no se puede deshacer directamente (solo anulando la operación después).`}
         confirmLabel="Confirmar operación"
         confirmClass="btn-primary"
         isPending={isConfirming}
@@ -1229,7 +1225,7 @@ export default function DocumentDetailPage() {
         title="Anular operación"
         description={
           isOfficialType
-            ? `Al anular ${docRef}, dejará de contar en el libro de control oficial. Esta acción no se puede deshacer.`
+            ? `Al anular ${docRef}, dejará de contar en el libro de facturas. Esta acción no se puede deshacer.`
             : `Al anular ${docRef}, todos los movimientos de inventario generados por esta operación serán revertidos. Esta acción afecta el stock y no se puede deshacer.`
         }
         confirmLabel="Anular operación"

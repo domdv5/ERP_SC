@@ -138,7 +138,7 @@ export function useConfirmSale({
       invalidateAfterSale(confirmed)
       toast.success(
         official
-          ? `Venta oficial ${docNumber(confirmed.type, confirmed.number)} confirmada. No se movió inventario.`
+          ? `Factura de venta ${docNumber(confirmed.type, confirmed.number)} confirmada. No se movió inventario.`
           : `Venta ${docNumber(confirmed.type, confirmed.number)} confirmada. El inventario fue actualizado.`,
       )
       navigate(`/documents/${confirmed.id}`)

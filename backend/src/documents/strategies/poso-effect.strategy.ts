@@ -42,7 +42,7 @@ export class PosoEffectStrategy extends BaseEffectStrategy {
 
     if (context?.appliedCustomerCredits?.length) {
       throw new BadRequestException(
-        'Los saldos a favor no aplican a un POS oficial',
+        'Los saldos a favor no aplican a una factura de venta',
       );
     }
 

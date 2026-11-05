@@ -131,7 +131,6 @@ export default function POSCheckoutPage() {
     <div className="space-y-6 pb-10">
       <SaleHeader
         docType={docType}
-        official={official}
         isCredit={isCredit}
         draftId={draftId}
         draftNumber={draft.draftNumber}
@@ -169,8 +168,8 @@ export default function POSCheckoutPage() {
                         void draft.checkPendingPreventa(thirdPartyId)
                       }
                     }}
-                    uncheckedLabel="Normal"
-                    checkedLabel="Oficial"
+                    uncheckedLabel="M1"
+                    checkedLabel="M2"
                   />
                 )}
                 {canCreateCOT && !official && (

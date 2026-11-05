@@ -35,8 +35,8 @@ export const DOC_TYPE_SELECT_OPTIONS: { value: DocumentType; label: string }[] =
   { value: 'POS', label: 'Venta (POS)' },
   { value: 'COT', label: 'Venta crédito' },
   { value: 'DVV', label: 'Devolución venta' },
-  { value: 'CMO', label: 'Compra oficial' },
-  { value: 'POSO', label: 'Venta oficial (POS)' },
+  { value: 'CMO', label: 'Factura de compra' },
+  { value: 'POSO', label: 'Factura de venta' },
 ]
 
 // Ventas, REM, DVV y CMO se crean desde su checkout o enlace del menú, no desde "Nueva operación".
@@ -134,7 +134,7 @@ export const DOC_TYPE_BADGE: Record<DocumentType, { label: string; className: st
     className: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/20 dark:text-fuchsia-400',
   },
   CMO: {
-    label: 'Compra oficial',
+    label: 'Factura de compra',
     className: 'bg-sky-100    text-sky-700    dark:bg-sky-500/20    dark:text-sky-400',
   },
   RMDVC: {
@@ -146,7 +146,7 @@ export const DOC_TYPE_BADGE: Record<DocumentType, { label: string; className: st
     className: 'bg-blue-100   text-blue-700   dark:bg-blue-500/20   dark:text-blue-400',
   },
   POSO: {
-    label: 'Venta oficial',
+    label: 'Factura de venta',
     className: 'bg-lime-100   text-lime-700   dark:bg-lime-500/20   dark:text-lime-400',
   },
 }

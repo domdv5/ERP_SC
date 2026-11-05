@@ -80,7 +80,7 @@ export function assertOfficialFieldsAllowed(
 ) {
   if (fields.officialPurchase && type !== DocumentType.CM) {
     throw new BadRequestException(
-      'Solo una compra (CM) puede marcarse como oficial',
+      'Solo una compra (CM) puede marcarse con factura',
     );
   }
 
@@ -96,7 +96,7 @@ export function assertOfficialFieldsAllowed(
 
   if (fields.sourceDocumentId && type !== DocumentType.CMO) {
     throw new BadRequestException(
-      'Solo una compra oficial (CMO) puede enlazar una compra de origen',
+      'Solo una factura de compra (CMO) puede enlazar una compra de origen',
     );
   }
 }

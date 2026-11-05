@@ -7,11 +7,11 @@ import { buildSaleDocumentDefinition } from './sale-document.layout';
 @Injectable()
 export class PosoPrintStrategy implements DocumentPrintStrategy {
   readonly type = DocumentType.POSO;
-  readonly documentLabel = 'VENTA-OFICIAL';
+  readonly documentLabel = 'FACTURA-VENTA';
 
   buildDefinition(document: DocumentForPrint) {
     return buildSaleDocumentDefinition(document, {
-      title: 'VENTA OFICIAL',
+      title: 'VENTA CONTADO',
       showLegalLegend: true,
     });
   }
