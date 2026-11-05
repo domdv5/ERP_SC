@@ -28,6 +28,23 @@ describe('canViewDocument', () => {
   })
 })
 
+describe('inventory_case.read', () => {
+  const STOCK_MOVING = ['CM', 'COT', 'DVC', 'DVV', 'EAI', 'POS', 'SAJ', 'T']
+
+  it('solo ve los tipos que mueven inventario', () => {
+    expect(visibleDocumentTypes(['inventory_case.read']).sort()).toEqual(STOCK_MOVING)
+    for (const type of ['CMO', 'POSO', 'PV'] as const) {
+      expect(canViewDocument(type, ['inventory_case.read'])).toBe(false)
+    }
+  })
+
+  it('suma los tipos propios del rol', () => {
+    expect(visibleDocumentTypes(['inventory_case.read', 'document.convert.PV']).sort()).toEqual(
+      [...STOCK_MOVING, 'PV'].sort(),
+    )
+  })
+})
+
 describe('visibleDocumentTypes', () => {
   it('lista solo los tipos que el rol crea, anula o convierte', () => {
     expect(

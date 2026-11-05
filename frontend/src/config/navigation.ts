@@ -17,6 +17,7 @@ import {
   Inbox,
   BookOpen,
   ChartColumnBig,
+  ClipboardCheck,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -34,6 +35,9 @@ export const CMO_NEW_PATH = '/documents/new?type=CMO'
 // de un NavLink plano (hoy solo el acordeón de bodegas).
 export type NavItemComponent = 'warehouses-accordion'
 
+// Insignia numérica que el Sidebar pinta junto al ítem.
+export type NavItemBadge = 'inventory-cases-open'
+
 export interface NavItem {
   to: string
   label: string
@@ -42,6 +46,7 @@ export interface NavItem {
   // tener alguno (OR), misma semántica que PermissionGuard.
   permission?: string | string[]
   component?: NavItemComponent
+  badge?: NavItemBadge
 }
 
 export interface NavGroup {
@@ -80,6 +85,13 @@ export const navGroups: NavGroup[] = [
     label: 'Operaciones',
     items: [
       { to: '/documents', label: 'Operaciones', icon: FileText, permission: 'document.read' },
+      {
+        to: '/inventory-cases',
+        label: 'Diferencias de inventario',
+        icon: ClipboardCheck,
+        permission: 'inventory_case.read',
+        badge: 'inventory-cases-open',
+      },
     ],
   },
   {

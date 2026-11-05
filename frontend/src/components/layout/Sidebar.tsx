@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth.store'
 import { getRoleLabel } from '@/services/users.service'
 import { getWarehouses } from '@/services/warehouses.service'
+import { useInventoryCaseOpenCount } from '@/hooks/useInventoryCaseOpenCount'
 import {
   navGroups,
   REM_NEW_PATH,
@@ -49,6 +50,20 @@ function isDocumentsActive(pathname: string, search: string) {
     !isRemNewActive(pathname, search) &&
     !isDvvNewActive(pathname, search) &&
     !isCmoNewActive(pathname, search)
+  )
+}
+
+// Solo se monta si el ítem es visible (permiso inventory_case.read), así la consulta no da 403.
+function InventoryCasesOpenBadge() {
+  const { data: count = 0 } = useInventoryCaseOpenCount()
+  if (count === 0) return null
+  return (
+    <span
+      aria-label={`${count} ${count === 1 ? 'caso abierto' : 'casos abiertos'}`}
+      className="min-w-5 px-1.5 py-0.5 rounded-full bg-amber-500 text-brand-primary text-[11px] font-black leading-none text-center tabular-nums"
+    >
+      {count}
+    </span>
   )
 }
 
@@ -212,6 +227,7 @@ export function Sidebar() {
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     <span className="flex-1">{item.label}</span>
+                    {item.badge === 'inventory-cases-open' && <InventoryCasesOpenBadge />}
                   </NavLink>
                 )
               })}

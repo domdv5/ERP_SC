@@ -48,6 +48,13 @@ const OfficialLedgerPage = lazy(() => import('@/pages/official-ledger/OfficialLe
 const OfficialLedgerProductPage = lazy(
   () => import('@/pages/official-ledger/OfficialLedgerProductPage'),
 )
+const InventoryCasesPage = lazy(() => import('@/pages/inventory-cases/InventoryCasesPage'))
+const InventoryCasesReportPage = lazy(
+  () => import('@/pages/inventory-cases/InventoryCasesReportPage'),
+)
+const InventoryCaseDetailPage = lazy(
+  () => import('@/pages/inventory-cases/InventoryCaseDetailPage'),
+)
 
 // Delay de 200ms antes del loader de pantalla completa: un chunk ya cacheado no llega a mostrarlo, evita el parpadeo en cada click.
 function DelayedPageLoader() {
@@ -333,6 +340,36 @@ export const router = createBrowserRouter([
           <Lazy>
             <PermissionGuard permission="official.read">
               <OfficialLedgerProductPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'inventory-cases',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="inventory_case.read">
+              <InventoryCasesPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'inventory-cases/report',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="inventory_case.read">
+              <InventoryCasesReportPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'inventory-cases/:id',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="inventory_case.read">
+              <InventoryCaseDetailPage />
             </PermissionGuard>
           </Lazy>
         ),

@@ -51,10 +51,23 @@ const SEE_ALL_PERMISSIONS = ['ar.read', 'ap.read', 'official.read']
 
 const VISIBILITY_PREFIXES = ['document.create.', 'document.void.', 'document.convert.']
 
+// Tipos que generan movimientos de kardex: los que ve quien solo tiene inventory_case.read (espeja STOCK_MOVING_TYPES del backend).
+const STOCK_MOVING_TYPES: readonly DocumentType[] = [
+  'CM',
+  'DVC',
+  'EAI',
+  'SAJ',
+  'T',
+  'POS',
+  'COT',
+  'DVV',
+]
+
 // Tipos que el usuario ve en el listado y en el detalle: todos con cartera o libro oficial; si no, los que crea, anula o convierte.
 export function visibleDocumentTypes(permissions: readonly string[]): DocumentType[] {
   if (SEE_ALL_PERMISSIONS.some((p) => permissions.includes(p))) return ALL_DOCUMENT_TYPES
   const types = new Set<DocumentType>()
+  if (permissions.includes('inventory_case.read')) STOCK_MOVING_TYPES.forEach((t) => types.add(t))
   for (const p of permissions) {
     const prefix = VISIBILITY_PREFIXES.find((pre) => p.startsWith(pre))
     if (prefix) types.add(p.slice(prefix.length) as DocumentType)
