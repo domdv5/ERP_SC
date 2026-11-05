@@ -241,6 +241,7 @@ model Product {
   inventoryMovements InventoryMovement[]
   inventorySnapshots InventorySnapshot[]
   binStocks          BinStock[]
+  inventoryCases     InventoryCase[]
 
   @@index([brandId])
   @@index([genderId])
@@ -293,6 +294,7 @@ model Warehouse {
   binStocks          BinStock[]
   documents          Document[]          @relation("DocumentWarehouse")
   destDocuments      Document[]          @relation("DocumentDestWarehouse")
+  inventoryCases     InventoryCase[]
 
   @@map("warehouse")
 }
@@ -484,6 +486,8 @@ model User {
   customerCreditsCreated   CustomerCredit[]     @relation("CustomerCreditCreatedBy")
   customerCreditsVoided    CustomerCredit[]     @relation("CustomerCreditVoidedBy")
   recibosCaja              ReciboCaja[]
+  inventoryCasesClosed     InventoryCase[]      @relation("InventoryCaseClosedBy")
+  inventoryCasesReopened   InventoryCase[]      @relation("InventoryCaseReopenedBy")
 
   @@map("user")
 }
@@ -522,6 +526,23 @@ enum DocumentStatus {
   draft
   confirmed
   voided
+}
+
+enum InventoryCaseStatus {
+  open
+  closed
+}
+
+/// Causa con la que se cierra un caso; ajuste_anulado solo lo pone el sistema al anular la EAI.
+enum InventoryCaseCause {
+  venta_otro_producto
+  traslado_mal_registrado
+  compra_mal_digitada
+  devolucion_no_registrada
+  error_conteo
+  perdida_faltante
+  otro
+  ajuste_anulado
 }
 
 enum PaymentMethod {
@@ -628,6 +649,8 @@ model Document {
   customerCredits        CustomerCredit[]            @relation("DvvCustomerCredit")
   // Aplicaciones de saldo a favor hechas al confirmar esta venta (POS/COT)
   appliedCustomerCredits CustomerCreditApplication[] @relation("CustomerCreditSaleApplication")
+  inventoryCases         InventoryCase[]             @relation("InventoryCaseAdjustment")
+  originOfCases          InventoryCase[]             @relation("InventoryCaseOrigin")
 
   @@unique([type, number])
   // Listado e informes filtran por tipo + estado + rango de fecha.
@@ -695,12 +718,55 @@ model DocumentItem {
 
   inventoryMovements  InventoryMovement[]
   reservationReleases ReservationRelease[]
+  inventoryCase       InventoryCase?
 
   @@index([productId])
   // Prisma no crea índices de FK automáticamente en PostgreSQL: sin este, cargar
   // los ítems de un documento (detalle, confirm, void) hacía seq scan de la tabla.
   @@index([documentId])
   @@map("document_item")
+}
+
+/// Caso de diferencia de inventario: uno por línea de una EAI con motivo negativo.
+model InventoryCase {
+  id               String              @id @default(uuid(7)) @db.Uuid
+  number           String              @unique @db.VarChar(10)
+  documentId       String              @map("document_id") @db.Uuid
+  // Una línea de EAI abre un solo caso: bloquea duplicados por doble confirm o retry.
+  documentItemId   String              @unique @map("document_item_id") @db.Uuid
+  productId        String              @map("product_id") @db.Uuid
+  warehouseId      String              @map("warehouse_id") @db.Uuid
+  quantity         Int
+  stockBefore      Int                 @map("stock_before")
+  stockAfter       Int                 @map("stock_after")
+  status           InventoryCaseStatus @default(open)
+  cause            InventoryCaseCause?
+  justification    String?             @db.VarChar(1000)
+  originDocumentId String?             @map("origin_document_id") @db.Uuid
+  closedById       String?             @map("closed_by_id") @db.Uuid
+  closedAt         DateTime?           @map("closed_at") @db.Timestamptz
+  reopenedById     String?             @map("reopened_by_id") @db.Uuid
+  reopenedAt       DateTime?           @map("reopened_at") @db.Timestamptz
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  document       Document     @relation("InventoryCaseAdjustment", fields: [documentId], references: [id], onDelete: Restrict)
+  documentItem   DocumentItem @relation(fields: [documentItemId], references: [id], onDelete: Restrict)
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouse      Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  originDocument Document?    @relation("InventoryCaseOrigin", fields: [originDocumentId], references: [id], onDelete: Restrict)
+  closedBy       User?        @relation("InventoryCaseClosedBy", fields: [closedById], references: [id], onDelete: Restrict)
+  reopenedBy     User?        @relation("InventoryCaseReopenedBy", fields: [reopenedById], references: [id], onDelete: Restrict)
+
+  // La bandeja filtra por estado y ordena por fecha del ajuste.
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([documentId])
+  @@index([productId])
+  @@index([warehouseId])
+  @@index([originDocumentId])
+  @@index([closedById])
+  @@index([reopenedById])
+  @@map("inventory_case")
 }
 
 // ─── Liberación de reservas (preventa) ───────────────────────────────────────

@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import {
+  InventoryCaseCause,
+  InventoryCaseStatus,
+  Prisma,
+} from '@prisma/client';
 import {
   DocumentType,
   EaiAdjustmentReason,
@@ -12,18 +16,38 @@ import type {
   DocumentWithItems,
 } from './document-effect.strategy';
 import { computeNewAvgCost } from '@/documents/helpers/stock.helpers';
+import { PrismaService } from '@/prisma/prisma.service';
+import { SequenceService } from '@/common/sequence/sequence.service';
 
 /** Entrada por ajuste de inventario: suma stock y recalcula el costo promedio con el costo indicado en la línea. */
 @Injectable()
 export class EaiEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.EAI;
 
+  constructor(
+    prisma: PrismaService,
+    private readonly sequenceService: SequenceService,
+  ) {
+    super(prisma);
+  }
+
   // El último costo nunca lo toca un ajuste de entrada.
-  undoEffects(tx: Prisma.TransactionClient, document: DocumentToVoid) {
-    return this.undoCosts(tx, document, {
+  async undoEffects(tx: Prisma.TransactionClient, document: DocumentToVoid) {
+    await this.undoCosts(tx, document, {
       revertsLastCost: false,
       affectsCost: (movement) =>
         Number(movement.documentItem?.unitCost ?? 0) > 0,
+    });
+
+    // closedById null = lo cerró el sistema; los casos ya cerrados no se tocan.
+    await tx.inventoryCase.updateMany({
+      where: { documentId: document.id, status: InventoryCaseStatus.open },
+      data: {
+        status: InventoryCaseStatus.closed,
+        cause: InventoryCaseCause.ajuste_anulado,
+        closedAt: new Date(),
+        closedById: null,
+      },
     });
   }
 
@@ -99,7 +123,7 @@ export class EaiEffectStrategy extends BaseEffectStrategy {
         data: { avgCost: newAvgCost },
       });
 
-      await this.moveStock(tx, {
+      const { previousStock, newStock } = await this.moveStock(tx, {
         productId: item.productId,
         warehouseId,
         movementType: MovementType.adjustment,
@@ -109,6 +133,22 @@ export class EaiEffectStrategy extends BaseEffectStrategy {
         documentItemId: item.id,
         userId,
       });
+
+      // Solo el motivo "negativo" abre caso: un encargado investiga por qué el sistema tenía menos stock.
+      if (document.adjustmentReason === EaiAdjustmentReason.negativo) {
+        await tx.inventoryCase.create({
+          data: {
+            number: await this.sequenceService.next(tx, 'INVENTORY_CASE'),
+            documentId: document.id,
+            documentItemId: item.id,
+            productId: item.productId,
+            warehouseId,
+            quantity,
+            stockBefore: previousStock,
+            stockAfter: newStock,
+          },
+        });
+      }
     }
   }
 }
