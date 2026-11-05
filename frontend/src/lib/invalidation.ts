@@ -22,6 +22,11 @@ export function invalidateThirdParties(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ['customer-credit'] })
 }
 
+// Prefijo único 'inventory-cases': lista, detalle, informe y contador del menú.
+export function invalidateInventoryCases(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: ['inventory-cases'] })
+}
+
 // Crear, confirmar, anular, convertir, liberar o eliminar un documento puede tocar stock, cartera, saldos a favor y el libro oficial
 export function invalidateAfterDocumentChange(
   queryClient: QueryClient,
@@ -41,6 +46,8 @@ export function invalidateAfterDocumentChange(
     'official-purchases-pending',
   ])
   invalidateProducts(queryClient)
+  // Confirmar o anular una EAI abre o cierra casos de diferencias.
+  invalidateInventoryCases(queryClient)
   documentIds.forEach((id) => {
     if (id) queryClient.invalidateQueries({ queryKey: ['document', id] })
   })

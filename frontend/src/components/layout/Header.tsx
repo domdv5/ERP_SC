@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Bell, LogOut, KeyRound, Sun, Moon, Lock, Unlock } from 'lucide-react'
+import { LogOut, KeyRound, Sun, Moon, Lock, Unlock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -12,6 +12,7 @@ import { useSystemStatus } from '@/hooks/useSystemStatus'
 import { setReadOnlyMode } from '@/services/system.service'
 import { ReadOnlyConfirmDialog } from './ReadOnlyConfirmDialog'
 import { ChangePasswordDialog } from './ChangePasswordDialog'
+import { NotificationBell } from './NotificationBell'
 
 export function Header() {
   const navigate = useNavigate()
@@ -124,10 +125,7 @@ export function Header() {
           </button>
         )}
 
-        <button className="relative p-2 text-content-muted hover:text-content hover:bg-surface-hover border-2 border-transparent hover:border-ui-border-medium rounded-md transition-colors">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-secondary" />
-        </button>
+        <NotificationBell />
 
         {/* User dropdown */}
         <div className="relative" ref={menuRef}>
