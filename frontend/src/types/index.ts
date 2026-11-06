@@ -148,6 +148,7 @@ export type {
 export type { SystemStatus, SystemStatusActivatedBy } from './system.types'
 export type {
   OfficialLedgerItem,
+  OfficialLedgerListResponse,
   OfficialLedgerTotals,
   OfficialLedgerMeta,
   GetOfficialLedgerParams,

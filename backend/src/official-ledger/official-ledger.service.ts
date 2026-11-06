@@ -3,10 +3,18 @@ import { Prisma } from '@prisma/client';
 import { DocumentStatus, DocumentType } from '@/common/enums';
 import { buildDateColumnRange } from '@/common/utils/date-range.util';
 import { PrismaService } from '@/prisma/prisma.service';
+import { matchContract } from '@/common/types';
+import type {
+  OfficialLedgerListResponse,
+  OfficialLedgerProductDetail,
+} from '@/contracts';
 import {
   FindOfficialLedgerDto,
   FindOfficialLedgerMovementsDto,
 } from './dto/index';
+
+const matchListContract = matchContract<OfficialLedgerListResponse>();
+const matchProductContract = matchContract<OfficialLedgerProductDetail>();
 
 interface LedgerRow {
   product_id: string;
@@ -86,7 +94,7 @@ export class OfficialLedgerService {
 
     const totals = totalsRows[0];
 
-    return {
+    return matchListContract({
       items: rows.map((row) => ({
         productId: row.product_id,
         code: row.code,
@@ -108,7 +116,7 @@ export class OfficialLedgerService {
           closingBalance: totals.opening + totals.purchased - totals.sold,
         },
       },
-    };
+    });
   }
 
   async findProductMovements(
@@ -184,7 +192,7 @@ export class OfficialLedgerService {
       };
     });
 
-    return {
+    return matchProductContract({
       product: {
         id: product.id,
         code: product.code,
@@ -193,7 +201,7 @@ export class OfficialLedgerService {
       openingBalance,
       closingBalance: runningBalance,
       movements,
-    };
+    });
   }
 
   // Sin dateFrom el corte es la época Unix: no matchea nada y el saldo inicial queda en 0.

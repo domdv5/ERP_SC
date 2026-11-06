@@ -1,6 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { matchContract } from '@/common/types';
+import type {
+  AccountsReport,
+  InventoryReport,
+  RotationReport,
+  SalesBySellerReport,
+} from '@/contracts';
+
+const matchInventoryContract = matchContract<InventoryReport>();
+const matchRotationContract = matchContract<RotationReport>();
+const matchAccountsContract = matchContract<AccountsReport>();
+const matchSalesBySellerContract = matchContract<SalesBySellerReport>();
 
 export interface DateRange {
   from: Date;
@@ -73,7 +85,7 @@ export class ReportsService {
       WHERE w.active AND i.quantity > 0
     `;
 
-    return {
+    return matchInventoryContract({
       warehouses,
       totals: {
         units: warehouses.reduce((sum, row) => sum + row.units, 0),
@@ -82,7 +94,7 @@ export class ReportsService {
         ),
         productCount,
       },
-    };
+    });
   }
 
   async getRotation(
@@ -147,7 +159,7 @@ export class ReportsService {
     `;
 
     const [topRows, bottomRows] = await Promise.all([top, bottom]);
-    return { top: topRows, bottom: bottomRows };
+    return matchRotationContract({ top: topRows, bottom: bottomRows });
   }
 
   async getAccounts(limit: number) {
@@ -188,12 +200,12 @@ export class ReportsService {
       ],
     );
 
-    return {
+    return matchAccountsContract({
       payable: payable[0],
       receivable: receivable[0],
       topSuppliers,
       topCustomers,
-    };
+    });
   }
 
   async getSalesBySeller(range: DateRange) {
@@ -247,12 +259,12 @@ export class ReportsService {
     }
     sellers.sort((a, b) => b.netSales - a.netSales);
 
-    return {
+    return matchSalesBySellerContract({
       sellers,
       unassignedSales,
       unassignedReturns,
       trend: fillDailyTrend(range, trendRows),
-    };
+    });
   }
 }
 
