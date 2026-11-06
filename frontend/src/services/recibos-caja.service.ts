@@ -2,8 +2,7 @@ import { api } from './api'
 import type {
   ApiResponse,
   ReciboCaja,
-  ReciboCajaListItem,
-  ReciboCajaMeta,
+  ReciboCajaListResponse,
   GetRecibosCajaParams,
   ReciboCajaOpenItems,
   CreateReciboCajaPayload,
@@ -11,11 +10,8 @@ import type {
 
 export async function getRecibosCaja(
   params?: GetRecibosCajaParams,
-): Promise<{ items: ReciboCajaListItem[]; meta: ReciboCajaMeta }> {
-  const res = await api.get<ApiResponse<{ items: ReciboCajaListItem[]; meta: ReciboCajaMeta }>>(
-    '/recibos-caja',
-    { params },
-  )
+): Promise<ReciboCajaListResponse> {
+  const res = await api.get<ApiResponse<ReciboCajaListResponse>>('/recibos-caja', { params })
   return res.data.data
 }
 

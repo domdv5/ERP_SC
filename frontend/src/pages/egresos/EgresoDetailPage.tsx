@@ -292,15 +292,19 @@ export default function EgresoDetailPage() {
                 {egreso.creditApplications.map((application) => (
                   <tr key={application.id} className="hover:bg-surface-raised transition-colors">
                     <td className="px-5 py-3.5">
-                      <Link
-                        to={`/documents/${application.supplierCredit.sourceDocument.id}`}
-                        className="font-mono text-xs font-medium link-plain"
-                      >
-                        {docNumber(
-                          application.supplierCredit.sourceDocument.type,
-                          application.supplierCredit.sourceDocument.number,
-                        )}
-                      </Link>
+                      {application.supplierCredit.sourceDocument ? (
+                        <Link
+                          to={`/documents/${application.supplierCredit.sourceDocument.id}`}
+                          className="font-mono text-xs font-medium link-plain"
+                        >
+                          {docNumber(
+                            application.supplierCredit.sourceDocument.type,
+                            application.supplierCredit.sourceDocument.number,
+                          )}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-content-faint">Sin documento de origen</span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                       {formatCOP(Number(application.amount))}

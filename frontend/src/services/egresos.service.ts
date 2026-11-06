@@ -2,20 +2,14 @@ import { api } from './api'
 import type {
   ApiResponse,
   Egreso,
-  EgresoListItem,
-  EgresoMeta,
+  EgresoListResponse,
   GetEgresosParams,
   EgresoOpenItems,
   CreateEgresoPayload,
 } from '@/types'
 
-export async function getEgresos(
-  params?: GetEgresosParams,
-): Promise<{ items: EgresoListItem[]; meta: EgresoMeta }> {
-  const res = await api.get<ApiResponse<{ items: EgresoListItem[]; meta: EgresoMeta }>>(
-    '/egresos',
-    { params },
-  )
+export async function getEgresos(params?: GetEgresosParams): Promise<EgresoListResponse> {
+  const res = await api.get<ApiResponse<EgresoListResponse>>('/egresos', { params })
   return res.data.data
 }
 

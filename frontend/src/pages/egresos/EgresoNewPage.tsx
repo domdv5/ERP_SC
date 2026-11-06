@@ -174,7 +174,7 @@ export default function EgresoNewPage() {
     return {
       id: field.supplierCreditId,
       balance: watchedCredits[index]?.balance ?? field.balance,
-      label: openCredit
+      label: openCredit?.sourceDocument
         ? docNumber(openCredit.sourceDocument.type, openCredit.sourceDocument.number)
         : 'Saldo a favor',
     }
