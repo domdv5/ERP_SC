@@ -13,6 +13,7 @@ const formatDateTime = (iso: string) =>
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'America/Bogota',
   })
 
 export function ReadOnlyBanner({ activatedBy, activatedAt }: ReadOnlyBannerProps) {
