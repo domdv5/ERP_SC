@@ -1,6 +1,10 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { PrismaService } from '@/prisma/prisma.service';
+import { matchContract } from '@/common/types';
+import type { SystemStatus as SystemStatusContract } from '@/contracts';
+
+const matchStatusContract = matchContract<SystemStatusContract>();
 
 export interface SystemStatus {
   readOnlyMode: boolean;
@@ -46,7 +50,7 @@ export class SystemConfigService implements OnModuleInit {
 
   // Caché en memoria, síncrono y barato (el guard lo llama en cada write). Asume un único proceso — sin pub/sub, no sirve en cluster/réplicas.
   getStatus(): SystemStatus {
-    return this.statusSubject.getValue();
+    return matchStatusContract(this.statusSubject.getValue());
   }
 
   get statusChanges$(): Observable<SystemStatus> {
@@ -79,6 +83,6 @@ export class SystemConfigService implements OnModuleInit {
 
     const status = this.toStatus(updated);
     this.statusSubject.next(status);
-    return status;
+    return matchStatusContract(status);
   }
 }

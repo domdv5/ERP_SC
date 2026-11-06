@@ -8,3 +8,6 @@ export type * from './accounts-receivable';
 export type * from './accounts-payable';
 export type * from './egresos';
 export type * from './recibos-caja';
+export type * from './official-ledger';
+export type * from './reports';
+export type * from './system';
