@@ -67,6 +67,7 @@ Nota estimada: arquitectura ~7.5/10 (backend 8, frontend 7, contrato front/back 
 | ✅ | S5 | Contraseña 8+ con letras y números | Hecho (#56) |
 | 8 | S3/S6 | JWT en cookie `HttpOnly` (resuelve también el token del SSE) | Grande |
 | — | Lint | Frontend sin ESLint configurado (`frontend/CLAUDE.md` menciona `pnpm lint`); errores `no-unsafe-*` en specs del backend | Chico |
+| — | Pendiente | Quitar el "Descuento (%)" del cliente (`Customer.discount`): ningún cálculo lo usa; 2026-11-06 8 de 18 clientes lo tienen en 0 y ninguno > 0. Migración que borra `customers.discount` + DTO, service, contrato `third-parties.ts` y `ThirdPartyForm`. No tocar `Supplier.discountNotes` (sí se muestra en compras). | Chico |
 | — | Idea | Venta mixta contado+crédito = COT por el total + recibo de caja automático | Por definir |
 
 ## Plan para partir los archivos gigantes (A1 + A3)
