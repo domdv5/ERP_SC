@@ -3,18 +3,14 @@ import type {
   ApiResponse,
   GetOfficialLedgerMovementsParams,
   GetOfficialLedgerParams,
-  OfficialLedgerItem,
-  OfficialLedgerMeta,
+  OfficialLedgerListResponse,
   OfficialLedgerProductDetail,
 } from '@/types'
 
 export async function getOfficialLedger(
   params?: GetOfficialLedgerParams,
-): Promise<{ items: OfficialLedgerItem[]; meta: OfficialLedgerMeta }> {
-  const res = await api.get<ApiResponse<{ items: OfficialLedgerItem[]; meta: OfficialLedgerMeta }>>(
-    '/official-ledger',
-    { params },
-  )
+): Promise<OfficialLedgerListResponse> {
+  const res = await api.get<ApiResponse<OfficialLedgerListResponse>>('/official-ledger', { params })
   return res.data.data
 }
 
