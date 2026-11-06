@@ -6,3 +6,5 @@ export type * from './locations';
 export type * from './third-parties';
 export type * from './accounts-receivable';
 export type * from './accounts-payable';
+export type * from './egresos';
+export type * from './recibos-caja';

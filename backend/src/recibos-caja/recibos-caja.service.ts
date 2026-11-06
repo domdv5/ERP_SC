@@ -12,11 +12,21 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
+import { matchContract } from '@/common/types';
 import type { JwtPayload } from '@/common/types';
+import type {
+  ReciboCaja,
+  ReciboCajaListResponse,
+  ReciboCajaOpenItems,
+} from '@/contracts';
 import { toCents } from '@/common/utils/money.util';
 import { CreateReciboCajaDto } from './dto/create-recibo-caja.dto';
 import { FindAllRecibosCajaDto } from './dto/find-all-recibos-caja.dto';
 import { NO_BRANCH_FILTER } from './dto/find-open-items.dto';
+
+const matchListContract = matchContract<ReciboCajaListResponse>();
+const matchDetailContract = matchContract<ReciboCaja>();
+const matchOpenItemsContract = matchContract<ReciboCajaOpenItems>();
 
 export const RECIBO_CAJA_DETAIL_INCLUDE = {
   client: { include: { thirdParty: { select: { id: true, name: true } } } },
@@ -188,13 +198,15 @@ export class RecibosCajaService {
           'Esta clave de idempotencia ya se usó para un recibo de caja distinto',
         );
       }
-      return alreadyCreated;
+      return matchDetailContract(alreadyCreated);
     }
 
     try {
-      return await this.prisma.$transaction(
-        (tx) => this.createInTransaction(tx, dto, user),
-        { timeout: 30000 },
+      return matchDetailContract(
+        await this.prisma.$transaction(
+          (tx) => this.createInTransaction(tx, dto, user),
+          { timeout: 30000 },
+        ),
       );
     } catch (error) {
       // Carrera real entre dos requests con la misma clave: el @unique de la
@@ -216,7 +228,7 @@ export class RecibosCajaService {
               'Esta clave de idempotencia ya se usó para un recibo de caja distinto',
             );
           }
-          return existing;
+          return matchDetailContract(existing);
         }
       }
       throw error;
@@ -629,7 +641,7 @@ export class RecibosCajaService {
       this.prisma.reciboCaja.count({ where }),
     ]);
 
-    return {
+    return matchListContract({
       items,
       meta: {
         total,
@@ -637,7 +649,7 @@ export class RecibosCajaService {
         limit,
         totalPages: Math.ceil(total / limit),
       },
-    };
+    });
   }
 
   async findOne(id: string) {
@@ -650,7 +662,7 @@ export class RecibosCajaService {
       throw new NotFoundException('Recibo de caja no encontrado');
     }
 
-    return reciboCaja;
+    return matchDetailContract(reciboCaja);
   }
 
   /** CxC abiertas y saldos a favor de administración disponibles de un cliente (credits y devoluciones), para armar el formulario de recibo de caja. */
@@ -706,7 +718,7 @@ export class RecibosCajaService {
       orderBy: { createdAt: 'asc' },
     });
 
-    return {
+    return matchOpenItemsContract({
       receivables: receivables.map((receivable) => ({
         ...receivable,
         balance: receivable.totalAmount.minus(receivable.paidAmount),
@@ -716,6 +728,6 @@ export class RecibosCajaService {
         ...credit,
         date: credit.date ?? credit.sourceDocument?.date ?? createdAt,
       })),
-    };
+    });
   }
 }

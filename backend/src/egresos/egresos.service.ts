@@ -7,10 +7,16 @@ import {
 import { Prisma, AccountsPayableStatus } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
+import { matchContract } from '@/common/types';
 import type { JwtPayload } from '@/common/types';
+import type { Egreso, EgresoListResponse, EgresoOpenItems } from '@/contracts';
 import { toCents } from '@/common/utils/money.util';
 import { CreateEgresoDto } from './dto/create-egreso.dto';
 import { FindAllEgresosDto } from './dto/find-all-egresos.dto';
+
+const matchListContract = matchContract<EgresoListResponse>();
+const matchDetailContract = matchContract<Egreso>();
+const matchOpenItemsContract = matchContract<EgresoOpenItems>();
 
 export const EGRESO_DETAIL_INCLUDE = {
   supplier: { include: { thirdParty: { select: { id: true, name: true } } } },
@@ -114,13 +120,15 @@ export class EgresosService {
           'Esta clave de idempotencia ya se usó para un egreso distinto',
         );
       }
-      return alreadyCreated;
+      return matchDetailContract(alreadyCreated);
     }
 
     try {
-      return await this.prisma.$transaction(
-        (tx) => this.createInTransaction(tx, dto, user),
-        { timeout: 30000 },
+      return matchDetailContract(
+        await this.prisma.$transaction(
+          (tx) => this.createInTransaction(tx, dto, user),
+          { timeout: 30000 },
+        ),
       );
     } catch (error) {
       // Carrera real entre dos requests con la misma clave: el @unique de la
@@ -142,7 +150,7 @@ export class EgresosService {
               'Esta clave de idempotencia ya se usó para un egreso distinto',
             );
           }
-          return existing;
+          return matchDetailContract(existing);
         }
       }
       throw error;
@@ -452,7 +460,7 @@ export class EgresosService {
       this.prisma.egreso.count({ where }),
     ]);
 
-    return {
+    return matchListContract({
       items,
       meta: {
         total,
@@ -460,7 +468,7 @@ export class EgresosService {
         limit,
         totalPages: Math.ceil(total / limit),
       },
-    };
+    });
   }
 
   async findOne(id: string) {
@@ -473,7 +481,7 @@ export class EgresosService {
       throw new NotFoundException('Egreso no encontrado');
     }
 
-    return egreso;
+    return matchDetailContract(egreso);
   }
 
   /** CxP abiertas y saldos a favor disponibles de un proveedor, para armar el formulario de egreso. */
@@ -501,12 +509,12 @@ export class EgresosService {
       }),
     ]);
 
-    return {
+    return matchOpenItemsContract({
       payables: payables.map((payable) => ({
         ...payable,
         balance: payable.totalAmount.minus(payable.paidAmount),
       })),
       credits,
-    };
+    });
   }
 }
