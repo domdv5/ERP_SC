@@ -17,7 +17,7 @@ import { getProducts } from '@/services/products.service'
 import { formatCOP, formatDateTimeBogota } from '@/lib/format'
 import { suggestedUnitCost } from '@/lib/suggested-unit-cost'
 import { computeOfficialLineTax } from '@/lib/tax'
-import type { Product, StockByWarehouse } from '@/types/product.types'
+import type { ProductListItem, StockByWarehouse } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 import { AvailableStockHint } from './AvailableStockHint'
@@ -141,7 +141,7 @@ export function ProductRow({
     enabled: hasSearch && !noSupplierYet,
   })
 
-  const productOptions: ComboboxOption[] = (productData?.items ?? []).map((p: Product) => ({
+  const productOptions: ComboboxOption[] = (productData?.items ?? []).map((p: ProductListItem) => ({
     id: p.id,
     label: `${p.code} — ${p.description}`,
     // Ventas/salidas: disponible ya neteado; traslados: disponible en la bodega origen; entradas: costo promedio.
@@ -165,7 +165,7 @@ export function ProductRow({
           <Combobox
             value={productId ?? ''}
             onChange={(id) => {
-              const product = productData?.items.find((p: Product) => p.id === id)
+              const product = productData?.items.find((p: ProductListItem) => p.id === id)
 
               // Chequeo extra por si llegó a las opciones un producto de marca equivocada (p. ej. caché vieja).
               if (

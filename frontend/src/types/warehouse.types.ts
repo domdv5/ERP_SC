@@ -1,36 +1,15 @@
-export type WarehouseType = 'store' | 'warehouse'
+export type {
+  Bin,
+  BinWithStock,
+  WarehouseDetail,
+  WarehouseListItem,
+  WarehouseRecord,
+  WarehouseType,
+  Zone,
+  ZoneWithBins,
+} from '@contracts/warehouses'
 
-export interface Warehouse {
-  id: string
-  name: string
-  type: WarehouseType
-  active: boolean
-  createdAt: string
-  _count: { zones: number }
-}
-
-export interface Bin {
-  id: string
-  zoneId: string
-  code: number
-  active: boolean
-  createdAt: string
-  occupied: boolean
-  binStocks: { productId: string; quantity: number }[]
-}
-
-export interface Zone {
-  id: string
-  warehouseId: string
-  name: string
-  active: boolean
-  createdAt: string
-  bins: Bin[]
-}
-
-export interface WarehouseDetail extends Omit<Warehouse, '_count'> {
-  zones: Zone[]
-}
+import type { WarehouseType } from '@contracts/warehouses'
 
 export interface CreateWarehousePayload {
   name: string
@@ -58,7 +37,3 @@ export interface UpdateBinPayload {
   code?: number
   active?: boolean
 }
-
-// Los endpoints de crear y editar zona/bulto devuelven la fila tal cual,
-// sin la relación anidada de bultos.
-export type ZoneSummary = Omit<Zone, 'bins'>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { UseFormSetValue, UseFormWatch } from 'react-hook-form'
 import { getWarehouses, getWarehouse } from '@/services/warehouses.service'
-import type { Warehouse, WarehouseDetail } from '@/types/warehouse.types'
+import type { WarehouseListItem, WarehouseDetail } from '@/types/warehouse.types'
 import type { FormValues } from '../document-form.schema'
 
 export function useTransferLocations(
@@ -58,13 +58,13 @@ export function useTransferLocations(
   const sourceRequiresBin =
     docType === 'T' &&
     Boolean(warehouseId) &&
-    warehouses.find((w: Warehouse) => w.id === warehouseId)?.type === 'warehouse'
+    warehouses.find((w: WarehouseListItem) => w.id === warehouseId)?.type === 'warehouse'
 
   // Mismo criterio, aplicado a la bodega destino.
   const destRequiresBin =
     docType === 'T' &&
     Boolean(destWarehouseId) &&
-    warehouses.find((w: Warehouse) => w.id === destWarehouseId)?.type === 'warehouse'
+    warehouses.find((w: WarehouseListItem) => w.id === destWarehouseId)?.type === 'warehouse'
 
   const sourceZones = (sourceWarehouseDetail as WarehouseDetail | undefined)?.zones ?? []
   const destZones = (destWarehouseDetail as WarehouseDetail | undefined)?.zones ?? []

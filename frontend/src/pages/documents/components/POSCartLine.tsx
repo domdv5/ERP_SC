@@ -11,7 +11,7 @@ import { splitOfficialPrice } from '@/lib/tax'
 import { cn } from '@/lib/utils'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 import { AvailableStockHint } from './AvailableStockHint'
-import type { Product } from '@/types/product.types'
+import type { ProductListItem } from '@/types/product.types'
 
 interface POSCartLineProps {
   index: number
@@ -20,7 +20,7 @@ interface POSCartLineProps {
   watch: UseFormWatch<FormValues>
   onRemove: () => void
   // La pantalla decide qué hacer con el producto elegido en una fila vacía (precio, duplicados).
-  onProductSelect: (product: Product) => void
+  onProductSelect: (product: ProductListItem) => void
   // Precio mínimo actual del producto (piso del 2%). Lo resuelve la pantalla de checkout al
   // entrar el código al carrito. Viene sin valor mientras ese dato todavía no llegó.
   minSalePrice?: number

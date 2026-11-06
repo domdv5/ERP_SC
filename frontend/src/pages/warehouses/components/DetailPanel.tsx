@@ -2,7 +2,7 @@ import { Warehouse, Store, Plus, Package, FolderOpen, ChevronRight, Boxes } from
 import { cn } from '@/lib/utils'
 import { EmptyState, ErrorState } from '@/components/shared'
 import { KebabMenu } from './KebabMenu'
-import type { WarehouseDetail, Zone, Bin } from '@/types'
+import type { WarehouseDetail, ZoneWithBins, BinWithStock } from '@/types'
 import type { Selection } from '@/pages/warehouses/warehouse-tree.types'
 
 // ─── Skeleton ───────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ function ZoneSummaryCard({
   onEdit,
   onAddBin,
 }: {
-  zone: Zone
+  zone: ZoneWithBins
   canManage: boolean
   binsEnabled: boolean
   onSelect: () => void
@@ -99,7 +99,7 @@ function BinCard({
   onSelect,
   onEdit,
 }: {
-  bin: Bin
+  bin: BinWithStock
   canManage: boolean
   binsEnabled: boolean
   onSelect: () => void
@@ -147,9 +147,9 @@ interface DetailPanelProps {
   onSelect: (next: Selection | null) => void
   onEditWarehouse: () => void
   onAddZone: () => void
-  onEditZone: (zone: Zone) => void
-  onAddBin: (zone: Zone) => void
-  onEditBin: (bin: Bin, zone: Zone) => void
+  onEditZone: (zone: ZoneWithBins) => void
+  onAddBin: (zone: ZoneWithBins) => void
+  onEditBin: (bin: BinWithStock, zone: ZoneWithBins) => void
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────

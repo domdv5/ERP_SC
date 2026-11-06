@@ -1,15 +1,14 @@
 import { api } from './api'
-import type { ApiResponse, Product } from '@/types'
-import type { Brand, Gender, ProductCategory, ProductLocationsResult } from '@/types/product.types'
-
-export interface ProductMeta {
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-  activeCount: number
-  inStockCount: number
-}
+import type { ApiResponse } from '@/types'
+import type {
+  BrandOption,
+  Gender,
+  ProductCategory,
+  ProductByCode,
+  ProductListResponse,
+  ProductLocationsResult,
+  ProductRecord,
+} from '@/types/product.types'
 
 export interface GetProductsParams {
   page?: number
@@ -36,17 +35,17 @@ export interface CreateProductPayload {
   unitOfMeasure?: 'unidad' | 'docena'
 }
 
-export async function getProducts(
-  params?: GetProductsParams,
-): Promise<{ items: Product[]; meta: ProductMeta }> {
-  const res = await api.get<ApiResponse<{ items: Product[]; meta: ProductMeta }>>('/products', {
+export async function getProducts(params?: GetProductsParams): Promise<ProductListResponse> {
+  const res = await api.get<ApiResponse<ProductListResponse>>('/products', {
     params,
   })
   return res.data.data
 }
 
-export async function getProductByCode(code: string): Promise<Product> {
-  const res = await api.get<ApiResponse<Product>>(`/products/by-code/${encodeURIComponent(code)}`)
+export async function getProductByCode(code: string): Promise<ProductByCode> {
+  const res = await api.get<ApiResponse<ProductByCode>>(
+    `/products/by-code/${encodeURIComponent(code)}`,
+  )
   return res.data.data
 }
 
@@ -57,8 +56,8 @@ export async function getProductLocationsByCode(code: string): Promise<ProductLo
   return res.data.data
 }
 
-export async function getBrands(): Promise<Brand[]> {
-  const res = await api.get<ApiResponse<Brand[]>>('/products/brands')
+export async function getBrands(): Promise<BrandOption[]> {
+  const res = await api.get<ApiResponse<BrandOption[]>>('/products/brands')
   return res.data.data
 }
 
@@ -72,16 +71,16 @@ export async function getCategories(): Promise<ProductCategory[]> {
   return res.data.data
 }
 
-export async function createProduct(payload: CreateProductPayload): Promise<Product> {
-  const res = await api.post<ApiResponse<Product>>('/products', payload)
+export async function createProduct(payload: CreateProductPayload): Promise<ProductRecord> {
+  const res = await api.post<ApiResponse<ProductRecord>>('/products', payload)
   return res.data.data
 }
 
 export async function updateProduct(
   id: string,
   payload: Partial<CreateProductPayload>,
-): Promise<Product> {
-  const res = await api.patch<ApiResponse<Product>>(`/products/${id}`, payload)
+): Promise<ProductRecord> {
+  const res = await api.patch<ApiResponse<ProductRecord>>(`/products/${id}`, payload)
   return res.data.data
 }
 

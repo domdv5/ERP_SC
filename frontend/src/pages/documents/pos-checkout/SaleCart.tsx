@@ -11,7 +11,7 @@ import type { FormValues } from '@/pages/documents/document-form.schema'
 import { BarcodeScanInput } from '@/pages/documents/components/BarcodeScanInput'
 import { POSCartLine } from '@/pages/documents/components/POSCartLine'
 import type { DocumentType } from '@/types/document.types'
-import type { Product } from '@/types/product.types'
+import type { ProductListItem } from '@/types/product.types'
 
 interface SaleCartProps {
   docType: DocumentType
@@ -42,7 +42,7 @@ export function SaleCart({
   const { control, register, watch, setValue, getValues } = form
 
   // ── producto elegido a mano en una fila vacía (alternativa al escaneo) ────
-  function handleRowProductSelect(index: number, product: Product) {
+  function handleRowProductSelect(index: number, product: ProductListItem) {
     // Deja el producto ya conocido en la caché de búsqueda por código, para no volver a pedir
     // al servidor el precio mínimo y el disponible de esta misma fila.
     queryClient.setQueryData(['product-by-code', product.code], product)

@@ -1,6 +1,6 @@
 import { Controller, type Control, type UseFormSetValue } from 'react-hook-form'
 import { cn } from '@/lib/utils'
-import type { Warehouse } from '@/types/warehouse.types'
+import type { WarehouseListItem } from '@/types/warehouse.types'
 import type { FormValues } from '../document-form.schema'
 import type { TransferLocations } from './useTransferLocations'
 
@@ -45,7 +45,7 @@ export function TransferFields({ control, setValue, transfer }: TransferFieldsPr
               className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
             >
               <option value="">Selecciona bodega origen</option>
-              {warehouses.map((w: Warehouse) => (
+              {warehouses.map((w: WarehouseListItem) => (
                 <option key={w.id} value={w.id}>
                   {w.name}
                 </option>
@@ -130,8 +130,8 @@ export function TransferFields({ control, setValue, transfer }: TransferFieldsPr
             >
               <option value="">Selecciona bodega destino</option>
               {warehouses
-                .filter((w: Warehouse) => w.id !== warehouseId)
-                .map((w: Warehouse) => (
+                .filter((w: WarehouseListItem) => w.id !== warehouseId)
+                .map((w: WarehouseListItem) => (
                   <option key={w.id} value={w.id}>
                     {w.name}
                   </option>

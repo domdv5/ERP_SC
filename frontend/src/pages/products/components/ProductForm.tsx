@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { CatalogComboboxField, ThousandsInput } from '@/components/shared'
 import { getBrands, getGenders, getCategories } from '@/services/products.service'
-import type { Product } from '@/types'
+import type { ProductListItem } from '@/types'
 
 // ─── Schema ─────────────────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ interface ProductFormProps {
   onClose: () => void
   onSubmit: (data: FormValues) => void
   isPending: boolean
-  defaultValues?: Product
+  defaultValues?: ProductListItem
 }
 
 // ─── Internal helpers ───────────────────────────────────────────────────

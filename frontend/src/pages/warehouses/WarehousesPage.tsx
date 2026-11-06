@@ -21,7 +21,7 @@ import { ZoneForm } from './components/ZoneForm'
 import type { ZoneFormValues } from './components/ZoneForm'
 import { BinForm } from './components/BinForm'
 import type { BinFormValues } from './components/BinForm'
-import type { Warehouse as WarehouseType, Zone, Bin } from '@/types'
+import type { WarehouseListItem, Zone, Bin } from '@/types'
 import type { Selection } from './warehouse-tree.types'
 
 type ZoneModalState =
@@ -40,7 +40,7 @@ export default function WarehousesPage() {
   const canManage = usePermission('warehouse.manage')
 
   const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<WarehouseType | null>(null)
+  const [editing, setEditing] = useState<WarehouseListItem | null>(null)
 
   const [zoneModal, setZoneModal] = useState<ZoneModalState | null>(null)
   const [binModal, setBinModal] = useState<BinModalState | null>(null)
@@ -233,7 +233,7 @@ export default function WarehousesPage() {
       {/* Detalle o estado vacío */}
       <DetailPanel
         selection={selection}
-        warehouseDetail={warehouseDetail}
+        warehouseDetail={warehouseDetail ?? undefined}
         isLoading={isDetailLoading}
         isError={isDetailError}
         onRetry={() => refetchDetail()}

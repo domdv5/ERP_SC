@@ -1,8 +1,8 @@
 import { AlertTriangle } from 'lucide-react'
-import type { Product } from '@/types'
+import type { ProductListItem } from '@/types'
 
 interface DeleteProductDialogProps {
-  product: Product | null
+  product: ProductListItem | null
   onConfirm: () => void
   onCancel: () => void
   isPending: boolean
