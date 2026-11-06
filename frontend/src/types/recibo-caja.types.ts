@@ -1,120 +1,21 @@
-import type { AccountsReceivableStatus } from './accounts-receivable.types'
-
-import type { DocumentType } from './document.types'
-// Reusa el mismo enum de Egresos: "las mismas formas de pago que ya existen y se utilizan en los egresos" (regla de negocio explícita del backend)
-import type { EgresoPaymentMethod } from './egreso.types'
-
-export type ReciboCajaDiscountReason =
-  | 'descuento_comercial'
-  | 'oferta'
-  | 'donacion'
-  | 'fidelizacion'
-  | 'mercancia_extraviada'
-  | 'castigo_cartera'
-  | 'promocion'
-
-export interface ReciboCajaClient {
-  id: string
-  thirdParty: {
-    id: string
-    name: string
-  }
-}
-
-export interface ReciboCajaBranch {
-  id: string
-  name: string
-}
-
-export interface ReciboCajaDocument {
-  id: string
-  type: DocumentType
-  // El backend ya lo manda con ceros a la izquierda (ej. "000009"); pasa por docNumber() igual.
-  number: string
-  date: string
-  customerBranch?: ReciboCajaBranch | null
-}
-
-// Campos Decimal de Prisma tipados `string` a propósito: llegan como string del backend
-export interface ReciboCajaListItem {
-  id: string
-  number: string
-  date: string
-  total: string
-  createdAt: string
-  client: ReciboCajaClient
-  customerBranch: ReciboCajaBranch | null
-}
-
-export interface ReciboCajaPaymentLine {
-  id: string
-  reciboCajaId: string
-  method: EgresoPaymentMethod
-  amount: string
-  reference: string | null
-  bank: string | null
-  createdAt: string
-}
-
-// Sin `client` (el recibo ya es de un cliente) ni `balance` (eso vive a nivel de CxC)
-export interface ReciboCajaAllocationAccountReceivable {
-  id: string
-  clientId: string
-  documentId: string
-  totalAmount: string
-  paidAmount: string
-  dueDate: string | null
-  status: AccountsReceivableStatus
-  createdAt: string
-  updatedAt: string
-  document: ReciboCajaDocument
-}
-
-// Sin `creditAmount`: este flujo no aplica saldo a favor (regla de negocio explícita, ver RecibosCajaModule)
-export interface ReciboCajaAllocation {
-  id: string
-  reciboCajaId: string
-  accountReceivableId: string
-  amount: string
-  discountAmount: string
-  accountReceivable: ReciboCajaAllocationAccountReceivable
-}
-
-// Saldo a favor del cliente usado como parte del pago de este recibo
-export interface ReciboCajaCreditApplication {
-  id: string
-  amount: string
-  customerCreditId: string
-  customerCredit: { id: string; date: string; amount: string }
-}
-
-export interface ReciboCaja {
-  id: string
-  number: string
-  date: string
-  clientId: string
-  userId: string
-  total: string
-  discountAmount: string
-  discountReason: ReciboCajaDiscountReason | null
-  debtBeforeReceipt: string | null
-  notes: string | null
-  idempotencyKey: string
-  createdAt: string
-  client: ReciboCajaClient
-  customerBranch: ReciboCajaBranch | null
-  user: { id: string; name: string }
-  payments: ReciboCajaPaymentLine[]
-  allocations: ReciboCajaAllocation[]
-  creditApplications: ReciboCajaCreditApplication[]
-}
-
-export interface ReciboCajaMeta {
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-}
+export type {
+  ReciboCaja,
+  ReciboCajaAllocation,
+  ReciboCajaAllocationAccountReceivable,
+  ReciboCajaBranch,
+  ReciboCajaCreditApplication,
+  ReciboCajaDiscountReason,
+  ReciboCajaListItem,
+  ReciboCajaListMeta,
+  ReciboCajaListResponse,
+  ReciboCajaOpenCredit,
+  ReciboCajaOpenItems,
+  ReciboCajaOpenReceivable,
+  ReciboCajaPaymentLine,
+} from '@contracts/recibos-caja'
+import type { ReciboCajaDiscountReason } from '@contracts/recibos-caja'
+// Reusa las formas de pago de Egresos (regla de negocio del backend)
+import type { EgresoPaymentMethod } from '@contracts/egresos'
 
 export interface GetRecibosCajaParams {
   page?: number
@@ -124,39 +25,6 @@ export interface GetRecibosCajaParams {
   dateFrom?: string
   dateTo?: string
   number?: string
-}
-
-// Ya trae `balance` calculado, ordenadas createdAt asc
-export interface ReciboCajaOpenReceivable {
-  id: string
-  clientId: string
-  documentId: string
-  totalAmount: string
-  paidAmount: string
-  dueDate: string | null
-  status: AccountsReceivableStatus
-  createdAt: string
-  updatedAt: string
-  document: ReciboCajaDocument
-  balance: string
-}
-
-// Saldo a favor de administración de la misma sucursal; `balance` ya descuenta lo usado
-export interface ReciboCajaOpenCredit {
-  id: string
-  amount: string
-  balance: string
-  date: string
-  customerBranchId: string | null
-  usableIn: 'facturacion' | 'administracion'
-  kind: 'devolucion' | 'excedente'
-  // Documento (DVV) que lo originó; null en los excedentes
-  sourceDocument: { id: string; type: string; number: string } | null
-}
-
-export interface ReciboCajaOpenItems {
-  receivables: ReciboCajaOpenReceivable[]
-  credits: ReciboCajaOpenCredit[]
 }
 
 export interface CreateReciboCajaReceivablePayload {
