@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { getReciboCajaOpenItems, createReciboCaja } from '@/services/recibos-caja.service'
 import { reciboCajaFormSchema, type ReciboCajaFormValues } from './recibo-caja-form.schema'
 import type { CreateReciboCajaPayload } from '@/types'
+import type { ReciboCajaBranch } from '@/types/recibo-caja.types'
 import { todayInBogota } from '@/lib/format'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 
@@ -74,7 +75,7 @@ export function useReciboCajaForm() {
   const isLoadingBranches = isLoadingActiveBranches || isLoadingAllOpenItems
 
   // Suma las sucursales inactivas que todavía tienen facturas pendientes: si no, esas facturas no se podrían cobrar.
-  const branches = [...activeBranches]
+  const branches: ReciboCajaBranch[] = [...activeBranches]
   for (const receivable of allOpenItems?.receivables ?? []) {
     const branch = receivable.document.customerBranch
     if (branch && !branches.some((b) => b.id === branch.id)) branches.push(branch)

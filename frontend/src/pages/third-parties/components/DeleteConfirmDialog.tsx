@@ -1,8 +1,8 @@
 import { AlertTriangle } from 'lucide-react'
-import type { ThirdParty } from '@/types'
+import type { ThirdPartyDetail } from '@/types'
 
 interface DeleteConfirmDialogProps {
-  thirdParty: ThirdParty | null
+  thirdParty: ThirdPartyDetail | null
   onConfirm: () => void
   onCancel: () => void
   isPending: boolean

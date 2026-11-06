@@ -10,7 +10,13 @@ import { getFirstErrorMessage } from '@/lib/form-errors'
 import { canAssignThirdPartyRole } from '@/lib/third-party-permissions'
 import { useAuthStore } from '@/stores/auth.store'
 import { CityPicker, ThousandsInput } from '@/components/shared'
-import type { City, ThirdParty, CustomerBranchInput } from '@/types'
+import type {
+  CityWithDepartment,
+  CustomerBranchInput,
+  DocumentType,
+  PersonType,
+  ThirdPartyDetail,
+} from '@/types/third-party.types'
 import {
   WITHHOLDING_AGENT_TYPE_OPTIONS,
   TAX_REGIME_OPTIONS,
@@ -28,8 +34,8 @@ const branchSchema = z.object({
 
 const EMPTY_BRANCH = { name: '', address: '', cityCode: '', cityLabel: '', phone: '' }
 
-function formatCity(city: City | null | undefined) {
-  return city ? formatCityLabel(city.name, city.department?.name ?? '') : ''
+function formatCity(city: CityWithDepartment | null | undefined) {
+  return city ? formatCityLabel(city.name, city.department.name) : ''
 }
 
 const schema = z
@@ -115,7 +121,7 @@ interface ThirdPartyFormProps {
   onRenameBrand?: (brandId: string, newName: string) => Promise<void>
   onUpdateBranch?: (branchId: string, data: CustomerBranchInput) => Promise<unknown>
   isPending: boolean
-  defaultValues?: ThirdParty
+  defaultValues?: ThirdPartyDetail
 }
 
 const DOCUMENT_TYPES = ['CC', 'NIT', 'CE', 'PAS', 'TI', 'RC'] as const
@@ -190,11 +196,11 @@ function Toggle({
   )
 }
 
-function flattenDefaults(tp: ThirdParty): Partial<FormValues> {
+function flattenDefaults(tp: ThirdPartyDetail): Partial<FormValues> {
   return {
     name: tp.name,
-    personType: tp.personType,
-    documentType: tp.documentType,
+    personType: tp.personType as PersonType,
+    documentType: tp.documentType as DocumentType,
     documentNumber: tp.documentNumber,
     firstName: tp.firstName ?? '',
     lastName: tp.lastName ?? '',
@@ -210,9 +216,9 @@ function flattenDefaults(tp: ThirdParty): Partial<FormValues> {
     isReceiver: tp.isReceiver ?? false,
     isCustomer: tp.customer != null,
     isSupplier: tp.supplier != null,
-    // El monto llega como texto; se pasa a número para el input con separador de miles.
+    // Los montos llegan como texto (Decimal); se pasan a número para el input.
     creditLimit: tp.customer?.creditLimit != null ? Number(tp.customer.creditLimit) : undefined,
-    discount: tp.customer?.discount,
+    discount: tp.customer?.discount != null ? Number(tp.customer.discount) : undefined,
     internalNumber: tp.supplier?.internalNumber,
     discountNotes: tp.supplier?.discountNotes ?? undefined,
     brands: tp.supplier?.brands?.map((b) => b.name) ?? [],

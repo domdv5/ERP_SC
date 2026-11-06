@@ -5,7 +5,7 @@ import { getThirdParties } from '@/services/third-parties.service'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import type { ComboboxOption } from '@/components/shared'
 import type { DocumentDetail } from '@/types/document.types'
-import type { ThirdParty } from '@/types/third-party.types'
+import type { ThirdPartyDetail } from '@/types/third-party.types'
 
 export function useSaleParties() {
   // ── cliente ────────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ export function useSaleParties() {
     enabled: hasTpSearch,
   })
 
-  const tpOptions: ComboboxOption[] = (tpData?.items ?? []).map((tp: ThirdParty) => ({
+  const tpOptions: ComboboxOption[] = (tpData?.items ?? []).map((tp: ThirdPartyDetail) => ({
     id: tp.id,
     label: tp.name,
   }))
@@ -65,7 +65,7 @@ export function useSaleParties() {
     enabled: hasSellerSearch,
   })
 
-  const sellerOptions: ComboboxOption[] = (sellerData?.items ?? []).map((tp: ThirdParty) => ({
+  const sellerOptions: ComboboxOption[] = (sellerData?.items ?? []).map((tp: ThirdPartyDetail) => ({
     id: tp.id,
     label: tp.name,
   }))

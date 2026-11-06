@@ -1,71 +1,31 @@
-import type { City as LocationCity } from './location.types'
+export type {
+  CityWithDepartment,
+  Customer,
+  CustomerBranch,
+  CustomerBranchWithCity,
+  CustomerDetail,
+  Supplier,
+  SupplierBrand,
+  SupplierDetail,
+  TaxRegime,
+  ThirdPartyCreated,
+  ThirdPartyDetail,
+  ThirdPartyListMeta,
+  ThirdPartyListResponse,
+  ThirdPartyRecord,
+  WithholdingAgentType,
+} from '@contracts/third-parties'
+import type { TaxRegime, WithholdingAgentType } from '@contracts/third-parties'
 
-// El tercero manda la ciudad con su departamento; /locations no (contrato de terceros pendiente).
-export interface City extends LocationCity {
-  department?: { code: string; name: string }
-}
-
+// El contrato manda personType/documentType como string; estas son las uniones que acepta el formulario.
 export type PersonType = 'natural' | 'juridica'
 export type DocumentType = 'CC' | 'NIT' | 'CE' | 'PAS' | 'TI' | 'RC'
-export type WithholdingAgentType =
-  'ninguno' | 'gran_contribuyente' | 'autorretenedor_renta' | 'agente_retencion_iva'
-export type TaxRegime = 'ordinario' | 'rst' | 'no_aplica'
-
-export interface CustomerBranch {
-  id: string
-  name: string
-  address?: string | null
-  cityCode?: string | null
-  city?: City | null
-  phone?: string | null
-}
 
 export interface CustomerBranchInput {
   name: string
   address?: string
   cityCode?: string
   phone?: string
-}
-
-export interface Customer {
-  id: string
-  branches?: CustomerBranch[]
-  creditLimit?: number
-  discount?: number
-  sellerId?: string
-}
-
-export interface Supplier {
-  id: string
-  internalNumber: number
-  discountNotes?: string | null
-  brands: { id: string; name: string }[]
-}
-
-export interface ThirdParty {
-  id: string
-  name: string
-  personType: PersonType
-  documentType: DocumentType
-  documentNumber: string
-  firstName?: string
-  lastName?: string
-  email?: string
-  phone?: string
-  address?: string
-  cityCode?: string | null
-  city?: City | null
-  ivaResponsible?: boolean | null
-  withholdingAgentType?: WithholdingAgentType | null
-  taxRegime?: TaxRegime | null
-  isSeller?: boolean
-  isReceiver?: boolean
-  isCustomer?: boolean
-  isSupplier?: boolean
-  isActive: boolean
-  customer?: Customer | null
-  supplier?: Supplier | null
-  createdAt: string
 }
 
 export interface CreateThirdPartyPayload {

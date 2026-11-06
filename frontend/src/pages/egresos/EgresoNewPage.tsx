@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 import { useEgresoForm } from './useEgresoForm'
 import { EGRESO_PAYMENT_METHODS } from './egreso-form.schema'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
-import type { ThirdParty } from '@/types/third-party.types'
+import type { ThirdPartyDetail } from '@/types/third-party.types'
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
 // Mismo patrón que DocumentDetailPage.tsx: overlay + card, sin librería de modales.
@@ -131,10 +131,12 @@ export default function EgresoNewPage() {
     enabled: hasSupplierSearch,
   })
 
-  const supplierOptions: ComboboxOption[] = (supplierData?.items ?? []).map((tp: ThirdParty) => ({
-    id: tp.id,
-    label: tp.name,
-  }))
+  const supplierOptions: ComboboxOption[] = (supplierData?.items ?? []).map(
+    (tp: ThirdPartyDetail) => ({
+      id: tp.id,
+      label: tp.name,
+    }),
+  )
   const supplierDisplayOptions: ComboboxOption[] =
     supplierId && !debouncedSupplierSearch
       ? [
