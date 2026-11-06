@@ -2,19 +2,19 @@ import { api } from './api'
 import type {
   ApiResponse,
   AccountsReceivableDetail,
-  AccountsReceivableMeta,
   ClientStatement,
   CreateExcedentePayload,
-  ReceivableClientSummary,
+  ReceivableClientsResponse,
   GetReceivableClientsParams,
 } from '@/types'
 
 export async function getReceivableClients(
   params?: GetReceivableClientsParams,
-): Promise<{ items: ReceivableClientSummary[]; meta: AccountsReceivableMeta }> {
-  const res = await api.get<
-    ApiResponse<{ items: ReceivableClientSummary[]; meta: AccountsReceivableMeta }>
-  >('/accounts-receivable/clients', { params })
+): Promise<ReceivableClientsResponse> {
+  const res = await api.get<ApiResponse<ReceivableClientsResponse>>(
+    '/accounts-receivable/clients',
+    { params },
+  )
   return res.data.data
 }
 

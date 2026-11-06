@@ -1,8 +1,8 @@
 import type { DocumentType } from './document.types'
 import type {
-  AccountsPayableDocument,
   AccountsPayableStatus,
-  AccountsPayableSupplier,
+  PayableDocumentRef,
+  PayableSupplier,
 } from './accounts-payable.types'
 
 export type EgresoPaymentMethod =
@@ -29,7 +29,7 @@ export interface EgresoListItem {
   cashTotal: string
   creditTotal: string
   createdAt: string
-  supplier: AccountsPayableSupplier
+  supplier: PayableSupplier
 }
 
 export interface EgresoPaymentLine {
@@ -53,7 +53,7 @@ export interface EgresoAllocationAccountPayable {
   status: AccountsPayableStatus
   createdAt: string
   updatedAt: string
-  document: AccountsPayableDocument
+  document: PayableDocumentRef
 }
 
 export interface EgresoAllocation {
@@ -98,7 +98,7 @@ export interface Egreso {
   notes: string | null
   idempotencyKey: string
   createdAt: string
-  supplier: AccountsPayableSupplier
+  supplier: PayableSupplier
   user: { id: string; name: string }
   payments: EgresoPaymentLine[]
   allocations: EgresoAllocation[]
@@ -132,7 +132,7 @@ export interface EgresoOpenPayable {
   status: AccountsPayableStatus
   createdAt: string
   updatedAt: string
-  document: AccountsPayableDocument
+  document: PayableDocumentRef
   balance: string
 }
 

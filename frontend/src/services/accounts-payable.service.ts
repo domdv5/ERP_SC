@@ -2,18 +2,17 @@ import { api } from './api'
 import type {
   ApiResponse,
   AccountsPayableDetail,
-  AccountsPayableMeta,
   GetPayableSuppliersParams,
-  PayableSupplierSummary,
+  PayableSuppliersResponse,
   SupplierStatement,
 } from '@/types'
 
 export async function getPayableSuppliers(
   params?: GetPayableSuppliersParams,
-): Promise<{ items: PayableSupplierSummary[]; meta: AccountsPayableMeta }> {
-  const res = await api.get<
-    ApiResponse<{ items: PayableSupplierSummary[]; meta: AccountsPayableMeta }>
-  >('/accounts-payable/suppliers', { params })
+): Promise<PayableSuppliersResponse> {
+  const res = await api.get<ApiResponse<PayableSuppliersResponse>>('/accounts-payable/suppliers', {
+    params,
+  })
   return res.data.data
 }
 

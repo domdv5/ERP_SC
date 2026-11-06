@@ -1,3 +1,5 @@
+import type { AccountsReceivableStatus } from './accounts-receivable.types'
+
 import type { DocumentType } from './document.types'
 // Reusa el mismo enum de Egresos: "las mismas formas de pago que ya existen y se utilizan en los egresos" (regla de negocio explícita del backend)
 import type { EgresoPaymentMethod } from './egreso.types'
@@ -10,8 +12,6 @@ export type ReciboCajaDiscountReason =
   | 'mercancia_extraviada'
   | 'castigo_cartera'
   | 'promocion'
-
-export type AccountsReceivableStatus = 'pending' | 'partial' | 'paid'
 
 export interface ReciboCajaClient {
   id: string
