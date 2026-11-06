@@ -177,7 +177,8 @@ El dueño del repo diseña y decide; la IA ejecuta. Objetivo: que el dueño enti
 3. **"Dónde mirar" en cada commit** — después de commitear, listar 3-5 `archivo:línea` con lo
    importante del cambio para que el dueño lo lea en ~2 minutos.
 4. **"Mapa de revisión" en cada PR** — el dueño revisa por riesgo de contenido, no línea por línea ni por ruta:
-   - Lo clasifica un revisor que no escribió el código (subagente o lente `risk` de la review nativa), no el writer.
+   - Lo clasifica un revisor que no escribió el código (subagente o lente `risk` de la review nativa), no el writer. Si la review nativa no corre, lo arma `jd-judge-a` en solo lectura.
+   - Judgment Day completo (dos jueces + arreglos) solo si el dueño lo pide; recomendarlo para dinero, stock, seguridad o migraciones.
    - Cada 🔴 trae `archivo:línea` + una frase de negocio verificable: qué cambia y qué se rompe si está mal.
      Lo que no tenga consecuencia de negocio concreta no es 🔴 y no se le pide revisar.
    - El PR lista, sacados con `git diff` (no escritos a mano), los nombres de las pruebas nuevas o
