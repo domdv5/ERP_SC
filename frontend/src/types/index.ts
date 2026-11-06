@@ -1,14 +1,16 @@
 export type {
-  ThirdParty,
+  CustomerBranch,
+  ThirdPartyCreated,
+  ThirdPartyDetail,
+  ThirdPartyListResponse,
   CreateThirdPartyPayload,
   UpdateThirdPartyPayload,
-  CustomerBranch,
   CustomerBranchInput,
   PersonType,
   DocumentType as ThirdPartyDocumentType,
 } from './third-party.types'
 export type { Department } from './location.types'
-export type { City } from './third-party.types'
+export type { City } from './location.types'
 export type {
   BrandOption,
   Gender,

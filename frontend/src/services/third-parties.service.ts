@@ -1,20 +1,13 @@
 import { api } from './api'
 import type {
   ApiResponse,
-  ThirdParty,
+  ThirdPartyCreated,
+  ThirdPartyDetail,
+  ThirdPartyListResponse,
   CreateThirdPartyPayload,
   UpdateThirdPartyPayload,
   CustomerBranchInput,
 } from '@/types'
-
-export interface ThirdPartyMeta {
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-  customerCount: number
-  supplierCount: number
-}
 
 export interface GetThirdPartiesParams {
   page?: number
@@ -29,29 +22,28 @@ export interface GetThirdPartiesParams {
 
 export async function getThirdParties(
   params?: GetThirdPartiesParams,
-): Promise<{ items: ThirdParty[]; meta: ThirdPartyMeta }> {
-  const res = await api.get<ApiResponse<{ items: ThirdParty[]; meta: ThirdPartyMeta }>>(
-    '/third-parties',
-    { params },
-  )
+): Promise<ThirdPartyListResponse> {
+  const res = await api.get<ApiResponse<ThirdPartyListResponse>>('/third-parties', { params })
   return res.data.data
 }
 
-export async function getThirdParty(id: string): Promise<ThirdParty> {
-  const res = await api.get<ApiResponse<ThirdParty>>(`/third-parties/${id}`)
+export async function getThirdParty(id: string): Promise<ThirdPartyDetail> {
+  const res = await api.get<ApiResponse<ThirdPartyDetail>>(`/third-parties/${id}`)
   return res.data.data
 }
 
-export async function createThirdParty(payload: CreateThirdPartyPayload): Promise<ThirdParty> {
-  const res = await api.post<ApiResponse<ThirdParty>>('/third-parties', payload)
+export async function createThirdParty(
+  payload: CreateThirdPartyPayload,
+): Promise<ThirdPartyCreated> {
+  const res = await api.post<ApiResponse<ThirdPartyCreated>>('/third-parties', payload)
   return res.data.data
 }
 
 export async function updateThirdParty(
   id: string,
   payload: UpdateThirdPartyPayload,
-): Promise<ThirdParty> {
-  const res = await api.patch<ApiResponse<ThirdParty>>(`/third-parties/${id}`, payload)
+): Promise<ThirdPartyDetail> {
+  const res = await api.patch<ApiResponse<ThirdPartyDetail>>(`/third-parties/${id}`, payload)
   return res.data.data
 }
 

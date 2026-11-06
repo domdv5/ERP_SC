@@ -1,7 +1,7 @@
 import type { CustomerBranch } from '@/types'
 
 interface CustomerBranchSelectProps {
-  branches: CustomerBranch[]
+  branches: Pick<CustomerBranch, 'id' | 'name'>[]
   value: string
   onChange: (branchId: string) => void
   isLoading?: boolean

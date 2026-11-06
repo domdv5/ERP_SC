@@ -19,7 +19,7 @@ import {
 } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
-import type { ThirdParty } from '@/types/third-party.types'
+import type { ThirdPartyDetail } from '@/types/third-party.types'
 
 export default function RecibosCajaListPage() {
   const navigate = useNavigate()
@@ -95,7 +95,7 @@ export default function RecibosCajaListPage() {
     enabled: hasClientSearch,
   })
 
-  const clientOptions: ComboboxOption[] = (clientData?.items ?? []).map((tp: ThirdParty) => ({
+  const clientOptions: ComboboxOption[] = (clientData?.items ?? []).map((tp: ThirdPartyDetail) => ({
     id: tp.id,
     label: tp.name,
   }))

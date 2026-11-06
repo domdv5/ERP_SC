@@ -5,12 +5,12 @@ import type { UseFormWatch } from 'react-hook-form'
 import { getThirdParties } from '@/services/third-parties.service'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import type { ComboboxOption } from '@/components/shared'
-import type { ThirdParty } from '@/types/third-party.types'
+import type { ThirdPartyDetail } from '@/types/third-party.types'
 import type { FormValues } from '../document-form.schema'
 import type { DocumentTypeFlags } from './documentTypeFlags'
 
 // Las marcas bajo el nombre: en la empresa se reconoce al proveedor por ellas
-function supplierSublabel(tp: ThirdParty) {
+function supplierSublabel(tp: ThirdPartyDetail) {
   if (!tp.isSupplier) return undefined
   const brandNames = tp.supplier?.brands.map((brand) => brand.name) ?? []
   return brandNames.length > 0 ? `Marcas: ${brandNames.join(', ')}` : 'Proveedor'
@@ -88,7 +88,7 @@ export function useDocumentParties(
   })
 
   // Opciones de tercero: proveedor en compras y devoluciones, cliente en preventas y remisiones.
-  const tpOptions: ComboboxOption[] = (tpData?.items ?? []).map((tp: ThirdParty) => ({
+  const tpOptions: ComboboxOption[] = (tpData?.items ?? []).map((tp: ThirdPartyDetail) => ({
     id: tp.id,
     label: tp.name,
     sublabel: needsCustomer ? undefined : supplierSublabel(tp),
@@ -108,7 +108,7 @@ export function useDocumentParties(
       : tpOptions
 
   // Opciones de vendedora: solo preventas y remisiones.
-  const sellerOptions: ComboboxOption[] = (sellerData?.items ?? []).map((tp: ThirdParty) => ({
+  const sellerOptions: ComboboxOption[] = (sellerData?.items ?? []).map((tp: ThirdPartyDetail) => ({
     id: tp.id,
     label: tp.name,
   }))
@@ -123,10 +123,12 @@ export function useDocumentParties(
         ]
       : sellerOptions
 
-  const receiverOptions: ComboboxOption[] = (receiverData?.items ?? []).map((tp: ThirdParty) => ({
-    id: tp.id,
-    label: tp.name,
-  }))
+  const receiverOptions: ComboboxOption[] = (receiverData?.items ?? []).map(
+    (tp: ThirdPartyDetail) => ({
+      id: tp.id,
+      label: tp.name,
+    }),
+  )
 
   const currentReceiverId = watch('receiverId') ?? ''
 
@@ -139,7 +141,7 @@ export function useDocumentParties(
       : receiverOptions
 
   const findThirdParty = (thirdPartyId: string) =>
-    tpData?.items.find((t: ThirdParty) => t.id === thirdPartyId)
+    tpData?.items.find((t: ThirdPartyDetail) => t.id === thirdPartyId)
 
   const clearSelections = () => {
     setTpSelectedName('')

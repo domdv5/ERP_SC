@@ -30,7 +30,7 @@ import {
   SegmentedToggle,
 } from '@/components/shared'
 import { cn } from '@/lib/utils'
-import type { ThirdParty } from '@/types'
+import type { ThirdPartyDetail } from '@/types'
 
 const ROLE_BADGES = [
   {
@@ -71,8 +71,8 @@ export default function ThirdPartiesPage() {
     'all' | 'customer' | 'supplier' | 'seller' | 'receiver'
   >('all')
   const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<ThirdParty | null>(null)
-  const [deleting, setDeleting] = useState<ThirdParty | null>(null)
+  const [editing, setEditing] = useState<ThirdPartyDetail | null>(null)
+  const [deleting, setDeleting] = useState<ThirdPartyDetail | null>(null)
 
   const [debouncedSearch] = useDebounce(search, 400)
 
@@ -341,7 +341,7 @@ export default function ThirdPartiesPage() {
                       <td className="px-5 py-3.5 text-content-muted text-xs">{t.documentNumber}</td>
                       <td className="px-5 py-3.5">
                         <div className="flex gap-1 flex-wrap">
-                          {ROLE_BADGES.filter(({ key }) => t[key as keyof ThirdParty]).map(
+                          {ROLE_BADGES.filter(({ key }) => t[key as keyof ThirdPartyDetail]).map(
                             ({ key, label, color }) => (
                               <span key={key} className={cn('pill-stamp', color)}>
                                 {label}

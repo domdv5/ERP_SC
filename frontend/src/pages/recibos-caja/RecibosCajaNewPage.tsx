@@ -21,7 +21,7 @@ import {
   RECIBO_CAJA_DISCOUNT_REASON_LABELS,
 } from './recibo-caja-form.schema'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
-import type { ThirdParty } from '@/types/third-party.types'
+import type { ThirdPartyDetail } from '@/types/third-party.types'
 import type { ReciboCajaOpenCredit } from '@/types/recibo-caja.types'
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
@@ -156,7 +156,7 @@ export default function RecibosCajaNewPage() {
     enabled: hasClientSearch,
   })
 
-  const clientOptions: ComboboxOption[] = (clientData?.items ?? []).map((tp: ThirdParty) => ({
+  const clientOptions: ComboboxOption[] = (clientData?.items ?? []).map((tp: ThirdPartyDetail) => ({
     id: tp.id,
     label: tp.name,
   }))
