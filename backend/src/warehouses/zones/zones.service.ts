@@ -5,6 +5,12 @@ import {
 } from '@nestjs/common';
 import { CreateZoneDto, UpdateZoneDto } from './dto';
 import { PrismaService } from '@/prisma/prisma.service';
+import { matchContract } from '@/common/types';
+import type { Zone } from '@/contracts';
+
+const matchZoneContract = matchContract<Zone>();
+const matchOptionalZoneContract = matchContract<Zone | null>();
+const matchZonesContract = matchContract<Zone[]>();
 
 @Injectable()
 export class ZonesService {
@@ -13,7 +19,7 @@ export class ZonesService {
   async create(createZoneDto: CreateZoneDto, warehouseId: string) {
     const { name } = createZoneDto;
 
-    return this.prisma.$transaction(async (tx) => {
+    const zone = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.zone.findFirst({
         where: { warehouseId, name },
         select: { id: true },
@@ -37,10 +43,13 @@ export class ZonesService {
       // Contrato del endpoint sin cambios: devuelve la zona de la bodega de la URL.
       return tx.zone.findFirst({ where: { warehouseId, name } });
     });
+    return matchOptionalZoneContract(zone);
   }
 
-  findAll(id: string) {
-    return this.prisma.zone.findMany({ where: { warehouseId: id } });
+  async findAll(id: string) {
+    return matchZonesContract(
+      await this.prisma.zone.findMany({ where: { warehouseId: id } }),
+    );
   }
 
   async update(updateZoneDto: UpdateZoneDto, zoneId: string) {
@@ -57,17 +66,19 @@ export class ZonesService {
 
     // Sin rename: solo se toca esta zona. `active` es estado local por bodega.
     if (!isRename) {
-      return this.prisma.zone.update({
-        where: { id: zoneId },
-        data: {
-          ...(name !== undefined && { name }),
-          ...(active !== undefined && { active }),
-        },
-      });
+      return matchZoneContract(
+        await this.prisma.zone.update({
+          where: { id: zoneId },
+          data: {
+            ...(name !== undefined && { name }),
+            ...(active !== undefined && { active }),
+          },
+        }),
+      );
     }
 
     // El rename se propaga a las zonas gemelas de las otras bodegas; si el nombre nuevo ya existe ahí, P2002 → 409.
-    return this.prisma.$transaction(async (tx) => {
+    const renamed = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.zone.update({
         where: { id: zoneId },
         data: { name, ...(active !== undefined && { active }) },
@@ -78,5 +89,6 @@ export class ZonesService {
       });
       return updated;
     });
+    return matchZoneContract(renamed);
   }
 }

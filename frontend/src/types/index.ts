@@ -7,15 +7,33 @@ export type {
   PersonType,
   DocumentType as ThirdPartyDocumentType,
 } from './third-party.types'
-export type { Department, City } from './location.types'
-export type { Product } from './product.types'
+export type { Department } from './location.types'
+export type { City } from './third-party.types'
 export type {
-  Warehouse,
-  WarehouseType,
-  WarehouseDetail,
-  Zone,
+  BrandOption,
+  Gender,
+  ProductBrand,
+  ProductByCode,
+  ProductCategory,
+  ProductDetail,
+  ProductListItem,
+  ProductListMeta,
+  ProductListResponse,
+  ProductLocation,
+  ProductLocationsResult,
+  ProductRecord,
+  StockByWarehouse,
+  UnitOfMeasure,
+} from './product.types'
+export type {
   Bin,
-  ZoneSummary,
+  BinWithStock,
+  WarehouseDetail,
+  WarehouseListItem,
+  WarehouseRecord,
+  WarehouseType,
+  Zone,
+  ZoneWithBins,
   CreateWarehousePayload,
   UpdateWarehousePayload,
   CreateZonePayload,

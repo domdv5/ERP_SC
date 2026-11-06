@@ -26,12 +26,12 @@ import {
   DEFAULT_PAGE_SIZE,
   SegmentedToggle,
 } from '@/components/shared'
-import type { Product } from '@/types'
+import type { ProductListItem } from '@/types'
 import { formatCOP } from '@/lib/format'
 import { invalidateProducts } from '@/lib/invalidation'
 
 // Las dos únicas bodegas que crea el seed son "Almacén" (tienda) y "Bodega" (bodega física).
-const getStockQuantity = (product: Product, warehouseName: string) =>
+const getStockQuantity = (product: ProductListItem, warehouseName: string) =>
   product.stockByWarehouse.find((s) => s.warehouseName === warehouseName)?.quantity ?? 0
 
 export default function ProductsPage() {
@@ -47,8 +47,8 @@ export default function ProductsPage() {
   const [showInactive, setShowInactive] = useState(false)
   const [brandId, setBrandId] = useState('')
   const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<Product | null>(null)
-  const [deleting, setDeleting] = useState<Product | null>(null)
+  const [editing, setEditing] = useState<ProductListItem | null>(null)
+  const [deleting, setDeleting] = useState<ProductListItem | null>(null)
 
   const [debouncedSearch] = useDebounce(search, 400)
 
@@ -261,7 +261,7 @@ export default function ProductsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
-                {items.map((p: Product) => (
+                {items.map((p: ProductListItem) => (
                   <tr
                     key={p.id}
                     onClick={canUpdate ? () => setEditing(p) : undefined}

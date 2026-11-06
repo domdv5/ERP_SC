@@ -2,6 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateWarehouseDto, UpdateWarehouseDto } from './dto/index';
+import { matchContract } from '@/common/types';
+import type {
+  WarehouseDetail,
+  WarehouseListItem,
+  WarehouseRecord,
+} from '@/contracts';
+
+const matchListContract = matchContract<WarehouseListItem[]>();
+const matchDetailContract = matchContract<WarehouseDetail | null>();
+const matchRecordContract = matchContract<WarehouseRecord>();
 
 type BinWithStocks = Prisma.BinGetPayload<{
   include: { binStocks: { select: { productId: true; quantity: true } } };
@@ -11,12 +21,14 @@ type BinWithStocks = Prisma.BinGetPayload<{
 export class WarehousesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.warehouse.findMany({
-      where: { active: true },
-      include: { _count: { select: { zones: true } } },
-      orderBy: { name: 'asc' },
-    });
+  async findAll() {
+    return matchListContract(
+      await this.prisma.warehouse.findMany({
+        where: { active: true },
+        include: { _count: { select: { zones: true } } },
+        orderBy: { name: 'asc' },
+      }),
+    );
   }
 
   async findOne(id: string) {
@@ -36,16 +48,16 @@ export class WarehousesService {
     });
 
     if (!warehouse) {
-      return warehouse;
+      return matchDetailContract(warehouse);
     }
 
-    return {
+    return matchDetailContract({
       ...warehouse,
       zones: warehouse.zones.map((zone) => ({
         ...zone,
         bins: zone.bins.map((bin) => this.buildBinOccupancy(bin)),
       })),
-    };
+    });
   }
 
   private buildBinOccupancy(bin: BinWithStocks) {
@@ -60,14 +72,18 @@ export class WarehousesService {
     return { ...rest, occupied, binStocks: stockDetail };
   }
 
-  create(createWarehouseDto: CreateWarehouseDto) {
-    return this.prisma.warehouse.create({ data: createWarehouseDto });
+  async create(createWarehouseDto: CreateWarehouseDto) {
+    return matchRecordContract(
+      await this.prisma.warehouse.create({ data: createWarehouseDto }),
+    );
   }
 
-  update(id: string, updateWarehouseDto: UpdateWarehouseDto) {
-    return this.prisma.warehouse.update({
-      where: { id },
-      data: updateWarehouseDto,
-    });
+  async update(id: string, updateWarehouseDto: UpdateWarehouseDto) {
+    return matchRecordContract(
+      await this.prisma.warehouse.update({
+        where: { id },
+        data: updateWarehouseDto,
+      }),
+    );
   }
 }

@@ -1,4 +1,9 @@
-import type { City } from './location.types'
+import type { City as LocationCity } from './location.types'
+
+// El tercero manda la ciudad con su departamento; /locations no (contrato de terceros pendiente).
+export interface City extends LocationCity {
+  department?: { code: string; name: string }
+}
 
 export type PersonType = 'natural' | 'juridica'
 export type DocumentType = 'CC' | 'NIT' | 'CE' | 'PAS' | 'TI' | 'RC'

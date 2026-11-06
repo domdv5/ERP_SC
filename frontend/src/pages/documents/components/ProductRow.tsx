@@ -17,7 +17,7 @@ import { getProducts } from '@/services/products.service'
 import { formatCOP, formatDateTimeBogota } from '@/lib/format'
 import { suggestedUnitCost } from '@/lib/suggested-unit-cost'
 import { computeOfficialLineTax } from '@/lib/tax'
-import type { Product, StockByWarehouse } from '@/types/product.types'
+import type { ProductListItem, StockByWarehouse } from '@/types/product.types'
 import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 import { AvailableStockHint } from './AvailableStockHint'
@@ -141,12 +141,12 @@ export function ProductRow({
     enabled: hasSearch && !noSupplierYet,
   })
 
-  const productOptions: ComboboxOption[] = (productData?.items ?? []).map((p: Product) => ({
+  const productOptions: ComboboxOption[] = (productData?.items ?? []).map((p: ProductListItem) => ({
     id: p.id,
     label: `${p.code} — ${p.description}`,
     // Ventas/salidas: disponible ya neteado; traslados: disponible en la bodega origen; entradas: costo promedio.
     sublabel: showSaleAvailability
-      ? `Disponible: ${p.availableStock}`
+      ? `Disponible: ${p.availableToSell}`
       : showTransferAvailability && sourceWarehouseId
         ? `Disponible: ${p.stockByWarehouse.find((s) => s.warehouseId === sourceWarehouseId)?.quantity ?? 0}`
         : `Costo prom: ${formatCOP(Number(p.avgCost))}`,
@@ -165,7 +165,7 @@ export function ProductRow({
           <Combobox
             value={productId ?? ''}
             onChange={(id) => {
-              const product = productData?.items.find((p: Product) => p.id === id)
+              const product = productData?.items.find((p: ProductListItem) => p.id === id)
 
               // Chequeo extra por si llegó a las opciones un producto de marca equivocada (p. ej. caché vieja).
               if (
@@ -199,7 +199,7 @@ export function ProductRow({
               setValue(`items.${index}.productDesc`, product?.description ?? '')
               setSelectedAvgCost(product?.avgCost ? Number(product.avgCost) : null)
               setSelectedUnitOfMeasure(product?.unitOfMeasure ?? null)
-              setSelectedAvailableStock(product?.availableStock ?? null)
+              setSelectedAvailableStock(product?.availableToSell ?? null)
               setSelectedStockByWarehouse(product?.stockByWarehouse ?? null)
               const suggestedCost = product ? suggestedUnitCost(docType, product) : undefined
               if (showCost && suggestedCost !== undefined) {

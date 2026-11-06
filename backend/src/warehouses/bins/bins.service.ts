@@ -2,6 +2,11 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { WarehouseType } from '@prisma/client';
 import { CreateBinDto, UpdateBinDto } from './dto';
 import { PrismaService } from '@/prisma/prisma.service';
+import { matchContract } from '@/common/types';
+import type { Bin } from '@/contracts';
+
+const matchBinContract = matchContract<Bin>();
+const matchBinsContract = matchContract<Bin[]>();
 
 @Injectable()
 export class BinsService {
@@ -23,7 +28,9 @@ export class BinsService {
       );
     }
 
-    return this.prisma.bin.create({ data: { ...createBinDto, zoneId } });
+    return matchBinContract(
+      await this.prisma.bin.create({ data: { ...createBinDto, zoneId } }),
+    );
   }
 
   async update(updateBinDto: UpdateBinDto, id: string) {
@@ -39,10 +46,17 @@ export class BinsService {
       );
     }
 
-    return this.prisma.bin.update({ where: { id }, data: { ...updateBinDto } });
+    return matchBinContract(
+      await this.prisma.bin.update({
+        where: { id },
+        data: { ...updateBinDto },
+      }),
+    );
   }
 
-  findAll(zoneId: string) {
-    return this.prisma.bin.findMany({ where: { zoneId } });
+  async findAll(zoneId: string) {
+    return matchBinsContract(
+      await this.prisma.bin.findMany({ where: { zoneId } }),
+    );
   }
 }

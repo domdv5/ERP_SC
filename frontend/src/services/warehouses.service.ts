@@ -1,10 +1,11 @@
 import { api } from './api'
 import type {
   ApiResponse,
-  Warehouse,
-  WarehouseDetail,
   Bin,
-  ZoneSummary,
+  WarehouseDetail,
+  WarehouseListItem,
+  WarehouseRecord,
+  Zone,
   CreateWarehousePayload,
   UpdateWarehousePayload,
   CreateZonePayload,
@@ -17,34 +18,31 @@ export interface GetWarehousesParams {
   active?: boolean
 }
 
-export async function getWarehouses(): Promise<Warehouse[]> {
-  const res = await api.get<ApiResponse<Warehouse[]>>('/warehouses')
+export async function getWarehouses(): Promise<WarehouseListItem[]> {
+  const res = await api.get<ApiResponse<WarehouseListItem[]>>('/warehouses')
   return res.data.data
 }
 
-export async function getWarehouse(id: string): Promise<WarehouseDetail> {
-  const res = await api.get<ApiResponse<WarehouseDetail>>(`/warehouses/${id}`)
+export async function getWarehouse(id: string): Promise<WarehouseDetail | null> {
+  const res = await api.get<ApiResponse<WarehouseDetail | null>>(`/warehouses/${id}`)
   return res.data.data
 }
 
-export async function createWarehouse(payload: CreateWarehousePayload): Promise<Warehouse> {
-  const res = await api.post<ApiResponse<Warehouse>>('/warehouses', payload)
+export async function createWarehouse(payload: CreateWarehousePayload): Promise<WarehouseRecord> {
+  const res = await api.post<ApiResponse<WarehouseRecord>>('/warehouses', payload)
   return res.data.data
 }
 
 export async function updateWarehouse(
   id: string,
   payload: UpdateWarehousePayload,
-): Promise<Warehouse> {
-  const res = await api.patch<ApiResponse<Warehouse>>(`/warehouses/${id}`, payload)
+): Promise<WarehouseRecord> {
+  const res = await api.patch<ApiResponse<WarehouseRecord>>(`/warehouses/${id}`, payload)
   return res.data.data
 }
 
-export async function createZone(
-  warehouseId: string,
-  payload: CreateZonePayload,
-): Promise<ZoneSummary> {
-  const res = await api.post<ApiResponse<ZoneSummary>>(`/warehouses/${warehouseId}/zones`, payload)
+export async function createZone(warehouseId: string, payload: CreateZonePayload): Promise<Zone> {
+  const res = await api.post<ApiResponse<Zone>>(`/warehouses/${warehouseId}/zones`, payload)
   return res.data.data
 }
 
@@ -52,8 +50,8 @@ export async function updateZone(
   warehouseId: string,
   zoneId: string,
   payload: UpdateZonePayload,
-): Promise<ZoneSummary> {
-  const res = await api.patch<ApiResponse<ZoneSummary>>(
+): Promise<Zone> {
+  const res = await api.patch<ApiResponse<Zone>>(
     `/warehouses/${warehouseId}/zones/${zoneId}`,
     payload,
   )

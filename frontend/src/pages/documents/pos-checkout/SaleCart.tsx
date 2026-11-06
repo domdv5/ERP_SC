@@ -11,7 +11,7 @@ import type { FormValues } from '@/pages/documents/document-form.schema'
 import { BarcodeScanInput } from '@/pages/documents/components/BarcodeScanInput'
 import { POSCartLine } from '@/pages/documents/components/POSCartLine'
 import type { DocumentType } from '@/types/document.types'
-import type { Product } from '@/types/product.types'
+import type { ProductListItem } from '@/types/product.types'
 
 interface SaleCartProps {
   docType: DocumentType
@@ -21,7 +21,7 @@ interface SaleCartProps {
   append: UseFieldArrayAppend<FormValues, 'items'>
   remove: UseFieldArrayRemove
   cartItems: FormValues['items']
-  productDetailByCode: Map<string, { minSalePrice: number; availableStock: number; id: string }>
+  productDetailByCode: Map<string, { minSalePrice: number; availableToSell: number; id: string }>
   minSalePriceByProductId: Map<string, number>
   onScanPendingChange: (hasPending: boolean) => void
 }
@@ -42,7 +42,7 @@ export function SaleCart({
   const { control, register, watch, setValue, getValues } = form
 
   // ── producto elegido a mano en una fila vacía (alternativa al escaneo) ────
-  function handleRowProductSelect(index: number, product: Product) {
+  function handleRowProductSelect(index: number, product: ProductListItem) {
     // Deja el producto ya conocido en la caché de búsqueda por código, para no volver a pedir
     // al servidor el precio mínimo y el disponible de esta misma fila.
     queryClient.setQueryData(['product-by-code', product.code], product)
@@ -157,7 +157,7 @@ export function SaleCart({
                     onRemove={() => remove(index)}
                     onProductSelect={(product) => handleRowProductSelect(index, product)}
                     minSalePrice={detail && minSalePriceByProductId.get(detail.id)}
-                    availableStock={official ? undefined : detail?.availableStock}
+                    availableStock={official ? undefined : detail?.availableToSell}
                     showTax={official}
                   />
                 )

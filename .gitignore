@@ -42,6 +42,7 @@ coverage/
 .claude/settings.local.json
 .claude/skills/canvas-design/
 .agents/skills/canvas-design/
+design/
 .claude/skills/*/scripts/
 skills-lock.json
 .mcp.json

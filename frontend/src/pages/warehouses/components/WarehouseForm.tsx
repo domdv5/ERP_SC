@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
-import type { Warehouse } from '@/types'
+import type { WarehouseListItem } from '@/types'
 
 // ─── Schema ─────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ interface WarehouseFormProps {
   onClose: () => void
   onSubmit: (data: WarehouseFormValues) => void
   isPending: boolean
-  defaultValues?: Warehouse
+  defaultValues?: WarehouseListItem
 }
 
 // ─── Internal helpers ───────────────────────────────────────────────────

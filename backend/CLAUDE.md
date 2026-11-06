@@ -256,7 +256,9 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 
 ### Contrato de respuestas (2026-10-29)
 
-`src/contracts/` guarda los tipos planos que el frontend importa (regla en el `CLAUDE.md` raíz). `DocumentsQueryService.findAll`/`findOne` devuelven a través de `matchListContract`/`matchDetailContract` (`matchContract` en `common/types/as-json.ts`): identidad en runtime, error de compilación si la respuesta en JSON no cumple `DocumentListResponse`/`DocumentDetail`. La prueba `contracts/documents.contract.spec.ts` usa `@ts-expect-error`, así que solo la valida `pnpm exec tsc --noEmit -p tsconfig.json` (ts-jest no chequea tipos).
+`src/contracts/` guarda los tipos planos que el frontend importa (regla en el `CLAUDE.md` raíz). `DocumentsQueryService.findAll`/`findOne` devuelven a través de `matchListContract`/`matchDetailContract` (`matchContract` en `common/types/as-json.ts`): identidad en runtime, error de compilación si la respuesta en JSON no cumple `DocumentListResponse`/`DocumentDetail`. Igual en `ProductsService` (`contracts/products.ts`; `GET /products/by-code/:code` devuelve `ProductByCode` = detalle + `availableStock` + `availableToSell`), `WarehousesService`/`ZonesService`/`BinsService` (`contracts/warehouses.ts`; `GET /products/:id` y `GET /warehouses/:id` devuelven `null` si no existe) y `LocationsService` (`contracts/locations.ts`). La prueba `contracts/documents.contract.spec.ts` usa `@ts-expect-error`, así que solo la valida `pnpm exec tsc --noEmit -p tsconfig.json` (ts-jest no chequea tipos).
+
+**Disponible de productos**: `availableStock` = todas las bodegas activas − PV − REM (columna de la lista de productos); `availableToSell` = solo bodegas activas tipo `store` − PV − REM, lo que muestran ventas y documentos (salvo traslados), igual a lo que valida la confirmación porque todo documento salvo T se asigna a la tienda.
 
 ### Logging (2026-09-29)
 
