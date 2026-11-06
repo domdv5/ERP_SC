@@ -217,3 +217,63 @@ export interface DocumentListResponse {
   items: DocumentListItem[];
   meta: DocumentMeta;
 }
+
+// GET /documents/:id/missing-stock: [] si el tipo no valida stock.
+export interface MissingStockItem {
+  productId: string;
+  code: string;
+  available: number;
+  requested: number;
+}
+
+// GET /documents/customers/:customerId/credit: todo en pesos, como número.
+export interface CreditLimitSummary {
+  creditLimit: number;
+  usedCredit: number;
+  availableCredit: number;
+}
+
+export interface AvailableCustomerCredit {
+  id: string;
+  amount: string;
+  balance: string;
+  status: string;
+  createdAt: string;
+  sourceDocument: {
+    id: string;
+    type: DocumentType;
+    number: string;
+    date: string;
+  } | null;
+}
+
+// GET /documents/customers/:customerId/available-credits: totalAvailable viaja como número.
+export interface AvailableCustomerCreditsResponse {
+  credits: AvailableCustomerCredit[];
+  totalAvailable: number;
+}
+
+export interface PendingOfficialPurchase {
+  id: string;
+  number: string;
+  date: string;
+  supplierInvoiceNumber: string | null;
+  total: string;
+  thirdParty: { id: string; name: string } | null;
+  documentItems: {
+    productId: string;
+    quantity: number;
+    unitCost: string;
+    product: { id: string; code: string; description: string };
+  }[];
+}
+
+export interface PendingOfficialPurchasesResponse {
+  items: PendingOfficialPurchase[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}

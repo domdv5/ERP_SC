@@ -44,7 +44,7 @@ Identificadores en **inglés simple** (comentarios en español); el dueño del r
 
 ## Contrato front/back
 
-Las respuestas de la API que ya tienen contrato se describen en `backend/src/contracts/` (documentos —listado y detalle—, casos de inventario, productos, bodegas, ubicaciones, terceros, CxC/CxP, egresos, recibos de caja, libro oficial, reportes y sistema; faltan auth y los demás endpoints de documentos). Todo endpoint nuevo que el frontend consuma nace con su contrato en `backend/src/contracts/`. Es contract-first: el archivo lo escribe una persona y es la referencia; backend y frontend lo cumplen.
+Las respuestas de la API que ya tienen contrato se describen en `backend/src/contracts/` (todos los módulos que consume el frontend salvo auth). Todo endpoint nuevo que el frontend consuma nace con su contrato en `backend/src/contracts/`. Es contract-first: el archivo lo escribe una persona y es la referencia; backend y frontend lo cumplen.
 
 - Solo tipos planos: nada de `enum`, valores en tiempo de ejecución ni imports fuera de la carpeta (el frontend lo compila con su tsconfig estricto).
 - Backend: el service envuelve lo que devuelve con `matchContract<Contrato>()` (`common/types/as-json.ts`); si `AsJson<lo que devuelve>` (Decimal y Date → `string`) no cumple, no compila.

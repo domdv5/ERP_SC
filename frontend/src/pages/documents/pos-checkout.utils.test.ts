@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DocumentDetail } from '@/types/document.types'
+import { suggestCreditAmounts } from '@/lib/credit-application'
+import type { AvailableCustomerCredit, DocumentDetail } from '@/types/document.types'
 
 vi.mock('@/services/documents.service', () => ({
   getDocument: vi.fn(),
@@ -16,6 +17,7 @@ import {
   hasPendingItems,
   parseCreditLimitError,
   parseMissingStockError,
+  toNumericCredits,
   type PaymentLine,
 } from './pos-checkout.utils'
 
@@ -351,5 +353,31 @@ describe('arePaymentsValid', () => {
     expect(
       arePaymentsValid([line('efectivo_almacen', 0.1), line('consignacion_almacen', 0.2)], 0.3),
     ).toBe(true)
+  })
+})
+
+describe('toNumericCredits', () => {
+  const credit = (id: string, balance: string): AvailableCustomerCredit => ({
+    id,
+    amount: balance,
+    balance,
+    status: 'available',
+    createdAt: '2026-11-01T00:00:00.000Z',
+    sourceDocument: null,
+  })
+
+  it('convierte el saldo Decimal (string) a número y el reparto suma bien', () => {
+    const credits = toNumericCredits([credit('a', '1500.00'), credit('b', '2000.50')])
+    expect(credits.map((c) => c.balance)).toEqual([1500, 2000.5])
+    const applied = suggestCreditAmounts(credits, 3000)
+    expect(applied).toEqual([
+      { id: 'a', amount: 1500 },
+      { id: 'b', amount: 1500 },
+    ])
+    expect(applied.reduce((sum, c) => sum + c.amount, 0)).toBe(3000)
+  })
+
+  it('conserva sourceDocument null', () => {
+    expect(toNumericCredits([credit('a', '10')])[0].sourceDocument).toBeNull()
   })
 })

@@ -8,13 +8,13 @@ import { invalidateAfterDocumentChange } from '@/lib/invalidation'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 import {
   parseMissingStockError,
-  type MissingStockItem,
   type PaymentLine,
   type SelectedCredit,
 } from '@/pages/documents/pos-checkout.utils'
 import type {
   DocumentDetail,
   DocumentType,
+  MissingStockItem,
   PaymentMethod,
   UpdateDocumentPayload,
 } from '@/types/document.types'

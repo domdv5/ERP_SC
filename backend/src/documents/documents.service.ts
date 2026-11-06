@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DocumentStatus, DocumentType } from '@/common/enums';
-import type { JwtPayload } from '@/common/types';
+import { matchContract, type JwtPayload } from '@/common/types';
+import type { DocumentDetail, MissingStockItem } from '@/contracts';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import { todayInBogota } from '@/common/utils/date-range.util';
@@ -41,6 +42,10 @@ import {
   DocumentEffectsRegistry,
   isReservationStrategy,
 } from './strategies/index';
+
+// Si lo que devuelve el service deja de cumplir el contrato, el backend no compila.
+const matchDetailContract = matchContract<DocumentDetail>();
+const matchMissingStockContract = matchContract<MissingStockItem[]>();
 
 @Injectable()
 export class DocumentsService {
@@ -188,7 +193,7 @@ export class DocumentsService {
       throw error;
     }
 
-    return withPvStatus(document);
+    return matchDetailContract(withPvStatus(document));
   }
 
   private async findByIdempotencyKey(
@@ -205,7 +210,7 @@ export class DocumentsService {
     if (!isSameDocumentRequest(dto, existing, user.sub, strategy)) {
       throw new ConflictException(DUPLICATE_REQUEST_MESSAGE);
     }
-    return withPvStatus(existing);
+    return matchDetailContract(withPvStatus(existing));
   }
 
   async update(
@@ -308,7 +313,7 @@ export class DocumentsService {
       });
     });
 
-    return withPvStatus(updated);
+    return matchDetailContract(withPvStatus(updated));
   }
 
   /** Faltantes de stock de un borrador, con la misma regla que usa confirm(); [] si el tipo no valida stock. */
@@ -333,14 +338,16 @@ export class DocumentsService {
       document.documentItems.length === 0 ||
       !document.warehouseId
     ) {
-      return [];
+      return matchMissingStockContract([]);
     }
 
     const strategy = this.effectsRegistry.get(document.type);
-    if (!strategy.findMissingStock) return [];
+    if (!strategy.findMissingStock) return matchMissingStockContract([]);
 
     // Sin $transaction: el FOR UPDATE se libera al instante en autocommit y una lectura nunca retiene locks de inventario.
-    return strategy.findMissingStock(this.prisma, document);
+    return matchMissingStockContract(
+      await strategy.findMissingStock(this.prisma, document),
+    );
   }
 
   async confirm(
