@@ -52,7 +52,7 @@ Detalle y evidencia por tarea en `odd/tasks/dividir-archivos-grandes.md`. Mergea
 - [~] A5 — parcial: Vitest en frontend, 100 pruebas de funciones puras (#51, #53) y 68 de anular en backend (#46). Faltan pruebas de pantallas/hooks y un e2e.
 - [x] A4 — piloto hecho con documentos (2026-10-29, `odd/tasks/contrato-documentos.md`): contrato contract-first en `backend/src/contracts/`, chequeado en backend y frontend, CI compila el frontend. 2026-11-06: productos, bodegas, ubicaciones, terceros, CxC/CxP, egresos, recibos, libro oficial, reportes y sistema (`odd/tasks/contrato-modulos.md`, PRs #82–#87). Completo salvo auth.
 
-### Resumen de pendientes (2026-10-28)
+### Resumen de pendientes (actualizado 2026-11-06)
 
 Nota estimada: arquitectura ~7.5/10 (backend 8, frontend 7, contrato front/back 4); seguridad ~9/10 tras S1/S2/S4/S5 (detalle en `odd/tasks/seguridad-cortos.md`).
 
@@ -68,6 +68,13 @@ Nota estimada: arquitectura ~7.5/10 (backend 8, frontend 7, contrato front/back 
 | 8 | S3/S6 | JWT en cookie `HttpOnly` (resuelve también el token del SSE) | Grande |
 | — | Lint | Frontend sin ESLint configurado (`frontend/CLAUDE.md` menciona `pnpm lint`); errores `no-unsafe-*` en specs del backend | Chico |
 | — | Pendiente | Quitar el "Descuento (%)" del cliente (`Customer.discount`): ningún cálculo lo usa; 2026-11-06 8 de 18 clientes lo tienen en 0 y ninguno > 0. Migración que borra `customers.discount` + DTO, service, contrato `third-parties.ts` y `ThirdPartyForm`. No tocar `Supplier.discountNotes` (sí se muestra en compras). | Chico |
+| — | Pendiente | Prueba del hook `useAppliedCredits` (saldos a favor del POS): hoy solo `tsc` frena si alguien quita `toNumericCredits` (`pos-checkout/useAppliedCredits.ts:33`); vitest sin jsdom no lo ejecuta. | Chico |
+| — | Pendiente | Reportes y libro oficial: el contrato chequea el genérico escrito a mano de `$queryRaw`, no lo que manda Postgres; si alguien quita un `::float8`/`::int` (`reports.service.ts:22`, `official-ledger.service.ts:19-33`), `tsc` no lo ve y los totales viajan como texto. Opción: prueba que verifique los tipos reales o convertir con `Number()` al salir. | Chico |
+| — | Pendiente | Disponible en ventas: ninguna prueba de frontend cubre que documentos/POS usen `availableToSell` (`ProductRow.tsx:149,202`); falta prueba de que `findAll` ignora bodegas inactivas; props internas siguen llamándose `availableStock` aunque llevan `availableToSell` (`useDocumentItems.ts:7`, `POSCartLine.tsx:28`, `BarcodeScanInput.tsx:26`). | Chico |
+| — | Pendiente | Formatos de fecha corta distintos: `UsersPage` muestra "06 nov 2026" y `lib/format.ts` "6 nov 2026"; `DocumentsPage.tsx:30` tiene su propio `dd/mm/aaaa`. Decidir un formato y unificar. | Chico |
+| — | Pendiente | Pruebas de error de fechas (CxP, CxC, libro oficial) comparan el mensaje pero no que la respuesta siga siendo 400. | Chico |
+| — | Limpieza | Ramas locales viejas sin mergear: `master` (2 commits, 2026-06-05), `feature/inventory-ubicacion-stock` (1, 2026-07-28), `feature/ap-ar-filtros-fechas-totales` (1, 2026-09-28); y ya mergeadas sin borrar: `feat/buscar-proveedor-por-marca`, `feat/disponible-uniforme`, `feat/saldo-favor-destino`, `feature/cxc-dias-pago`, `fix/combobox-abre-arriba`, `fix/escaneo-rapido`. Revisar las 3 primeras antes de borrar. | Chico |
+| — | Decisión | Revisión automática del harness (RDD): en los PRs #82–#88 quedó rechazada o dio falsos positivos ("falta import" que ya existía) y la autoridad del #88 quedó trabada (`corrupted_or_unverifiable_authority`). Opción: `gentle-ai review mode disable --scope clone`. | — |
 | — | Idea | Venta mixta contado+crédito = COT por el total + recibo de caja automático | Por definir |
 
 ## Plan para partir los archivos gigantes (A1 + A3)
