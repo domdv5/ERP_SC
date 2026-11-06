@@ -5,6 +5,14 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { matchContract } from '@/common/types';
+import type {
+  AccountsPayableDetail,
+  AccountsPayableListResponse,
+  PayableSuppliersResponse,
+  SupplierCredit,
+  SupplierStatement,
+} from '@/contracts';
 import {
   buildDateColumnRange,
   todayInBogota,
@@ -16,6 +24,12 @@ import {
 } from './dto/index';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const matchListContract = matchContract<AccountsPayableListResponse>();
+const matchSuppliersContract = matchContract<PayableSuppliersResponse>();
+const matchDetailContract = matchContract<AccountsPayableDetail>();
+const matchStatementContract = matchContract<SupplierStatement>();
+const matchCreditsContract = matchContract<SupplierCredit[]>();
 
 const LIST_INCLUDE = {
   supplier: { include: { thirdParty: { select: { id: true, name: true } } } },
@@ -192,7 +206,7 @@ export class AccountsPayableService {
       }),
     ]);
 
-    return {
+    return matchListContract({
       items: rawItems.map(withDerivedFields),
       meta: {
         total,
@@ -201,7 +215,7 @@ export class AccountsPayableService {
         totalPages: Math.ceil(total / limit),
         totals: buildTotals(totals),
       },
-    };
+    });
   }
 
   /** Una fila por proveedor con sus CxP sumadas; el filtro de estado se aplica sobre el saldo sumado (HAVING). */
@@ -303,7 +317,7 @@ export class AccountsPayableService {
 
     const today = todayInBogota();
 
-    return {
+    return matchSuppliersContract({
       items: rows.map((row) => {
         const rowTotal = new Prisma.Decimal(row.total_amount);
         const rowPaid = new Prisma.Decimal(row.paid_amount);
@@ -334,7 +348,7 @@ export class AccountsPayableService {
           balance: totalAmount.minus(paidAmount),
         },
       },
-    };
+    });
   }
 
   async findOne(id: string) {
@@ -356,12 +370,12 @@ export class AccountsPayableService {
       new Prisma.Decimal(0),
     );
 
-    return {
+    return matchDetailContract({
       ...rest,
       creditApplied,
       balance: accountPayable.totalAmount.minus(accountPayable.paidAmount),
       history: buildHistory(accountPayable),
-    };
+    });
   }
 
   /** Estado de cuenta completo del proveedor: todas sus CxP y saldos a favor, con totales. */
@@ -412,7 +426,7 @@ export class AccountsPayableService {
       .filter((credit) => credit.status === 'available')
       .reduce((sum, credit) => sum.plus(credit.balance), new Prisma.Decimal(0));
 
-    return {
+    return matchStatementContract({
       supplier: {
         id: supplier.thirdParty.id,
         name: supplier.thirdParty.name,
@@ -425,7 +439,7 @@ export class AccountsPayableService {
       },
       payables,
       credits: rawCredits,
-    };
+    });
   }
 
   /** Créditos de proveedor con saldo disponible para aplicar contra un pago. */
@@ -434,10 +448,12 @@ export class AccountsPayableService {
   ) {
     const { supplierId } = findAvailableSupplierCreditsDto;
 
-    return this.prisma.supplierCredit.findMany({
-      where: { supplierId, status: 'available', balance: { gt: 0 } },
-      orderBy: { createdAt: 'asc' },
-    });
+    return matchCreditsContract(
+      await this.prisma.supplierCredit.findMany({
+        where: { supplierId, status: 'available', balance: { gt: 0 } },
+        orderBy: { createdAt: 'asc' },
+      }),
+    );
   }
 }
 
