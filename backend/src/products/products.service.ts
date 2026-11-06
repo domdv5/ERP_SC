@@ -13,6 +13,7 @@ import type {
   BrandOption,
   Gender,
   ProductCategory,
+  ProductByCode,
   ProductDetail,
   ProductListResponse,
   ProductLocationsResult,
@@ -21,6 +22,7 @@ import type {
 
 const matchListContract = matchContract<ProductListResponse>();
 const matchDetailContract = matchContract<ProductDetail>();
+const matchByCodeContract = matchContract<ProductByCode>();
 const matchOptionalDetailContract = matchContract<ProductDetail | null>();
 const matchLocationsContract = matchContract<ProductLocationsResult>();
 const matchRecordContract = matchContract<ProductRecord>();
@@ -129,8 +131,11 @@ export class ProductsService {
           ...stockBreakdown,
           reservedQuantity,
           remisionQuantity,
-          availableStock:
-            stockBreakdown.totalStock - reservedQuantity - remisionQuantity,
+          availableStock: this.calculateAvailableStock(
+            stockBreakdown.totalStock,
+            reservedQuantity,
+            remisionQuantity,
+          ),
         };
       }),
       meta: {
@@ -160,17 +165,59 @@ export class ProductsService {
     return { stockByWarehouse, totalStock };
   }
 
+  // Puede ser negativo (ajuste de salida sobre stock reservado)
+  private calculateAvailableStock(
+    totalStock: number,
+    reservedQuantity: number,
+    remisionQuantity: number,
+  ) {
+    return totalStock - reservedQuantity - remisionQuantity;
+  }
+
   async findByCode(code: string) {
     const product = await this.prisma.product.findFirst({
       where: { code: { equals: code, mode: 'insensitive' } },
-      include: { brand: true, gender: true, category: true },
+      include: {
+        brand: true,
+        gender: true,
+        category: true,
+        inventoryRecords: { select: { warehouseId: true, quantity: true } },
+      },
     });
 
     if (!product) {
       throw new NotFoundException('Producto no encontrado');
     }
 
-    return matchDetailContract(product);
+    const [activeWarehouses, reservedByProduct, remisionByProduct] =
+      await Promise.all([
+        this.prisma.warehouse.findMany({
+          where: { active: true },
+          select: { id: true, name: true },
+          orderBy: { name: 'asc' },
+        }),
+        getReservedByProduct(this.prisma, [product.id], {
+          types: [DocumentType.PV],
+        }),
+        getReservedByProduct(this.prisma, [product.id], {
+          types: [DocumentType.REM],
+        }),
+      ]);
+
+    const { inventoryRecords, ...rest } = product;
+    const { totalStock } = this.buildStockBreakdown(
+      inventoryRecords,
+      activeWarehouses,
+    );
+
+    return matchByCodeContract({
+      ...rest,
+      availableStock: this.calculateAvailableStock(
+        totalStock,
+        reservedByProduct.get(product.id) ?? 0,
+        remisionByProduct.get(product.id) ?? 0,
+      ),
+    });
   }
 
   async findLocationsByCode(code: string) {

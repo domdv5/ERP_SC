@@ -47,11 +47,17 @@ export interface ProductRecord {
   updatedAt: string;
 }
 
-// GET /products/:id (null si no existe) y GET /products/by-code/:code
+// GET /products/:id (null si no existe)
 export interface ProductDetail extends ProductRecord {
   brand: ProductBrand;
   gender: Gender;
   category: ProductCategory;
+}
+
+// GET /products/by-code/:code (404 si no existe)
+export interface ProductByCode extends ProductDetail {
+  // Misma regla que el listado; puede ser negativo
+  availableStock: number;
 }
 
 export interface StockByWarehouse {
