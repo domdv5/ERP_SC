@@ -18,7 +18,7 @@ Un PR por grupo de módulos. PR 1 en rama `feature/contrato-catalogos`.
 - T2 — S1, S2, S3 — react-code-crafter — frontend importa del contrato, borra `product.types.ts`/`warehouse.types.ts`/`location.types.ts` (salvo payloads) + `availableStock` en by-code — commits: 6ac9bf6, 5a274f0
 - T3 — S5 — inline — regla en CLAUDE.md, `.gitignore`, backlog — commit: a825a36
 - T8 — S6 — inline backend (regla) + react-code-crafter (frontend) — commit: "fix(products): ventas muestran el disponible solo de la tienda"
-- T4 — S4 — PR 2 terceros — commit:
+- T4 — S1, S2, S4 — nestjs-code-crafter + react-code-crafter — PR 2 terceros, rama `feature/contrato-terceros` (PR 1 mergeado como #82) — commits: 2653d85 (backend), "refactor(frontend): terceros usa el contrato", docs
 - T5 — S4 — PR 3 CxC y CxP — commit:
 - T6 — S4 — PR 4 egresos y recibos de caja — commit:
 - T7 — S4 — PR 5 libro oficial, reportes, sistema — commit:
