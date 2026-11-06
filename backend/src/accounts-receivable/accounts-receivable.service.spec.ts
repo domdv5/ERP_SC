@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AccountsReceivableService } from './accounts-receivable.service';
@@ -8,6 +8,18 @@ import { todayInBogota } from '@/common/utils/date-range.util';
 import { FindReceivableClientsDto } from './dto/index';
 
 const decimal = (value: string) => new Prisma.Decimal(value);
+
+type DateFilter = { gte?: Date; lte?: Date; lt?: Date };
+
+// Evalúa el filtro de Prisma contra una fecha YYYY-MM-DD guardada como medianoche UTC (@db.Date).
+const matchesDate = (filter: DateFilter, day: string) => {
+  const value = new Date(`${day}T00:00:00.000Z`).getTime();
+  return (
+    (!filter.gte || value >= filter.gte.getTime()) &&
+    (!filter.lte || value <= filter.lte.getTime()) &&
+    (!filter.lt || value < filter.lt.getTime())
+  );
+};
 
 const saleDate = new Date('2026-09-01T00:00:00.000Z');
 
@@ -543,5 +555,69 @@ describe('AccountsReceivableService.findClients', () => {
     expect(await errorsFor('bogus')).toHaveLength(1);
     expect(await errorsFor('recent')).toHaveLength(0);
     expect(await errorsFor('oldest_debt')).toHaveLength(0);
+  });
+});
+
+describe('AccountsReceivableService.findAll: rango de fechas', () => {
+  const prisma = {
+    accountsReceivable: {
+      findMany: jest.fn(),
+      count: jest.fn(),
+      aggregate: jest.fn(),
+    },
+    $transaction: jest.fn(),
+  };
+  const service = new AccountsReceivableService(
+    prisma as unknown as PrismaService,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.$transaction.mockResolvedValue([
+      [],
+      0,
+      { _sum: { totalAmount: null, paidAmount: null } },
+    ]);
+  });
+
+  const dateFilterOf = () =>
+    prisma.accountsReceivable.findMany.mock.calls[0][0].where.document
+      .date as DateFilter;
+
+  it('incluye una fila fechada exactamente en dateTo y excluye el día siguiente', async () => {
+    await service.findAll({ dateFrom: '2026-03-01', dateTo: '2026-03-10' });
+
+    const filter = dateFilterOf();
+    expect(matchesDate(filter, '2026-02-28')).toBe(false);
+    expect(matchesDate(filter, '2026-03-01')).toBe(true);
+    expect(matchesDate(filter, '2026-03-10')).toBe(true);
+    expect(matchesDate(filter, '2026-03-11')).toBe(false);
+  });
+
+  it('combina el rango con la sucursal en el mismo document', async () => {
+    await service.findAll({ dateTo: '2026-03-10', customerBranchId: 'b1' });
+
+    const where = prisma.accountsReceivable.findMany.mock.calls[0][0].where;
+    expect(where.document.customerBranchId).toBe('b1');
+    expect(matchesDate(where.document.date, '2026-03-10')).toBe(true);
+    expect(matchesDate(where.document.date, '2026-03-11')).toBe(false);
+  });
+
+  it('rechaza una fecha de calendario inexistente con el mismo mensaje', async () => {
+    await expect(service.findAll({ dateFrom: '2026-02-30' })).rejects.toThrow(
+      new BadRequestException('dateFrom no es una fecha válida'),
+    );
+    await expect(service.findAll({ dateTo: '2026-13-01' })).rejects.toThrow(
+      new BadRequestException('dateTo no es una fecha válida'),
+    );
+    expect(prisma.accountsReceivable.findMany).not.toHaveBeenCalled();
+  });
+
+  it('rechaza dateFrom posterior a dateTo', async () => {
+    await expect(
+      service.findAll({ dateFrom: '2026-03-10', dateTo: '2026-03-01' }),
+    ).rejects.toThrow(
+      new BadRequestException('dateFrom no puede ser posterior a dateTo'),
+    );
   });
 });

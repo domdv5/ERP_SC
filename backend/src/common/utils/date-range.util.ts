@@ -18,6 +18,11 @@ export function todayInBogota(now = new Date()) {
   );
 }
 
+/** Día YYYY-MM-DD como medianoche UTC, el formato de las columnas `@db.Date`. */
+export function toDateColumnValue(value: string) {
+  return new Date(`${value}T00:00:00.000Z`);
+}
+
 /** Valida el rango YYYY-MM-DD y devuelve el filtro sobre una columna `@db.Date` (medianoche UTC), con dateTo inclusivo. */
 export function buildDateColumnRange(dateFrom?: string, dateTo?: string) {
   if (dateFrom) assertValidCalendarDate('dateFrom', dateFrom);
@@ -27,7 +32,7 @@ export function buildDateColumnRange(dateFrom?: string, dateTo?: string) {
   }
 
   return {
-    ...(dateFrom && { gte: new Date(`${dateFrom}T00:00:00.000Z`) }),
-    ...(dateTo && { lte: new Date(`${dateTo}T00:00:00.000Z`) }),
+    ...(dateFrom && { gte: toDateColumnValue(dateFrom) }),
+    ...(dateTo && { lte: toDateColumnValue(dateTo) }),
   };
 }

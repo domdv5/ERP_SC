@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import {
   assertValidCalendarDate,
   buildDateColumnRange,
+  toDateColumnValue,
 } from './date-range.util';
 
 describe('assertValidCalendarDate', () => {
@@ -82,6 +83,14 @@ describe('buildDateColumnRange', () => {
   it('valida la fecha calendario antes del rango: 2026-02-30 se rechaza', () => {
     expect(() => buildDateColumnRange('2026-02-30', '2026-03-31')).toThrow(
       new BadRequestException('dateFrom no es una fecha válida'),
+    );
+  });
+});
+
+describe('toDateColumnValue', () => {
+  it('devuelve el día como medianoche UTC', () => {
+    expect(toDateColumnValue('2026-03-10').toISOString()).toBe(
+      '2026-03-10T00:00:00.000Z',
     );
   });
 });

@@ -1,3 +1,5 @@
+import { todayInBogota } from '@/lib/format'
+
 export const CHART_COLORS = {
   primary: 'var(--chart-primary)',
   primarySoft: 'var(--chart-primary-soft)',
@@ -29,10 +31,6 @@ export const PRESET_OPTIONS: { value: Exclude<RangePreset, 'custom'>; label: str
 ]
 
 // Fechas calendario en UTC puro (YYYY-MM-DD) para no correr un día por zona horaria.
-export function todayInBogota(): string {
-  return new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' })
-}
-
 function shiftDate(iso: string, days: number): string {
   return new Date(Date.parse(`${iso}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10)
 }

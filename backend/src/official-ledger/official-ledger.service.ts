@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DocumentStatus, DocumentType } from '@/common/enums';
-import { buildDateColumnRange } from '@/common/utils/date-range.util';
+import {
+  buildDateColumnRange,
+  toDateColumnValue,
+} from '@/common/utils/date-range.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { matchContract } from '@/common/types';
 import type {
@@ -217,7 +220,7 @@ export class OfficialLedgerService {
           type,
           status: DocumentStatus.confirmed,
           date: {
-            lt: dateFrom ? new Date(`${dateFrom}T00:00:00.000Z`) : new Date(0),
+            lt: dateFrom ? toDateColumnValue(dateFrom) : new Date(0),
           },
         },
       },

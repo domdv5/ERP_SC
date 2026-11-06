@@ -74,6 +74,7 @@ export default function DashboardPage() {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
+    timeZone: 'America/Bogota',
   })
 
   const financialCards = [
