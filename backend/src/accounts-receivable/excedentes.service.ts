@@ -5,10 +5,14 @@ import {
 } from '@nestjs/common';
 import { CustomerCreditKind, CustomerCreditUsableIn } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { matchContract } from '@/common/types';
+import type { Excedente } from '@/contracts';
 import type { JwtPayload } from '@/common/types';
 import { toCents } from '@/common/utils/money.util';
 import { assertValidCalendarDate } from '@/common/utils/date-range.util';
 import { CreateExcedenteDto } from './dto/create-excedente.dto';
+
+const matchExcedenteContract = matchContract<Excedente>();
 
 /** Saldo a favor por pago de más del cliente: se registra aquí y solo se usa en recibos de caja. */
 @Injectable()
@@ -46,19 +50,21 @@ export class ExcedentesService {
     }
 
     const amount = toCents(dto.amount) / 100;
-    return this.prisma.customerCredit.create({
-      data: {
-        customerId: clientId,
-        kind: CustomerCreditKind.excedente,
-        usableIn: CustomerCreditUsableIn.administracion,
-        customerBranchId: dto.customerBranchId ?? null,
-        amount,
-        balance: amount,
-        status: 'available',
-        date: new Date(dateStr),
-        userId: user.sub,
-      },
-    });
+    return matchExcedenteContract(
+      await this.prisma.customerCredit.create({
+        data: {
+          customerId: clientId,
+          kind: CustomerCreditKind.excedente,
+          usableIn: CustomerCreditUsableIn.administracion,
+          customerBranchId: dto.customerBranchId ?? null,
+          amount,
+          balance: amount,
+          status: 'available',
+          date: new Date(dateStr),
+          userId: user.sub,
+        },
+      }),
+    );
   }
 
   /** Anula un excedente registrado por error; solo si nunca se usó, y queda marcado (no se borra). */
@@ -90,15 +96,17 @@ export class ExcedentesService {
         );
       }
 
-      return tx.customerCredit.update({
-        where: { id },
-        data: {
-          status: 'voided',
-          balance: 0,
-          voidedAt: new Date(),
-          voidedById: user.sub,
-        },
-      });
+      return matchExcedenteContract(
+        await tx.customerCredit.update({
+          where: { id },
+          data: {
+            status: 'voided',
+            balance: 0,
+            voidedAt: new Date(),
+            voidedById: user.sub,
+          },
+        }),
+      );
     });
   }
 }

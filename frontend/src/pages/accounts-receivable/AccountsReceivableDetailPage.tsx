@@ -171,7 +171,7 @@ export default function AccountsReceivableDetailPage() {
             </div>
             <div>
               <p className="text-xs text-content-faint">Vendedor</p>
-              <p className="text-sm text-content font-medium">{account.seller?.name ?? '—'}</p>
+              <p className="text-sm text-content font-medium">{account.seller.name}</p>
             </div>
           </div>
 

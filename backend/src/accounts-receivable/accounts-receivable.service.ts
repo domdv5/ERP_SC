@@ -5,6 +5,13 @@ import {
 } from '@nestjs/common';
 import { CustomerCreditUsableIn, Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { matchContract } from '@/common/types';
+import type {
+  AccountsReceivableDetail,
+  AccountsReceivableListResponse,
+  ClientStatement,
+  ReceivableClientsResponse,
+} from '@/contracts';
 import {
   buildDateColumnRange,
   todayInBogota,
@@ -19,6 +26,11 @@ import {
 } from './helpers/payment-days.helper';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const matchListContract = matchContract<AccountsReceivableListResponse>();
+const matchClientsContract = matchContract<ReceivableClientsResponse>();
+const matchDetailContract = matchContract<AccountsReceivableDetail>();
+const matchStatementContract = matchContract<ClientStatement>();
 
 const LIST_INCLUDE = {
   client: { include: { thirdParty: { select: { id: true, name: true } } } },
@@ -299,7 +311,7 @@ export class AccountsReceivableService {
       }),
     ]);
 
-    return {
+    return matchListContract({
       items: rawItems.map((row) => withDerivedFields(row, todayInBogota())),
       meta: {
         total,
@@ -308,7 +320,7 @@ export class AccountsReceivableService {
         totalPages: Math.ceil(total / limit),
         totals: buildTotals(totals),
       },
-    };
+    });
   }
 
   /** Una fila por cliente con sus CxC sumadas; el filtro de estado se aplica sobre el saldo sumado (HAVING). */
@@ -402,7 +414,7 @@ export class AccountsReceivableService {
 
     const today = todayInBogota();
 
-    return {
+    return matchClientsContract({
       items: rows.map((row) => {
         const rowTotal = new Prisma.Decimal(row.total_amount);
         const rowPaid = new Prisma.Decimal(row.paid_amount);
@@ -433,7 +445,7 @@ export class AccountsReceivableService {
           balance: totalAmount.minus(paidAmount),
         },
       },
-    };
+    });
   }
 
   async findOne(id: string) {
@@ -451,13 +463,13 @@ export class AccountsReceivableService {
     const { receivablePayments, reciboCajaAllocations, ...rest } =
       accountReceivable;
 
-    return {
+    return matchDetailContract({
       ...rest,
       balance: accountReceivable.totalAmount.minus(
         accountReceivable.paidAmount,
       ),
       history: buildHistory(accountReceivable),
-    };
+    });
   }
 
   /** Estado de cuenta completo del cliente: sus CxC (todas o de una sucursal) y saldos a favor, con totales; branchTotals siempre cubre todas las CxC. */
@@ -548,7 +560,7 @@ export class AccountsReceivableService {
       ),
     );
 
-    return {
+    return matchStatementContract({
       client: { id: client.thirdParty.id, name: client.thirdParty.name },
       totals: {
         totalDebt,
@@ -560,6 +572,6 @@ export class AccountsReceivableService {
       branchTotals,
       receivables,
       credits,
-    };
+    });
   }
 }

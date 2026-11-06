@@ -4,3 +4,5 @@ export type * from './products';
 export type * from './warehouses';
 export type * from './locations';
 export type * from './third-parties';
+export type * from './accounts-receivable';
+export type * from './accounts-payable';
