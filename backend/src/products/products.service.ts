@@ -8,6 +8,25 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { DocumentType } from '@/common/enums';
 import { getReservedByProduct } from '@/documents/helpers/reservation.helpers';
+import { matchContract } from '@/common/types';
+import type {
+  BrandOption,
+  Gender,
+  ProductCategory,
+  ProductDetail,
+  ProductListResponse,
+  ProductLocationsResult,
+  ProductRecord,
+} from '@/contracts';
+
+const matchListContract = matchContract<ProductListResponse>();
+const matchDetailContract = matchContract<ProductDetail>();
+const matchOptionalDetailContract = matchContract<ProductDetail | null>();
+const matchLocationsContract = matchContract<ProductLocationsResult>();
+const matchRecordContract = matchContract<ProductRecord>();
+const matchBrandsContract = matchContract<BrandOption[]>();
+const matchGendersContract = matchContract<Gender[]>();
+const matchCategoriesContract = matchContract<ProductCategory[]>();
 
 @Injectable()
 export class ProductsService {
@@ -95,7 +114,7 @@ export class ProductsService {
       }),
     ]);
 
-    return {
+    return matchListContract({
       items: items.map((item) => {
         const { inventoryRecords, ...rest } = item;
         const stockBreakdown = this.buildStockBreakdown(
@@ -122,7 +141,7 @@ export class ProductsService {
         activeCount,
         inStockCount,
       },
-    };
+    });
   }
 
   private buildStockBreakdown(
@@ -151,7 +170,7 @@ export class ProductsService {
       throw new NotFoundException('Producto no encontrado');
     }
 
-    return product;
+    return matchDetailContract(product);
   }
 
   async findLocationsByCode(code: string) {
@@ -208,7 +227,7 @@ export class ProductsService {
     }, 0);
 
     // Solo los traslados llenan el stock por bulto; el total en bultos puede ser menor al de la bodega (stock sin bulto asignado, no sin stock).
-    return {
+    return matchLocationsContract({
       product: {
         id,
         code: productCode,
@@ -221,68 +240,84 @@ export class ProductsService {
       warehouseTotals,
       totalBinQuantity,
       hasUnassignedStock: totalWarehousesQuantity > totalBinQuantity,
-    };
-  }
-
-  create(createProductDto: CreateProductDto) {
-    return this.prisma.product.create({ data: { ...createProductDto } });
-  }
-
-  findOne(id: string) {
-    return this.prisma.product.findUnique({
-      where: { id },
-      include: { brand: true, gender: true, category: true },
     });
   }
 
-  update(id: string, updateProductDto: UpdateProductDto) {
-    return this.prisma.product.update({
-      where: { id },
-      data: { ...updateProductDto },
-    });
+  async create(createProductDto: CreateProductDto) {
+    return matchRecordContract(
+      await this.prisma.product.create({ data: { ...createProductDto } }),
+    );
   }
 
-  remove(id: string, userId: string) {
-    return this.prisma.product.update({
-      where: { id },
-      data: {
-        active: false,
-        deletedAt: new Date(),
-        deletedById: userId,
-      },
-    });
+  async findOne(id: string) {
+    return matchOptionalDetailContract(
+      await this.prisma.product.findUnique({
+        where: { id },
+        include: { brand: true, gender: true, category: true },
+      }),
+    );
   }
 
-  reactivate(id: string) {
-    return this.prisma.product.update({
-      where: { id },
-      data: {
-        active: true,
-        deletedAt: null,
-        deletedById: null,
-      },
-    });
+  async update(id: string, updateProductDto: UpdateProductDto) {
+    return matchRecordContract(
+      await this.prisma.product.update({
+        where: { id },
+        data: { ...updateProductDto },
+      }),
+    );
   }
 
-  getBrands() {
-    return this.prisma.brand.findMany({
-      where: { active: true },
-      orderBy: { name: 'asc' },
-      include: { supplier: { select: { internalNumber: true } } },
-    });
+  async remove(id: string, userId: string) {
+    return matchRecordContract(
+      await this.prisma.product.update({
+        where: { id },
+        data: {
+          active: false,
+          deletedAt: new Date(),
+          deletedById: userId,
+        },
+      }),
+    );
   }
 
-  getGenders() {
-    return this.prisma.gender.findMany({
-      where: { active: true },
-      orderBy: { name: 'asc' },
-    });
+  async reactivate(id: string) {
+    return matchRecordContract(
+      await this.prisma.product.update({
+        where: { id },
+        data: {
+          active: true,
+          deletedAt: null,
+          deletedById: null,
+        },
+      }),
+    );
   }
 
-  getCategories() {
-    return this.prisma.category.findMany({
-      where: { active: true },
-      orderBy: { name: 'asc' },
-    });
+  async getBrands() {
+    return matchBrandsContract(
+      await this.prisma.brand.findMany({
+        where: { active: true },
+        orderBy: { name: 'asc' },
+        include: { supplier: { select: { internalNumber: true } } },
+      }),
+    );
+  }
+
+  async getGenders() {
+    return matchGendersContract(
+      await this.prisma.gender.findMany({
+        where: { active: true },
+        orderBy: { name: 'asc' },
+      }),
+    );
+  }
+
+  async getCategories() {
+    return matchCategoriesContract(
+      await this.prisma.category.findMany({
+        where: { active: true },
+        orderBy: { name: 'asc' },
+      }),
+    );
   }
 }
