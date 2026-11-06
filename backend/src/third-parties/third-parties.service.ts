@@ -18,6 +18,22 @@ import {
   ThirdPartyRole,
   ThirdPartyRoleFlags,
 } from './helpers/third-party-permissions';
+import { matchContract } from '@/common/types';
+import type {
+  CustomerBranch,
+  SupplierBrand,
+  ThirdPartyCreated,
+  ThirdPartyDetail,
+  ThirdPartyListResponse,
+  ThirdPartyRecord,
+} from '@/contracts';
+
+const matchListContract = matchContract<ThirdPartyListResponse>();
+const matchDetailContract = matchContract<ThirdPartyDetail>();
+const matchCreatedContract = matchContract<ThirdPartyCreated>();
+const matchRecordContract = matchContract<ThirdPartyRecord>();
+const matchBranchContract = matchContract<CustomerBranch>();
+const matchBrandContract = matchContract<SupplierBrand>();
 
 const ROLE_LABELS: Record<ThirdPartyRole, string> = {
   customer: 'cliente',
@@ -98,7 +114,7 @@ export class ThirdPartiesService {
         this.prisma.thirdParty.count({ where: { ...where, isSupplier: true } }),
       ]);
 
-    return {
+    return matchListContract({
       items,
       meta: {
         total,
@@ -108,7 +124,7 @@ export class ThirdPartiesService {
         customerCount,
         supplierCount,
       },
-    };
+    });
   }
 
   async findOne(id: string) {
@@ -123,7 +139,7 @@ export class ThirdPartiesService {
     if (!thirdParty) {
       throw new NotFoundException('Tercero no encontrado.');
     }
-    return thirdParty;
+    return matchDetailContract(thirdParty);
   }
 
   async create(createThirdPartyDto: CreateThirdPartyDto, user: JwtPayload) {
@@ -163,7 +179,7 @@ export class ThirdPartiesService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const created = await this.prisma.$transaction(async (tx) => {
       const thirdParty = await tx.thirdParty.create({
         data: {
           ...thirdPartyData,
@@ -210,6 +226,8 @@ export class ThirdPartiesService {
 
       return { ...thirdParty, customer, supplier };
     });
+
+    return matchCreatedContract(created);
   }
 
   async renameBrand(
@@ -220,10 +238,12 @@ export class ThirdPartiesService {
   ) {
     await this.assertCanEdit(supplierId, {}, user);
 
-    return this.prisma.brand.update({
-      where: { id: brandId, supplierId },
-      data: { name },
-    });
+    return matchBrandContract(
+      await this.prisma.brand.update({
+        where: { id: brandId, supplierId },
+        data: { name },
+      }),
+    );
   }
 
   async updateBranch(
@@ -234,32 +254,38 @@ export class ThirdPartiesService {
   ) {
     await this.assertCanEdit(customerId, {}, user);
 
-    return this.prisma.customerBranch.update({
-      where: { id: branchId, customerId },
-      data: dto,
-    });
+    return matchBranchContract(
+      await this.prisma.customerBranch.update({
+        where: { id: branchId, customerId },
+        data: dto,
+      }),
+    );
   }
 
-  remove(id: string, userId: string) {
-    return this.prisma.thirdParty.update({
-      where: { id },
-      data: {
-        isActive: false,
-        deletedAt: new Date(),
-        deletedById: userId,
-      },
-    });
+  async remove(id: string, userId: string) {
+    return matchRecordContract(
+      await this.prisma.thirdParty.update({
+        where: { id },
+        data: {
+          isActive: false,
+          deletedAt: new Date(),
+          deletedById: userId,
+        },
+      }),
+    );
   }
 
-  reactivate(id: string) {
-    return this.prisma.thirdParty.update({
-      where: { id },
-      data: {
-        isActive: true,
-        deletedAt: null,
-        deletedById: null,
-      },
-    });
+  async reactivate(id: string) {
+    return matchRecordContract(
+      await this.prisma.thirdParty.update({
+        where: { id },
+        data: {
+          isActive: true,
+          deletedAt: null,
+          deletedById: null,
+        },
+      }),
+    );
   }
 
   async update(
@@ -363,14 +389,16 @@ export class ThirdPartiesService {
         });
       }
 
-      return tx.thirdParty.findUniqueOrThrow({
-        where: { id },
-        include: {
-          ...CITY_INCLUDE,
-          customer: { include: ACTIVE_BRANCHES_INCLUDE },
-          supplier: { include: { brands: true } },
-        },
-      });
+      return matchDetailContract(
+        await tx.thirdParty.findUniqueOrThrow({
+          where: { id },
+          include: {
+            ...CITY_INCLUDE,
+            customer: { include: ACTIVE_BRANCHES_INCLUDE },
+            supplier: { include: { brands: true } },
+          },
+        }),
+      );
     });
   }
 
