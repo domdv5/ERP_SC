@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CustomerCreditUsableIn, Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { matchContract } from '@/common/types';
@@ -75,34 +71,6 @@ type ListRow = Prisma.AccountsReceivableGetPayload<{
 type DetailRow = Prisma.AccountsReceivableGetPayload<{
   include: typeof DETAIL_INCLUDE;
 }>;
-
-// El regex del DTO solo valida la forma (YYYY-MM-DD), no que la fecha exista. Un overflow de mes
-// (13-01) da Invalid Date, pero un overflow de día (02-30) NO — Date lo corre al día siguiente en
-// silencio (2026-02-30 -> 2026-03-02). Se detecta comparando la fecha reformateada contra el input.
-function assertValidCalendarDate(label: string, value: string) {
-  const date = new Date(`${value}T00:00:00.000-05:00`);
-  const roundTrip = date.toLocaleDateString('sv-SE', {
-    timeZone: 'America/Bogota',
-  });
-  if (Number.isNaN(date.getTime()) || roundTrip !== value) {
-    throw new BadRequestException(`${label} no es una fecha válida`);
-  }
-}
-
-// Filtra sobre document.date (lo que muestra la columna "Fecha venta"), no sobre createdAt —
-// antes filtraba createdAt mientras la UI mostraba document.date, y podían no coincidir en una
-// venta confirmada otro día. document.date es @db.Date (medianoche UTC), así que la comparación
-// es directa en UTC, sin el huso Bogotá que sí hace falta para createdAt.
-function dateRangeFilter(dateFrom?: string, dateTo?: string) {
-  return {
-    ...(dateFrom && { gte: new Date(`${dateFrom}T00:00:00.000Z`) }),
-    ...(dateTo && {
-      lt: new Date(
-        new Date(`${dateTo}T00:00:00.000Z`).getTime() + 24 * 60 * 60 * 1000,
-      ),
-    }),
-  };
-}
 
 /** Totales sobre el conjunto filtrado completo (no solo la página actual), mismo criterio de saldo que withDerivedFields. */
 function buildTotals(totals: {
@@ -269,11 +237,8 @@ export class AccountsReceivableService {
       dateFrom,
       dateTo,
     } = findAllAccountsReceivableDto;
-    if (dateFrom) assertValidCalendarDate('dateFrom', dateFrom);
-    if (dateTo) assertValidCalendarDate('dateTo', dateTo);
-    if (dateFrom && dateTo && dateFrom > dateTo) {
-      throw new BadRequestException('dateFrom no puede ser posterior a dateTo');
-    }
+    // Filtra document.date (la fecha que muestra la UI), no createdAt
+    const dateRange = buildDateColumnRange(dateFrom, dateTo);
 
     const skip = (page - 1) * limit;
 
@@ -288,7 +253,7 @@ export class AccountsReceivableService {
       ...((dateFrom || dateTo || customerBranchId) && {
         document: {
           ...((dateFrom || dateTo) && {
-            date: dateRangeFilter(dateFrom, dateTo),
+            date: dateRange,
           }),
           ...(customerBranchId && { customerBranchId }),
         },
