@@ -22,7 +22,7 @@ export function useCartProducts(cartItems: FormValues['items']) {
   })
 
   const productDetailByCode = useMemo(() => {
-    const map = new Map<string, { minSalePrice: number; availableStock: number; id: string }>()
+    const map = new Map<string, { minSalePrice: number; availableToSell: number; id: string }>()
     productDetailQueries.forEach((q) => {
       if (q.data) map.set(q.data.code, q.data)
     })

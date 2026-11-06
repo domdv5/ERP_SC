@@ -58,6 +58,7 @@ export interface ProductDetail extends ProductRecord {
 export interface ProductByCode extends ProductDetail {
   // Misma regla que el listado; puede ser negativo
   availableStock: number;
+  availableToSell: number;
 }
 
 export interface StockByWarehouse {
@@ -73,6 +74,8 @@ export interface ProductListItem extends ProductDetail {
   remisionQuantity: number;
   // Puede ser negativo (ajuste de salida sobre stock reservado)
   availableStock: number;
+  // Solo bodegas tipo store menos PV y REM: lo que muestran las ventas
+  availableToSell: number;
 }
 
 export interface ProductListMeta {

@@ -21,7 +21,6 @@ import type {
 } from '@/contracts';
 
 const matchListContract = matchContract<ProductListResponse>();
-const matchDetailContract = matchContract<ProductDetail>();
 const matchByCodeContract = matchContract<ProductByCode>();
 const matchOptionalDetailContract = matchContract<ProductDetail | null>();
 const matchLocationsContract = matchContract<ProductLocationsResult>();
@@ -100,7 +99,7 @@ export class ProductsService {
         }),
         this.prisma.warehouse.findMany({
           where: { active: true },
-          select: { id: true, name: true },
+          select: { id: true, name: true, type: true },
           orderBy: { name: 'asc' },
         }),
       ]);
@@ -136,6 +135,11 @@ export class ProductsService {
             reservedQuantity,
             remisionQuantity,
           ),
+          availableToSell: this.calculateAvailableStock(
+            this.calculateStoreStock(inventoryRecords, activeWarehouses),
+            reservedQuantity,
+            remisionQuantity,
+          ),
         };
       }),
       meta: {
@@ -163,6 +167,19 @@ export class ProductsService {
     const totalStock = stockByWarehouse.reduce((sum, s) => sum + s.quantity, 0);
 
     return { stockByWarehouse, totalStock };
+  }
+
+  // Solo la tienda vende: lo de la bodega cuenta recién después del traslado
+  private calculateStoreStock(
+    inventoryRecords: { warehouseId: string; quantity: number }[],
+    warehouses: { id: string; type: string }[],
+  ) {
+    const storeIds = new Set(
+      warehouses.filter((w) => w.type === 'store').map((w) => w.id),
+    );
+    return inventoryRecords
+      .filter((r) => storeIds.has(r.warehouseId))
+      .reduce((sum, r) => sum + r.quantity, 0);
   }
 
   // Puede ser negativo (ajuste de salida sobre stock reservado)
@@ -193,7 +210,7 @@ export class ProductsService {
       await Promise.all([
         this.prisma.warehouse.findMany({
           where: { active: true },
-          select: { id: true, name: true },
+          select: { id: true, name: true, type: true },
           orderBy: { name: 'asc' },
         }),
         getReservedByProduct(this.prisma, [product.id], {
@@ -210,12 +227,20 @@ export class ProductsService {
       activeWarehouses,
     );
 
+    const reservedQuantity = reservedByProduct.get(product.id) ?? 0;
+    const remisionQuantity = remisionByProduct.get(product.id) ?? 0;
+
     return matchByCodeContract({
       ...rest,
       availableStock: this.calculateAvailableStock(
         totalStock,
-        reservedByProduct.get(product.id) ?? 0,
-        remisionByProduct.get(product.id) ?? 0,
+        reservedQuantity,
+        remisionQuantity,
+      ),
+      availableToSell: this.calculateAvailableStock(
+        this.calculateStoreStock(inventoryRecords, activeWarehouses),
+        reservedQuantity,
+        remisionQuantity,
       ),
     });
   }

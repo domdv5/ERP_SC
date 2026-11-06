@@ -125,7 +125,7 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
         // El foco se queda en el escaneo para poder pistolear seguido
         { shouldFocus: false },
       )
-      onProductScanned(product.id, avgCost, product.unitOfMeasure, product.availableStock)
+      onProductScanned(product.id, avgCost, product.unitOfMeasure, product.availableToSell)
       toast.success(`${product.code} agregado`)
     }
 

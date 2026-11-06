@@ -146,7 +146,7 @@ export function ProductRow({
     label: `${p.code} — ${p.description}`,
     // Ventas/salidas: disponible ya neteado; traslados: disponible en la bodega origen; entradas: costo promedio.
     sublabel: showSaleAvailability
-      ? `Disponible: ${p.availableStock}`
+      ? `Disponible: ${p.availableToSell}`
       : showTransferAvailability && sourceWarehouseId
         ? `Disponible: ${p.stockByWarehouse.find((s) => s.warehouseId === sourceWarehouseId)?.quantity ?? 0}`
         : `Costo prom: ${formatCOP(Number(p.avgCost))}`,
@@ -199,7 +199,7 @@ export function ProductRow({
               setValue(`items.${index}.productDesc`, product?.description ?? '')
               setSelectedAvgCost(product?.avgCost ? Number(product.avgCost) : null)
               setSelectedUnitOfMeasure(product?.unitOfMeasure ?? null)
-              setSelectedAvailableStock(product?.availableStock ?? null)
+              setSelectedAvailableStock(product?.availableToSell ?? null)
               setSelectedStockByWarehouse(product?.stockByWarehouse ?? null)
               const suggestedCost = product ? suggestedUnitCost(docType, product) : undefined
               if (showCost && suggestedCost !== undefined) {

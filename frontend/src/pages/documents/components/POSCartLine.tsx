@@ -58,7 +58,7 @@ export function POSCartLine({
     id: p.id,
     label: `${p.code} — ${p.description}`,
     // La venta oficial no consulta stock físico.
-    sublabel: showTax ? undefined : `Disponible: ${p.availableStock}`,
+    sublabel: showTax ? undefined : `Disponible: ${p.availableToSell}`,
   }))
 
   const productCode = watch(`items.${index}.productCode`)

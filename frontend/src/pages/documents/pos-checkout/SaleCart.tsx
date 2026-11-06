@@ -21,7 +21,7 @@ interface SaleCartProps {
   append: UseFieldArrayAppend<FormValues, 'items'>
   remove: UseFieldArrayRemove
   cartItems: FormValues['items']
-  productDetailByCode: Map<string, { minSalePrice: number; availableStock: number; id: string }>
+  productDetailByCode: Map<string, { minSalePrice: number; availableToSell: number; id: string }>
   minSalePriceByProductId: Map<string, number>
   onScanPendingChange: (hasPending: boolean) => void
 }
@@ -157,7 +157,7 @@ export function SaleCart({
                     onRemove={() => remove(index)}
                     onProductSelect={(product) => handleRowProductSelect(index, product)}
                     minSalePrice={detail && minSalePriceByProductId.get(detail.id)}
-                    availableStock={official ? undefined : detail?.availableStock}
+                    availableStock={official ? undefined : detail?.availableToSell}
                     showTax={official}
                   />
                 )
