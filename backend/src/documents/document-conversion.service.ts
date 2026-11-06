@@ -5,7 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DocumentStatus, DocumentType } from '@/common/enums';
-import type { JwtPayload } from '@/common/types';
+import { matchContract, type JwtPayload } from '@/common/types';
+import type { DocumentDetail } from '@/contracts';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import { ConvertDocumentDto, CreateDocumentDto } from './dto/index';
@@ -19,6 +20,9 @@ import { withPvStatus } from './helpers/pv-status.helper';
 import { resolveDocumentDate } from './helpers/document-date.helper';
 import { DETAIL_INCLUDE } from './documents-query.service';
 import { DocumentEffectsRegistry } from './strategies/index';
+
+// Si lo que devuelve el service deja de cumplir el contrato, el backend no compila.
+const matchDetailContract = matchContract<DocumentDetail>();
 
 @Injectable()
 export class DocumentConversionService {
@@ -99,7 +103,7 @@ export class DocumentConversionService {
       return document;
     });
 
-    return withPvStatus(document);
+    return matchDetailContract(withPvStatus(document));
   }
 
   /** Convierte una preventa o remisión confirmada en una venta real; el descuento de la reserva ocurre al confirmar la derivada, no acá. */
@@ -250,6 +254,6 @@ export class DocumentConversionService {
 
     // La respuesta es la venta derivada, así que el bloque de conversión sale
     // vacío; se mantiene la misma forma que el resto de las lecturas.
-    return withPvStatus(derived);
+    return matchDetailContract(withPvStatus(derived));
   }
 }

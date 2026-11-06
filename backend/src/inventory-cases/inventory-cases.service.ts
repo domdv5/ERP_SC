@@ -16,6 +16,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import type {
   InventoryCaseDetail,
   InventoryCaseListResponse,
+  InventoryCaseOpenCount,
   InventoryCaseReport,
   InventoryCaseWarehouse,
 } from '@/contracts/index';
@@ -88,6 +89,7 @@ const matchListContract = matchContract<InventoryCaseListResponse>();
 const matchDetailContract = matchContract<InventoryCaseDetail>();
 const matchReportContract = matchContract<InventoryCaseReport>();
 const matchWarehousesContract = matchContract<InventoryCaseWarehouse[]>();
+const matchOpenCountContract = matchContract<InventoryCaseOpenCount>();
 
 @Injectable()
 export class InventoryCasesService {
@@ -161,7 +163,7 @@ export class InventoryCasesService {
     const count = await this.prisma.inventoryCase.count({
       where: { status: InventoryCaseStatus.open },
     });
-    return { count };
+    return matchOpenCountContract({ count });
   }
 
   async findOne(id: string) {

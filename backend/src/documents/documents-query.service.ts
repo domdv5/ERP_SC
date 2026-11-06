@@ -6,7 +6,13 @@ import {
 import { Prisma } from '@prisma/client';
 import { DocumentStatus, DocumentType } from '@/common/enums';
 import { matchContract, type JwtPayload } from '@/common/types';
-import type { DocumentDetail, DocumentListResponse } from '@/contracts';
+import type {
+  AvailableCustomerCreditsResponse,
+  CreditLimitSummary,
+  DocumentDetail,
+  DocumentListResponse,
+  PendingOfficialPurchasesResponse,
+} from '@/contracts';
 import { PrismaService } from '@/prisma/prisma.service';
 import { buildDateColumnRange } from '@/common/utils/date-range.util';
 import {
@@ -145,6 +151,10 @@ const PRINT_INCLUDE = {
 // Si lo que arma el service deja de cumplir el contrato, el backend no compila.
 const matchListContract = matchContract<DocumentListResponse>();
 const matchDetailContract = matchContract<DocumentDetail>();
+const matchPendingContract = matchContract<PendingOfficialPurchasesResponse>();
+const matchCreditLimitContract = matchContract<CreditLimitSummary>();
+const matchAvailableCreditsContract =
+  matchContract<AvailableCustomerCreditsResponse>();
 
 export type DocumentForPrint = Prisma.DocumentGetPayload<{
   include: typeof PRINT_INCLUDE;
@@ -291,10 +301,10 @@ export class DocumentsQueryService {
       this.prisma.document.count({ where }),
     ]);
 
-    return {
+    return matchPendingContract({
       items,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
-    };
+    });
   }
 
   /** Detalle pedido por un usuario: además del documento, valida que su rol pueda ver ese tipo. */
@@ -343,8 +353,10 @@ export class DocumentsQueryService {
   }
 
   /** Cupo de crédito del cliente: límite, usado y disponible, en pesos. Lo usa la pantalla de venta a crédito. */
-  getCreditLimitSummary(customerId: string) {
-    return getCreditLimitSummary(this.prisma, customerId);
+  async getCreditLimitSummary(customerId: string) {
+    return matchCreditLimitContract(
+      await getCreditLimitSummary(this.prisma, customerId),
+    );
   }
 
   /** Saldos a favor del cliente disponibles para aplicar en una venta (distinto del cupo de crédito). */
@@ -374,6 +386,6 @@ export class DocumentsQueryService {
       0,
     );
 
-    return { credits, totalAvailable };
+    return matchAvailableCreditsContract({ credits, totalAvailable });
   }
 }
