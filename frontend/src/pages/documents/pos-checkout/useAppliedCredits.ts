@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getAvailableCustomerCredits } from '@/services/documents.service'
 import {
@@ -6,7 +6,7 @@ import {
   limitCreditAmount,
   limitCreditsToTotal,
 } from '@/lib/credit-application'
-import type { SelectedCredit } from '@/pages/documents/pos-checkout.utils'
+import { toNumericCredits, type SelectedCredit } from '@/pages/documents/pos-checkout.utils'
 
 interface UseAppliedCreditsArgs {
   thirdPartyId: string
@@ -30,7 +30,10 @@ export function useAppliedCredits({
     staleTime: 30 * 1000,
   })
 
-  const availableCredits = official ? [] : (availableCreditsData?.credits ?? [])
+  const availableCredits = useMemo(
+    () => (official ? [] : toNumericCredits(availableCreditsData?.credits ?? [])),
+    [official, availableCreditsData],
+  )
   // Monto aplicado por cada saldo a favor (id del saldo → monto). El usuario puede bajarlo.
   const [creditAmounts, setCreditAmounts] = useState<Record<string, number>>({})
   // Por-crédito, no global: tocar un saldo no congela la propuesta de los demás, que sigue recalculando mientras sube el total.

@@ -1,5 +1,6 @@
 import { getDocument, getDocuments } from '@/services/documents.service'
 import type {
+  AvailableCustomerCredit,
   CreditLimitExceededDetail,
   DocumentDetail,
   DocumentItem,
@@ -61,8 +62,6 @@ export function findPriceFloorViolations(
 
 // ─── 409 de stock insuficiente (POST /documents/:id/confirm, solo POS) ────────
 
-export type { MissingStockItem }
-
 export function parseMissingStockError(err: unknown): MissingStockItem[] | null {
   const data = (err as { response?: { data?: unknown } })?.response?.data
   if (typeof data !== 'object' || data === null) return null
@@ -71,6 +70,15 @@ export function parseMissingStockError(err: unknown): MissingStockItem[] | null 
 }
 
 // ─── saldos a favor del cliente aplicados a una venta ────────────────────────
+
+// El saldo llega como string (Decimal); se pasa a número una sola vez aquí para que todo el reparto sume números.
+export function toNumericCredits(credits: AvailableCustomerCredit[]) {
+  return credits.map((c) => ({
+    id: c.id,
+    balance: Number(c.balance),
+    sourceDocument: c.sourceDocument,
+  }))
+}
 
 // El cálculo genérico vive en @/lib/credit-application (compartido con Egresos); acá solo el nombre de campo
 export interface SelectedCredit {

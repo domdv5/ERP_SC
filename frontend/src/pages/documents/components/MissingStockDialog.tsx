@@ -1,5 +1,5 @@
 import { AlertTriangle, X } from 'lucide-react'
-import type { MissingStockItem } from '@/pages/documents/pos-checkout.utils'
+import type { MissingStockItem } from '@/types/document.types'
 
 interface MissingStockDialogProps {
   missingStock: MissingStockItem[]

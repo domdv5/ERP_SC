@@ -280,7 +280,9 @@ export default function POSCheckoutPage() {
                 credits={credits.availableCredits.map((c) => ({
                   id: c.id,
                   balance: c.balance,
-                  label: docNumber(c.sourceDocument.type, c.sourceDocument.number),
+                  label: c.sourceDocument
+                    ? docNumber(c.sourceDocument.type, c.sourceDocument.number)
+                    : 'Saldo a favor',
                 }))}
                 creditAmounts={credits.creditAmounts}
                 setCreditAmount={credits.setCreditAmount}

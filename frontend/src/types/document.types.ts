@@ -1,5 +1,8 @@
 export type {
   AppliedCustomerCredit,
+  AvailableCustomerCredit,
+  AvailableCustomerCreditsResponse,
+  CreditLimitSummary,
   CustomerCredit,
   CustomerCreditApplication,
   DocumentBin,
@@ -18,13 +21,17 @@ export type {
   DocumentWarehouse,
   DvvRefundMethod,
   EaiAdjustmentReason,
+  MissingStockItem,
   PaymentMethod,
+  PendingOfficialPurchase,
+  PendingOfficialPurchasesResponse,
   PvConversionStatus,
   PvDerivedDocRef,
   PvStatus,
 } from '@contracts/documents'
 
 import type {
+  CreditLimitSummary,
   DocumentDetail,
   DocumentType,
   DocumentStatus,
@@ -36,29 +43,6 @@ import type {
 // Destino del saldo a favor de una DVV; sale del contrato para no duplicar el union.
 export type CreditUsableIn = NonNullable<DocumentDetail['creditUsableIn']>
 
-// Fila de la bandeja "Compras oficiales pendientes": CM confirmada oficial sin CMO confirmada enlazada.
-export interface PendingOfficialPurchase {
-  id: string
-  number: number | string
-  date: string
-  supplierInvoiceNumber: string | null
-  total: number | string
-  thirdParty: { id: string; name: string } | null
-  documentItems: {
-    productId: string
-    quantity: number
-    unitCost: number | string
-    product: { id: string; code: string; description: string }
-  }[]
-}
-
-export interface PendingOfficialPurchasesMeta {
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-}
-
 export interface GetPendingOfficialPurchasesParams {
   page?: number
   limit?: number
@@ -66,22 +50,6 @@ export interface GetPendingOfficialPurchasesParams {
   search?: string
   dateFrom?: string
   dateTo?: string
-}
-
-// Saldo a favor disponible de un cliente, tal como lo devuelve el endpoint de saldos
-// disponibles del checkout. Solo trae los que están disponibles y con saldo mayor a cero.
-export interface AvailableCustomerCredit {
-  id: string
-  amount: number
-  balance: number
-  status: string
-  createdAt: string
-  sourceDocument: { id: string; type: DocumentType; number: number; date: string }
-}
-
-export interface AvailableCustomerCreditsResponse {
-  credits: AvailableCustomerCredit[]
-  totalAvailable: number
 }
 
 export interface GetDocumentsParams {
@@ -160,14 +128,6 @@ export interface ConvertDocumentPayload {
   targetType: 'POS' | 'COT'
 }
 
-// Resumen del cupo de crédito del cliente, en pesos. El disponible es el límite menos lo
-// usado (puede ser negativo).
-export interface CreditLimitSummary {
-  creditLimit: number
-  usedCredit: number
-  availableCredit: number
-}
-
 // Cuerpo del error "cupo excedido" (al crear, confirmar o convertir una venta a crédito).
 // `credit` viaja al lado de `message` en la respuesta, igual que los faltantes del error de stock.
 export interface CreditLimitExceededDetail extends CreditLimitSummary {
@@ -177,14 +137,6 @@ export interface CreditLimitExceededDetail extends CreditLimitSummary {
 export interface ReleaseDocumentItemPayload {
   documentItemId: string
   quantity: number
-}
-
-// El backend responde { message, missingStock } al confirmar y GET /documents/:id/missing-stock lo devuelve directo
-export interface MissingStockItem {
-  productId: string
-  code: string
-  available: number
-  requested: number
 }
 
 export interface ReleaseItemsPayload {
