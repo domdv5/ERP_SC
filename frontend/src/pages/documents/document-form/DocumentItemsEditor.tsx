@@ -77,10 +77,10 @@ export function DocumentItemsEditor({
         append={append}
         getValues={getValues}
         setValue={setValue}
-        onProductScanned={(productId, avgCost, unitOfMeasure, availableStock) =>
+        onProductScanned={(productId, avgCost, unitOfMeasure, availableToSell) =>
           setScannedProductInfo((prev) => ({
             ...prev,
-            [productId]: { avgCost, unitOfMeasure, availableStock },
+            [productId]: { avgCost, unitOfMeasure, availableToSell },
           }))
         }
         onPendingChange={setIsScanPending}

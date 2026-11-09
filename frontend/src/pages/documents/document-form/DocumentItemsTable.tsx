@@ -124,7 +124,7 @@ export function DocumentItemsTable({
               getValues={getValues}
               initialAvgCost={scannedProductInfo[field.productId]?.avgCost}
               initialUnitOfMeasure={scannedProductInfo[field.productId]?.unitOfMeasure}
-              initialAvailableStock={scannedProductInfo[field.productId]?.availableStock}
+              initialAvailableToSell={scannedProductInfo[field.productId]?.availableToSell}
               supplierBrandIds={needsSupplier ? selectedSupplierBrandIds : undefined}
               onQuantityConfirmed={() => barcodeInputRef.current?.focus()}
             />

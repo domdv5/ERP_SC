@@ -157,7 +157,7 @@ export function SaleCart({
                     onRemove={() => remove(index)}
                     onProductSelect={(product) => handleRowProductSelect(index, product)}
                     minSalePrice={detail && minSalePriceByProductId.get(detail.id)}
-                    availableStock={official ? undefined : detail?.availableToSell}
+                    availableToSell={official ? undefined : detail?.availableToSell}
                     showTax={official}
                   />
                 )

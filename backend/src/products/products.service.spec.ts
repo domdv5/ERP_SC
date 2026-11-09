@@ -78,6 +78,9 @@ describe('ProductsService disponible', () => {
 
     expect(result.items[0].availableStock).toBe(5);
     expect(result.items[0].availableToSell).toBe(1);
+    expect(prisma.warehouse.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { active: true } }),
+    );
   });
 
   it('lanza 404 si el código no existe', async () => {
