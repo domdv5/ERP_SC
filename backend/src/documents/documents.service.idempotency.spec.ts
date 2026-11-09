@@ -3,7 +3,6 @@ import { Prisma } from '@prisma/client';
 import { DocumentStatus, DocumentType } from '@/common/enums';
 import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
-import { SequenceService } from '@/common/sequence/sequence.service';
 import { DocumentsService } from './documents.service';
 import { DocumentsQueryService } from './documents-query.service';
 import { DocumentEffectsRegistry } from './strategies/document-effects.registry';
@@ -110,7 +109,7 @@ describe('DocumentsService.create: clave para no duplicar al reintentar', () => 
   const service = new DocumentsService(
     prisma as unknown as PrismaService,
     registry as unknown as DocumentEffectsRegistry,
-    sequence as unknown as SequenceService,
+    sequence,
     documentsQuery,
   );
 
@@ -384,7 +383,7 @@ describe('DocumentsService.create: customerBranchId solo en ventas', () => {
   const service = new DocumentsService(
     prisma as unknown as PrismaService,
     registry as unknown as DocumentEffectsRegistry,
-    sequence as unknown as SequenceService,
+    sequence,
     documentsQuery,
   );
 

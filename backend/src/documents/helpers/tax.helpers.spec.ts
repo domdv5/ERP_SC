@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client';
 import { DocumentType } from '@/common/enums';
 import {
   OFFICIAL_TAX_TYPES,

@@ -7,6 +7,7 @@ import {
   Min,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import type { TransformFnParams } from 'class-transformer';
 
 export class FindAllThirdPartiesDto {
   @IsOptional()
@@ -27,35 +28,35 @@ export class FindAllThirdPartiesDto {
   search?: string;
 
   @IsOptional()
-  @Transform(({ value }) =>
+  @Transform(({ value }: TransformFnParams): unknown =>
     value === 'true' ? true : value === 'false' ? false : value,
   )
   @IsBoolean()
   isCustomer?: boolean;
 
   @IsOptional()
-  @Transform(({ value }) =>
+  @Transform(({ value }: TransformFnParams): unknown =>
     value === 'true' ? true : value === 'false' ? false : value,
   )
   @IsBoolean()
   isSupplier?: boolean;
 
   @IsOptional()
-  @Transform(({ value }) =>
+  @Transform(({ value }: TransformFnParams): unknown =>
     value === 'true' ? true : value === 'false' ? false : value,
   )
   @IsBoolean()
   isSeller?: boolean;
 
   @IsOptional()
-  @Transform(({ value }) =>
+  @Transform(({ value }: TransformFnParams): unknown =>
     value === 'true' ? true : value === 'false' ? false : value,
   )
   @IsBoolean()
   isReceiver?: boolean;
 
   @IsOptional()
-  @Transform(({ value }) =>
+  @Transform(({ value }: TransformFnParams): unknown =>
     value === 'true' ? true : value === 'false' ? false : value,
   )
   @IsBoolean()
