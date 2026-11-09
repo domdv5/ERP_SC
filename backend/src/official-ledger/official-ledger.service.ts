@@ -7,6 +7,7 @@ import {
 } from '@/common/utils/date-range.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { matchContract } from '@/common/types';
+import { toNumberFields } from '@/common/utils/raw-query.util';
 import type {
   OfficialLedgerListResponse,
   OfficialLedgerProductDetail,
@@ -79,7 +80,7 @@ export class OfficialLedgerService {
         OR COALESCE(SUM(CASE WHEN ${inRangeSql} AND d.type = 'POSO' THEN di.quantity END), 0) <> 0
     `;
 
-    const [rows, totalsRows] = await this.prisma.$transaction([
+    const [rawRows, rawTotalsRows] = await this.prisma.$transaction([
       this.prisma.$queryRaw<LedgerRow[]>`
         WITH agg AS (${aggregated})
         SELECT * FROM agg ORDER BY code
@@ -95,7 +96,9 @@ export class OfficialLedgerService {
       `,
     ]);
 
-    const totals = totalsRows[0];
+    const ledgerFields = ['opening', 'purchased', 'sold'] as const;
+    const rows = toNumberFields(rawRows, ledgerFields);
+    const [totals] = toNumberFields(rawTotalsRows, ['total', ...ledgerFields]);
 
     return matchListContract({
       items: rows.map((row) => ({
