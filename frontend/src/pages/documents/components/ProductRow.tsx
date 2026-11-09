@@ -38,7 +38,7 @@ interface ProductRowProps {
   // Ya conocido al crear la fila (p. ej. por escaneo); no siempre pasa por su propio buscador.
   initialUnitOfMeasure?: 'unidad' | 'docena'
   // Ya conocido al crear la fila (p. ej. por escaneo); alimenta el aviso de "cantidad mayor al disponible".
-  initialAvailableStock?: number
+  initialAvailableToSell?: number
   // Devuelve el foco al escáner al confirmar cantidad con Enter, se haya creado la fila por escaneo o a mano.
   onQuantityConfirmed?: () => void
   // Marcas del proveedor elegido (solo compras/devoluciones); sin valor cuando el tipo no usa este filtro.
@@ -57,7 +57,7 @@ export function ProductRow({
   getValues,
   initialAvgCost,
   initialUnitOfMeasure,
-  initialAvailableStock,
+  initialAvailableToSell,
   onQuantityConfirmed,
   supplierBrandIds,
 }: ProductRowProps) {
@@ -72,8 +72,8 @@ export function ProductRow({
     () => initialUnitOfMeasure ?? null,
   )
   // Puede ser negativo si ya está sobre-reservado; es solo aviso temprano, el backend valida de verdad al confirmar.
-  const [selectedAvailableStock, setSelectedAvailableStock] = useState<number | null>(
-    () => initialAvailableStock ?? null,
+  const [selectedAvailableToSell, setSelectedAvailableToSell] = useState<number | null>(
+    () => initialAvailableToSell ?? null,
   )
   // No se prellena desde props iniciales: el escaneo no trae este detalle por bodega.
   const [selectedStockByWarehouse, setSelectedStockByWarehouse] = useState<
@@ -118,7 +118,7 @@ export function ProductRow({
 
   // Ventas/salidas: disponible ya neteado de reservas, puede ser negativo. Traslados: stock crudo de la bodega origen. Fuentes distintas, no mezclar.
   const displayAvailableStock = showSaleAvailability
-    ? selectedAvailableStock
+    ? selectedAvailableToSell
     : availableInSourceWarehouse
 
   // Avisos secundarios en fila aparte para no empujar los inputs de la fila principal fuera de columna.
@@ -199,7 +199,7 @@ export function ProductRow({
               setValue(`items.${index}.productDesc`, product?.description ?? '')
               setSelectedAvgCost(product?.avgCost ? Number(product.avgCost) : null)
               setSelectedUnitOfMeasure(product?.unitOfMeasure ?? null)
-              setSelectedAvailableStock(product?.availableToSell ?? null)
+              setSelectedAvailableToSell(product?.availableToSell ?? null)
               setSelectedStockByWarehouse(product?.stockByWarehouse ?? null)
               const suggestedCost = product ? suggestedUnitCost(docType, product) : undefined
               if (showCost && suggestedCost !== undefined) {

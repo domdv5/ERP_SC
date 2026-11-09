@@ -25,7 +25,7 @@ interface POSCartLineProps {
   // entrar el código al carrito. Viene sin valor mientras ese dato todavía no llegó.
   minSalePrice?: number
   // Disponible ya neteado; solo informativo, es un aviso temprano y el backend rechaza al confirmar si de verdad no alcanza.
-  availableStock?: number
+  availableToSell?: number
   // Venta oficial: agrega la columna con el IVA 19% de la línea (el precio va con IVA y se separa por línea).
   showTax?: boolean
 }
@@ -39,7 +39,7 @@ export function POSCartLine({
   onRemove,
   onProductSelect,
   minSalePrice,
-  availableStock,
+  availableToSell,
   showTax = false,
 }: POSCartLineProps) {
   const [productSearch, setProductSearch] = useState('')
@@ -105,7 +105,7 @@ export function POSCartLine({
               {...register(`items.${index}.quantity`)}
               className="input-hard w-full min-w-0 px-2.5 py-1.5 text-sm text-center text-content transition-all border-ui-border-medium"
             />
-            <AvailableStockHint available={availableStock} quantity={quantity} />
+            <AvailableStockHint available={availableToSell} quantity={quantity} />
           </div>
         </td>
 
