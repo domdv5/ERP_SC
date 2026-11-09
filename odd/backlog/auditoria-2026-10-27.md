@@ -75,7 +75,14 @@ Nota estimada: arquitectura ~7.5/10 (backend 8, frontend 7, contrato front/back 
 | ✅ | — | Pruebas de error de fechas: no hacía falta cambiar nada; en Jest 30 `toThrow(new BadRequestException(msg))` también falla si la excepción es de otra clase (probado con `Error`, `NotFoundException` y `ConflictException`), o sea que ya verifican el 400. | Descartado |
 | ✅ | — | Limpieza de ramas (2026-11-09): borradas todas las ramas locales y remotas salvo `main`; las 3 sin mergear ya estaban reemplazadas en `main`. GitHub borra la rama al mergear cada PR. `frontend/.env` viejo en la historia revisado por el usuario: sin secretos. | Hecho |
 | — | Decisión | Revisión automática del harness (RDD): en los PRs #82–#88 quedó rechazada o dio falsos positivos ("falta import" que ya existía) y la autoridad del #88 quedó trabada (`corrupted_or_unverifiable_authority`). Opción: `gentle-ai review mode disable --scope clone`. | — |
+| P1 | Producción | Logs a consola (`stdout`) en producción: App Platform no tiene disco persistente y `pino-roll` (`common/logger/logger.config.ts`) escribe archivos que se pierden en cada deploy. | Chico |
+| P2 | Producción | Probar una restauración del backup del Managed Database (en una base aparte) antes de salir: que funcione y cuánto tarda. | Chico |
+| P3 | Producción | Regla: nadie modifica la base de producción a mano; todo por la app o por migraciones revisadas. Si se pierden datos, restaurar en una base aparte y copiar solo lo perdido. | Regla |
 | — | Idea | Venta mixta contado+crédito = COT por el total + recibo de caja automático | Por definir |
+
+## Hosting (decisión 2026-11-09)
+
+DigitalOcean App Platform (backend y frontend) + Managed Database PostgreSQL (backups diarios, 7 días, recuperación a un momento exacto). Sin réplicas al arrancar: se agregan cuando una caída cueste dinero. No usar la "Dev Database" de App Platform en producción. Con más de una copia del backend, el SSE de estado del sistema (en memoria) necesitaría adaptarse.
 
 ## Plan para partir los archivos gigantes (A1 + A3)
 
