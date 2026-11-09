@@ -23,7 +23,7 @@ interface BarcodeScanInputProps {
     productId: string,
     avgCost: number,
     unitOfMeasure: 'unidad' | 'docena',
-    availableStock: number,
+    availableToSell: number,
   ) => void
   // true mientras haya lecturas en la fila; el documento no se guarda hasta que vuelva a false
   onPendingChange?: (hasPending: boolean) => void

@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param } from '@nestjs/common';
 import { WarehousesService } from './warehouses.service';
 import { CreateWarehouseDto, UpdateWarehouseDto } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';

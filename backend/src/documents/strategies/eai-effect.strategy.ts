@@ -51,7 +51,7 @@ export class EaiEffectStrategy extends BaseEffectStrategy {
     });
   }
 
-  async validateCreate(createDocumentDto: CreateDocumentDto) {
+  validateCreate(createDocumentDto: CreateDocumentDto): void {
     if (
       createDocumentDto.items.some(
         (item) => item.unitCost == null || item.unitCost <= 0,

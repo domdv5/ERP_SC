@@ -76,3 +76,45 @@ describe('OfficialLedgerService.findProductMovements: fechas', () => {
     expect(prisma.product.findUnique).not.toHaveBeenCalled();
   });
 });
+
+describe('OfficialLedgerService.findAll: los saldos salen como número aunque Postgres mande texto', () => {
+  const prisma = { $queryRaw: jest.fn(), $transaction: jest.fn() };
+  const service = new OfficialLedgerService(prisma as unknown as PrismaService);
+
+  it('convierte filas y totales', async () => {
+    prisma.$transaction.mockResolvedValue([
+      [
+        {
+          product_id: 'p1',
+          code: 'A',
+          description: 'Producto',
+          opening: '5',
+          purchased: BigInt(3),
+          sold: '2',
+        },
+      ],
+      [{ total: BigInt(1), opening: '5', purchased: '3', sold: BigInt(2) }],
+    ]);
+
+    const result = await service.findAll({ page: 1, limit: 20 });
+
+    expect(result.items).toEqual([
+      {
+        productId: 'p1',
+        code: 'A',
+        name: 'Producto',
+        openingBalance: 5,
+        purchased: 3,
+        sold: 2,
+        closingBalance: 6,
+      },
+    ]);
+    expect(result.meta).toEqual({
+      total: 1,
+      page: 1,
+      limit: 20,
+      totalPages: 1,
+      totals: { openingBalance: 5, purchased: 3, sold: 2, closingBalance: 6 },
+    });
+  });
+});

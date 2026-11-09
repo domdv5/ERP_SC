@@ -2,7 +2,6 @@ import { ConflictException } from '@nestjs/common';
 import { DocumentStatus, DocumentType } from '@/common/enums';
 import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
-import { SequenceService } from '@/common/sequence/sequence.service';
 import { DocumentsService } from './documents.service';
 import { DocumentsQueryService } from './documents-query.service';
 import { DocumentConversionService } from './document-conversion.service';
@@ -55,13 +54,13 @@ describe('DocumentsService: lock del documento antes de liberar o convertir', ()
   const service = new DocumentsService(
     prisma as unknown as PrismaService,
     registry as unknown as DocumentEffectsRegistry,
-    sequence as unknown as SequenceService,
+    sequence,
     documentsQuery,
   );
   const conversionService = new DocumentConversionService(
     prisma as unknown as PrismaService,
     registry as unknown as DocumentEffectsRegistry,
-    sequence as unknown as SequenceService,
+    sequence,
   );
   const releaseDto = { items: [{ documentItemId: 'i1', quantity: 1 }] };
   const convertDto = { targetType: DocumentType.POS };
@@ -131,7 +130,7 @@ describe('DocumentsService: lock del documento antes de liberar o convertir', ()
     it('crea la venta derivada si no hay otra activa', async () => {
       tx.$queryRaw.mockResolvedValue([{ status: DocumentStatus.confirmed }]);
 
-      await conversionService.convert('pv-1', convertDto as never, user);
+      await conversionService.convert('pv-1', convertDto, user);
 
       expect(tx.document.count).toHaveBeenCalledWith({
         where: {
@@ -145,7 +144,7 @@ describe('DocumentsService: lock del documento antes de liberar o convertir', ()
     it('copia la sucursal del origen al documento derivado', async () => {
       tx.$queryRaw.mockResolvedValue([{ status: DocumentStatus.confirmed }]);
 
-      await conversionService.convert('pv-1', convertDto as never, user);
+      await conversionService.convert('pv-1', convertDto, user);
 
       expect(tx.document.create.mock.calls[0][0].data.customerBranchId).toBe(
         'br-1',
@@ -155,7 +154,7 @@ describe('DocumentsService: lock del documento antes de liberar o convertir', ()
     it('el borrador derivado nace sin formas de pago', async () => {
       tx.$queryRaw.mockResolvedValue([{ status: DocumentStatus.confirmed }]);
 
-      await conversionService.convert('pv-1', convertDto as never, user);
+      await conversionService.convert('pv-1', convertDto, user);
 
       const { data } = tx.document.create.mock.calls[0][0];
       expect(data).not.toHaveProperty('payments');
