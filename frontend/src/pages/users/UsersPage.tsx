@@ -18,20 +18,12 @@ import {
 } from '@/components/shared'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
+import { formatBogotaDate } from '@/lib/format'
 
 // ─── Helpers ────────────────────────────────────────────────────────────
 
 function getRoleNames(user: AppUser): string {
   return user.userRoles.map((ur) => getRoleLabel(ur.role.name)).join(', ') || '—'
-}
-
-function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'America/Bogota',
-  }).format(new Date(iso))
 }
 
 function UserAvatar({ name }: { name: string }) {
@@ -295,7 +287,7 @@ export default function UsersPage() {
                     {/* Created date */}
                     <td className="px-5 py-3.5">
                       <p className="text-xs text-content-faint font-accent">
-                        {formatDate(u.createdAt)}
+                        {formatBogotaDate(u.createdAt)}
                       </p>
                     </td>
 

@@ -15,7 +15,7 @@ import {
   DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
-import { formatCOP, docNumber, formatDateTimeBogota } from '@/lib/format'
+import { formatCOP, docNumber, formatDateOnly, formatDateTimeBogota } from '@/lib/format'
 import { visibleDocumentTypes } from '@/lib/document-permissions'
 import {
   DOC_TYPE_SELECT_OPTIONS,
@@ -27,17 +27,6 @@ import {
 import type { DocumentType, DocumentStatus, DocumentUser } from '@/types/document.types'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    // Document.date es @db.Date, Prisma la serializa como medianoche UTC. Leerla en horario
-    // Bogotá la corre un día atrás (bug 2026-09-28) — hay que leerla en UTC para recuperar el
-    // día calendario guardado tal cual.
-    timeZone: 'UTC',
-  })
 
 const HistoryLine = ({
   label,
@@ -302,7 +291,7 @@ export default function DocumentsPage() {
 
                       {/* Date */}
                       <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                        {formatDate(doc.date)}
+                        {formatDateOnly(doc.date)}
                       </td>
 
                       {/* Type */}
