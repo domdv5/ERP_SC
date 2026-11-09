@@ -66,7 +66,7 @@ Nota estimada: arquitectura ~7.5/10 (backend 8, frontend 7, contrato front/back 
 | ✅ | F1 | Costo promedio al anular compra que deja stock 0 | Hecho (opción 2: vuelve a 0) |
 | ✅ | S5 | Contraseña 8+ con letras y números | Hecho (#56) |
 | 8 | S3/S6 | JWT en cookie `HttpOnly` (resuelve también el token del SSE) | Grande |
-| — | Lint | Frontend sin ESLint configurado (`frontend/CLAUDE.md` menciona `pnpm lint`); errores `no-unsafe-*` en specs del backend | Chico |
+| — | Lint | Backend: de 173 avisos quedan 8 (2026-11-09): `no-unsafe-*` apagadas en specs/fixtures; quedan 4 `unbound-method` y 1 `require-await` en specs, y 4 en archivos protegidos (`main.ts` floating promise, `response-format.interceptor.ts`, `prisma-exception.filter.ts` formato, `auth/dto/find-all-users.dto.ts`). Frontend sin ESLint instalado: medir antes de configurar. | Chico |
 | — | Pendiente | Quitar el "Descuento (%)" del cliente (`Customer.discount`): ningún cálculo lo usa; 2026-11-06 8 de 18 clientes lo tienen en 0 y ninguno > 0. Migración que borra `customers.discount` + DTO, service, contrato `third-parties.ts` y `ThirdPartyForm`. No tocar `Supplier.discountNotes` (sí se muestra en compras). | Chico |
 | — | Pendiente | Prueba del hook `useAppliedCredits` (saldos a favor del POS): hoy solo `tsc` frena si alguien quita `toNumericCredits` (`pos-checkout/useAppliedCredits.ts:33`); vitest sin jsdom no lo ejecuta. | Chico |
 | ✅ | — | Reportes y libro oficial: las filas de `$queryRaw` pasan por `toNumberFields` (`common/utils/raw-query.util.ts`), así que salen como `number` aunque falte un `::float8`/`::int`; pruebas con texto/BigInt en `reports.service.spec.ts` y `official-ledger.service.spec.ts`. | Hecho |

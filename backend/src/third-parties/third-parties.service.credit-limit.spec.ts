@@ -2,7 +2,7 @@ import { ForbiddenException } from '@nestjs/common';
 import { ThirdPartiesService } from './third-parties.service';
 import type { PrismaService } from '@/prisma/prisma.service';
 import type { JwtPayload } from '@/common/types';
-import type { CreateThirdPartyDto, UpdateThirdPartyDto } from './dto/index';
+import type { CreateThirdPartyDto } from './dto/index';
 
 const BILLING = [
   'thirdparty.create',
@@ -30,7 +30,7 @@ describe('ThirdPartiesService — límite de crédito', () => {
   it('update rechaza creditLimit sin customer.credit.update y no escribe', async () => {
     const call = service.update(
       'tp-1',
-      { isCustomer: true, creditLimit: 500000 } as UpdateThirdPartyDto,
+      { isCustomer: true, creditLimit: 500000 },
       userWith(BILLING),
     );
 
@@ -62,7 +62,7 @@ describe('ThirdPartiesService — límite de crédito', () => {
     await expect(
       service.update(
         'tp-1',
-        { isCustomer: true, creditLimit: 500000 } as UpdateThirdPartyDto,
+        { isCustomer: true, creditLimit: 500000 },
         userWith(ACCOUNTS),
       ),
     ).resolves.toBe('ok');
@@ -85,7 +85,7 @@ describe('ThirdPartiesService — límite de crédito', () => {
     await expect(
       service.update(
         'tp-1',
-        { isCustomer: true, discount: 5 } as UpdateThirdPartyDto,
+        { isCustomer: true, discount: 5 },
         userWith(BILLING),
       ),
     ).resolves.toBe('ok');

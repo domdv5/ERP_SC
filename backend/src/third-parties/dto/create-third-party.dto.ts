@@ -19,6 +19,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import type { TransformFnParams } from 'class-transformer';
 import { CustomerBranchDto } from './customer-branch.dto';
 import { TaxRegime, WithholdingAgentType } from '@/common/enums';
 
@@ -41,17 +42,19 @@ export class CreateThirdPartyDto {
   @IsNotEmpty()
   documentNumber!: string;
 
-  @ValidateIf((o) => o.personType === 'natural')
+  @ValidateIf((o: CreateThirdPartyDto) => o.personType === 'natural')
   @IsString()
   @IsNotEmpty()
   firstName?: string;
 
-  @ValidateIf((o) => o.personType === 'natural')
+  @ValidateIf((o: CreateThirdPartyDto) => o.personType === 'natural')
   @IsString()
   @IsNotEmpty()
   lastName?: string;
 
-  @Transform(({ value }) => (value === '' ? undefined : value))
+  @Transform(({ value }: TransformFnParams): unknown =>
+    value === '' ? undefined : value,
+  )
   @IsOptional()
   @IsEmail()
   email?: string;
@@ -101,26 +104,26 @@ export class CreateThirdPartyDto {
   isSupplier?: boolean;
 
   // Campos de cliente
-  @ValidateIf((o) => o.isCustomer === true)
+  @ValidateIf((o: CreateThirdPartyDto) => o.isCustomer === true)
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   creditLimit?: number;
 
-  @ValidateIf((o) => o.isCustomer === true)
+  @ValidateIf((o: CreateThirdPartyDto) => o.isCustomer === true)
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Max(100)
   discount?: number;
 
-  @ValidateIf((o) => o.isCustomer === true)
+  @ValidateIf((o: CreateThirdPartyDto) => o.isCustomer === true)
   @IsOptional()
   @IsUUID()
   sellerId?: string;
 
   // Solo se agregan; una sucursal ya guardada se edita por PATCH :id/branches/:branchId.
-  @ValidateIf((o) => o.isCustomer === true)
+  @ValidateIf((o: CreateThirdPartyDto) => o.isCustomer === true)
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
@@ -128,19 +131,19 @@ export class CreateThirdPartyDto {
   branches?: CustomerBranchDto[];
 
   // Campos de proveedor
-  @ValidateIf((o) => o.isSupplier === true)
+  @ValidateIf((o: CreateThirdPartyDto) => o.isSupplier === true)
   @IsNotEmpty()
   @IsInt()
   @Min(1)
   internalNumber!: number;
 
-  @ValidateIf((o) => o.isSupplier === true)
+  @ValidateIf((o: CreateThirdPartyDto) => o.isSupplier === true)
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
   brands!: string[];
 
-  @ValidateIf((o) => o.isSupplier === true)
+  @ValidateIf((o: CreateThirdPartyDto) => o.isSupplier === true)
   @IsOptional()
   @IsString()
   @MaxLength(500)

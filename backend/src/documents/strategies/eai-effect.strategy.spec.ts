@@ -1,6 +1,5 @@
 import { EaiAdjustmentReason, MovementType } from '@/common/enums';
 import type { PrismaService } from '@/prisma/prisma.service';
-import type { SequenceService } from '@/common/sequence/sequence.service';
 import { applyStockChange } from '@/documents/helpers/stock.helpers';
 import { EaiEffectStrategy } from './eai-effect.strategy';
 import type {
@@ -42,10 +41,7 @@ describe('EaiEffectStrategy', () => {
     inventoryCase: { create: jest.fn(), updateMany: jest.fn() },
   };
   const sequence = { next: jest.fn() };
-  const strategy = new EaiEffectStrategy(
-    {} as PrismaService,
-    sequence as unknown as SequenceService,
-  );
+  const strategy = new EaiEffectStrategy({} as PrismaService, sequence);
   const client = tx as never;
 
   beforeEach(() => {
