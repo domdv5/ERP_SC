@@ -16,7 +16,7 @@ pnpm test         # Vitest (vitest run)
 
 ## Unit tests (Vitest)
 
-`pnpm test` corre Vitest (entorno `node`, config en `vitest.config.ts` con el alias `@`). Los tests viven junto al archivo como `*.test.ts` y cubren helpers puros: `src/lib/tax.ts`, `src/lib/credit-application.ts`, `src/pages/documents/pos-checkout.utils.ts` (este mockea `@/services/documents.service`). Sin jsdom: no hay tests de componentes todavía.
+`pnpm test` corre Vitest (entorno `node`, config en `vitest.config.ts` con el alias `@`). Los tests viven junto al archivo como `*.test.ts` y cubren helpers puros: `src/lib/tax.ts`, `src/lib/credit-application.ts`, `src/pages/documents/pos-checkout.utils.ts` (este mockea `@/services/documents.service`). Los tests de componentes y hooks son `*.test.tsx` con `// @vitest-environment jsdom` en la primera línea (los `.test.ts` siguen en `node`) y usan `@testing-library/react` (`render`, `renderHook`). Patrón: `vi.mock` del service (`@/services/...`), `QueryClientProvider` con `retry: false` y `cleanup()` en `afterEach`; los formularios se montan con un `Harness` que arma `useForm`. Ejemplos: `ProductRow.test.tsx`, `pos-checkout/SaleCart.test.tsx`, `pos-checkout/useAppliedCredits.test.tsx`.
 
 ## Testing frontend changes
 
