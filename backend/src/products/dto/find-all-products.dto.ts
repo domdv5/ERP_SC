@@ -8,6 +8,7 @@ import {
   Min,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import type { TransformFnParams } from 'class-transformer';
 
 export class FindAllProductsDto {
   @IsOptional()
@@ -28,7 +29,7 @@ export class FindAllProductsDto {
   search?: string;
 
   @IsOptional()
-  @Transform(({ value }) =>
+  @Transform(({ value }: TransformFnParams): unknown =>
     value === 'true' ? true : value === 'false' ? false : value,
   )
   @IsBoolean()

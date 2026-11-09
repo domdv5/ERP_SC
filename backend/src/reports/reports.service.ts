@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { matchContract } from '@/common/types';
+import { toNumberFields } from '@/common/utils/raw-query.util';
 import type {
   AccountsReport,
   InventoryReport,
@@ -63,7 +64,7 @@ export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getInventory() {
-    const warehouses = await this.prisma.$queryRaw<WarehouseStockRow[]>`
+    const warehouseRows = await this.prisma.$queryRaw<WarehouseStockRow[]>`
       SELECT w.id AS "warehouseId", w.name,
         COALESCE(SUM(i.quantity), 0)::int AS units,
         ROUND(COALESCE(SUM(i.quantity * p.avg_cost), 0), 2)::float8 AS "costValue",
@@ -75,6 +76,12 @@ export class ReportsService {
       GROUP BY w.id, w.name
       ORDER BY w.name
     `;
+
+    const warehouses = toNumberFields(warehouseRows, [
+      'units',
+      'costValue',
+      'productCount',
+    ]);
 
     // Un producto en dos bodegas cuenta una vez en el total general.
     const [{ productCount }] = await this.prisma.$queryRaw<
@@ -92,7 +99,7 @@ export class ReportsService {
         costValue: roundMoney(
           warehouses.reduce((sum, row) => sum + row.costValue, 0),
         ),
-        productCount,
+        productCount: Number(productCount),
       },
     });
   }
@@ -159,7 +166,11 @@ export class ReportsService {
     `;
 
     const [topRows, bottomRows] = await Promise.all([top, bottom]);
-    return matchRotationContract({ top: topRows, bottom: bottomRows });
+    const rotationFields = ['unitsSold', 'salesAmount', 'stock'] as const;
+    return matchRotationContract({
+      top: toNumberFields(topRows, rotationFields),
+      bottom: toNumberFields(bottomRows, rotationFields),
+    });
   }
 
   async getAccounts(limit: number) {
@@ -200,16 +211,17 @@ export class ReportsService {
       ],
     );
 
+    const totalsFields = ['total', 'paid', 'balance', 'openCount'] as const;
     return matchAccountsContract({
-      payable: payable[0],
-      receivable: receivable[0],
-      topSuppliers,
-      topCustomers,
+      payable: toNumberFields(payable, totalsFields)[0],
+      receivable: toNumberFields(receivable, totalsFields)[0],
+      topSuppliers: toNumberFields(topSuppliers, ['balance']),
+      topCustomers: toNumberFields(topCustomers, ['balance']),
     });
   }
 
   async getSalesBySeller(range: DateRange) {
-    const [rows, trendRows] = await Promise.all([
+    const [rawRows, rawTrendRows] = await Promise.all([
       // La DVV no enlaza la venta original: se descuenta a la vendedora que tenga la propia DVV.
       this.prisma.$queryRaw<
         (Omit<SellerSalesRow, 'sellerId' | 'name'> & {
@@ -237,6 +249,13 @@ export class ReportsService {
         ORDER BY d.date
       `,
     ]);
+
+    const rows = toNumberFields(rawRows, [
+      'grossSales',
+      'returns',
+      'documentCount',
+    ]);
+    const trendRows = toNumberFields(rawTrendRows, ['netSales']);
 
     let unassignedSales = 0;
     let unassignedReturns = 0;

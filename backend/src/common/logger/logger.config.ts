@@ -4,9 +4,21 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { DestinationStream } from 'pino';
 import pino from 'pino';
 import pinoPretty from 'pino-pretty';
-import pinoRoll from 'pino-roll';
+import pinoRollUntyped from 'pino-roll';
 import type { Params } from 'nestjs-pino';
 import type { JwtPayload } from '@/common/types';
+
+type RollingFileStream = DestinationStream & { flushSync(): void };
+
+// pino-roll no trae tipos
+const pinoRoll = pinoRollUntyped as unknown as (options: {
+  file: string;
+  extension: string;
+  frequency: string;
+  dateFormat: string;
+  mkdir: boolean;
+  limit: { count: number };
+}) => Promise<RollingFileStream>;
 
 type RequestWithOptionalUser = IncomingMessage & { user?: JwtPayload };
 

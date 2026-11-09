@@ -1,7 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
-import { SequenceService } from '@/common/sequence/sequence.service';
 import type { JwtPayload } from '@/common/types';
 import { RecibosCajaService } from './recibos-caja.service';
 import { CreateReciboCajaDto } from './dto/create-recibo-caja.dto';
@@ -23,14 +22,13 @@ const receivable = (id: string, branchId: string | null, total = 100) => ({
 const buildDto = (
   receivableId: string,
   customerBranchId?: string,
-): CreateReciboCajaDto =>
-  ({
-    clientId: CLIENT,
-    customerBranchId,
-    idempotencyKey: 'key',
-    receivables: [{ accountReceivableId: receivableId, amount: 100 }],
-    payments: [{ method: 'efectivo_oficina', amount: 100 }],
-  }) as CreateReciboCajaDto;
+): CreateReciboCajaDto => ({
+  clientId: CLIENT,
+  customerBranchId,
+  idempotencyKey: 'key',
+  receivables: [{ accountReceivableId: receivableId, amount: 100 }],
+  payments: [{ method: 'efectivo_oficina', amount: 100 }],
+});
 
 describe('RecibosCajaService', () => {
   const tx = {
@@ -57,7 +55,7 @@ describe('RecibosCajaService', () => {
   const sequence = { next: jest.fn() };
   const service = new RecibosCajaService(
     prisma as unknown as PrismaService,
-    sequence as unknown as SequenceService,
+    sequence,
   );
 
   beforeEach(() => {
@@ -319,7 +317,7 @@ describe('RecibosCajaService', () => {
           {
             ...buildDto('ar1'),
             payments: [],
-          } as CreateReciboCajaDto,
+          },
           user,
         ),
       ).rejects.toThrow('El recibo de caja no cuadra');
@@ -364,17 +362,16 @@ describe('RecibosCajaService', () => {
     const dtoWith = (
       payments: number[],
       credits: { customerCreditId: string; amount: number }[],
-    ): CreateReciboCajaDto =>
-      ({
-        clientId: CLIENT,
-        idempotencyKey: 'key',
-        receivables: [{ accountReceivableId: 'ar1', amount: 100 }],
-        payments: payments.map((amount) => ({
-          method: 'efectivo_oficina',
-          amount,
-        })),
-        credits,
-      }) as CreateReciboCajaDto;
+    ): CreateReciboCajaDto => ({
+      clientId: CLIENT,
+      idempotencyKey: 'key',
+      receivables: [{ accountReceivableId: 'ar1', amount: 100 }],
+      payments: payments.map((amount) => ({
+        method: 'efectivo_oficina',
+        amount,
+      })),
+      credits,
+    });
 
     const expectNothingSaved = () => {
       expect(tx.reciboCaja.create).not.toHaveBeenCalled();
