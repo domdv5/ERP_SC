@@ -13,7 +13,7 @@ import {
   type PaymentLine,
 } from '@/pages/documents/pos-checkout.utils'
 import type { DocumentDetail, DocumentSourceRef, DocumentType } from '@/types/document.types'
-import { extractErrorMessage } from './useCreditLimit'
+import { findApiErrorMessage } from '@/lib/api-error'
 import type { SaleMode } from './useSaleMode'
 import type { SaleParties } from './useSaleParties'
 
@@ -177,7 +177,7 @@ export function useSaleDraft({
     },
     onError: (err: unknown) => {
       if (handleCreditError(err)) return
-      toast.error(extractErrorMessage(err) ?? 'Error al convertir la preventa')
+      toast.error(findApiErrorMessage(err) ?? 'Error al convertir la preventa')
     },
   })
 

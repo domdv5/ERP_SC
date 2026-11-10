@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { invalidateAfterDocumentChange } from '@/lib/invalidation'
 import type { DocumentDetail, ReleaseItemsPayload } from '@/types/document.types'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 // ─── schema ──────────────────────────────────────────────────────────────────
 
@@ -104,8 +105,12 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
       onClose()
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al liberar stock. Intenta nuevamente o contacta al administrador.')
+      toast.error(
+        getApiErrorMessage(
+          err,
+          'Error al liberar stock. Intenta nuevamente o contacta al administrador.',
+        ),
+      )
     },
   })
 

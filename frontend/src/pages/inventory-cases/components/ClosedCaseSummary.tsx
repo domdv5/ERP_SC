@@ -9,6 +9,7 @@ import type { InventoryCaseDetail } from '@/types/inventory-case.types'
 import { getCauseLabel } from '../inventory-cases.constants'
 import { CaseStatusPill } from './CaseStatusPill'
 import { DocumentLink } from './DocumentLink'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 export function ClosedCaseSummary({ inventoryCase }: { inventoryCase: InventoryCaseDetail }) {
   const queryClient = useQueryClient()
@@ -21,8 +22,7 @@ export function ClosedCaseSummary({ inventoryCase }: { inventoryCase: InventoryC
       toast.success('Caso reabierto')
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al reabrir el caso')
+      toast.error(getApiErrorMessage(err, 'Error al reabrir el caso'))
     },
   })
 

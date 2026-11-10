@@ -15,11 +15,7 @@ import {
 } from './egreso-form.utils'
 import type { CreateEgresoPayload } from '@/types'
 import { todayInBogota } from '@/lib/format'
-
-function extractErrorMessage(err: unknown): string | undefined {
-  const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
-  return typeof message === 'string' ? message : undefined
-}
+import { getApiErrorMessage } from '@/lib/api-error'
 
 const emptyDefaults = (): EgresoFormValues => ({
   supplierId: '',
@@ -209,7 +205,7 @@ export function useEgresoForm() {
       toast.success(`Egreso EG-${egreso.number} registrado correctamente`)
       navigate(`/egresos/${egreso.id}`)
     } catch (err) {
-      toast.error(extractErrorMessage(err) ?? 'Error al registrar el egreso')
+      toast.error(getApiErrorMessage(err, 'Error al registrar el egreso'))
       // No invalidamos open-items acá: repoblaría payables/credits debajo del diálogo todavía abierto — el caller lo hace al cerrarlo
       throw err
     }

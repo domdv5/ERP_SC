@@ -60,6 +60,7 @@ import {
 import { ReleaseItemsDialog } from './components/ReleaseItemsDialog'
 import { MissingStockDialog } from './components/MissingStockDialog'
 import { getPendingQuantity, hasPendingItems, parseMissingStockError } from './pos-checkout.utils'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 // ─── label maps ──────────────────────────────────────────────────────────────
 
@@ -268,8 +269,7 @@ export default function DocumentDetailPage() {
         setMissingStockOpen(true)
         return
       }
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al confirmar la operación')
+      toast.error(getApiErrorMessage(err, 'Error al confirmar la operación'))
     },
   })
 
@@ -285,8 +285,7 @@ export default function DocumentDetailPage() {
       )
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al anular la operación')
+      toast.error(getApiErrorMessage(err, 'Error al anular la operación'))
     },
   })
 
@@ -298,8 +297,7 @@ export default function DocumentDetailPage() {
       navigate('/documents')
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al eliminar la operación')
+      toast.error(getApiErrorMessage(err, 'Error al eliminar la operación'))
     },
   })
 
@@ -312,8 +310,7 @@ export default function DocumentDetailPage() {
       navigate(`/documents/${newDoc.id}/edit`)
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al duplicar la operación')
+      toast.error(getApiErrorMessage(err, 'Error al duplicar la operación'))
     },
   })
 

@@ -9,6 +9,7 @@ import { docNumber } from '@/lib/format'
 import type { InventoryCaseDocumentRef } from '@/types/inventory-case.types'
 import { closeCaseSchema, type CloseCaseFormData } from '../close-case.schema'
 import { CLOSABLE_CAUSE_OPTIONS, JUSTIFICATION_MAX_LENGTH } from '../inventory-cases.constants'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 interface CloseCasePanelProps {
   caseId: string
@@ -38,8 +39,7 @@ export function CloseCasePanel({ caseId, originDocument, onClearOrigin }: CloseC
       toast.success('Caso cerrado')
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al cerrar el caso')
+      toast.error(getApiErrorMessage(err, 'Error al cerrar el caso'))
       // Un 409 (otra persona lo cerró) deja la pantalla vieja: se recarga el detalle.
       invalidateInventoryCases(queryClient)
     },

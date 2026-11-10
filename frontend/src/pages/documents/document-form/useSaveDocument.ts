@@ -6,6 +6,7 @@ import { createDocument, updateDocument } from '@/services/documents.service'
 import { invalidateAfterDocumentChange } from '@/lib/invalidation'
 import type { FormValues } from '../document-form.schema'
 import { buildDocumentPayload } from './buildDocumentPayload'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 interface UseSaveDocumentArgs {
   id: string | undefined
@@ -38,8 +39,7 @@ export function useSaveDocument({
       navigate(`/documents/${doc.id}`)
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al crear la operación')
+      toast.error(getApiErrorMessage(err, 'Error al crear la operación'))
     },
   })
 
@@ -57,8 +57,7 @@ export function useSaveDocument({
       navigate(`/documents/${doc.id}`)
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Error al actualizar la operación')
+      toast.error(getApiErrorMessage(err, 'Error al actualizar la operación'))
     },
   })
 
