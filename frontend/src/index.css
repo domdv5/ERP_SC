@@ -314,6 +314,12 @@
     outline-offset: 2px;
   }
 
+  /* POS en M2: marco lima en el área de trabajo; outline porque no se mueve con el scroll y se pinta sobre el contenido */
+  main:has([data-pos-m2]) {
+    outline: 4px solid var(--color-lime-500, #84cc16);
+    outline-offset: -4px;
+  }
+
   /* Tarjeta/panel: superficie del tema, borde duro de 2px y sombra sólida; no usar dentro de overflow-hidden */
   .card-hard {
     background: var(--surface);

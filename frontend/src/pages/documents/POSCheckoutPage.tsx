@@ -128,7 +128,7 @@ export default function POSCheckoutPage() {
   }
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-10" data-pos-m2={official || undefined}>
       <SaleHeader
         docType={docType}
         isCredit={isCredit}
