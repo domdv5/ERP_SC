@@ -7,6 +7,7 @@ import { createExcedente } from '@/services/accounts-receivable.service'
 import { ThousandsInput } from '@/components/shared'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import { todayInBogota } from '@/lib/format'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 const NO_BRANCH = 'none'
 
@@ -17,11 +18,6 @@ interface RegisterExcedenteModalProps {
   defaultBranchId?: string
   onClose: () => void
   onCreated?: () => void
-}
-
-function extractErrorMessage(err: unknown): string | undefined {
-  const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
-  return typeof message === 'string' ? message : undefined
 }
 
 export function RegisterExcedenteModal(props: RegisterExcedenteModalProps) {
@@ -73,7 +69,7 @@ function RegisterExcedenteForm({
       onCreated?.()
       onClose()
     } catch (err) {
-      toast.error(extractErrorMessage(err) ?? 'Error al registrar el excedente')
+      toast.error(getApiErrorMessage(err, 'Error al registrar el excedente'))
     } finally {
       isSubmittingRef.current = false
     }

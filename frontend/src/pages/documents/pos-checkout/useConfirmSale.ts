@@ -18,7 +18,7 @@ import type {
   PaymentMethod,
   UpdateDocumentPayload,
 } from '@/types/document.types'
-import { extractErrorMessage } from './useCreditLimit'
+import { findApiErrorMessage } from '@/lib/api-error'
 
 interface UseConfirmSaleArgs {
   canConfirm: boolean
@@ -129,7 +129,7 @@ export function useConfirmSale({
       }
     } catch (err) {
       if (handleCreditError(err)) return
-      toast.error(extractErrorMessage(err) ?? 'Error al guardar la venta')
+      toast.error(findApiErrorMessage(err) ?? 'Error al guardar la venta')
       return
     }
 
@@ -151,7 +151,7 @@ export function useConfirmSale({
         return
       }
       if (handleCreditError(err)) return
-      toast.error(extractErrorMessage(err) ?? 'Error al confirmar la venta')
+      toast.error(findApiErrorMessage(err) ?? 'Error al confirmar la venta')
     }
   }
 

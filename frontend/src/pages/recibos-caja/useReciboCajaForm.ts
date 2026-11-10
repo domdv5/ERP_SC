@@ -11,13 +11,9 @@ import type { CreateReciboCajaPayload } from '@/types'
 import type { ReciboCajaBranch } from '@/types/recibo-caja.types'
 import { todayInBogota } from '@/lib/format'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 export const NO_BRANCH = 'none'
-
-function extractErrorMessage(err: unknown): string | undefined {
-  const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
-  return typeof message === 'string' ? message : undefined
-}
 
 const emptyDefaults = (): ReciboCajaFormValues => ({
   clientId: '',
@@ -252,7 +248,7 @@ export function useReciboCajaForm() {
       toast.success(`Recibo de caja RC-${reciboCaja.number} registrado correctamente`)
       navigate(`/recibos-caja/${reciboCaja.id}`)
     } catch (err) {
-      toast.error(extractErrorMessage(err) ?? 'Error al registrar el recibo de caja')
+      toast.error(getApiErrorMessage(err, 'Error al registrar el recibo de caja'))
       // No invalidamos open-items acá: repoblaría receivables debajo del diálogo todavía abierto — el caller lo hace al cerrarlo
       throw err
     }

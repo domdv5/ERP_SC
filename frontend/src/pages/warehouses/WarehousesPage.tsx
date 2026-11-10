@@ -23,16 +23,12 @@ import { BinForm } from './components/BinForm'
 import type { BinFormValues } from './components/BinForm'
 import type { WarehouseListItem, Zone, Bin } from '@/types'
 import type { Selection } from './warehouse-tree.types'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 type ZoneModalState =
   { mode: 'create'; warehouseId: string } | { mode: 'edit'; warehouseId: string; zone: Zone }
 
 type BinModalState = { mode: 'create'; zone: Zone } | { mode: 'edit'; zone: Zone; bin: Bin }
-
-// El backend responde con `{ message }` plano en 400/404/409; mostramos ese texto en vez del genérico.
-function apiErrorMessage(err: unknown): string | undefined {
-  return (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-}
 
 export default function WarehousesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -147,7 +143,7 @@ export default function WarehousesPage() {
       setZoneModal(null)
       toast.success('Zona creada en todas las bodegas')
     },
-    onError: (err) => toast.error(apiErrorMessage(err) ?? 'Error al crear la zona'),
+    onError: (err) => toast.error(getApiErrorMessage(err, 'Error al crear la zona')),
   })
 
   const { mutate: updateZoneMutate, isPending: isUpdatingZone } = useMutation({
@@ -165,7 +161,7 @@ export default function WarehousesPage() {
       setZoneModal(null)
       toast.success('Zona actualizada correctamente')
     },
-    onError: (err) => toast.error(apiErrorMessage(err) ?? 'Error al actualizar la zona'),
+    onError: (err) => toast.error(getApiErrorMessage(err, 'Error al actualizar la zona')),
   })
 
   // ── Bin mutations ────────────────────────────────────────────────────────
@@ -184,7 +180,7 @@ export default function WarehousesPage() {
       setBinModal(null)
       toast.success('Bulto creado correctamente')
     },
-    onError: (err) => toast.error(apiErrorMessage(err) ?? 'Error al crear el bulto'),
+    onError: (err) => toast.error(getApiErrorMessage(err, 'Error al crear el bulto')),
   })
 
   const { mutate: updateBinMutate, isPending: isUpdatingBin } = useMutation({
@@ -204,7 +200,7 @@ export default function WarehousesPage() {
       setBinModal(null)
       toast.success('Bulto actualizado correctamente')
     },
-    onError: (err) => toast.error(apiErrorMessage(err) ?? 'Error al actualizar el bulto'),
+    onError: (err) => toast.error(getApiErrorMessage(err, 'Error al actualizar el bulto')),
   })
 
   return (

@@ -22,6 +22,7 @@ import { StatusBadge } from './components/StatusBadge'
 import { PaymentDaysCell } from './components/PaymentDaysCell'
 import { RegisterExcedenteModal } from './components/RegisterExcedenteModal'
 import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-receivable.utils'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 // Estado de una nota de saldo a favor: 'available' | 'used' | 'voided' en el backend.
 const CREDIT_STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -57,11 +58,6 @@ const creditStatusBadgeFor = (status: string) =>
     label: status,
     className: 'bg-surface-hover text-content-muted',
   }
-
-function extractErrorMessage(err: unknown): string | undefined {
-  const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
-  return typeof message === 'string' ? message : undefined
-}
 
 export default function AccountsReceivableClientStatementPage() {
   const { clientId } = useParams<{ clientId: string }>()
@@ -99,7 +95,7 @@ export default function AccountsReceivableClientStatementPage() {
       toast.success('Excedente anulado correctamente')
       setVoidTargetId(null)
     } catch (err) {
-      toast.error(extractErrorMessage(err) ?? 'Error al anular el excedente')
+      toast.error(getApiErrorMessage(err, 'Error al anular el excedente'))
     }
   }
 

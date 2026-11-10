@@ -9,6 +9,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import { login } from '@/services/auth.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useThemeStore } from '@/stores/theme.store'
+import { findApiErrorMessage } from '@/lib/api-error'
 
 const schema = z.object({
   username: z.string().min(1, 'El usuario es requerido'),
@@ -45,7 +46,7 @@ export default function LoginPage() {
     },
     onError: (err: unknown) => {
       const status = (err as { response?: { status?: number } })?.response?.status
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      const msg = findApiErrorMessage(err)
       // Un 401 con otro texto es el usuario desactivado; el resto mantiene el mensaje genérico.
       toast.error(
         status === 401 && msg && msg !== 'Credenciales inválidas'

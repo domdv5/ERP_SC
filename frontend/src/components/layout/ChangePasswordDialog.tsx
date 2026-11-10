@@ -9,6 +9,7 @@ import { changePassword } from '@/services/auth.service'
 import { isValidPassword, PASSWORD_RULE_MESSAGE } from '@/lib/password-rule'
 import { PasswordRuleHint } from '@/components/shared'
 import { useAuthStore } from '@/stores/auth.store'
+import { findApiErrorMessage } from '@/lib/api-error'
 
 const schema = z
   .object({
@@ -56,9 +57,7 @@ export function ChangePasswordDialog({ open, onClose }: ChangePasswordDialogProp
       handleClose()
     },
     onError: (err) => {
-      const raw = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data
-        ?.message
-      const msg = Array.isArray(raw) ? raw[0] : raw
+      const msg = findApiErrorMessage(err)
       if (msg === 'La contraseña actual no es correcta.') {
         setError('currentPassword', { message: msg })
         return
