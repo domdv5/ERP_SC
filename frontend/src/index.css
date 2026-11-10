@@ -58,15 +58,15 @@
 /* Light mode values (default) */
 :root {
   color-scheme: light;
-  --page:               #f9fafb;
-  --surface:            #ffffff;
-  --surface-raised:     #f9fafb;
-  --surface-hover:      #f3f4f6;
-  --hard-shadow:        #141a17;
+  --page:               #eef1ef;
+  --surface:            #fbfcfb;
+  --surface-raised:     #f4f6f4;
+  --surface-hover:      #eef1ef;
+  --hard-shadow:        #5b6560;
   --ink-bg:             #141a17;
   --ink-fg:             #07bc34;
-  --ui-border:          #3a443f;
-  --ui-border-medium:   #141a17;
+  --ui-border:          #7c8681;
+  --ui-border-medium:   #5b6560;
   --ui-divide:          #e5e7eb;
   --content:            #111827;
   --content-secondary:  #374151;
@@ -84,6 +84,10 @@
   --hard-shadow:        #000000;
   --ink-bg:             #c9d1cc;
   --ink-fg:             #141a17;
+  /* Verde de marca menos saturado en oscuro: el #07bc34 sobre casi negro encandila */
+  --color-brand-secondary:       #4caf6a;
+  --color-brand-secondary-light: #5fbd7b;
+  --color-brand-secondary-dark:  #3d9156;
   --ui-border:          rgba(255, 255, 255, 0.4);
   --ui-border-medium:   rgba(255, 255, 255, 0.75);
   --ui-divide:          rgba(255, 255, 255, 0.1);
@@ -163,7 +167,7 @@
 
   /* Green CTA: buttons, active states, pagination */
   .gradient-action {
-    background: #07bc34;
+    background: var(--color-brand-secondary);
   }
 
   /* Dark surface: empty state icons, sidebar elements */
@@ -211,7 +215,7 @@
   }
 
   .text-gradient-brand {
-    color: #07bc34;
+    color: var(--color-brand-secondary);
   }
 
   /* Efecto de presión: baja por el desplazamiento de la sombra (--press-offset, 3px por defecto) */
@@ -239,7 +243,7 @@
 @layer components {
   /* Botón principal: verde plano, texto oscuro, borde duro, sombra sólida y presión; no fija padding ni tamaño de texto */
   .btn-primary {
-    background: #07bc34;
+    background: var(--color-brand-secondary);
     color: #141a17;
     font-weight: 600;
     border: 2px solid var(--ui-border-medium);
@@ -249,7 +253,7 @@
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: #09d93c;
+    background: var(--color-brand-secondary-light);
   }
 
   .btn-primary:active:not(:disabled) {
@@ -310,7 +314,7 @@
   .btn-primary:focus-visible,
   .btn-secondary:focus-visible,
   .btn-danger:focus-visible {
-    outline: 2px solid #07bc34;
+    outline: 2px solid var(--color-brand-secondary);
     outline-offset: 2px;
   }
 
@@ -339,8 +343,8 @@
 
   .input-hard:focus {
     outline: none;
-    border-color: #07bc34;
-    box-shadow: 0 0 0 1px #07bc34;
+    border-color: var(--color-brand-secondary);
+    box-shadow: 0 0 0 1px var(--color-brand-secondary);
   }
 
   .input-hard[aria-invalid='true'] {
@@ -383,8 +387,8 @@
 
 /* Paleta de gráficos de Informes: verde de marca = serie principal, azul = por pagar, ámbar = alerta/negativo */
 :root {
-  --chart-primary: #07bc34;
-  --chart-primary-soft: rgba(7, 188, 52, 0.18);
+  --chart-primary: var(--color-brand-secondary);
+  --chart-primary-soft: color-mix(in srgb, var(--color-brand-secondary) 18%, transparent);
   --chart-payable: #3b82f6;
   --chart-warning: #f59e0b;
   --chart-neutral: #9ca3af;
