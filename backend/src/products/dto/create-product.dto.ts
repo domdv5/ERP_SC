@@ -22,15 +22,15 @@ export class CreateProductDto {
   @IsNotEmpty()
   description!: string;
 
-  @IsUUID('4')
+  @IsUUID()
   @IsNotEmpty()
   brandId!: string;
 
-  @IsUUID('4')
+  @IsUUID()
   @IsNotEmpty()
   genderId!: string;
 
-  @IsUUID('4')
+  @IsUUID()
   @IsNotEmpty()
   categoryId!: string;
 
