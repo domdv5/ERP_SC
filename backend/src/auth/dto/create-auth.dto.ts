@@ -25,7 +25,7 @@ export class CreateAuthDto {
 
   @IsArray()
   @ArrayNotEmpty()
-  @IsUUID('4', { each: true })
+  @IsUUID(undefined, { each: true })
   roleIds!: string[];
 
   @IsOptional()
