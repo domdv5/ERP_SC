@@ -67,7 +67,8 @@ export const ROLE_LABELS: Record<string, string> = {
   purchasing: 'Compras',
   warehouse: 'Bodega',
   preventa: 'Gestión de preventa',
-  billing: 'Facturación',
+  billing: 'Facturador',
+  billing_lead: 'Líder de facturación',
   accounts_admin: 'Admin. de Cuentas',
   inventory_manager: 'Encargado de inventario',
 }

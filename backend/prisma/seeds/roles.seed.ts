@@ -48,6 +48,11 @@ export async function seedRoles(prisma: PrismaClient) {
       },
 
       {
+        name: 'billing_lead',
+        description: 'Facturación con acceso a M2 (factura de venta)',
+      },
+
+      {
         name: 'accounts_admin',
         description:
           'Manages accounts payable, accounts receivable, and system users',
