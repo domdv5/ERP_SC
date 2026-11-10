@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { toast } from 'sonner'
 import { Users, UserCheck, ShieldCheck, Plus, Pencil } from 'lucide-react'
 import { getUsers, getRoles, createUser, updateUser, getRoleLabel } from '@/services/users.service'
+import { getApiErrorMessage } from '@/lib/api-error'
 import type { AppUser, CreateUserPayload, UpdateUserPayload } from '@/services/users.service'
 import { UserForm } from './components/UserForm'
 import type { UserFormValues } from './components/UserForm'
@@ -93,7 +94,7 @@ export default function UsersPage() {
       setFormOpen(false)
       toast.success('Usuario creado correctamente')
     },
-    onError: () => toast.error('Error al crear el usuario'),
+    onError: (err) => toast.error(getApiErrorMessage(err, 'Error al crear el usuario')),
   })
 
   const { mutate: update, isPending: isUpdating } = useMutation({
@@ -104,7 +105,7 @@ export default function UsersPage() {
       setEditing(null)
       toast.success('Usuario actualizado correctamente')
     },
-    onError: () => toast.error('Error al actualizar el usuario'),
+    onError: (err) => toast.error(getApiErrorMessage(err, 'Error al actualizar el usuario')),
   })
 
   const statCards = [
