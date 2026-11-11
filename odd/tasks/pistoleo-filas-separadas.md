@@ -36,3 +36,4 @@ Rama sugerida: `feat/scan-separate-rows`. Dos commits: backend primero (validaci
 - L6 — Hallazgo T2: POSO no toca stock; DVC/SAJ/T validan por fila con `assertSufficientStock` pero siguen agrupando (S2), sin riesgo.
 - L7 — Revisión nativa del commit backend 7f46d69 (risk + reliability): aprobada, una sugerencia no bloqueante en las pruebas.
 - L8 — Hallazgo T5: `findMissingItems` no compara contra stock (cliente, pagos, piso, cupo); el plan se equivocaba. Lista de tipos centralizada en `frontend/src/pages/documents/components/row-grouping.ts`.
+- L9 — Usuario (2026-11-11): "añadi ambos productos en una remision, y no em trajeron el precio de cventa, estaba enc ero porque?". Bug previo: el pistoleo precargaba precio solo en PV/POS/COT/POSO. Arreglado con `prefillsSalePrice` (sale-price.ts).
