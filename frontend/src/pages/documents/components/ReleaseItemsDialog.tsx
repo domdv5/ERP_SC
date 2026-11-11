@@ -11,6 +11,7 @@ import { getFirstErrorMessage } from '@/lib/form-errors'
 import { invalidateAfterDocumentChange } from '@/lib/invalidation'
 import type { DocumentDetail, ReleaseItemsPayload } from '@/types/document.types'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { getPendingQuantity } from '@/pages/documents/pos-checkout.utils'
 
 // ─── schema ──────────────────────────────────────────────────────────────────
 
@@ -84,7 +85,7 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
     if (!open) return
     replace(
       doc.documentItems.map((item) => {
-        const pending = item.quantity - (item.releasedQuantity ?? 0)
+        const pending = getPendingQuantity(item)
         return {
           documentItemId: item.id,
           productLabel: `${item.product.code} — ${item.product.description}`,
@@ -188,7 +189,8 @@ export function ReleaseItemsDialog({ open, doc, onClose }: ReleaseItemsDialogPro
                       </p>
                       <p className="text-content-faint text-xs mt-0.5 font-accent">
                         Reservado: {item.quantity.toLocaleString('es-CO')} &middot; Liberado:{' '}
-                        {(item.releasedQuantity ?? 0).toLocaleString('es-CO')} &middot; Pendiente:{' '}
+                        {(item.releasedQuantity ?? 0).toLocaleString('es-CO')} &middot; Convertido:{' '}
+                        {(item.convertedQuantity ?? 0).toLocaleString('es-CO')} &middot; Pendiente:{' '}
                         {pending.toLocaleString('es-CO')}
                       </p>
                       {isDisabled ? (

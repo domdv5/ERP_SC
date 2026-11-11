@@ -432,13 +432,22 @@ export default function DocumentDetailPage() {
   const baseItemHeaders = showObservaciones
     ? ['Código', 'Descripción', 'Cantidad', 'Observaciones', costHeaderLabel, 'Subtotal']
     : isReservationType
-      ? ['Código', 'Descripción', 'Cantidad', 'Liberado', 'Pendiente', costHeaderLabel, 'Subtotal']
+      ? [
+          'Código',
+          'Descripción',
+          'Cantidad',
+          'Liberado',
+          'Convertido',
+          'Pendiente',
+          costHeaderLabel,
+          'Subtotal',
+        ]
       : ['Código', 'Descripción', 'Cantidad', costHeaderLabel, 'Subtotal']
   const itemHeaders = isOfficialType ? [...baseItemHeaders, 'IVA 19%'] : baseItemHeaders
   const taxTotal = isOfficialType ? Number(doc.taxTotal ?? 0) : 0
   // Cuántas celdas vacías dejar en el pie de la tabla antes del "Total", para que quede
-  // alineado bajo la columna de costo aunque haya columnas extra (Observaciones, o Liberado y Pendiente).
-  const footerSkipCols = showObservaciones ? 4 : isReservationType ? 5 : 3
+  // alineado bajo la columna de costo aunque haya columnas extra (Observaciones, o Liberado/Convertido/Pendiente).
+  const footerSkipCols = showObservaciones ? 4 : isReservationType ? 6 : 3
 
   // Cuánto de itemsTotal se cubrió con saldo a favor; sin saldo aplicado, appliedCustomerCredits llega vacío y queda en 0.
   const creditsApplied =
@@ -951,6 +960,9 @@ export default function DocumentDetailPage() {
                         <>
                           <td className="px-5 py-3.5 text-content-muted text-xs">
                             {(item.releasedQuantity ?? 0).toLocaleString('es-CO')}
+                          </td>
+                          <td className="px-5 py-3.5 text-content-muted text-xs">
+                            {(item.convertedQuantity ?? 0).toLocaleString('es-CO')}
                           </td>
                           <td className="px-5 py-3.5 text-xs">
                             {(() => {
