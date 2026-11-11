@@ -180,7 +180,9 @@ El dueño del repo diseña y decide; la IA ejecuta. Objetivo: que el dueño enti
    reemplaza). Cada ítem dice qué error podría pasar y su nivel: **Crítico** (corrompe stock o
    dinero sin que se note), **Alto** (stock/dinero mal pero se detecta, o bloquea la operación),
    **Medio** (molesta al operador, se corrige a mano), **Bajo** (visual o confuso, sin efecto en
-   datos). Nunca omitirla; si todo se probó, decirlo.
+   datos). Cada ítem trae también **cómo probarlo**: pasos concretos en pantalla (qué crear, con
+   qué datos, qué botón) y qué resultado esperar, para que el dueño lo pruebe sin preguntar.
+   Nunca omitirla; si todo se probó, decirlo.
 3. **"Dónde mirar" en cada commit** — después de commitear, listar 3-5 `archivo:línea` con lo
    importante del cambio para que el dueño lo lea en ~2 minutos.
 4. **"Mapa de revisión" en cada PR** — el dueño revisa por riesgo de contenido, no línea por línea ni por ruta:
