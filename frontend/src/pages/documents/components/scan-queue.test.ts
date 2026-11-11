@@ -4,11 +4,11 @@ import { createScanQueue, findRowIndexByCode } from './scan-queue'
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Simula el documento: buscar en el servidor tarda y cada lectura suma o agrega fila.
-function fakeDocument() {
+function fakeDocument(onlyLastRow = false) {
   const rows: { productCode: string; quantity: number }[] = []
   let serverCalls = 0
   const process = async (code: string) => {
-    const index = findRowIndexByCode(rows, code)
+    const index = findRowIndexByCode(rows, code, onlyLastRow)
     if (index >= 0) {
       rows[index].quantity += 1
       return
@@ -30,7 +30,7 @@ describe('createScanQueue', () => {
     expect(doc.serverCalls()).toBe(1)
   })
 
-  it('A, A, B, A se procesa en orden: A=3 y B=1', async () => {
+  it('A, A, B, A en un tipo que agrupa: A=3 y B=1', async () => {
     const doc = fakeDocument()
     const queue = createScanQueue(doc.process)
     for (const code of ['A', 'A', 'B', 'A']) queue.enqueue(code)
@@ -38,6 +38,18 @@ describe('createScanQueue', () => {
     expect(doc.rows).toEqual([
       { productCode: 'A', quantity: 3 },
       { productCode: 'B', quantity: 1 },
+    ])
+  })
+
+  it('A, A, B, A en un tipo que separa filas: A×2, B×1, A×1', async () => {
+    const doc = fakeDocument(true)
+    const queue = createScanQueue(doc.process)
+    for (const code of ['A', 'A', 'B', 'A']) queue.enqueue(code)
+    await queue.idle()
+    expect(doc.rows).toEqual([
+      { productCode: 'A', quantity: 2 },
+      { productCode: 'B', quantity: 1 },
+      { productCode: 'A', quantity: 1 },
     ])
   })
 
@@ -67,5 +79,12 @@ describe('findRowIndexByCode', () => {
   it('ignora mayúsculas y espacios', () => {
     expect(findRowIndexByCode([{ productCode: 'X1' }, { productCode: 'Ab-2' }], ' ab-2 ')).toBe(1)
     expect(findRowIndexByCode([{ productCode: 'X1' }], 'X2')).toBe(-1)
+  })
+
+  it('con onlyLastRow solo acepta la última fila', () => {
+    const rows = [{ productCode: 'A' }, { productCode: 'B' }]
+    expect(findRowIndexByCode(rows, 'b', true)).toBe(1)
+    expect(findRowIndexByCode(rows, 'a', true)).toBe(-1)
+    expect(findRowIndexByCode([], 'a', true)).toBe(-1)
   })
 })

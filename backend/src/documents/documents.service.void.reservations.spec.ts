@@ -114,12 +114,32 @@ describe('DocumentsService.void: reservas y conversión', () => {
     const conversionUpdates = () =>
       rawSql().filter((statement) => statement.includes('converted_quantity'));
 
+    const sourceRow = (
+      id: string,
+      productId: string,
+      convertedQuantity: number,
+    ) => ({
+      id,
+      productId,
+      quantity: 20,
+      releasedQuantity: 0,
+      convertedQuantity,
+    });
+
+    const conversionArgs = () =>
+      tx.$queryRaw.mock.calls
+        .filter((call) =>
+          (call[0] as string[]).join('?').includes('converted_quantity'),
+        )
+        .map((call) => call.slice(1));
+
     it('devuelve al origen PV las unidades convertidas de cada producto', async () => {
       convertedSale();
       tx.document.findUnique.mockResolvedValue({ type: DocumentType.PV });
-      tx.documentItem.findFirst
-        .mockResolvedValueOnce({ id: 'src-1' })
-        .mockResolvedValueOnce({ id: 'src-2' });
+      tx.documentItem.findMany.mockResolvedValue([
+        sourceRow('src-1', 'p1', 2),
+        sourceRow('src-2', 'p2', 3),
+      ]);
 
       await service.void('doc-1', fullUser);
 
@@ -127,17 +147,11 @@ describe('DocumentsService.void: reservas y conversión', () => {
         where: { id: 'pv-1' },
         select: { type: true },
       });
-      expect(tx.documentItem.findFirst).toHaveBeenNthCalledWith(1, {
-        where: { documentId: 'pv-1', productId: 'p1' },
+      expect(tx.documentItem.findMany).toHaveBeenCalledWith({
+        where: { documentId: 'pv-1' },
+        orderBy: { id: 'asc' },
       });
-      expect(tx.documentItem.findFirst).toHaveBeenNthCalledWith(2, {
-        where: { documentId: 'pv-1', productId: 'p2' },
-      });
-      expect(conversionUpdates()).toHaveLength(2);
-      const updates = tx.$queryRaw.mock.calls.filter((call) =>
-        (call[0] as string[]).join('?').includes('converted_quantity'),
-      );
-      expect(updates.map((call) => call.slice(1))).toEqual([
+      expect(conversionArgs()).toEqual([
         [2, 'src-1'],
         [3, 'src-2'],
       ]);
@@ -146,23 +160,48 @@ describe('DocumentsService.void: reservas y conversión', () => {
     it('también aplica cuando el origen es una REM', async () => {
       convertedSale();
       tx.document.findUnique.mockResolvedValue({ type: DocumentType.REM });
-      tx.documentItem.findFirst.mockResolvedValue({ id: 'src-1' });
+      tx.documentItem.findMany.mockResolvedValue([
+        sourceRow('src-1', 'p1', 2),
+        sourceRow('src-2', 'p2', 3),
+      ]);
 
       await service.void('doc-1', fullUser);
 
       expect(conversionUpdates()).toHaveLength(2);
     });
 
-    it('omite las líneas cuyo producto ya no está en el origen', async () => {
-      convertedSale();
-      tx.document.findUnique.mockResolvedValue({ type: DocumentType.PV });
-      tx.documentItem.findFirst
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: 'src-2' });
+    it('REM con el producto en varias filas: devuelve lo convertido a cada fila, no todo a la primera', async () => {
+      convertedSale({
+        documentItems: [
+          { id: 'i1', productId: 'pD', quantity: 20 },
+          { id: 'i2', productId: 'pA', quantity: 20 },
+          { id: 'i3', productId: 'pD', quantity: 20 },
+        ],
+      });
+      tx.document.findUnique.mockResolvedValue({ type: DocumentType.REM });
+      tx.documentItem.findMany.mockResolvedValue([
+        sourceRow('src-1', 'pD', 20),
+        sourceRow('src-2', 'pA', 20),
+        sourceRow('src-3', 'pD', 20),
+      ]);
 
       await service.void('doc-1', fullUser);
 
-      expect(conversionUpdates()).toHaveLength(1);
+      expect(conversionArgs()).toEqual([
+        [20, 'src-1'],
+        [20, 'src-2'],
+        [20, 'src-3'],
+      ]);
+    });
+
+    it('omite las líneas cuyo producto ya no está en el origen', async () => {
+      convertedSale();
+      tx.document.findUnique.mockResolvedValue({ type: DocumentType.PV });
+      tx.documentItem.findMany.mockResolvedValue([sourceRow('src-2', 'p2', 3)]);
+
+      await service.void('doc-1', fullUser);
+
+      expect(conversionArgs()).toEqual([[3, 'src-2']]);
     });
 
     it('no devuelve nada si el origen no es una reserva', async () => {
@@ -171,7 +210,7 @@ describe('DocumentsService.void: reservas y conversión', () => {
 
       await service.void('doc-1', fullUser);
 
-      expect(tx.documentItem.findFirst).not.toHaveBeenCalled();
+      expect(conversionUpdates()).toHaveLength(0);
       expect(conversionUpdates()).toHaveLength(0);
     });
 
@@ -181,7 +220,7 @@ describe('DocumentsService.void: reservas y conversión', () => {
 
       await service.void('doc-1', fullUser);
 
-      expect(tx.documentItem.findFirst).not.toHaveBeenCalled();
+      expect(conversionUpdates()).toHaveLength(0);
       expect(conversionUpdates()).toHaveLength(0);
     });
 

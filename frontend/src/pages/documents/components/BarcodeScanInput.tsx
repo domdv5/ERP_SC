@@ -9,6 +9,8 @@ import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 import { suggestedUnitCost } from '@/lib/suggested-unit-cost'
 import { createScanQueue, findRowIndexByCode } from './scan-queue'
+import { findRowIndexToAdd, separatesRows } from './row-grouping'
+import { prefillsSalePrice } from './sale-price'
 
 export interface BarcodeScanInputHandle {
   focus: () => void
@@ -73,8 +75,8 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
 
     const processCode = async (code: string) => {
       const currentItems = getValues('items')
-      // Producto ya en el documento: +1 sin ir al servidor; su precio y costo ya quedaron en la fila
-      const rowIndex = findRowIndexByCode(currentItems, code)
+      // Producto ya en la fila que corresponde: +1 sin ir al servidor; su precio y costo ya quedaron en la fila
+      const rowIndex = findRowIndexByCode(currentItems, code, separatesRows(docType))
       if (rowIndex >= 0) {
         addOneTo(rowIndex, currentItems[rowIndex].productCode)
         return
@@ -101,7 +103,7 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
       }
 
       const itemsNow = getValues('items')
-      const existingIndex = itemsNow.findIndex((item) => item.productId === product.id)
+      const existingIndex = findRowIndexToAdd(itemsNow, docType, product.id)
       if (existingIndex >= 0) {
         addOneTo(existingIndex, product.code)
         return
@@ -109,8 +111,6 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
 
       const avgCost = Number(product.avgCost)
       const salePrice = Number(product.salePrice)
-      const shouldPrefillPrice =
-        docType === 'PV' || docType === 'POS' || docType === 'COT' || docType === 'POSO'
       append(
         {
           productId: product.id,
@@ -118,7 +118,7 @@ export const BarcodeScanInput = forwardRef<BarcodeScanInputHandle, BarcodeScanIn
           productDesc: product.description,
           quantity: 1,
           unitCost: suggestedUnitCost(docType, product),
-          unitPrice: shouldPrefillPrice ? salePrice : undefined,
+          unitPrice: prefillsSalePrice(docType) ? salePrice : undefined,
           observaciones: undefined,
           addedAt: new Date().toISOString(),
         },

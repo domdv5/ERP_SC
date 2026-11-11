@@ -21,7 +21,14 @@ export function createScanQueue(
   return { enqueue, idle: () => tail }
 }
 
-export function findRowIndexByCode(rows: { productCode?: string }[], code: string) {
+// onlyLastRow: solo cuenta la última fila (tipos que separan filas, ver row-grouping.ts)
+export function findRowIndexByCode(
+  rows: { productCode?: string }[],
+  code: string,
+  onlyLastRow = false,
+) {
   const wanted = code.trim().toLowerCase()
-  return rows.findIndex((row) => row.productCode?.toLowerCase() === wanted)
+  const matches = (row: { productCode?: string }) => row.productCode?.toLowerCase() === wanted
+  if (!onlyLastRow) return rows.findIndex(matches)
+  return rows.length > 0 && matches(rows[rows.length - 1]) ? rows.length - 1 : -1
 }
