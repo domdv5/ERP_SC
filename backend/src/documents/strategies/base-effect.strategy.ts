@@ -222,20 +222,32 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
       inventoryRows.map((row) => [row.product_id, row.quantity]),
     );
 
-    const missingStock: MissingStockItem[] = [];
-
+    // Un producto puede venir en varias filas: se compara la suma contra el disponible.
+    const requestedByProduct = new Map<
+      string,
+      { code: string; requested: number }
+    >();
     for (const item of items) {
-      const totalStock = stockByProduct.get(item.productId) ?? 0;
-      const reserved = reservedMap.get(item.productId) ?? 0;
-      const available = totalStock - reserved;
-
-      if (available < item.quantity) {
-        missingStock.push({
-          productId: item.productId,
+      const current = requestedByProduct.get(item.productId);
+      if (current) {
+        current.requested += item.quantity;
+      } else {
+        requestedByProduct.set(item.productId, {
           code: item.product.code,
-          available,
           requested: item.quantity,
         });
+      }
+    }
+
+    const missingStock: MissingStockItem[] = [];
+
+    for (const [productId, { code, requested }] of requestedByProduct) {
+      const totalStock = stockByProduct.get(productId) ?? 0;
+      const reserved = reservedMap.get(productId) ?? 0;
+      const available = totalStock - reserved;
+
+      if (available < requested) {
+        missingStock.push({ productId, code, available, requested });
       }
     }
 

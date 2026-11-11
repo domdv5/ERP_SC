@@ -29,12 +29,12 @@ describe('calculateMissingStock', () => {
     return { tx, releaseLock: (rows: unknown) => releaseLock(rows) };
   };
 
-  const calculate = (tx: unknown) =>
+  const calculate = (tx: unknown, lines = items) =>
     (
       new PosEffectStrategy({} as PrismaService) as unknown as {
         calculateMissingStock: CalculateMissingStock;
       }
-    ).calculateMissingStock(tx as Prisma.TransactionClient, 'wh-1', items);
+    ).calculateMissingStock(tx as Prisma.TransactionClient, 'wh-1', lines);
 
   it('lee las reservas solo después de obtener el lock de inventario', async () => {
     const { tx, releaseLock } = makeTx();
@@ -58,6 +58,36 @@ describe('calculateMissingStock', () => {
 
     const pending = calculate(tx);
     releaseLock([{ product_id: 'p1', quantity: 2 }]);
+
+    await expect(pending).resolves.toEqual([]);
+  });
+
+  it('suma las filas repetidas del mismo producto y reporta un solo faltante', async () => {
+    const { tx, releaseLock } = makeTx();
+
+    const pending = calculate(tx, [
+      { productId: 'p1', quantity: 3, product: { code: 'PRD-1' } },
+      { productId: 'p1', quantity: 3, product: { code: 'PRD-1' } },
+    ]);
+    releaseLock([{ product_id: 'p1', quantity: 6 }]);
+
+    await expect(pending).resolves.toEqual([
+      { productId: 'p1', code: 'PRD-1', available: 5, requested: 6 },
+    ]);
+  });
+
+  it('con filas repetidas que caben en el disponible no reporta faltantes', async () => {
+    const { tx, releaseLock } = makeTx();
+
+    const pending = calculate(tx, [
+      { productId: 'p1', quantity: 2, product: { code: 'PRD-1' } },
+      { productId: 'p2', quantity: 1, product: { code: 'PRD-2' } },
+      { productId: 'p1', quantity: 3, product: { code: 'PRD-1' } },
+    ]);
+    releaseLock([
+      { product_id: 'p1', quantity: 6 },
+      { product_id: 'p2', quantity: 1 },
+    ]);
 
     await expect(pending).resolves.toEqual([]);
   });

@@ -1,5 +1,5 @@
 Pistoleo con filas separadas — el mismo producto solo se agrupa si es el último agregado; si no, va en fila nueva.
-Aplica a REM, COT, POS, POSO y DVV, al pistolear y al elegir a mano. Plan aprobado en forma, sin "dale" todavía: arrancar en otra sesión.
+Aplica a REM, COT, POS, POSO y DVV, al pistolear y al elegir a mano. En curso (2026-11-11), rama `feat/scan-separate-rows`.
 Rama sugerida: `feat/scan-separate-rows`. Dos commits: backend primero (validación de stock), después frontend.
 
 ## Specs
@@ -13,8 +13,8 @@ Rama sugerida: `feat/scan-separate-rows`. Dos commits: backend primero (validaci
 
 ## Tasks
 
-- T1 — S4 — inline (prueba primero; el usuario puede elegir "modo práctica" para escribir la suma él) — sumar por producto en `calculateMissingStock` con `Map` + `for` — commit: pendiente
-- T2 — S6 — inline — revisar validación de DVV contra lo vendido; arreglar si compara por fila — commit: pendiente
+- T1 — S4 — inline (prueba primero; el usuario puede elegir "modo práctica" para escribir la suma él) — sumar por producto en `calculateMissingStock` con `Map` + `for` — hecho, commit backend
+- T2 — S6 — inline — revisar validación de DVV contra lo vendido; arreglar si compara por fila — hecho: DVV no valida contra lo vendido (solo entra stock por fila), nada que arreglar
 - T3 — S1, S2 — react-code-crafter — `BarcodeScanInput.tsx` (~92-126, `processCode`, `addOneTo`) y `scan-queue.ts` (`findRowIndexByCode`): para los tipos de S2, +1 solo si coincide con la última fila; si no, `append` — commit: pendiente
 - T4 — S3 — react-code-crafter — `ProductRow.tsx` (~183-195) y `pos-checkout/SaleCart.tsx` (~51-60): misma regla al elegir a mano — commit: pendiente
 - T5 — S5 — react-code-crafter — aviso de disponible (`available-stock`, `ProductRow`, `POSCartLine`) y `pos-checkout/findMissingItems.ts` suman por producto — commit: pendiente
@@ -32,3 +32,5 @@ Rama sugerida: `feat/scan-separate-rows`. Dos commits: backend primero (validaci
 - L2 — Usuario: tipos "REM, COT, POS, POSO, DVV"; selección manual "Misma regla que el pistoleo".
 - L3 — Hallazgo: `calculateMissingStock` compara por fila (el explorador dijo que el backend ya estaba listo; no es así).
 - L4 — Usuario: "pero dejemos el plan listo para ahcerl ne otra sesion entonces definamoslo y simplemnte desjmos listo para otr aseison". Pendiente al retomar: el usuario elige "dale" (todo lo implementa la IA) o "modo práctica" (escribe él la suma de T1).
+- L5 — Usuario (2026-11-11): "dale" (implementa todo la IA).
+- L6 — Hallazgo T2: POSO no toca stock; DVC/SAJ/T validan por fila con `assertSufficientStock` pero siguen agrupando (S2), sin riesgo.
