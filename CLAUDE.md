@@ -173,7 +173,10 @@ El dueño del repo diseña y decide; la IA ejecuta. Objetivo: que el dueño enti
    riesgos) y esperar "dale" antes de escribir. Solo los cambios cosméticos de un archivo
    (texto, color, espaciado) van directo.
 2. **"Por qué así" en cada entrega** — toda entrega cierra con 2-3 decisiones tomadas, cada una con
-   la alternativa descartada y el motivo, en lenguaje simple.
+   la alternativa descartada y el motivo, en lenguaje simple. Además, una sección **"Qué no se
+   probó"**: cada caso, flujo o pantalla que ninguna prueba ni verificación ejercitó (ej.: solo
+   pruebas unitarias con mocks, sin base real; sin probar en pantalla; flujos vecinos no cubiertos),
+   para que el dueño sepa qué revisar a mano. Nunca omitirla; si todo se probó, decirlo.
 3. **"Dónde mirar" en cada commit** — después de commitear, listar 3-5 `archivo:línea` con lo
    importante del cambio para que el dueño lo lea en ~2 minutos.
 4. **"Mapa de revisión" en cada PR** — el dueño revisa por riesgo de contenido, no línea por línea ni por ruta:
