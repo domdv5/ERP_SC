@@ -12,6 +12,7 @@ import {
   RESERVATION_TYPES,
 } from './helpers/reservation.helpers';
 import { applyBinStockChange, applyStockChange } from './helpers/stock.helpers';
+import { matchConvertedItemsByProduct } from './helpers/conversion.helpers';
 import { assertDocumentPermission } from './helpers/document-guards.helpers';
 import { DocumentsQueryService } from './documents-query.service';
 import {
@@ -151,21 +152,21 @@ export class DocumentVoidService {
           if (source) {
             const sourceStrategy = this.effectsRegistry.get(source.type);
             if (isReservationStrategy(sourceStrategy)) {
-              for (const item of document.documentItems) {
-                const sourceItem = await tx.documentItem.findFirst({
-                  where: {
-                    documentId: document.sourceDocumentId,
-                    productId: item.productId,
-                  },
-                });
+              const sourceItems = await tx.documentItem.findMany({
+                where: { documentId: document.sourceDocumentId },
+                orderBy: { id: 'asc' },
+              });
+              const returns = matchConvertedItemsByProduct(
+                sourceItems,
+                document.documentItems,
+              );
 
-                if (sourceItem) {
-                  await tx.$queryRaw`
-                    UPDATE document_item
-                    SET converted_quantity = GREATEST(converted_quantity - ${item.quantity}, 0)
-                    WHERE id = ${sourceItem.id}::uuid
-                  `;
-                }
+              for (const { documentItemId, quantity } of returns) {
+                await tx.$queryRaw`
+                  UPDATE document_item
+                  SET converted_quantity = GREATEST(converted_quantity - ${quantity}, 0)
+                  WHERE id = ${documentItemId}::uuid
+                `;
               }
             }
           }
