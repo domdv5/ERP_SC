@@ -22,6 +22,7 @@ import type { DocumentType } from '@/types/document.types'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 import { AvailableStockHint } from './AvailableStockHint'
 import { takesStockOut } from './available-stock'
+import { findRowIndexToPick, sumQuantityByProduct } from './row-grouping'
 
 interface ProductRowProps {
   index: number
@@ -88,6 +89,8 @@ export function ProductRow({
   const unitPrice = watch(`items.${index}.unitPrice`) ?? 0
 
   const subtotal = Number(quantity) * Number(unitCost)
+  // El aviso de disponible compara contra todas las filas del mismo producto
+  const totalProductQuantity = sumQuantityByProduct(watch('items'), productId)
   // Solo en traslados: mismo producto repartido en varios bultos, cada uno con talla distinta.
   const showObservaciones = docType === 'T'
   // Sin proveedor elegido el buscador queda deshabilitado, no se muestra sin filtrar.
@@ -178,14 +181,11 @@ export function ProductRow({
                 return
               }
 
-              // Se excluye la fila actual para no detectarse a sí misma como duplicado.
               const currentItems = getValues('items')
-              const existingIndex = currentItems.findIndex(
-                (item, i) => item.productId === id && i !== index,
-              )
+              const existingIndex = findRowIndexToPick(currentItems, docType, id, index)
 
               if (existingIndex >= 0) {
-                // Se suma la cantidad en la fila existente en vez de duplicar (dejaba un bug en el costo promedio).
+                // Se suma en la fila que corresponde según el tipo (ver row-grouping.ts) en vez de duplicar.
                 const currentRowQty = Number(currentItems[index].quantity) || 0
                 const existingQty = Number(currentItems[existingIndex].quantity) || 0
                 setValue(`items.${existingIndex}.quantity`, existingQty + currentRowQty)
@@ -238,7 +238,7 @@ export function ProductRow({
               }}
               className="input-hard w-full min-w-0 px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
             />
-            <AvailableStockHint available={displayAvailableStock} quantity={Number(quantity)} />
+            <AvailableStockHint available={displayAvailableStock} quantity={totalProductQuantity} />
           </div>
         </td>
 

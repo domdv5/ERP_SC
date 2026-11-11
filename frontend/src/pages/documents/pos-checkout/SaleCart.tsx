@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 import { BarcodeScanInput } from '@/pages/documents/components/BarcodeScanInput'
 import { POSCartLine } from '@/pages/documents/components/POSCartLine'
+import { findRowIndexToPick } from '@/pages/documents/components/row-grouping'
 import type { DocumentType } from '@/types/document.types'
 import type { ProductListItem } from '@/types/product.types'
 
@@ -48,17 +49,15 @@ export function SaleCart({
     queryClient.setQueryData(['product-by-code', product.code], product)
 
     const currentItems = getValues('items')
-    const existingIndex = currentItems.findIndex(
-      (item, i) => item.productId === product.id && i !== index,
-    )
+    const existingIndex = findRowIndexToPick(currentItems, docType, product.id, index)
     if (existingIndex >= 0) {
-      // Igual que el escaneo: suma en la fila existente y descarta la vacía.
+      // Igual que el escaneo: suma en la fila que corresponde según el tipo y descarta la vacía.
       const rowQty = Number(currentItems[index].quantity) || 1
       const existingQty = Number(currentItems[existingIndex].quantity) || 0
       setValue(`items.${existingIndex}.quantity`, existingQty + rowQty)
       setValue(`items.${existingIndex}.addedAt`, new Date().toISOString())
       remove(index)
-      toast.success(`${product.code} ya estaba en el carrito — cantidad sumada`)
+      toast.success(`${product.code} ya estaba en la fila anterior — cantidad sumada`)
       return
     }
 

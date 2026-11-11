@@ -15,10 +15,10 @@ Rama sugerida: `feat/scan-separate-rows`. Dos commits: backend primero (validaci
 
 - T1 — S4 — inline (prueba primero; el usuario puede elegir "modo práctica" para escribir la suma él) — sumar por producto en `calculateMissingStock` con `Map` + `for` — hecho, commit backend
 - T2 — S6 — inline — revisar validación de DVV contra lo vendido; arreglar si compara por fila — hecho: DVV no valida contra lo vendido (solo entra stock por fila), nada que arreglar
-- T3 — S1, S2 — react-code-crafter — `BarcodeScanInput.tsx` (~92-126, `processCode`, `addOneTo`) y `scan-queue.ts` (`findRowIndexByCode`): para los tipos de S2, +1 solo si coincide con la última fila; si no, `append` — commit: pendiente
-- T4 — S3 — react-code-crafter — `ProductRow.tsx` (~183-195) y `pos-checkout/SaleCart.tsx` (~51-60): misma regla al elegir a mano — commit: pendiente
-- T5 — S5 — react-code-crafter — aviso de disponible (`available-stock`, `ProductRow`, `POSCartLine`) y `pos-checkout/findMissingItems.ts` suman por producto — commit: pendiente
-- T6 — S1-S5 — inline — actualizar pruebas que esperan agrupar (`scan-queue.test.ts` "A, A, B, A…", `ProductRow.test.tsx`, `SaleCart.test.tsx`) y agregar las de la regla nueva; frontend/CLAUDE.md y backend/CLAUDE.md — commit: pendiente
+- T3 — S1, S2 — react-code-crafter — `BarcodeScanInput.tsx` (~92-126, `processCode`, `addOneTo`) y `scan-queue.ts` (`findRowIndexByCode`): para los tipos de S2, +1 solo si coincide con la última fila; si no, `append` — hecho, commit frontend
+- T4 — S3 — react-code-crafter — `ProductRow.tsx` (~183-195) y `pos-checkout/SaleCart.tsx` (~51-60): misma regla al elegir a mano — hecho, commit frontend
+- T5 — S5 — react-code-crafter — aviso de disponible (`available-stock`, `ProductRow`, `POSCartLine`) y `pos-checkout/findMissingItems.ts` suman por producto — hecho (findMissingItems no compara stock, sin cambio), commit frontend
+- T6 — S1-S5 — inline — actualizar pruebas que esperan agrupar (`scan-queue.test.ts` "A, A, B, A…", `ProductRow.test.tsx`, `SaleCart.test.tsx`) y agregar las de la regla nueva; frontend/CLAUDE.md y backend/CLAUDE.md — hecho, commits backend y frontend
 
 ## Riesgos
 
@@ -34,3 +34,5 @@ Rama sugerida: `feat/scan-separate-rows`. Dos commits: backend primero (validaci
 - L4 — Usuario: "pero dejemos el plan listo para ahcerl ne otra sesion entonces definamoslo y simplemnte desjmos listo para otr aseison". Pendiente al retomar: el usuario elige "dale" (todo lo implementa la IA) o "modo práctica" (escribe él la suma de T1).
 - L5 — Usuario (2026-11-11): "dale" (implementa todo la IA).
 - L6 — Hallazgo T2: POSO no toca stock; DVC/SAJ/T validan por fila con `assertSufficientStock` pero siguen agrupando (S2), sin riesgo.
+- L7 — Revisión nativa del commit backend 7f46d69 (risk + reliability): aprobada, una sugerencia no bloqueante en las pruebas.
+- L8 — Hallazgo T5: `findMissingItems` no compara contra stock (cliente, pagos, piso, cupo); el plan se equivocaba. Lista de tipos centralizada en `frontend/src/pages/documents/components/row-grouping.ts`.

@@ -11,6 +11,7 @@ import { splitOfficialPrice } from '@/lib/tax'
 import { cn } from '@/lib/utils'
 import type { FormValues } from '@/pages/documents/document-form.schema'
 import { AvailableStockHint } from './AvailableStockHint'
+import { sumQuantityByProduct } from './row-grouping'
 import type { ProductListItem } from '@/types/product.types'
 
 interface POSCartLineProps {
@@ -66,6 +67,8 @@ export function POSCartLine({
   const quantity = Number(watch(`items.${index}.quantity`) ?? 0)
   const unitPrice = Number(watch(`items.${index}.unitPrice`) ?? 0)
   const lineTotal = quantity * unitPrice
+  // El aviso de disponible compara contra todas las filas del mismo producto
+  const totalProductQuantity = sumQuantityByProduct(watch('items'), productId)
   const split = splitOfficialPrice(quantity, unitPrice)
   const subtotal = showTax ? split.subtotal : lineTotal
 
@@ -105,7 +108,7 @@ export function POSCartLine({
               {...register(`items.${index}.quantity`)}
               className="input-hard w-full min-w-0 px-2.5 py-1.5 text-sm text-center text-content transition-all border-ui-border-medium"
             />
-            <AvailableStockHint available={availableToSell} quantity={quantity} />
+            <AvailableStockHint available={availableToSell} quantity={totalProductQuantity} />
           </div>
         </td>
 
