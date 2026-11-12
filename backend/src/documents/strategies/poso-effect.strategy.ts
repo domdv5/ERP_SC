@@ -3,7 +3,10 @@ import { Prisma } from '@prisma/client';
 import { DocumentType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { BaseEffectStrategy } from './base-effect.strategy';
-import { assertPaymentsMatchTotal } from '@/documents/helpers/payment.helpers';
+import {
+  assertNoCreditPayment,
+  assertPaymentsMatchTotal,
+} from '@/documents/helpers/payment.helpers';
 import type {
   ConfirmContext,
   DocumentWithItems,
@@ -52,6 +55,7 @@ export class PosoEffectStrategy extends BaseEffectStrategy {
     );
 
     // document.total ya incluye el IVA en POSO.
+    assertNoCreditPayment(document.payments);
     assertPaymentsMatchTotal(document.payments, document.total);
   }
 }

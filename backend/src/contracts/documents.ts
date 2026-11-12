@@ -18,7 +18,8 @@ export type DocumentType =
   | 'CMO'
   | 'POSO';
 export type DocumentStatus = 'draft' | 'confirmed' | 'voided';
-export type PaymentMethod = 'efectivo_almacen' | 'consignacion_almacen';
+export type PaymentMethod =
+  'efectivo_almacen' | 'consignacion_almacen' | 'credito';
 export type EaiAdjustmentReason =
   'negativo' | 'inventario_general' | 'traspaso_costo' | 'otro';
 export type DvvRefundMethod =

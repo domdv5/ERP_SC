@@ -545,9 +545,11 @@ enum InventoryCaseCause {
   ajuste_anulado
 }
 
+/// credito: parte de un POS que queda debiendo; genera CxC y no es plata recibida (los informes de caja deben excluirlo).
 enum PaymentMethod {
   efectivo_almacen
   consignacion_almacen
+  credito
 }
 
 /// Motivo del ajuste (obligatorio solo para EAI): negativo/inventario_general son el mismo caso (stock físico > sistema), separados solo para reportería; traspaso_costo mueve costo de otro producto; otro requiere adjustmentReasonOther.

@@ -43,3 +43,27 @@ export function assertPaymentsMatchTotal(
     } ${difference}`,
   );
 }
+
+export function getCreditPaymentAmount(payments: SalePayment[]) {
+  return payments
+    .filter((p) => p.method === PaymentMethod.credito)
+    .reduce((sum, p) => sum.plus(p.amount), new Prisma.Decimal(0));
+}
+
+// Crédito por el 100% no es un POS: esa venta va como COT.
+export function assertCreditIsPartial(
+  creditAmount: Prisma.Decimal,
+  amountToCollect: Amount,
+) {
+  if (creditAmount.gt(0) && creditAmount.gte(amountToCollect)) {
+    throw new BadRequestException(
+      'El crédito no puede cubrir toda la venta. Si todo queda a crédito, haz una venta a crédito (COT).',
+    );
+  }
+}
+
+export function assertNoCreditPayment(payments: SalePayment[]) {
+  if (payments.some((p) => p.method === PaymentMethod.credito)) {
+    throw new BadRequestException('Esta venta no admite pago a crédito');
+  }
+}

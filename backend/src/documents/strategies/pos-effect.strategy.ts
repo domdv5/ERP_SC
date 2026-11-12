@@ -3,14 +3,19 @@ import { Prisma } from '@prisma/client';
 import { DocumentType, MovementType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { applyCustomerCredits } from '@/documents/helpers/customer-credit.helpers';
-import { assertPaymentsMatchTotal } from '@/documents/helpers/payment.helpers';
+import { assertCreditWithinLimit } from '@/documents/helpers/credit.helpers';
+import {
+  assertCreditIsPartial,
+  assertPaymentsMatchTotal,
+  getCreditPaymentAmount,
+} from '@/documents/helpers/payment.helpers';
 import { BaseEffectStrategy } from './base-effect.strategy';
 import type {
   ConfirmContext,
   DocumentWithItems,
 } from './document-effect.strategy';
 
-/** Venta de contado: saca stock físico, valorado al precio de venta. No crea cuentas por pagar ni por cobrar. Exige que las formas de pago sumen el total menos los saldos a favor aplicados. */
+/** Venta de contado: saca stock físico, valorado al precio de venta. Exige que las formas de pago (crédito incluido) sumen el total menos los saldos a favor aplicados; la línea `credito` genera una CxC por su monto. */
 @Injectable()
 export class PosEffectStrategy extends BaseEffectStrategy {
   readonly type = DocumentType.POS;
@@ -24,6 +29,17 @@ export class PosEffectStrategy extends BaseEffectStrategy {
       createDocumentDto.thirdPartyId,
       createDocumentDto.customerBranchId,
     );
+
+    const creditAmount = getCreditPaymentAmount(
+      createDocumentDto.payments ?? [],
+    );
+    if (creditAmount.gt(0) && createDocumentDto.thirdPartyId) {
+      await assertCreditWithinLimit(
+        this.prisma,
+        createDocumentDto.thirdPartyId,
+        creditAmount.toNumber(),
+      );
+    }
   }
 
   // Si viene de convertir una preventa, excluye su reserva o da un faltante falso.
@@ -48,10 +64,28 @@ export class PosEffectStrategy extends BaseEffectStrategy {
       (sum, credit) => sum.plus(credit.amount),
       new Prisma.Decimal(0),
     );
-    assertPaymentsMatchTotal(
-      document.payments,
-      new Prisma.Decimal(document.total).minus(appliedCredits),
+    const amountToCollect = new Prisma.Decimal(document.total).minus(
+      appliedCredits,
     );
+    assertPaymentsMatchTotal(document.payments, amountToCollect);
+
+    const creditAmount = getCreditPaymentAmount(document.payments);
+    assertCreditIsPartial(creditAmount, amountToCollect);
+
+    if (creditAmount.gt(0)) {
+      if (!document.thirdPartyId || !document.sellerId) {
+        throw new ConflictException(
+          'La venta con crédito requiere cliente y vendedor',
+        );
+      }
+      // Mismo bloqueo que COT: dos ventas a crédito del mismo cliente no superan el cupo entre las dos.
+      await tx.$queryRaw`SELECT id FROM customers WHERE id = ${document.thirdPartyId}::uuid FOR UPDATE`;
+      await assertCreditWithinLimit(
+        tx,
+        document.thirdPartyId,
+        creditAmount.toNumber(),
+      );
+    }
 
     await this.assertValidCustomerBranch(
       document.thirdPartyId,
@@ -89,6 +123,18 @@ export class PosEffectStrategy extends BaseEffectStrategy {
       });
     }
 
+    if (creditAmount.gt(0)) {
+      await tx.accountsReceivable.create({
+        data: {
+          clientId: document.thirdPartyId!,
+          sellerId: document.sellerId!,
+          documentId: document.id,
+          totalAmount: creditAmount,
+          status: 'pending',
+        },
+      });
+    }
+
     // Saldos a favor aplicados a esta venta: descuentan el balance del crédito.
     if (context?.appliedCustomerCredits?.length) {
       if (!document.thirdPartyId) {
@@ -103,7 +149,5 @@ export class PosEffectStrategy extends BaseEffectStrategy {
         appliedCustomerCredits: context.appliedCustomerCredits,
       });
     }
-
-    // Venta de contado: no crea cuenta por pagar ni por cobrar.
   }
 }
