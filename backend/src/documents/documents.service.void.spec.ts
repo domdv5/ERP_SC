@@ -183,6 +183,20 @@ describe('DocumentsService.void: validaciones y estado', () => {
       }
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
+    it('POS con parte a crédito: rechaza si la CxC ya tiene un recibo de caja', async () => {
+      loadDocument(DocumentType.POS, {
+        accountsReceivable: [
+          { receivablePayments: [], reciboCajaAllocations: [{ id: 'r1' }] },
+        ],
+      });
+
+      await expect(service.void('doc-1', fullUser)).rejects.toThrow(
+        new ConflictException(
+          'No se puede anular: la cuenta por cobrar ya tiene pagos registrados',
+        ),
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
   });
 
   describe('dentro de la transacción: estado y re-chequeos', () => {
@@ -254,6 +268,37 @@ describe('DocumentsService.void: validaciones y estado', () => {
       loadDocument(DocumentType.COT);
       tx.accountsReceivable.findMany.mockResolvedValue([
         { receivablePayments: [], reciboCajaAllocations: [{ id: 'r1' }] },
+      ]);
+
+      await expect(service.void('doc-1', fullUser)).rejects.toThrow(
+        new ConflictException(
+          'No se puede anular: la cuenta por cobrar ya tiene pagos registrados',
+        ),
+      );
+      expect(tx.accountsReceivable.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('POS con parte a crédito: borra su CxC al anular', async () => {
+      loadDocument(DocumentType.POS, {
+        accountsReceivable: [
+          { receivablePayments: [], reciboCajaAllocations: [] },
+        ],
+      });
+      tx.accountsReceivable.findMany.mockResolvedValue([
+        { receivablePayments: [], reciboCajaAllocations: [] },
+      ]);
+
+      await service.void('doc-1', fullUser);
+
+      expect(tx.accountsReceivable.deleteMany).toHaveBeenCalledWith({
+        where: { documentId: 'doc-1' },
+      });
+    });
+
+    it('POS con parte a crédito: lanza 409 si un recibo concurrente abonó la CxC', async () => {
+      loadDocument(DocumentType.POS);
+      tx.accountsReceivable.findMany.mockResolvedValue([
+        { receivablePayments: [{ id: 'p1' }], reciboCajaAllocations: [] },
       ]);
 
       await expect(service.void('doc-1', fullUser)).rejects.toThrow(

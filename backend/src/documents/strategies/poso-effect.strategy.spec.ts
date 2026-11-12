@@ -101,4 +101,15 @@ describe('PosoEffectStrategy: formas de pago al confirmar', () => {
 
     await expect(strategy.confirm(tx, document, 'u1')).resolves.toBeUndefined();
   });
+
+  it('rechaza una línea de crédito', async () => {
+    const document = makeDocument([
+      { method: 'efectivo_almacen', amount: 69000 },
+      { method: 'credito', amount: 50000 },
+    ]);
+
+    await expect(strategy.confirm(tx, document, 'u1')).rejects.toThrow(
+      new BadRequestException('Esta venta no admite pago a crédito'),
+    );
+  });
 });
