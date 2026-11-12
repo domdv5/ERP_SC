@@ -125,7 +125,7 @@ export class ThirdPartiesService {
     let listItems: Array<
       (typeof items)[number] & { credit?: CreditLimitSummary }
     > = items;
-    if (canSeeCustomerCredit(user.permissions, isCustomer)) {
+    if (canSeeCustomerCredit(user.permissions)) {
       const summaries = await getCreditLimitSummaries(
         this.prisma,
         items.flatMap((item) => (item.customer ? [item.customer.id] : [])),

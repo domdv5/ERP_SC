@@ -54,10 +54,15 @@ describe('ThirdPartiesService.findAll — cupo del cliente', () => {
     expect(result.items[0]).not.toHaveProperty('credit');
   });
 
-  it('con permiso pero sin filtro de clientes no agrega cupo', async () => {
-    const result = await service.findAll({}, sellerUser);
+  it('con permiso y sin filtro (búsqueda) agrega el cupo a los clientes', async () => {
+    const result = await service.findAll({ search: 'jhon' }, sellerUser);
 
-    expect(mockedSummaries).not.toHaveBeenCalled();
-    expect(result.items[0]).not.toHaveProperty('credit');
+    expect(mockedSummaries).toHaveBeenCalledWith(expect.anything(), ['c1']);
+    expect(result.items[0].credit).toEqual({
+      creditLimit: 1000,
+      usedCredit: 400,
+      availableCredit: 600,
+    });
+    expect(result.items[1]).not.toHaveProperty('credit');
   });
 });
