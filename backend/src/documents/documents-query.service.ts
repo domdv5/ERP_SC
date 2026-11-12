@@ -136,6 +136,10 @@ const PRINT_INCLUDE = {
     },
   },
   user: { select: { id: true, name: true } },
+  payments: {
+    select: { method: true, amount: true },
+    orderBy: { createdAt: 'asc' },
+  },
   seller: { select: { id: true, name: true } },
   receiver: { select: { id: true, name: true } },
   customerBranch: {
