@@ -25,8 +25,11 @@ export class ThirdPartiesController {
 
   @Get()
   @Permissions('thirdparty.read')
-  findAll(@Query() findAllThirdPartiesDto: FindAllThirdPartiesDto) {
-    return this.thirdPartiesService.findAll(findAllThirdPartiesDto);
+  findAll(
+    @Query() findAllThirdPartiesDto: FindAllThirdPartiesDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.thirdPartiesService.findAll(findAllThirdPartiesDto, req.user);
   }
 
   @Get(':id')

@@ -19,6 +19,11 @@ import {
   ThirdPartyRoleFlags,
 } from './helpers/third-party-permissions';
 import { matchContract } from '@/common/types';
+import {
+  getCreditLimitSummaries,
+  type CreditLimitSummary,
+} from '@/documents/helpers/credit.helpers';
+import { canSeeCustomerCredit } from './helpers/credit-visibility';
 import type {
   CustomerBranch,
   SupplierBrand,
@@ -58,7 +63,10 @@ const ACTIVE_BRANCHES_INCLUDE = {
 export class ThirdPartiesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(findAllThirdPartiesDto: FindAllThirdPartiesDto) {
+  async findAll(
+    findAllThirdPartiesDto: FindAllThirdPartiesDto,
+    user: JwtPayload,
+  ) {
     const {
       page = 1,
       limit = 20,
@@ -114,8 +122,22 @@ export class ThirdPartiesService {
         this.prisma.thirdParty.count({ where: { ...where, isSupplier: true } }),
       ]);
 
+    let listItems: Array<
+      (typeof items)[number] & { credit?: CreditLimitSummary }
+    > = items;
+    if (canSeeCustomerCredit(user.permissions, isCustomer)) {
+      const summaries = await getCreditLimitSummaries(
+        this.prisma,
+        items.flatMap((item) => (item.customer ? [item.customer.id] : [])),
+      );
+      listItems = items.map((item) => {
+        const credit = item.customer && summaries.get(item.customer.id);
+        return credit ? { ...item, credit } : item;
+      });
+    }
+
     return matchListContract({
-      items,
+      items: listItems,
       meta: {
         total,
         page,

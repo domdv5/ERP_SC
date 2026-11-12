@@ -52,6 +52,7 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 **ThirdPartiesModule**:
 
 - `GET /third-parties` — listado paginado; `search` busca por nombre, documento **o nombre de marca activa del proveedor** (2026-11-03: en la empresa se conoce más la marca que el proveedor). El selector de proveedor de compras muestra `Marcas: …` debajo de cada opción.
+- **Cupo en el listado (2026-11-12)**: `GET /third-parties` agrega `credit { creditLimit, usedCredit, availableCredit }` a cada cliente solo si `isCustomer=true` **y** el usuario tiene `document.create.COT` o `customer.credit.update` (`helpers/credit-visibility.ts`); si no, el campo no existe y no se consulta la cartera. Usa `getCreditLimitSummaries`, la misma cuenta de la COT.
 - `GET /third-parties/:id` — detalle de un tercero con los mismos includes que el listado (sucursales y marcas activas); 404 `Tercero no encontrado.`; requires `thirdparty.read`
 - `POST /third-parties` — create a third party (customer and/or supplier); requires `thirdparty.create` permission
 - `PATCH /third-parties/:id` — update; requires `thirdparty.update`

@@ -1,5 +1,8 @@
 import { ThirdPartiesService } from './third-parties.service';
 import type { PrismaService } from '@/prisma/prisma.service';
+import type { JwtPayload } from '@/common/types';
+
+const user = { permissions: ['thirdparty.read'] } as JwtPayload;
 
 describe('ThirdPartiesService.findAll — búsqueda', () => {
   const findMany = jest.fn();
@@ -15,7 +18,7 @@ describe('ThirdPartiesService.findAll — búsqueda', () => {
   });
 
   it('busca por nombre, documento y marca activa del proveedor', async () => {
-    await service.findAll({ search: 'nike', isSupplier: true });
+    await service.findAll({ search: 'nike', isSupplier: true }, user);
 
     expect(findMany.mock.calls[0][0].where).toEqual({
       isActive: true,
@@ -38,7 +41,7 @@ describe('ThirdPartiesService.findAll — búsqueda', () => {
   });
 
   it('sin búsqueda no filtra por texto', async () => {
-    await service.findAll({ isSupplier: true });
+    await service.findAll({ isSupplier: true }, user);
 
     expect(findMany.mock.calls[0][0].where).toEqual({
       isActive: true,
