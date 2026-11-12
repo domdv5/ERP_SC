@@ -58,7 +58,19 @@ const ROLE_BADGES = [
 ]
 
 function CreditCell({ credit }: { credit?: CustomerCreditSummary }) {
-  if (!credit || credit.creditLimit <= 0) return <span className="text-content-faint">—</span>
+  if (!credit || (credit.creditLimit <= 0 && credit.usedCredit <= 0)) {
+    return <span className="text-content-faint">—</span>
+  }
+  if (credit.creditLimit <= 0) {
+    return (
+      <div>
+        <p className="font-medium text-content">Sin cupo</p>
+        <p className="text-xs text-red-600 dark:text-red-400">
+          debe {formatCOP(credit.usedCredit)}
+        </p>
+      </div>
+    )
+  }
   return (
     <div>
       <p

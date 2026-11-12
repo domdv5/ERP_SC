@@ -123,7 +123,17 @@ describe('ThirdPartiesPage columna Cupo', () => {
     expect(available.className).toContain('text-red-600')
   })
 
-  it('muestra — si el cupo es 0 o no viene credit', async () => {
+  it('cupo 0 con deuda muestra Sin cupo y debe en rojo', async () => {
+    mockItems([makeItem('Ana SAS', { creditLimit: 0, usedCredit: 250000, availableCredit: 0 })])
+    renderPage()
+    await selectCustomerFilter()
+    expect(await screen.findByText('Sin cupo')).toBeTruthy()
+    const debt = screen.getByText(/debe .*250\.000/)
+    expect(debt.className).toContain('text-red-600')
+    expect(screen.queryByText('—')).toBeNull()
+  })
+
+  it('muestra — si el cupo es 0 sin deuda o no viene credit', async () => {
     mockItems([
       makeItem('Ana SAS', { creditLimit: 0, usedCredit: 0, availableCredit: 0 }),
       makeItem('Beto SAS'),
