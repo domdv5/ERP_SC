@@ -51,7 +51,8 @@ describe('PaymentLinesField — Crédito', () => {
       { method: 'efectivo_almacen', amount: 300000 },
       { method: 'credito', amount: 200000 },
     ])
-    expect(screen.getByText(/Cupo disponible: \$\s?1\.200\.000/)).toBeTruthy()
+    expect(screen.getByText(/Cupo disponible:/)).toBeTruthy()
+    expect(screen.getByText(/\$\s?1\.200\.000/)).toBeTruthy()
   })
 
   it('no muestra cupo sin línea de crédito', () => {

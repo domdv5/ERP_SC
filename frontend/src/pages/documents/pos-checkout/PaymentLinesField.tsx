@@ -99,16 +99,25 @@ export function PaymentLinesField({
               <p
                 className={cn(
                   'text-xs font-accent',
-                  isFullSale || isOverLimit ? 'text-red-500' : 'text-content-muted',
+                  isFullSale || isOverLimit
+                    ? 'text-red-600 dark:text-red-400 font-medium'
+                    : 'text-content',
                 )}
               >
-                {isFullSale
-                  ? CREDIT_FULL_SALE_MESSAGE
-                  : isLoadingCredit || availableCredit === undefined
-                    ? 'Consultando cupo...'
-                    : isOverLimit
-                      ? `El crédito supera el cupo disponible: ${formatCOP(availableCredit)}`
-                      : `Cupo disponible: ${formatCOP(availableCredit)}`}
+                {isFullSale ? (
+                  CREDIT_FULL_SALE_MESSAGE
+                ) : isLoadingCredit || availableCredit === undefined ? (
+                  'Consultando cupo...'
+                ) : isOverLimit ? (
+                  `El crédito supera el cupo disponible: ${formatCOP(availableCredit)}`
+                ) : (
+                  <>
+                    Cupo disponible:{' '}
+                    <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                      {formatCOP(availableCredit)}
+                    </span>
+                  </>
+                )}
               </p>
             )}
           </div>
