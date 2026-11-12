@@ -622,16 +622,15 @@ export function ThirdPartyForm({
                 <p className="text-sm font-medium text-brand-secondary-dark">Datos de cliente</p>
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Límite de crédito">
-                    {/* Se ve con separador de miles (es-CO: 1.000.000); al payload/schema va
-                        el number plano. undefined = sin línea de crédito. */}
+                    {/* Vacío va como null (undefined lo repone RHF con el valor original); el schema lo coacciona a 0. */}
                     <Controller
                       control={control}
                       name="creditLimit"
                       render={({ field }) => (
                         <ThousandsInput
                           name={field.name}
-                          value={field.value}
-                          onChange={field.onChange}
+                          value={field.value ?? undefined}
+                          onChange={(v) => field.onChange(v ?? null)}
                           onBlur={field.onBlur}
                           ref={field.ref}
                           placeholder="0"

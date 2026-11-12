@@ -113,7 +113,18 @@ export interface ThirdPartyListMeta {
   supplierCount: number;
 }
 
+// Solo en filas de clientes y con permiso COT o customer.credit.update; si no, el campo no viaja
+export interface CustomerCreditSummary {
+  creditLimit: number;
+  usedCredit: number;
+  availableCredit: number;
+}
+
+export interface ThirdPartyListItem extends ThirdPartyDetail {
+  credit?: CustomerCreditSummary;
+}
+
 export interface ThirdPartyListResponse {
-  items: ThirdPartyDetail[];
+  items: ThirdPartyListItem[];
   meta: ThirdPartyListMeta;
 }

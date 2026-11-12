@@ -30,7 +30,9 @@ import {
   SegmentedToggle,
 } from '@/components/shared'
 import { cn } from '@/lib/utils'
+import { formatCOP } from '@/lib/format'
 import type { ThirdPartyDetail } from '@/types'
+import type { CustomerCreditSummary } from '@contracts/third-parties'
 
 const ROLE_BADGES = [
   {
@@ -55,12 +57,42 @@ const ROLE_BADGES = [
   },
 ]
 
+function CreditCells({ credit }: { credit?: CustomerCreditSummary }) {
+  if (!credit) {
+    return (
+      <>
+        <td className="px-5 py-3.5" />
+        <td className="px-5 py-3.5" />
+        <td className="px-5 py-3.5" />
+      </>
+    )
+  }
+  return (
+    <>
+      <td className="px-5 py-3.5 text-sm text-content">
+        {credit.creditLimit > 0 ? formatCOP(credit.creditLimit) : '—'}
+      </td>
+      <td className="px-5 py-3.5 text-sm text-content">{formatCOP(credit.usedCredit)}</td>
+      <td
+        className={cn(
+          'px-5 py-3.5 text-sm font-bold',
+          credit.availableCredit > 0 ? 'text-brand-secondary' : 'text-red-600 dark:text-red-400',
+        )}
+      >
+        {formatCOP(credit.availableCredit)}
+      </td>
+    </>
+  )
+}
+
 export default function ThirdPartiesPage() {
   const queryClient = useQueryClient()
 
   const canCreate = usePermission('thirdparty.create')
   const canUpdate = usePermission('thirdparty.update')
   const canDelete = usePermission('thirdparty.delete')
+  const canSeeCredit =
+    usePermission('document.create.COT') || usePermission('customer.credit.update')
   const permissions = useAuthStore((s) => s.user?.permissions ?? [])
 
   const [search, setSearch] = useState('')
@@ -103,6 +135,16 @@ export default function ThirdPartiesPage() {
   const total = data?.meta.total ?? 0
   const customerCount = data?.meta.customerCount ?? 0
   const supplierCount = data?.meta.supplierCount ?? 0
+  const showCredit = canSeeCredit && items.some((t) => t.credit)
+  const headers = [
+    'Nombre',
+    'Tipo',
+    'Tipo Doc.',
+    'N° Documento',
+    'Roles',
+    ...(showCredit ? ['Cupo', 'Usado', 'Disponible'] : []),
+    'Acciones',
+  ]
 
   const invalidate = () => invalidateThirdParties(queryClient)
 
@@ -288,7 +330,7 @@ export default function ThirdPartiesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b-2 border-ui-border-medium">
-                  {['Nombre', 'Tipo', 'Tipo Doc.', 'N° Documento', 'Roles', 'Acciones'].map((h) => (
+                  {headers.map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -350,6 +392,7 @@ export default function ThirdPartiesPage() {
                           )}
                         </div>
                       </td>
+                      {showCredit && <CreditCells credit={t.credit} />}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           {canEditRow && (

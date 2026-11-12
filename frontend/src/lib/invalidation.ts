@@ -46,6 +46,8 @@ export function invalidateAfterDocumentChange(
     'official-purchases-pending',
   ])
   invalidateProducts(queryClient)
+  // La columna Cupo de Terceros depende de la deuda del cliente
+  invalidateThirdParties(queryClient)
   // Confirmar o anular una EAI abre o cierra casos de diferencias.
   invalidateInventoryCases(queryClient)
   documentIds.forEach((id) => {

@@ -17,33 +17,61 @@ export async function getCreditLimitSummary(
   client: PrismaOrTx,
   customerId: string,
 ): Promise<CreditLimitSummary> {
-  const [customer, openAccounts] = await Promise.all([
-    client.customer.findUnique({
-      where: { id: customerId },
-      select: { creditLimit: true },
+  const summaries = await getCreditLimitSummaries(client, [customerId]);
+  return summaries.get(customerId)!;
+}
+
+/** Cupo de varios clientes en dos consultas; la COT y la lista de terceros usan esta misma cuenta. */
+export async function getCreditLimitSummaries(
+  client: PrismaOrTx,
+  customerIds: string[],
+): Promise<Map<string, CreditLimitSummary>> {
+  const summaries = new Map<string, CreditLimitSummary>();
+  if (customerIds.length === 0) return summaries;
+
+  const [customers, openAccounts] = await Promise.all([
+    client.customer.findMany({
+      where: { id: { in: customerIds } },
+      select: { id: true, creditLimit: true },
     }),
     client.accountsReceivable.findMany({
-      where: { clientId: customerId, status: { in: ['pending', 'partial'] } },
-      select: { totalAmount: true, paidAmount: true },
+      where: {
+        clientId: { in: customerIds },
+        status: { in: ['pending', 'partial'] },
+      },
+      select: { clientId: true, totalAmount: true, paidAmount: true },
     }),
   ]);
 
-  const creditLimitCents = customer?.creditLimit
-    ? toCents(customer.creditLimit)
-    : 0;
-
-  // paidAmount suma los abonos de recibos de caja: es el mismo saldo que muestran CxC y el recibo.
-  const usedCreditCents = openAccounts.reduce(
-    (sum, account) =>
-      sum + toCents(account.totalAmount) - toCents(account.paidAmount),
-    0,
+  const limitCentsById = new Map(
+    customers.map((customer) => [
+      customer.id,
+      customer.creditLimit ? toCents(customer.creditLimit) : 0,
+    ]),
   );
 
-  return {
-    creditLimit: creditLimitCents / 100,
-    usedCredit: usedCreditCents / 100,
-    availableCredit: (creditLimitCents - usedCreditCents) / 100,
-  };
+  // paidAmount suma los abonos de recibos de caja: es el mismo saldo que muestran CxC y el recibo.
+  const usedCentsById = new Map<string, number>();
+  for (const account of openAccounts) {
+    const balanceCents =
+      toCents(account.totalAmount) - toCents(account.paidAmount);
+    usedCentsById.set(
+      account.clientId,
+      (usedCentsById.get(account.clientId) ?? 0) + balanceCents,
+    );
+  }
+
+  for (const customerId of customerIds) {
+    const creditLimitCents = limitCentsById.get(customerId) ?? 0;
+    const usedCreditCents = usedCentsById.get(customerId) ?? 0;
+    summaries.set(customerId, {
+      creditLimit: creditLimitCents / 100,
+      usedCredit: usedCreditCents / 100,
+      availableCredit: (creditLimitCents - usedCreditCents) / 100,
+    });
+  }
+
+  return summaries;
 }
 
 /** Bloqueo duro: si `requestedTotal` supera el cupo disponible, lanza 400 con el detalle del cupo (`credit` viaja junto a `message`). */
