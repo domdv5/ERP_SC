@@ -129,7 +129,7 @@ export default function POSCheckoutPage() {
     creditExceeded,
     creditCoversAll,
     creditLineOverLimit,
-    creditUnavailable: hasCreditLine && isCreditQueryError && !creditData,
+    creditUnavailable: (isCredit || hasCreditLine) && isCreditQueryError && !creditData,
   })
   const canConfirm = missingItems.length === 0
   // Lecturas del lector todavía en fila: no se confirma la venta hasta procesarlas
@@ -305,6 +305,7 @@ export default function POSCheckoutPage() {
                 isLoading={isLoadingCredit}
                 creditExceeded={creditExceeded}
                 netAmount={total - creditsApplied}
+                onRetry={() => void refetchCredit()}
               />
             )}
 

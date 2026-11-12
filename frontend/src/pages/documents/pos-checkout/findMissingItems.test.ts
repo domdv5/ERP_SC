@@ -29,6 +29,18 @@ describe('findMissingItems', () => {
     ])
   })
 
+  it('bloquea en COT si no se pudo consultar el cupo', () => {
+    expect(
+      findMissingItems({
+        ...completeSale,
+        isCredit: true,
+        needsPayments: false,
+        paymentLines: [],
+        creditUnavailable: true,
+      }),
+    ).toEqual(['No se pudo consultar el cupo de crédito del cliente'])
+  })
+
   it('devuelve lista vacía cuando la venta está completa', () => {
     expect(findMissingItems(completeSale)).toEqual([])
   })
