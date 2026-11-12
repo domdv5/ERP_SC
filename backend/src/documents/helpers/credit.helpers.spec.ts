@@ -3,30 +3,42 @@ import { Prisma } from '@prisma/client';
 import type { PrismaService } from '@/prisma/prisma.service';
 import {
   assertCreditWithinLimit,
+  getCreditLimitSummaries,
   getCreditLimitSummary,
 } from './credit.helpers';
 
-const receivable = (totalAmount: number, paidAmount: number) => ({
+const receivable = (
+  totalAmount: number,
+  paidAmount: number,
+  clientId = 'customer-1',
+) => ({
+  clientId,
   totalAmount: new Prisma.Decimal(totalAmount),
   paidAmount: new Prisma.Decimal(paidAmount),
 });
 
-const buildClient = (
-  creditLimit: number | null,
+const buildClientWithCustomers = (
+  limits: Record<string, number | null>,
   openAccounts: ReturnType<typeof receivable>[],
 ) => {
   const findMany = jest.fn().mockResolvedValue(openAccounts);
+  const customerFindMany = jest.fn().mockResolvedValue(
+    Object.entries(limits).map(([id, limit]) => ({
+      id,
+      creditLimit: limit === null ? null : new Prisma.Decimal(limit),
+    })),
+  );
   const client = {
-    customer: {
-      findUnique: jest.fn().mockResolvedValue({
-        creditLimit:
-          creditLimit === null ? null : new Prisma.Decimal(creditLimit),
-      }),
-    },
+    customer: { findMany: customerFindMany },
     accountsReceivable: { findMany },
   } as unknown as PrismaService;
-  return { client, findMany };
+  return { client, findMany, customerFindMany };
 };
+
+const buildClient = (
+  creditLimit: number | null,
+  openAccounts: ReturnType<typeof receivable>[],
+) => buildClientWithCustomers({ 'customer-1': creditLimit }, openAccounts);
 
 describe('getCreditLimitSummary', () => {
   it('descuenta los abonos hechos con recibo de caja (paidAmount)', async () => {
@@ -61,7 +73,7 @@ describe('getCreditLimitSummary', () => {
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          clientId: 'customer-1',
+          clientId: { in: ['customer-1'] },
           status: { in: ['pending', 'partial'] },
         },
       }),
@@ -78,6 +90,60 @@ describe('getCreditLimitSummary', () => {
       usedCredit: 0,
       availableCredit: 0,
     });
+  });
+});
+
+describe('getCreditLimitSummaries', () => {
+  it('separa el cupo usado de cada cliente', async () => {
+    const { client } = buildClientWithCustomers(
+      { 'customer-1': 1000000, 'customer-2': 300000 },
+      [
+        receivable(500000, 200000, 'customer-1'),
+        receivable(100000, 0, 'customer-1'),
+        receivable(250000, 50000, 'customer-2'),
+      ],
+    );
+
+    const summaries = await getCreditLimitSummaries(client, [
+      'customer-1',
+      'customer-2',
+    ]);
+
+    expect(summaries.get('customer-1')).toEqual({
+      creditLimit: 1000000,
+      usedCredit: 400000,
+      availableCredit: 600000,
+    });
+    expect(summaries.get('customer-2')).toEqual({
+      creditLimit: 300000,
+      usedCredit: 200000,
+      availableCredit: 100000,
+    });
+  });
+
+  it('cliente sin CxC abiertas: usado 0 y disponible = cupo', async () => {
+    const { client } = buildClientWithCustomers({ 'customer-3': 500000 }, []);
+
+    const summaries = await getCreditLimitSummaries(client, ['customer-3']);
+
+    expect(summaries.get('customer-3')).toEqual({
+      creditLimit: 500000,
+      usedCredit: 0,
+      availableCredit: 500000,
+    });
+  });
+
+  it('sin clientes no consulta la base', async () => {
+    const { client, findMany, customerFindMany } = buildClientWithCustomers(
+      {},
+      [],
+    );
+
+    const summaries = await getCreditLimitSummaries(client, []);
+
+    expect(summaries.size).toBe(0);
+    expect(findMany).not.toHaveBeenCalled();
+    expect(customerFindMany).not.toHaveBeenCalled();
   });
 });
 
