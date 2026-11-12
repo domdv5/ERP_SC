@@ -194,7 +194,15 @@ El dueño del repo diseña y decide; la IA ejecuta. Objetivo: que el dueño enti
      modificadas: son el resumen objetivo de qué comportamiento cambió.
    - Calibración: cuando el dueño señale algo mal clasificado, se agrega como ejemplo aquí abajo.
    - Ejemplos de calibración: (ninguno todavía).
-5. **Modo práctica (opcional)** — si el dueño dice "modo práctica", la pieza de lógica de negocio
+5. **Riesgos y prueba de lo probado (desde 2026-11-12)** — toda entrega con código trae dos tablas:
+   - **Qué código revisar**: `archivo:línea` ordenado por criticidad (Crítico/Alto/Medio/Bajo, mismos niveles
+     del hábito 2), cada fila con qué regla de negocio vive ahí y qué se rompe si está mal.
+   - **Prueba de que las pruebas sirven**: cada regla Crítica/Alta se rompe a propósito en el código (mutación), se
+     corre su prueba, tiene que fallar, y el código se restaura (verificar con `git diff` vacío). Tabla: mutación →
+     DETECTADA / NO DETECTADA + prueba que la atrapó, más los conteos reales de `jest`/`vitest`/`tsc`. Una NO DETECTADA
+     es un hueco: se agrega la prueba o se declara. Lo que solo se probó con mocks (sin base real ni pantalla) se dice.
+   - La evidencia queda en `odd/tasks/<feature>-evidencia.md` cuando hay documento de feature.
+6. **Modo práctica (opcional)** — si el dueño dice "modo práctica", la pieza de lógica de negocio
    no la escribe la IA: queda un `TODO(human)` en el archivo real con qué debe hacer, entradas y
    salidas, y las pruebas ya escritas en rojo. El dueño la escribe; la IA corre las pruebas, revisa
    y explica mejoras sin reescribirla. Sin "modo práctica", rige la regla TODO(human) de Routing Rules.
