@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { CalendarDays, User, UserCog } from 'lucide-react'
@@ -7,6 +7,13 @@ import { Combobox, SegmentedToggle, CreditsPanel, CustomerBranchSelect } from '@
 import { cn } from '@/lib/utils'
 import { docNumber, todayInBogota } from '@/lib/format'
 import type { FormValues } from './document-form.schema'
+import {
+  canOfferCredit,
+  getCreditAmount,
+  hasCreditLine as hasCreditLineIn,
+  isCreditFullSale,
+  isCreditOverLimit,
+} from './pos-checkout.utils'
 import { MissingStockDialog } from './components/MissingStockDialog'
 import { CreditLimitPanel, CreditLimitErrorPanel } from './pos-checkout/CreditLimitPanels'
 import { PaymentLinesField } from './pos-checkout/PaymentLinesField'
@@ -52,9 +59,6 @@ export default function POSCheckoutPage() {
     accent,
   } = useSaleMode()
 
-  const { creditData, isLoadingCredit, creditError, clearCreditError, handleCreditError } =
-    useCreditLimit(mode, isCredit, thirdPartyId)
-
   const { productDetailByCode, minSalePriceByProductId, priceFloorViolations } =
     useCartProducts(cartItems)
   const { total, hasValidItems, totalUnits, officialTotals, grandTotal } = useSaleTotals(
@@ -65,6 +69,19 @@ export default function POSCheckoutPage() {
   const credits = useAppliedCredits({ thirdPartyId, official, total, grandTotal })
   const { creditsApplied, totalToPay } = credits
   const payments = usePaymentLines(totalToPay)
+
+  // Crédito parcial: solo POS normal con cliente; si deja de aplicar, se quitan sus líneas.
+  const creditAllowed =
+    !isCredit && canOfferCredit({ official, hasCustomer: Boolean(thirdPartyId) })
+  const hasCreditLine = creditAllowed && totalToPay > 0 && hasCreditLineIn(payments.paymentLines)
+  const { removeCreditLines } = payments
+  const mustDropCreditLines = !creditAllowed && hasCreditLineIn(payments.paymentLines)
+  useEffect(() => {
+    if (mustDropCreditLines) removeCreditLines()
+  }, [mustDropCreditLines]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { creditData, isLoadingCredit, creditError, clearCreditError, handleCreditError } =
+    useCreditLimit(mode, isCredit, thirdPartyId, hasCreditLine)
 
   const draft = useSaleDraft({
     mode,
@@ -84,6 +101,11 @@ export default function POSCheckoutPage() {
   const creditExceeded =
     isCredit && Boolean(creditData) && total - creditsApplied > creditData!.availableCredit
 
+  const creditAmount = hasCreditLine ? getCreditAmount(payments.paymentLines) : 0
+  const creditCoversAll = hasCreditLine && isCreditFullSale(creditAmount, totalToPay)
+  const creditLineOverLimit =
+    hasCreditLine && isCreditOverLimit(creditAmount, creditData?.availableCredit)
+
   const missingItems = findMissingItems({
     thirdPartyId,
     isLoadingBranches: parties.isLoadingBranches,
@@ -95,9 +117,11 @@ export default function POSCheckoutPage() {
     totalToPay,
     hasValidItems,
     hasPriceFloorViolations: priceFloorViolations.length > 0,
-    isCredit,
+    isCredit: isCredit || hasCreditLine,
     isLoadingCredit,
     creditExceeded,
+    creditCoversAll,
+    creditLineOverLimit,
   })
   const canConfirm = missingItems.length === 0
   // Lecturas del lector todavía en fila: no se confirma la venta hasta procesarlas
@@ -252,6 +276,11 @@ export default function POSCheckoutPage() {
                 <PaymentLinesField
                   paymentLines={payments.paymentLines}
                   paymentDifference={payments.paymentDifference}
+                  totalToPay={totalToPay}
+                  official={official}
+                  hasCustomer={Boolean(thirdPartyId)}
+                  availableCredit={creditData?.availableCredit}
+                  isLoadingCredit={isLoadingCredit}
                   onMethodChange={(index, method) => payments.updatePaymentRow(index, { method })}
                   onAmountChange={payments.changePaymentAmount}
                   onAdd={payments.addPaymentRow}

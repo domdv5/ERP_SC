@@ -59,6 +59,7 @@ export function operationFormTypes(permissions: readonly string[]) {
 export const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
   { value: 'efectivo_almacen', label: 'Efectivo almacén' },
   { value: 'consignacion_almacen', label: 'Consignación almacén' },
+  { value: 'credito', label: 'Crédito' },
 ]
 
 // Modalidad de una devolución en venta — obligatoria al crear una DVV.

@@ -33,8 +33,20 @@ export function usePaymentLines(totalToPay: number) {
     setPaymentRows(paymentLines.filter((_, i) => i !== index))
   }
 
+  // Quita las líneas de crédito (cambió a M2 o se quitó el cliente).
+  function removeCreditLines() {
+    const remaining = paymentLines.filter((line) => line.method !== 'credito')
+    if (remaining.length === 0) {
+      setIsAmountEdited(false)
+      setPaymentRows([{ method: '', amount: undefined }])
+      return
+    }
+    setPaymentRows(remaining)
+  }
+
   return {
     paymentLines,
+    removeCreditLines,
     paymentDifference,
     setPaymentRows,
     updatePaymentRow,

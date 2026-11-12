@@ -1,4 +1,8 @@
-import { arePaymentsValid, type PaymentLine } from '@/pages/documents/pos-checkout.utils'
+import {
+  arePaymentsValid,
+  CREDIT_FULL_SALE_MESSAGE,
+  type PaymentLine,
+} from '@/pages/documents/pos-checkout.utils'
 
 interface FindMissingItemsInput {
   thirdPartyId: string
@@ -14,6 +18,8 @@ interface FindMissingItemsInput {
   isCredit: boolean
   isLoadingCredit: boolean
   creditExceeded: boolean
+  creditLineOverLimit?: boolean
+  creditCoversAll?: boolean
 }
 
 // Lista de pendientes que bloquean "Confirmar venta"; vacía = se puede confirmar.
@@ -36,5 +42,8 @@ export function findMissingItems(input: FindMissingItemsInput): string[] {
     missingItems.push('Cargando cupo de crédito del cliente...')
   if (input.creditExceeded)
     missingItems.push('La venta supera el cupo de crédito disponible del cliente')
+  if (input.creditCoversAll) missingItems.push(CREDIT_FULL_SALE_MESSAGE)
+  if (input.creditLineOverLimit)
+    missingItems.push('El crédito de la venta supera el cupo disponible del cliente')
   return missingItems
 }

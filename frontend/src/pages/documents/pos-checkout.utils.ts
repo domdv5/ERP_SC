@@ -129,3 +129,37 @@ export function arePaymentsValid(lines: PaymentLine[], totalToPay: number): bool
     calculatePaymentDifference(lines, totalToPay) === 0
   )
 }
+
+// ─── parte a crédito del POS ─────────────────────────────────────────────────
+
+export const CREDIT_FULL_SALE_MESSAGE =
+  'El crédito no puede cubrir toda la venta. Si todo queda a crédito, haz una venta a crédito (COT).'
+
+// El crédito solo existe en POS normal (M1) y con cliente elegido.
+export function canOfferCredit(input: { official: boolean; hasCustomer: boolean }): boolean {
+  return !input.official && input.hasCustomer
+}
+
+export function getCreditAmount(lines: PaymentLine[]): number {
+  return lines.reduce((sum, line) => sum + (line.method === 'credito' ? (line.amount ?? 0) : 0), 0)
+}
+
+export function getPaidAmount(lines: PaymentLine[]): number {
+  return lines.reduce((sum, line) => sum + (line.method !== 'credito' ? (line.amount ?? 0) : 0), 0)
+}
+
+export function hasCreditLine(lines: PaymentLine[]): boolean {
+  return lines.some((line) => line.method === 'credito')
+}
+
+export function isCreditOverLimit(
+  creditAmount: number,
+  availableCredit: number | undefined,
+): boolean {
+  return availableCredit !== undefined && creditAmount > availableCredit
+}
+
+// Crédito que cubre todo lo que se cobra: debe ser una venta a crédito (COT).
+export function isCreditFullSale(creditAmount: number, totalToPay: number): boolean {
+  return creditAmount > 0 && totalToPay > 0 && creditAmount >= totalToPay
+}

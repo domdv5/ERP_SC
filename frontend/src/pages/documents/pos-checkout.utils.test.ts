@@ -10,6 +10,12 @@ vi.mock('@/services/documents.service', () => ({
 import { getDocument, getDocuments } from '@/services/documents.service'
 import {
   arePaymentsValid,
+  canOfferCredit,
+  getCreditAmount,
+  getPaidAmount,
+  hasCreditLine,
+  isCreditFullSale,
+  isCreditOverLimit,
   calculatePaymentDifference,
   findActivePendingPreventa,
   findPriceFloorViolations,
@@ -379,5 +385,45 @@ describe('toNumericCredits', () => {
 
   it('conserva sourceDocument null', () => {
     expect(toNumericCredits([credit('a', '10')])[0].sourceDocument).toBeNull()
+  })
+})
+
+describe('crédito parcial del POS', () => {
+  const lines: PaymentLine[] = [
+    { method: 'efectivo_almacen', amount: 300000 },
+    { method: 'credito', amount: 200000 },
+  ]
+
+  it('getCreditAmount y getPaidAmount separan crédito de lo pagado', () => {
+    expect(getCreditAmount(lines)).toBe(200000)
+    expect(getPaidAmount(lines)).toBe(300000)
+    expect(getCreditAmount([{ method: 'efectivo_almacen', amount: 10 }])).toBe(0)
+  })
+
+  it('hasCreditLine detecta la línea de crédito', () => {
+    expect(hasCreditLine(lines)).toBe(true)
+    expect(hasCreditLine([{ method: '', amount: undefined }])).toBe(false)
+  })
+
+  it('isCreditOverLimit compara contra el cupo disponible', () => {
+    expect(isCreditOverLimit(200000, 150000)).toBe(true)
+    expect(isCreditOverLimit(200000, 200000)).toBe(false)
+    expect(isCreditOverLimit(200000, undefined)).toBe(false)
+  })
+
+  it('isCreditFullSale: crédito igual o mayor a lo que se cobra', () => {
+    expect(isCreditFullSale(500000, 500000)).toBe(true)
+    expect(isCreditFullSale(200000, 500000)).toBe(false)
+    expect(isCreditFullSale(0, 0)).toBe(false)
+  })
+
+  it('canOfferCredit: no en M2 ni sin cliente', () => {
+    expect(canOfferCredit({ official: false, hasCustomer: true })).toBe(true)
+    expect(canOfferCredit({ official: true, hasCustomer: true })).toBe(false)
+    expect(canOfferCredit({ official: false, hasCustomer: false })).toBe(false)
+  })
+
+  it('arePaymentsValid acepta crédito dentro del total', () => {
+    expect(arePaymentsValid(lines, 500000)).toBe(true)
   })
 })

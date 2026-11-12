@@ -6,12 +6,17 @@ import type { CreditLimitExceededDetail } from '@/types/document.types'
 import type { SaleMode } from './useSaleMode'
 import { findApiErrorMessage } from '@/lib/api-error'
 
-// Cupo de crédito del cliente (solo modo crédito) y el error de cupo excedido que devuelve el backend.
-export function useCreditLimit(mode: SaleMode, isCredit: boolean, thirdPartyId: string) {
+// Cupo de crédito del cliente (modo crédito o POS con línea de pago "Crédito") y el error de cupo excedido que devuelve el backend.
+export function useCreditLimit(
+  mode: SaleMode,
+  isCredit: boolean,
+  thirdPartyId: string,
+  hasCreditLine = false,
+) {
   const { data: creditData, isLoading: isLoadingCredit } = useQuery({
     queryKey: ['customer-credit', thirdPartyId],
     queryFn: () => getCreditLimit(thirdPartyId),
-    enabled: isCredit && Boolean(thirdPartyId),
+    enabled: (isCredit || hasCreditLine) && Boolean(thirdPartyId),
     staleTime: 30 * 1000,
   })
 
