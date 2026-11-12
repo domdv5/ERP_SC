@@ -13,7 +13,12 @@ export function useCreditLimit(
   thirdPartyId: string,
   hasCreditLine = false,
 ) {
-  const { data: creditData, isLoading: isLoadingCredit } = useQuery({
+  const {
+    data: creditData,
+    isLoading: isLoadingCredit,
+    isError: isCreditQueryError,
+    refetch: refetchCredit,
+  } = useQuery({
     queryKey: ['customer-credit', thirdPartyId],
     queryFn: () => getCreditLimit(thirdPartyId),
     enabled: (isCredit || hasCreditLine) && Boolean(thirdPartyId),
@@ -47,5 +52,13 @@ export function useCreditLimit(
     setCreditError(null)
   }
 
-  return { creditData, isLoadingCredit, creditError, clearCreditError, handleCreditError }
+  return {
+    creditData,
+    isLoadingCredit,
+    isCreditQueryError,
+    refetchCredit,
+    creditError,
+    clearCreditError,
+    handleCreditError,
+  }
 }

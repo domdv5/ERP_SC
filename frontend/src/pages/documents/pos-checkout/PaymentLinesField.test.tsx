@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { PaymentLinesField } from './PaymentLinesField'
 import type { PaymentLine } from '@/pages/documents/pos-checkout.utils'
 
@@ -71,5 +71,28 @@ describe('PaymentLinesField — Crédito', () => {
       { method: 'credito', amount: 200000 },
     ])
     expect(screen.getByText(/supera el cupo disponible/)).toBeTruthy()
+  })
+
+  const creditLines: PaymentLine[] = [
+    { method: 'efectivo_almacen', amount: 300000 },
+    { method: 'credito', amount: 200000 },
+  ]
+
+  it('si falla la consulta del cupo avisa y ofrece reintentar', () => {
+    const onRetryCredit = vi.fn()
+    renderField(
+      { availableCredit: undefined, isCreditQueryError: true, onRetryCredit },
+      creditLines,
+    )
+    expect(screen.getByText(/No se pudo consultar el cupo\./)).toBeTruthy()
+    expect(screen.queryByText(/Consultando cupo/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
+    expect(onRetryCredit).toHaveBeenCalledTimes(1)
+  })
+
+  it('mientras carga (sin error) muestra Consultando cupo', () => {
+    renderField({ availableCredit: undefined, isLoadingCredit: true }, creditLines)
+    expect(screen.getByText(/Consultando cupo/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Reintentar' })).toBeNull()
   })
 })

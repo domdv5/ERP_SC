@@ -23,6 +23,12 @@ const completeSale: Input = {
 }
 
 describe('findMissingItems', () => {
+  it('bloquea si no se pudo consultar el cupo', () => {
+    expect(findMissingItems({ ...completeSale, creditUnavailable: true })).toEqual([
+      'No se pudo consultar el cupo de crédito del cliente',
+    ])
+  })
+
   it('devuelve lista vacía cuando la venta está completa', () => {
     expect(findMissingItems(completeSale)).toEqual([])
   })

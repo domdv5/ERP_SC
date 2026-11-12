@@ -80,8 +80,15 @@ export default function POSCheckoutPage() {
     if (mustDropCreditLines) removeCreditLines()
   }, [mustDropCreditLines]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { creditData, isLoadingCredit, creditError, clearCreditError, handleCreditError } =
-    useCreditLimit(mode, isCredit, thirdPartyId, hasCreditLine)
+  const {
+    creditData,
+    isLoadingCredit,
+    isCreditQueryError,
+    refetchCredit,
+    creditError,
+    clearCreditError,
+    handleCreditError,
+  } = useCreditLimit(mode, isCredit, thirdPartyId, hasCreditLine)
 
   const draft = useSaleDraft({
     mode,
@@ -122,6 +129,7 @@ export default function POSCheckoutPage() {
     creditExceeded,
     creditCoversAll,
     creditLineOverLimit,
+    creditUnavailable: hasCreditLine && isCreditQueryError && !creditData,
   })
   const canConfirm = missingItems.length === 0
   // Lecturas del lector todavía en fila: no se confirma la venta hasta procesarlas
@@ -281,6 +289,8 @@ export default function POSCheckoutPage() {
                   hasCustomer={Boolean(thirdPartyId)}
                   availableCredit={creditData?.availableCredit}
                   isLoadingCredit={isLoadingCredit}
+                  isCreditQueryError={isCreditQueryError}
+                  onRetryCredit={() => void refetchCredit()}
                   onMethodChange={(index, method) => payments.updatePaymentRow(index, { method })}
                   onAmountChange={payments.changePaymentAmount}
                   onAdd={payments.addPaymentRow}
