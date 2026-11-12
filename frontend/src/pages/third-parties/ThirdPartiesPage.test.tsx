@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ThirdPartyListResponse } from '@contracts/third-parties'
 import ThirdPartiesPage from './ThirdPartiesPage'
@@ -66,13 +66,7 @@ function renderPage() {
   )
 }
 
-async function selectCustomerFilter() {
-  fireEvent.change(await screen.findByDisplayValue('Todos los roles'), {
-    target: { value: 'customer' },
-  })
-}
-
-describe('ThirdPartiesPage columna Cupo', () => {
+describe('ThirdPartiesPage columnas de crédito', () => {
   beforeEach(() => {
     grantedPermissions = ['document.create.COT']
     mockItems([
@@ -84,63 +78,82 @@ describe('ThirdPartiesPage columna Cupo', () => {
     vi.clearAllMocks()
   })
 
-  it('se muestra con filtro Clientes y permiso, con disponible y usado/total', async () => {
+  it('muestra Cupo, Usado y Disponible sin filtro cuando las filas traen credit', async () => {
     renderPage()
-    await selectCustomerFilter()
-    expect(await screen.findByText('Cupo')).toBeTruthy()
-    expect(await screen.findByText(/usado .*400\.000.* de .*1\.000\.000/)).toBeTruthy()
-    expect(screen.getByText(/600\.000/).className).not.toContain('text-red-600')
+    await screen.findByText('Ana SAS')
+    expect(screen.getByText('Cupo')).toBeTruthy()
+    expect(screen.getByText('Usado')).toBeTruthy()
+    expect(screen.getByText('Disponible')).toBeTruthy()
+    expect(screen.getByText(/1\.000\.000/).className).not.toContain('font-bold')
+    expect(screen.getByText(/400\.000/)).toBeTruthy()
   })
 
   it('también se muestra con customer.credit.update', async () => {
     grantedPermissions = ['customer.credit.update']
     renderPage()
-    await selectCustomerFilter()
     expect(await screen.findByText('Cupo')).toBeTruthy()
-  })
-
-  it('se oculta con otro filtro', async () => {
-    renderPage()
-    await screen.findByText('Ana SAS')
-    expect(screen.queryByText('Cupo')).toBeNull()
   })
 
   it('se oculta sin permiso', async () => {
     grantedPermissions = []
     renderPage()
-    await selectCustomerFilter()
+    await screen.findByText('Ana SAS')
+    expect(screen.queryByText('Cupo')).toBeNull()
+    expect(screen.queryByText('Disponible')).toBeNull()
+  })
+
+  it('se oculta si ninguna fila trae credit', async () => {
+    mockItems([makeItem('Ana SAS')])
+    renderPage()
     await screen.findByText('Ana SAS')
     expect(screen.queryByText('Cupo')).toBeNull()
   })
 
-  it('disponible <= 0 se pinta en rojo', async () => {
+  it('Disponible > 0 va en verde y negrita', async () => {
+    renderPage()
+    await screen.findByText('Ana SAS')
+    const available = screen.getByText(/600\.000/)
+    expect(available.className).toContain('text-brand-secondary')
+    expect(available.className).toContain('font-bold')
+    expect(available.className).not.toContain('text-red-600')
+  })
+
+  it('Disponible <= 0 va en rojo', async () => {
     mockItems([
       makeItem('Ana SAS', { creditLimit: 500000, usedCredit: 500000, availableCredit: 0 }),
     ])
     renderPage()
-    await selectCustomerFilter()
-    const available = await screen.findByText(/^\$\s?0$/)
+    await screen.findByText('Ana SAS')
+    const available = screen.getByText(/^\$\s?0$/)
     expect(available.className).toContain('text-red-600')
+    expect(available.className).toContain('font-bold')
   })
 
-  it('cupo 0 con deuda muestra Sin cupo y debe en rojo', async () => {
-    mockItems([makeItem('Ana SAS', { creditLimit: 0, usedCredit: 250000, availableCredit: 0 })])
+  it('cupo 0 muestra — en Cupo, el Usado y el Disponible negativo en rojo', async () => {
+    mockItems([makeItem('Ana SAS', { creditLimit: 0, usedCredit: 50000, availableCredit: -50000 })])
     renderPage()
-    await selectCustomerFilter()
-    expect(await screen.findByText('Sin cupo')).toBeTruthy()
-    const debt = screen.getByText(/debe .*250\.000/)
-    expect(debt.className).toContain('text-red-600')
-    expect(screen.queryByText('—')).toBeNull()
+    await screen.findByText('Ana SAS')
+    expect(screen.getByText('—')).toBeTruthy()
+    expect(screen.getByText(/^\$\s?50\.000$/)).toBeTruthy()
+    expect(screen.getByText(/-\s?\$\s?50\.000|\$\s?-50\.000/).className).toContain('text-red-600')
   })
 
-  it('muestra — si el cupo es 0 sin deuda o no viene credit', async () => {
+  it('una fila sin credit deja las tres celdas vacías', async () => {
     mockItems([
-      makeItem('Ana SAS', { creditLimit: 0, usedCredit: 0, availableCredit: 0 }),
+      makeItem('Ana SAS', { creditLimit: 1000000, usedCredit: 400000, availableCredit: 600000 }),
       makeItem('Beto SAS'),
     ])
     renderPage()
-    await selectCustomerFilter()
-    await screen.findByText('Cupo')
-    expect(screen.getAllByText('—')).toHaveLength(2)
+    const row = (await screen.findByText('Beto SAS')).closest('tr') as HTMLElement
+    const cells = Array.from(row.querySelectorAll('td'))
+    expect(cells).toHaveLength(9)
+    expect(cells.slice(5, 8).every((td) => td.textContent === '')).toBe(true)
+  })
+
+  it('no muestra el texto "usado $X de $Y"', async () => {
+    renderPage()
+    await screen.findByText('Ana SAS')
+    expect(screen.queryByText(/usado .* de /)).toBeNull()
+    expect(screen.queryByText(/Sin cupo/)).toBeNull()
   })
 })

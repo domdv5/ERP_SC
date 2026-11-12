@@ -57,34 +57,31 @@ const ROLE_BADGES = [
   },
 ]
 
-function CreditCell({ credit }: { credit?: CustomerCreditSummary }) {
-  if (!credit || (credit.creditLimit <= 0 && credit.usedCredit <= 0)) {
-    return <span className="text-content-faint">—</span>
-  }
-  if (credit.creditLimit <= 0) {
+function CreditCells({ credit }: { credit?: CustomerCreditSummary }) {
+  if (!credit) {
     return (
-      <div>
-        <p className="font-medium text-content">Sin cupo</p>
-        <p className="text-xs text-red-600 dark:text-red-400">
-          debe {formatCOP(credit.usedCredit)}
-        </p>
-      </div>
+      <>
+        <td className="px-5 py-3.5" />
+        <td className="px-5 py-3.5" />
+        <td className="px-5 py-3.5" />
+      </>
     )
   }
   return (
-    <div>
-      <p
+    <>
+      <td className="px-5 py-3.5 text-sm text-content">
+        {credit.creditLimit > 0 ? formatCOP(credit.creditLimit) : '—'}
+      </td>
+      <td className="px-5 py-3.5 text-sm text-content">{formatCOP(credit.usedCredit)}</td>
+      <td
         className={cn(
-          'font-medium',
-          credit.availableCredit <= 0 ? 'text-red-600 dark:text-red-400' : 'text-content',
+          'px-5 py-3.5 text-sm font-bold',
+          credit.availableCredit > 0 ? 'text-brand-secondary' : 'text-red-600 dark:text-red-400',
         )}
       >
         {formatCOP(credit.availableCredit)}
-      </p>
-      <p className="text-xs text-content-faint">
-        usado {formatCOP(credit.usedCredit)} de {formatCOP(credit.creditLimit)}
-      </p>
-    </div>
+      </td>
+    </>
   )
 }
 
@@ -138,14 +135,14 @@ export default function ThirdPartiesPage() {
   const total = data?.meta.total ?? 0
   const customerCount = data?.meta.customerCount ?? 0
   const supplierCount = data?.meta.supplierCount ?? 0
-  const showCredit = roleFilter === 'customer' && canSeeCredit
+  const showCredit = canSeeCredit && items.some((t) => t.credit)
   const headers = [
     'Nombre',
     'Tipo',
     'Tipo Doc.',
     'N° Documento',
     'Roles',
-    ...(showCredit ? ['Cupo'] : []),
+    ...(showCredit ? ['Cupo', 'Usado', 'Disponible'] : []),
     'Acciones',
   ]
 
@@ -395,11 +392,7 @@ export default function ThirdPartiesPage() {
                           )}
                         </div>
                       </td>
-                      {showCredit && (
-                        <td className="px-5 py-3.5">
-                          <CreditCell credit={t.credit} />
-                        </td>
-                      )}
+                      {showCredit && <CreditCells credit={t.credit} />}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           {canEditRow && (
