@@ -14,12 +14,13 @@ Regla: hábito 5 del CLAUDE.md raíz. Spec: `odd/tasks/pos-pago-parcial-credito.
 | Alto | `backend/src/documents/document-void.service.ts:115, 307` | Anular borra la CxC y se bloquea si tiene abonos (código previo, sin cambios) | CxC huérfana o abono perdido |
 | Medio | `frontend/src/pages/documents/pos-checkout.utils.ts:139-163` | Cuándo se ofrece Crédito, monto, cupo excedido, 100% | El cajero ve la opción donde no va o confirma algo que el backend rechaza (el backend igual bloquea) |
 | Medio | `frontend/src/pages/documents/pos-checkout/PaymentLinesField.tsx:98-120` | Línea compacta de cupo | Mensaje confuso; sin efecto en datos |
-| Bajo | `backend/src/documents/print/blocks/payments-box.block.ts` | Formas de pago y "Pagado / A crédito" en el PDF | Solo visual |
+| Crítico | `backend/src/documents/helpers/credit.helpers.ts:34-38` | Cupo usado = `totalAmount − paidAmount` (incluye abonos por recibo de caja); afecta POS y COT | Se niega o se da crédito de más sin aviso |
+| Bajo | `backend/src/documents/print/blocks/credit-box.block.ts` | El PDF imprime solo "A crédito" | Solo visual |
 | Bajo | `frontend/src/pages/documents/DocumentDetailPage.tsx:823-838` | "Pagado / A crédito" en el detalle | Solo visual |
 
 ## Conteos reales (2026-11-12)
 
-- Backend `jest`: 64 suites, 674 pruebas, todas pasan. `tsc --noEmit`: sin errores.
+- Backend `jest`: 65 suites, 680 pruebas, todas pasan (tras el arreglo del cupo y el PDF solo crédito, commits 9afdf33 y 8c19264). `tsc --noEmit`: sin errores.
 - Frontend `vitest run`: 20 archivos, 217 pruebas, todas pasan. `tsc -b` y `pnpm build`: sin errores.
 - Verificación independiente (`gentle-ai-verify`): S1-S8 y D1-D6 pasan; S5 y S6 solo con mocks.
 - Revisión nativa (riesgo, resiliencia, confiabilidad): aprobada, sin bloqueantes (`review-004c7d8c40f36370`).
@@ -41,7 +42,9 @@ Cada fila: se cambió esa línea en el código real, se corrió la prueba indica
 | M9 | Anular no bloquea una CxC con abonos | DETECTADA | `documents.service.void.spec.ts` — bloqueo 409 previo |
 | M10 | Frontend ofrece Crédito en M2 | DETECTADA (2 pruebas) | `pos-checkout.utils.test.ts` "canOfferCredit: no en M2 ni sin cliente" y `PaymentLinesField.test.tsx` "no ofrece Crédito en M2 (oficial)" |
 
-10 de 10 detectadas: no hay regla crítica o alta que se pueda romper sin que una prueba falle.
+| M11 | Cupo usado sin descontar `paidAmount` (abonos por recibo de caja) | DETECTADA (3 pruebas) | `credit.helpers.spec.ts` — "descuenta los abonos hechos con recibo de caja", "deja pasar lo que entra en el cupo liberado por un abono", "rechaza con 400 y el detalle del cupo si se pasa" |
+
+11 de 11 detectadas: no hay regla crítica o alta que se pueda romper sin que una prueba falle.
 
 ## Qué NO garantizan estas pruebas
 
