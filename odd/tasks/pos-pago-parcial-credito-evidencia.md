@@ -46,9 +46,17 @@ Cada fila: se cambió esa línea en el código real, se corrió la prueba indica
 
 11 de 11 detectadas: no hay regla crítica o alta que se pueda romper sin que una prueba falle.
 
+## Seguimiento 2026-11-12 (rama `fix/pos-credit-followups`)
+
+| # | Qué | Resultado |
+|---|---|---|
+| M12 | CxC calculada como `total − saldo a favor` en vez de la línea crédito (venta $500.000, saldo $50.000, efectivo $250.000, crédito $200.000) | DETECTADA — `pos-effect.strategy.spec.ts` "con saldo a favor aplicado, la CxC es la línea crédito…" (commit 075f354) |
+| C1 | Concurrencia real contra Postgres por la API local: cliente con cupo $300.000, 2 POS de $400.000 ($200.000 a crédito c/u) confirmados en paralelo, 5 rondas | 5/5 correctas: siempre 1 confirmada (201) y 1 rechazada por cupo (400); cupo usado = $200.000 (una sola CxC); ventas anuladas o borradas al final, cupo usado final $0 |
+| F1 | Consulta de cupo caída en el POS | Aviso "No se pudo consultar el cupo." + Reintentar; confirmar queda bloqueado (antes NO se bloqueaba) — commit 88c5065, 220 pruebas frontend |
+
 ## Qué NO garantizan estas pruebas
 
-- Son pruebas unitarias con mocks: el `FOR UPDATE` se verifica como "se ejecutó la consulta", no como bloqueo real en Postgres con dos ventas simultáneas.
+- La concurrencia real se probó (C1) solo con el bloqueo puesto; no se hizo la contraprueba de quitar el `FOR UPDATE` contra la base real (la mutación M2 lo cubre con mocks).
 - La migración se aplicó en la base local de desarrollo, pero ninguna prueba automática confirma un POS con crédito contra una base real.
 - La pantalla no se recorrió en un navegador; el PDF no se generó de verdad.
 - Pasos para probar a mano: sección "Qué no se probó" de la entrega del 2026-11-12.

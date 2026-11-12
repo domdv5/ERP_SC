@@ -8,6 +8,7 @@ interface CreditLimitPanelProps {
   isLoading: boolean
   creditExceeded: boolean
   netAmount: number
+  onRetry: () => void
 }
 
 // Panel de cupo de crédito — informativo, solo lectura. La validación real la hace
@@ -17,6 +18,7 @@ export function CreditLimitPanel({
   isLoading,
   creditExceeded,
   netAmount,
+  onRetry,
 }: CreditLimitPanelProps) {
   return (
     <div className="rounded-xl border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/60 dark:bg-indigo-500/10 p-4">
@@ -61,7 +63,12 @@ export function CreditLimitPanel({
           </div>
         </div>
       ) : (
-        <p className="text-sm text-content-muted mt-2 font-accent">No se pudo consultar el cupo.</p>
+        <p className="text-sm text-content-muted mt-2 font-accent">
+          No se pudo consultar el cupo.{' '}
+          <button type="button" onClick={onRetry} className="btn-secondary px-2 py-0.5 text-xs">
+            Reintentar
+          </button>
+        </p>
       )}
       {creditExceeded && creditData && (
         <p className="text-xs text-red-600 dark:text-red-400 mt-3">

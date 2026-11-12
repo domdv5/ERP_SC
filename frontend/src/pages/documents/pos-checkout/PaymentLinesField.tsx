@@ -20,6 +20,8 @@ interface PaymentLinesFieldProps {
   hasCustomer: boolean
   availableCredit: number | undefined
   isLoadingCredit: boolean
+  isCreditQueryError?: boolean
+  onRetryCredit?: () => void
   onMethodChange: (index: number, method: PaymentMethod | '') => void
   onAmountChange: (index: number, amount: number | undefined) => void
   onAdd: () => void
@@ -34,6 +36,8 @@ export function PaymentLinesField({
   hasCustomer,
   availableCredit,
   isLoadingCredit,
+  isCreditQueryError = false,
+  onRetryCredit,
   onMethodChange,
   onAmountChange,
   onAdd,
@@ -55,6 +59,8 @@ export function PaymentLinesField({
         const amount = line.amount ?? 0
         const isFullSale = isCreditLine && isCreditFullSale(amount, totalToPay)
         const isOverLimit = isCreditLine && isCreditOverLimit(amount, availableCredit)
+        const showCreditError =
+          isCreditLine && !isFullSale && isCreditQueryError && availableCredit === undefined
         return (
           <div key={index} className="space-y-1">
             <div className="flex items-center gap-2">
@@ -99,13 +105,24 @@ export function PaymentLinesField({
               <p
                 className={cn(
                   'text-xs font-accent',
-                  isFullSale || isOverLimit
+                  isFullSale || isOverLimit || showCreditError
                     ? 'text-red-600 dark:text-red-400 font-medium'
                     : 'text-content',
                 )}
               >
                 {isFullSale ? (
                   CREDIT_FULL_SALE_MESSAGE
+                ) : showCreditError ? (
+                  <>
+                    No se pudo consultar el cupo.{' '}
+                    <button
+                      type="button"
+                      onClick={onRetryCredit}
+                      className="btn-secondary px-2 py-0.5 text-xs"
+                    >
+                      Reintentar
+                    </button>
+                  </>
                 ) : isLoadingCredit || availableCredit === undefined ? (
                   'Consultando cupo...'
                 ) : isOverLimit ? (

@@ -256,6 +256,29 @@ describe('PosEffectStrategy: parte a crédito', () => {
     expect(tx.accountsReceivable.create).toHaveBeenCalledTimes(1);
   });
 
+  it('con saldo a favor aplicado, la CxC es la línea crédito (no total menos saldo ni menos efectivo)', async () => {
+    await strategy.confirm(
+      txClient,
+      makeSale([
+        { method: 'efectivo_almacen', amount: 250000 },
+        { method: 'credito', amount: 200000 },
+      ]),
+      'u1',
+      { appliedCustomerCredits: [{ customerCreditId: 'cc-1', amount: 50000 }] },
+    );
+
+    expect(assertCreditWithinLimit).toHaveBeenCalledWith(
+      txClient,
+      'cus-1',
+      200000,
+    );
+    expect(tx.accountsReceivable.create).toHaveBeenCalledTimes(1);
+    const { data } = tx.accountsReceivable.create.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(Number(data.totalAmount)).toBe(200000);
+  });
+
   it('cupo excedido en confirm: propaga el 400 y no crea CxC', async () => {
     jest
       .mocked(assertCreditWithinLimit)
