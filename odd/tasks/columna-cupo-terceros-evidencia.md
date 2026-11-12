@@ -1,7 +1,7 @@
 # Evidencia — Columna "Cupo" en Terceros (2026-11-12)
 
 Pedido (L1): "primero que todo me hace falta una forma rapida de conmsultar el credito de un cliente , cuanto es, cunato a usado y cuando le falta, no me doy cuenta hasta que hago una cot" · "dale, cartera tambione lo ve".
-Regla: la columna sale solo con filtro Clientes y para quien puede hacer COT o fijar cupos (Facturación, Líder, Admin, Cartera). A los demás el backend no les manda el dato.
+Regla (rediseño tras feedback "no me gusto como queod… si yo busco al lciente… no me aprece anda"): tres columnas planas Cupo / Usado / Disponible, en cualquier filtro o búsqueda si la página tiene clientes, solo para quien puede hacer COT o fijar cupos (Facturación, Líder, Admin, Cartera). A los demás el backend no les manda el dato.
 
 ## Qué código revisar
 
@@ -16,13 +16,13 @@ Regla: la columna sale solo con filtro Clientes y para quien puede hacer COT o f
 
 | # | Mutación | Resultado |
 |---|---|---|
-| M1 | La regla ignora el filtro Clientes | DETECTADA |
+| M1 | (obsoleta: el filtro Clientes ya no es parte de la regla) | — |
 | M2 | Cualquier permiso ve el cupo | DETECTADA |
 | M3 | El service manda el cupo sin chequear la regla | DETECTADA |
 | M4 | Cupo usado ignora abonos (`paidAmount`) | DETECTADA |
 | M5 | Cupo usado mezcla clientes | DETECTADA |
 | M6 | Pantalla muestra Cupo sin permiso | DETECTADA |
-| M7 | Pantalla muestra Cupo en cualquier filtro | DETECTADA |
+| M7 | Pantalla muestra columnas aunque la página no tenga clientes | DETECTADA (re-corrida tras rediseño, igual M2-M6) |
 
 ## Contra la base real (API local, no mocks)
 
@@ -30,6 +30,8 @@ Regla: la columna sale solo con filtro Clientes y para quien puede hacer COT o f
 - Sin filtro Clientes (admin): 0 filas con `credit`.
 - Usuario de prueba `cupo_bodega` (rol warehouse): 10 clientes, 0 con `credit`.
 - Usuario de prueba `cupo_cartera` (rol accounts_admin): 10 clientes, 10 con `credit`.
+
+- Tras el rediseño, búsqueda "prueba" sin filtro: admin 6/6 clientes con `credit`, `cupo_cartera` 6/6, `cupo_bodega` 0/6; filtro Proveedores: 0 con `credit` para todos.
 
 ## Qué solo se probó con mocks
 
