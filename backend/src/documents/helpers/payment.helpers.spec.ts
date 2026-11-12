@@ -1,7 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PaymentMethod } from '@/common/enums';
-import { assertPaymentsMatchTotal } from './payment.helpers';
+import {
+  assertCreditIsPartial,
+  assertNoCreditPayment,
+  assertPaymentsMatchTotal,
+  getCreditPaymentAmount,
+} from './payment.helpers';
 
 const pay = (method: PaymentMethod, amount: number | string) => ({
   method,
@@ -115,5 +120,65 @@ describe('assertPaymentsMatchTotal', () => {
     expect(error.message.replace(/\s/g, ' ')).toBe(
       'Las formas de pago suman $ 1.000 y el total a cobrar es $ 0: sobran $ 1.000',
     );
+  });
+});
+
+describe('getCreditPaymentAmount', () => {
+  it('devuelve el monto de la línea crédito', () => {
+    const amount = getCreditPaymentAmount([
+      pay(PaymentMethod.efectivo_almacen, 300000),
+      pay(PaymentMethod.credito, '200000.50'),
+    ]);
+    expect(amount.toString()).toBe('200000.5');
+  });
+
+  it('devuelve 0 cuando no hay línea crédito', () => {
+    const amount = getCreditPaymentAmount([
+      pay(PaymentMethod.efectivo_almacen, 500000),
+    ]);
+    expect(amount.toString()).toBe('0');
+  });
+});
+
+describe('assertCreditIsPartial', () => {
+  it('acepta crédito menor al total a cobrar', () => {
+    expect(() =>
+      assertCreditIsPartial(new Prisma.Decimal(200000), 500000),
+    ).not.toThrow();
+  });
+
+  it('acepta cuando no hay crédito', () => {
+    expect(() =>
+      assertCreditIsPartial(new Prisma.Decimal(0), 500000),
+    ).not.toThrow();
+  });
+
+  it('rechaza crédito por el 100% y manda a la venta a crédito', () => {
+    const error = errorOf(() =>
+      assertCreditIsPartial(new Prisma.Decimal(500000), 500000),
+    );
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect(error.message).toBe(
+      'El crédito no puede cubrir toda la venta. Si todo queda a crédito, haz una venta a crédito (COT).',
+    );
+  });
+});
+
+describe('assertNoCreditPayment', () => {
+  it('acepta formas de pago sin crédito', () => {
+    expect(() =>
+      assertNoCreditPayment([pay(PaymentMethod.efectivo_almacen, 100)]),
+    ).not.toThrow();
+  });
+
+  it('rechaza una línea crédito', () => {
+    const error = errorOf(() =>
+      assertNoCreditPayment([
+        pay(PaymentMethod.efectivo_almacen, 100),
+        pay(PaymentMethod.credito, 50),
+      ]),
+    );
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect(error.message).toBe('Esta venta no admite pago a crédito');
   });
 });

@@ -12,7 +12,7 @@ export interface CreditLimitSummary {
   availableCredit: number;
 }
 
-/** Cupo de crédito del cliente: `usedCredit` es el saldo pendiente de sus CxC abiertas; `creditLimit` null ⇒ cupo 0. */
+/** Cupo de crédito del cliente: `usedCredit` es el saldo (`totalAmount − paidAmount`) de sus CxC abiertas; `creditLimit` null ⇒ cupo 0. */
 export async function getCreditLimitSummary(
   client: PrismaOrTx,
   customerId: string,
@@ -24,10 +24,7 @@ export async function getCreditLimitSummary(
     }),
     client.accountsReceivable.findMany({
       where: { clientId: customerId, status: { in: ['pending', 'partial'] } },
-      select: {
-        totalAmount: true,
-        receivablePayments: { select: { amount: true } },
-      },
+      select: { totalAmount: true, paidAmount: true },
     }),
   ]);
 
@@ -35,13 +32,12 @@ export async function getCreditLimitSummary(
     ? toCents(customer.creditLimit)
     : 0;
 
-  const usedCreditCents = openAccounts.reduce((sum, account) => {
-    const paidCents = account.receivablePayments.reduce(
-      (paid, payment) => paid + toCents(payment.amount),
-      0,
-    );
-    return sum + (toCents(account.totalAmount) - paidCents);
-  }, 0);
+  // paidAmount suma los abonos de recibos de caja: es el mismo saldo que muestran CxC y el recibo.
+  const usedCreditCents = openAccounts.reduce(
+    (sum, account) =>
+      sum + toCents(account.totalAmount) - toCents(account.paidAmount),
+    0,
+  );
 
   return {
     creditLimit: creditLimitCents / 100,

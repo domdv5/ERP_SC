@@ -24,12 +24,12 @@ Toca dinero (CxC, caja), migración y contrato de la venta: verificación indepe
 
 ## Tasks
 
-- T1 — S4 — migración manual (workaround de backend/CLAUDE.md) — `ALTER TYPE "PaymentMethod" ADD VALUE 'credito'` — commit: pendiente
-- T2 — S3, S4, S5, S7 — nestjs-code-crafter (lógica de cupo y CxC inline primero) — `PosEffectStrategy`: validar cupo sobre la línea `credito`, crear la CxC por ese monto al confirmar; `PosoEffectStrategy` rechaza `credito`; DTO y contrato `backend/src/contracts/documents.ts` — commit: pendiente
-- T3 — S6 — nestjs-code-crafter — anulación de POS con CxC (`document-void.service.ts`), bloqueo si hay abonos — commit: pendiente
-- T4 — S4, S7, S8, D4 — react-code-crafter — POS: forma de pago "Crédito" en `PaymentLinesField` (solo con cliente con cupo, nunca en M2), línea compacta de cupo, aviso claro si el crédito cubre el 100% ("usa una venta a crédito (COT)"), resumen — commit: pendiente
-- T5 — D5 — inline/react-code-crafter — detalle y PDF muestran "Pagado: $X / A crédito: $Y" — commit: pendiente
-- T6 — S1-S7 — inline — pruebas (cuadre con crédito, cupo, CxC creada por el monto correcto, POSO rechaza crédito, anulación) y regla "informes de plata recibida excluyen `credito`" en backend/CLAUDE.md — commit: pendiente
+- [x] T1 — S4 — migración manual (workaround de backend/CLAUDE.md) — `ALTER TYPE "PaymentMethod" ADD VALUE 'credito'` — commit: 6cb73ed
+- [x] T2 — S3, S4, S5, S7 — nestjs-code-crafter (lógica de cupo y CxC inline primero) — `PosEffectStrategy`: validar cupo sobre la línea `credito`, crear la CxC por ese monto al confirmar; `PosoEffectStrategy` rechaza `credito`; DTO y contrato `backend/src/contracts/documents.ts` — commit: 6cb73ed
+- [x] T3 — S6 — nestjs-code-crafter — anulación de POS con CxC (`document-void.service.ts`), bloqueo si hay abonos — commit: 041c20e
+- [x] T4 — S4, S7, S8, D4 — react-code-crafter — POS: forma de pago "Crédito" en `PaymentLinesField` (solo con cliente con cupo, nunca en M2), línea compacta de cupo, aviso claro si el crédito cubre el 100% ("usa una venta a crédito (COT)"), resumen — commit: 446694d
+- [x] T5 — D5 — inline/react-code-crafter — detalle y PDF muestran "Pagado: $X / A crédito: $Y" — commit: 6504654 (PDF), 446694d (detalle)
+- [x] T6 — S1-S7 — inline — pruebas (cuadre con crédito, cupo, CxC creada por el monto correcto, POSO rechaza crédito, anulación) y regla "informes de plata recibida excluyen `credito`" en backend/CLAUDE.md — commit: 6cb73ed, 041c20e, 6504654, 446694d
 
 ## Riesgos
 

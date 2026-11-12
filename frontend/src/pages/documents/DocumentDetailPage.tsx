@@ -820,6 +820,22 @@ export default function DocumentDetailPage() {
                     </span>
                   </p>
                 ))}
+                {doc.payments.some((payment) => payment.method === 'credito') && (
+                  <p className="text-xs text-content-muted font-accent mt-1">
+                    Pagado:{' '}
+                    {formatCOP(
+                      doc.payments
+                        .filter((payment) => payment.method !== 'credito')
+                        .reduce((sum, payment) => sum + Number(payment.amount), 0),
+                    )}{' '}
+                    / A crédito:{' '}
+                    {formatCOP(
+                      doc.payments
+                        .filter((payment) => payment.method === 'credito')
+                        .reduce((sum, payment) => sum + Number(payment.amount), 0),
+                    )}
+                  </p>
+                )}
               </div>
             </div>
           )}

@@ -2,6 +2,7 @@ import type { TDocumentDefinitions } from 'pdfmake/interfaces';
 import type { DocumentForPrint } from '@/documents/documents-query.service';
 import {
   buildHeader,
+  buildCreditBox,
   buildSaleFooter,
   buildSaleItemsTable,
   buildTotalsBox,
@@ -11,7 +12,7 @@ import { computeSalePrintTotals } from '../helpers/pdf-totals.helper';
 /** Diseño compartido de los documentos de venta: precio de venta con IVA incluido; la leyenda legal DIAN es opcional por tipo. */
 export function buildSaleDocumentDefinition(
   document: DocumentForPrint,
-  opts: { title: string; showLegalLegend: boolean },
+  opts: { title: string; showLegalLegend: boolean; showCredit?: boolean },
 ): TDocumentDefinitions {
   const totals = computeSalePrintTotals(document.documentItems);
 
@@ -26,6 +27,7 @@ export function buildSaleDocumentDefinition(
     content: [
       buildSaleItemsTable(document.documentItems),
       buildTotalsBox(totals),
+      ...(opts.showCredit ? [buildCreditBox(document.payments)] : []),
     ],
     defaultStyle: { font: 'Roboto', fontSize: 8 },
   };

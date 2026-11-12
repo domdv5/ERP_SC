@@ -13,6 +13,7 @@ export class PosPrintStrategy implements DocumentPrintStrategy {
     return buildSaleDocumentDefinition(document, {
       title: 'VENTA CONTADO',
       showLegalLegend: true,
+      showCredit: true,
     });
   }
 }
