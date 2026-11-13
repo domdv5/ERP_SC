@@ -23,7 +23,10 @@ import {
   getCreditLimitSummaries,
   type CreditLimitSummary,
 } from '@/documents/helpers/credit.helpers';
-import { canSeeCustomerCredit } from './helpers/credit-visibility';
+import {
+  canSeeCustomerCredit,
+  hideCreditLimit,
+} from './helpers/credit-visibility';
 import type {
   CustomerBranch,
   SupplierBrand,
@@ -137,7 +140,7 @@ export class ThirdPartiesService {
     }
 
     return matchListContract({
-      items: listItems,
+      items: listItems.map((item) => hideCreditLimit(item, user.permissions)),
       meta: {
         total,
         page,
@@ -149,7 +152,7 @@ export class ThirdPartiesService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user: JwtPayload) {
     const thirdParty = await this.prisma.thirdParty.findUnique({
       where: { id },
       include: {
@@ -161,7 +164,7 @@ export class ThirdPartiesService {
     if (!thirdParty) {
       throw new NotFoundException('Tercero no encontrado.');
     }
-    return matchDetailContract(thirdParty);
+    return matchDetailContract(hideCreditLimit(thirdParty, user.permissions));
   }
 
   async create(createThirdPartyDto: CreateThirdPartyDto, user: JwtPayload) {
@@ -249,7 +252,7 @@ export class ThirdPartiesService {
       return { ...thirdParty, customer, supplier };
     });
 
-    return matchCreatedContract(created);
+    return matchCreatedContract(hideCreditLimit(created, user.permissions));
   }
 
   async renameBrand(
@@ -331,7 +334,7 @@ export class ThirdPartiesService {
       ...thirdPartyData
     } = updateThirdPartyDto;
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // La relación de proveedor tiene que existir antes de que las marcas puedan
       // apuntar a ella, así que el upsert de abajo va antes de crear las marcas.
       const updated = await tx.thirdParty.update({
@@ -422,6 +425,8 @@ export class ThirdPartiesService {
         }),
       );
     });
+
+    return hideCreditLimit(result, user.permissions);
   }
 
   private assertRolePermissions(

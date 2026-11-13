@@ -34,8 +34,8 @@ export class ThirdPartiesController {
 
   @Get(':id')
   @Permissions('thirdparty.read')
-  findOne(@Param('id') id: string) {
-    return this.thirdPartiesService.findOne(id);
+  findOne(@Param('id') id: string, @Req() req: RequestWithUser) {
+    return this.thirdPartiesService.findOne(id, req.user);
   }
 
   @Post()

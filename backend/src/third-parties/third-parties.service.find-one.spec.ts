@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { ThirdPartiesService } from './third-parties.service';
 import type { PrismaService } from '@/prisma/prisma.service';
+import type { JwtPayload } from '@/common/types';
 
 describe('ThirdPartiesService.findOne', () => {
   const findUnique = jest.fn();
@@ -8,13 +9,15 @@ describe('ThirdPartiesService.findOne', () => {
     thirdParty: { findUnique },
   } as unknown as PrismaService);
 
+  const user = { sub: 'u-1', permissions: [] } as unknown as JwtPayload;
+
   beforeEach(() => findUnique.mockReset());
 
   it('devuelve el tercero con sucursales y marcas activas', async () => {
     const row = { id: 'tp-1', name: 'Cliente' };
     findUnique.mockResolvedValue(row);
 
-    await expect(service.findOne('tp-1')).resolves.toBe(row);
+    await expect(service.findOne('tp-1', user)).resolves.toBe(row);
     expect(findUnique).toHaveBeenCalledWith({
       where: { id: 'tp-1' },
       include: {
@@ -36,7 +39,7 @@ describe('ThirdPartiesService.findOne', () => {
   it('lanza 404 si no existe', async () => {
     findUnique.mockResolvedValue(null);
 
-    const call = service.findOne('nope');
+    const call = service.findOne('nope', user);
     await expect(call).rejects.toBeInstanceOf(NotFoundException);
     await expect(call).rejects.toThrow('Tercero no encontrado.');
   });

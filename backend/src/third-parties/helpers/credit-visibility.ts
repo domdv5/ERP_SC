@@ -9,3 +9,15 @@ export function canSeeCustomerCredit(permissions: readonly string[]): boolean {
     permissions.includes(permission),
   );
 }
+
+export function hideCreditLimit<
+  T extends { customer: { creditLimit: unknown } | null },
+>(thirdParty: T, permissions: readonly string[]): T {
+  if (!thirdParty.customer || canSeeCustomerCredit(permissions)) {
+    return thirdParty;
+  }
+  return {
+    ...thirdParty,
+    customer: { ...thirdParty.customer, creditLimit: null },
+  };
+}
