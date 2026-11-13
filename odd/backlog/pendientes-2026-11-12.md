@@ -18,6 +18,7 @@ Estado de `main`: `aa232c5` (PR #98 POS con crédito, PR #99 seguimiento, PR #10
 11. Lint (8 avisos en backend; el frontend no tiene ESLint).
 12. Recibo de caja: descuento y excedentes (esperando a la empresa).
 13. Rama remota vieja `feat/scan-separate-rows` en GitHub: borrar si se aprueba.
+14. Revisar las pruebas existentes (backend y frontend) y quitar las de bajo valor (textos, columnas, layout) según el hábito 7 del `CLAUDE.md` raíz. Sin apuro.
 
 ## Decisiones de negocio pendientes
 - Conversión de preventa a facturación.

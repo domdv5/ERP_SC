@@ -206,6 +206,11 @@ El dueño del repo diseña y decide; la IA ejecuta. Objetivo: que el dueño enti
    no la escribe la IA: queda un `TODO(human)` en el archivo real con qué debe hacer, entradas y
    salidas, y las pruebas ya escritas en rojo. El dueño la escribe; la IA corre las pruebas, revisa
    y explica mejoras sin reescribirla. Sin "modo práctica", rige la regla TODO(human) de Routing Rules.
+7. **Qué lleva prueba (desde 2026-11-13)** — se prueba lo que, si se rompe, cuesta caro y no se ve a
+   simple vista: reglas de dinero y stock (topes, cuadres, saldos), permisos, validaciones que bloquean
+   u obligan, cálculos con casos borde, y cada bug arreglado (una prueba que lo reproduce). No se
+   prueban textos, rótulos, nombres u orden de columnas, layout ni estilos, ni código que solo mueve
+   datos sin decidir nada. Al delegar, el prompt pide pruebas solo de esa lista, nunca de copy o markup.
 
 ## graphify
 
