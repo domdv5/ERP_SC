@@ -20,6 +20,7 @@ import {
 import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import type { ThirdPartyDetail } from '@/types/third-party.types'
+import { calculateReciboTotal } from './recibo-caja-totals'
 
 export default function RecibosCajaListPage() {
   const navigate = useNavigate()
@@ -265,7 +266,7 @@ export default function RecibosCajaListPage() {
                       {reciboCaja.customerBranch?.name ?? '—'}
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
-                      {formatCOP(Number(reciboCaja.total))}
+                      {formatCOP(calculateReciboTotal(reciboCaja))}
                     </td>
                   </tr>
                 ))}

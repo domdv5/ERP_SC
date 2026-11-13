@@ -195,16 +195,14 @@ export default function EgresosListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Número', 'Fecha', 'Proveedor', 'Total', 'Formas de pago', 'Saldo a favor'].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
-                      >
-                        {h}
-                      </th>
-                    ),
-                  )}
+                  {['Número', 'Fecha', 'Proveedor', 'Total'].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
@@ -238,12 +236,6 @@ export default function EgresosListPage() {
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                       {formatCOP(Number(egreso.total))}
-                    </td>
-                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatCOP(Number(egreso.cashTotal))}
-                    </td>
-                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatCOP(Number(egreso.creditTotal))}
                     </td>
                   </tr>
                 ))}

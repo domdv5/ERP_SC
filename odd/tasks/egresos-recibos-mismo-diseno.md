@@ -23,9 +23,9 @@ Solo frontend (crear, lista, detalle). Cambia el diseño, no las reglas de diner
 - T1 [S9] lógica: Egresos sin propuesta automática de saldo a favor (dueño) — commit: pendiente
 - T2 [S1-S8, S9 UI] maquetación de crear/lista/detalle + pruebas — react-code-crafter — commit: pendiente
 
-- T3 [S12] backend: schema + reparto al crear recibo (dueño, escrito) + migración + pruebas de la regla — PR1 rama feat/recibos-credit-split — commit: pendiente
-- T4 [S13] backend: contratos y consultas de lista/detalle de recibos + pruebas — PR1 — commit: pendiente
-- T5 [S14, S1-S11] frontend: 6 pantallas según `design/egresos-recibos/` — PR2 rama feat/egresos-recibos-same-design — commit: pendiente
+- T3 [S12] backend: schema + reparto al crear recibo (dueño, escrito) + migración + pruebas de la regla — PR1 rama feat/recibos-credit-split — commit: e99246b
+- T4 [S13] backend: contratos y consultas de lista/detalle de recibos + pruebas — PR1 — commit: e99246b
+- T5 [S14, S1-S11] frontend: 6 pantallas según `design/egresos-recibos/` — PR2 rama feat/egresos-recibos-design (sale de feat/recibos-credit-split) — commit: pendiente
 
 ## Log
 - L1 (2026-11-13): "lo que si quiero es que hay una conrcondia entre el dinseño de egresos y recibos de cja, obivmante cada uno tineie datos diferetnes pero el dinseo la idea es que sea homomgeno y solo cambie la logica de cad uno por ejmlpo, en egresos hay un columan que se llama reparto (vista previa) y en recibos de cjaa no"
@@ -36,3 +36,18 @@ Solo frontend (crear, lista, detalle). Cambia el diseño, no las reglas de diner
 - L6 (2026-11-13): "cuado se acceda al detllae que quede claro como un reusmen de lo que suma y resta y el valro total, porque en el detalle esta suelto y puede llegar a confunidr" — 05/06: tarjetas sueltas reemplazadas por un bloque "Cuadre" (Cuentas abonadas − Descuento − Saldo a favor = Dinero pagado/recibido). Pendiente: decisión del reparto por factura en Recibos (opciones 1/2/3).
 - L7 (2026-11-13): "en esa capture que te mostra tmapoco es calro que ese saldo a favor esd uno solo es como si fueran 2 diferttnes y no se sae que ahyq que sumarlo para que den los 55, y en cuntao a tu pregunta,entonces la opcion 1" — "Saldos a favor usados" agrupado por saldo (una fila con el total) y debajo "↳ Aplicado a <factura> $monto". Reparto por factura en Recibos: opción 1 = guardar desde ahora (FIFO, igual que Egresos) en columna nueva `ReciboCajaAllocation.creditAmount`; recibos viejos muestran "—" (sin backfill). Requiere migración (Safety Rule: confirmación aparte).
 - L8 (2026-11-13): "dale" al plan: PR1 backend (guardar reparto como egresos, migración confirmada: dos columnas opcionales + cambio del unique) y PR2 frontend. Dueño confirmó que el descuento sigue proporcional (preguntó por descuento a una sola factura: hoy no se puede en un mismo recibo; queda fuera).
+- L9 (2026-11-13): PR1 commit e99246b (559 líneas, un solo commit por ser alto riesgo: migración + regla de dinero) en `feat/recibos-credit-split`. PR2 (frontend) sigue en `feat/egresos-recibos-design`, apilada sobre PR1.
+- L10 (2026-11-13): "no no deshace todo eso nuevo y volvamos al dinsor origianl". El rediseño del frontend (32 archivos, ~2.700 líneas) era más de lo pedido ("solo simplment e un tipo de igualaicon"). Se guardó en `git stash` ("frontend rediseño egresos/recibos descartado 2026-11-13") y las pantallas volvieron a como están en main. T5 queda en pausa. El backend e99246b sigue en la rama, sin push.
+- L11 (2026-11-13): Nuevo enfoque: igualar pantalla por pantalla con cambios mínimos, preguntando cada detalle ("no asumas nada y haz las preguntas"). Listas decididas:
+  - Egresos: solo renombrar "Formas de pago" → "Dinero pagado"; orden igual (Número · Fecha · Proveedor · Total · Dinero pagado · Saldo a favor).
+  - Recibos: Número · Fecha · Cliente · Sucursal · Total · Dinero recibido · Saldo a favor · Descuento. Total = dinero + saldo a favor + descuento (igual que Egresos).
+- L12 (2026-11-13): Detalle decidido (mínimo):
+  - Resumen arriba como Egresos en las dos: Total · Dinero pagado/recibido · Saldo a favor; Recibos agrega Descuento (con motivo) si hay; se quita "Deuda original" y las tarjetas Cliente/Sucursal/"N registradas" (cliente y sucursal al subtítulo como Egresos).
+  - Orden de tablas como Egresos: Formas de pago → Cuentas abonadas → Saldos a favor usados.
+  - Saldos a favor usados como Egresos: Origen (link) · Monto aplicado; una fila por factura cubierta aunque se repita el origen.
+  - Cuentas abonadas: Documento · Abonado · Dinero pagado/recibido · Saldo a favor · (Descuento en recibos); recibos viejos "—".
+- L13 (2026-11-13): Detalle: Egresos renombra "Formas de pago" → "Dinero pagado" en el resumen. Crear decidido: bloque de saldo a favor "Como Recibos" en las dos (tabla Fecha · Origen · Saldo · Usar, arranca en 0, "Usar todo"; Egresos deja de llenarse solo); quitar "Reparto (vista previa)" de Egresos.
+- L14 (2026-11-13): "Total" pasa a llamarse "Total abonado" en las dos listas y en el resumen del detalle (= dinero + saldo a favor + descuento). "dale" para arrancar por las listas.
+- L15 (2026-11-13): "nada este tampoco me convence, descartalo! porfa" → se descartó todo el cambio de las listas (vuelven a las originales). Detalle y Crear quedan sin empezar.
+- L16 (2026-11-13): Dueño se confundió (creía que todo estaba aplicado); vuelven las listas. Nombre: "Total" en las dos ("el total por el que salió el egreso/recibo de caja y por dentro la justificación"). Recibos: Total = dinero + saldo a favor + descuento.
+- L17 (2026-11-13): Listas con una sola columna de plata: "Total" (= lo que bajó la deuda; el desglose va en el detalle). Egresos: Número · Fecha · Proveedor · Total (se quitan Formas de pago y Saldo a favor). Recibos: Número · Fecha · Cliente · Sucursal · Total, con Total = dinero + saldo a favor + descuento. Idea abierta: en el detalle mostrar monto original y pendiente de cada factura.
