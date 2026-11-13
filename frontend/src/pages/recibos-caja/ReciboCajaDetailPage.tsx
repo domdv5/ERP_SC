@@ -4,12 +4,10 @@ import {
   ArrowLeft,
   Wallet,
   Banknote,
+  HandCoins,
   Landmark,
   Hash,
   StickyNote,
-  User,
-  Store,
-  Receipt,
   Percent,
 } from 'lucide-react'
 
@@ -17,6 +15,7 @@ import { getReciboCaja } from '@/services/recibos-caja.service'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
 import { RECIBO_CAJA_DISCOUNT_REASON_LABELS } from './recibo-caja-form.schema'
+import { calculateAllocationCash, calculateReciboTotal, sumAmounts } from './recibo-caja-totals'
 
 export default function ReciboCajaDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -83,7 +82,12 @@ export default function ReciboCajaDetailPage() {
 
   const hasDiscount = Number(reciboCaja.discountAmount) > 0
   const creditApplications = reciboCaja.creditApplications ?? []
-  const totalCredits = creditApplications.reduce((sum, c) => sum + Number(c.amount), 0)
+  const totalCredits = sumAmounts(creditApplications)
+  const total = calculateReciboTotal({
+    cashTotal: reciboCaja.total,
+    creditTotal: String(totalCredits),
+    discountAmount: reciboCaja.discountAmount,
+  })
 
   return (
     <div className="space-y-6 pb-10">
@@ -107,34 +111,30 @@ export default function ReciboCajaDetailPage() {
               {docNumber('RC', reciboCaja.number)}
             </h1>
             <p className="text-content-muted text-sm mt-1 font-accent">
-              {formatDateOnly(reciboCaja.date)} &middot; Registrado por {reciboCaja.user.name}
+              <button
+                onClick={() => navigate(`/accounts-receivable/clients/${reciboCaja.client.id}`)}
+                className="text-content font-semibold underline decoration-content-muted underline-offset-4 hover:decoration-content"
+              >
+                {reciboCaja.client.thirdParty.name}
+              </button>
+              {reciboCaja.customerBranch && <> &middot; {reciboCaja.customerBranch.name}</>}{' '}
+              &middot; {formatDateOnly(reciboCaja.date)} &middot; Registrado por{' '}
+              {reciboCaja.user.name}
             </p>
           </div>
         </div>
 
         {/* Resumen */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 border-t border-ui-divide pt-5">
+        <div
+          className={`mt-6 grid grid-cols-1 sm:grid-cols-3 ${hasDiscount ? 'lg:grid-cols-4' : ''} gap-5 border-t border-ui-divide pt-5`}
+        >
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
-              <User className="w-4 h-4 text-content-muted" />
+              <Wallet className="w-4 h-4 text-content-muted" />
             </div>
             <div>
-              <p className="text-xs text-content-faint">Cliente</p>
-              <p className="text-sm text-content font-medium">
-                {reciboCaja.client.thirdParty.name}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
-              <Store className="w-4 h-4 text-content-muted" />
-            </div>
-            <div>
-              <p className="text-xs text-content-faint">Sucursal</p>
-              <p className="text-sm text-content font-medium">
-                {reciboCaja.customerBranch?.name ?? 'Sin sucursal'}
-              </p>
+              <p className="text-xs text-content-faint">Total</p>
+              <p className="text-sm text-content font-medium">{formatCOP(total)}</p>
             </div>
           </div>
 
@@ -143,50 +143,32 @@ export default function ReciboCajaDetailPage() {
               <Banknote className="w-4 h-4 text-content-muted" />
             </div>
             <div>
-              <p className="text-xs text-content-faint">Formas de pago</p>
+              <p className="text-xs text-content-faint">Dinero recibido</p>
               <p className="text-sm text-content font-medium">
-                {reciboCaja.payments.length}{' '}
-                {reciboCaja.payments.length === 1 ? 'registrada' : 'registradas'}
+                {formatCOP(Number(reciboCaja.total))}
               </p>
             </div>
           </div>
-          {!hasDiscount && (
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
-                <Wallet className="w-4 h-4 text-content-muted" />
-              </div>
-              <div>
-                <p className="text-xs text-content-faint">Total</p>
-                <p className="text-sm text-content font-medium">
-                  {formatCOP(Number(reciboCaja.total))}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
 
-        {hasDiscount && (
-          <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-5 border-t border-ui-divide pt-5">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
-                <Receipt className="w-4 h-4 text-content-muted" />
-              </div>
-              <div>
-                <p className="text-xs text-content-faint">Deuda original</p>
-                <p className="text-sm text-content font-medium">
-                  {formatCOP(Number(reciboCaja.debtBeforeReceipt ?? 0))}
-                </p>
-              </div>
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
+              <HandCoins className="w-4 h-4 text-content-muted" />
             </div>
+            <div>
+              <p className="text-xs text-content-faint">Saldo a favor</p>
+              <p className="text-sm text-content font-medium">{formatCOP(totalCredits)}</p>
+            </div>
+          </div>
 
+          {hasDiscount && (
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
                 <Percent className="w-4 h-4 text-amber-700 dark:text-amber-400" />
               </div>
               <div>
                 <p className="text-xs text-content-faint">Descuento</p>
-                <p className="text-sm text-amber-700 dark:text-amber-400 font-semibold tabular-nums">
-                  − {formatCOP(Number(reciboCaja.discountAmount))}
+                <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+                  {formatCOP(Number(reciboCaja.discountAmount))}
                 </p>
                 {reciboCaja.discountReason && (
                   <span className="pill-stamp mt-1 inline-block bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
@@ -195,20 +177,8 @@ export default function ReciboCajaDetailPage() {
                 )}
               </div>
             </div>
-
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
-                <Wallet className="w-4 h-4 text-content-muted" />
-              </div>
-              <div>
-                <p className="text-xs text-content-faint">Recibido</p>
-                <p className="text-sm text-content font-semibold">
-                  {formatCOP(Number(reciboCaja.total))}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Formas de pago */}
@@ -277,46 +247,6 @@ export default function ReciboCajaDetailPage() {
         )}
       </div>
 
-      {/* Saldos a favor usados */}
-      {creditApplications.length > 0 && (
-        <div className="card-hard overflow-hidden">
-          <div className="px-6 py-4 border-b border-ui-border">
-            <h2 className="text-content font-semibold">Saldos a favor usados</h2>
-            <p className="text-content-muted text-xs mt-0.5 font-accent">
-              Total aplicado: {formatCOP(totalCredits)}
-            </p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-ui-border">
-                  {['Fecha del saldo a favor', 'Valor usado'].map((h) => (
-                    <th
-                      key={h}
-                      className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-ui-divide">
-                {creditApplications.map((application) => (
-                  <tr key={application.id}>
-                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatDateOnly(application.customerCredit.date)}
-                    </td>
-                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
-                      {formatCOP(Number(application.amount))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       {/* Cuentas por cobrar abonadas */}
       <div className="card-hard overflow-hidden">
         <div className="px-6 py-4 border-b border-ui-border">
@@ -331,7 +261,13 @@ export default function ReciboCajaDetailPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ui-border">
-                {['Documento', 'Abonado', ...(hasDiscount ? ['Descuento'] : [])].map((h) => (
+                {[
+                  'Documento',
+                  'Abonado',
+                  'Dinero recibido',
+                  'Saldo a favor',
+                  ...(hasDiscount ? ['Descuento'] : []),
+                ].map((h) => (
                   <th
                     key={h}
                     className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -342,35 +278,98 @@ export default function ReciboCajaDetailPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-ui-divide">
-              {reciboCaja.allocations.map((allocation) => (
-                <tr key={allocation.id} className="hover:bg-surface-raised transition-colors">
-                  <td className="px-5 py-3.5">
-                    <Link
-                      to={`/documents/${allocation.accountReceivable.documentId}`}
-                      className="font-mono text-xs font-medium link-plain"
-                    >
-                      {docNumber(
-                        allocation.accountReceivable.document.type,
-                        allocation.accountReceivable.document.number,
-                      )}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
-                    {formatCOP(Number(allocation.amount))}
-                  </td>
-                  {hasDiscount && (
-                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
-                      {Number(allocation.discountAmount) > 0
-                        ? formatCOP(Number(allocation.discountAmount))
-                        : '—'}
+              {reciboCaja.allocations.map((allocation) => {
+                const cashAmount = calculateAllocationCash(allocation)
+                return (
+                  <tr key={allocation.id} className="hover:bg-surface-raised transition-colors">
+                    <td className="px-5 py-3.5">
+                      <Link
+                        to={`/documents/${allocation.accountReceivable.documentId}`}
+                        className="font-mono text-xs font-medium link-plain"
+                      >
+                        {docNumber(
+                          allocation.accountReceivable.document.type,
+                          allocation.accountReceivable.document.number,
+                        )}
+                      </Link>
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                      {formatCOP(Number(allocation.amount))}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                      {cashAmount === null ? '—' : formatCOP(cashAmount)}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                      {allocation.creditAmount === null
+                        ? '—'
+                        : formatCOP(Number(allocation.creditAmount))}
+                    </td>
+                    {hasDiscount && (
+                      <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                        {formatCOP(Number(allocation.discountAmount))}
+                      </td>
+                    )}
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Saldos a favor usados */}
+      {creditApplications.length > 0 && (
+        <div className="card-hard overflow-hidden">
+          <div className="px-6 py-4 border-b border-ui-border">
+            <h2 className="text-content font-semibold">Saldos a favor usados</h2>
+            <p className="text-content-muted text-xs mt-0.5 font-accent">
+              {creditApplications.length}{' '}
+              {creditApplications.length === 1 ? 'aplicación' : 'aplicaciones'}
+            </p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-ui-border">
+                  {['Origen', 'Monto aplicado'].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ui-divide">
+                {creditApplications.map((application) => (
+                  <tr key={application.id} className="hover:bg-surface-raised transition-colors">
+                    <td className="px-5 py-3.5">
+                      {application.customerCredit.sourceDocument ? (
+                        <Link
+                          to={`/documents/${application.customerCredit.sourceDocument.id}`}
+                          className="font-mono text-xs font-medium link-plain"
+                        >
+                          {docNumber(
+                            application.customerCredit.sourceDocument.type,
+                            application.customerCredit.sourceDocument.number,
+                          )}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-content-faint">Excedente</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                      {formatCOP(Number(application.amount))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Notas */}
       {reciboCaja.notes && (

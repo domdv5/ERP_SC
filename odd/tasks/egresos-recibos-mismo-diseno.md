@@ -51,3 +51,27 @@ Solo frontend (crear, lista, detalle). Cambia el diseño, no las reglas de diner
 - L15 (2026-11-13): "nada este tampoco me convence, descartalo! porfa" → se descartó todo el cambio de las listas (vuelven a las originales). Detalle y Crear quedan sin empezar.
 - L16 (2026-11-13): Dueño se confundió (creía que todo estaba aplicado); vuelven las listas. Nombre: "Total" en las dos ("el total por el que salió el egreso/recibo de caja y por dentro la justificación"). Recibos: Total = dinero + saldo a favor + descuento.
 - L17 (2026-11-13): Listas con una sola columna de plata: "Total" (= lo que bajó la deuda; el desglose va en el detalle). Egresos: Número · Fecha · Proveedor · Total (se quitan Formas de pago y Saldo a favor). Recibos: Número · Fecha · Cliente · Sucursal · Total, con Total = dinero + saldo a favor + descuento. Idea abierta: en el detalle mostrar monto original y pendiente de cada factura.
+- L18 (2026-11-13): Detalle aplicado según L12-L13: Recibos con resumen como Egresos (Total · Dinero recibido · Saldo a favor · Descuento con motivo), cliente (link) y sucursal en el subtítulo, orden Formas de pago → Cuentas → Saldos, Saldos a favor usados = Origen · Monto aplicado ("Excedente" sin documento), cuentas con Dinero recibido · Saldo a favor ("—" en recibos viejos). Egresos solo renombra "Formas de pago" → "Dinero pagado".
+- L19 (2026-11-13): Nombre del cliente/proveedor en el encabezado del detalle: link visible (blanco, negrita, subrayado siempre); `link-plain` se perdía en el gris. Pendiente decidir si los números de documento de las tablas van igual.
+- L20 (2026-11-13): Dueño corta por hoy ("en la próxima sesión arrancamos con esto de nuevo"). Detalle commiteado sin revisar en pantalla.
+
+## Retomar aquí (próxima sesión)
+Rama `feat/egresos-recibos-design` (local, sin push). Encima de main: e99246b backend reparto, d7aa87a listas, y el commit del detalle.
+
+Hecho:
+- Backend: reparto del saldo a favor por factura en recibos (migración aplicada en la base local).
+- Listas: una sola columna "Total"; en Recibos = dinero + saldo a favor + descuento.
+- Detalle: Recibos igual a Egresos (resumen, orden de tablas, Saldos a favor usados, cuentas con Dinero/Saldo; "—" en recibos viejos). Egresos solo renombra "Dinero pagado". Link del tercero visible.
+
+Probar en pantalla (nada de esto se probó todavía):
+1. Alto — Crear recibo nuevo con 2 facturas + saldo a favor + plata; en el detalle cada fila: Abonado = Dinero recibido + Saldo a favor + Descuento; la factura más vieja se cubre primero con saldo. Si sale "—", el backend no está guardando el reparto.
+2. Alto — Lista de recibos: Total = plata + saldo + descuento, y coincide con el Total del detalle.
+3. Medio — Recibo viejo (todos los existentes hoy, ej. RC-000015): "—" por factura, nunca $0.
+4. Medio — Recibo con descuento: arriba Descuento con motivo y columna Descuento en la tabla.
+5. Bajo — Saldo tipo excedente dice "Excedente"; egresos sin cambios de números; link del tercero se ve como link.
+
+Pendiente:
+- Decidir: números de documento de las tablas, ¿mismo estilo de link visible?
+- Crear: saldo a favor como tabla de Recibos (arranca en 0, "Usar todo") en las dos; quitar "Reparto (vista previa)" de Egresos. Avisar antes: en Egresos el saldo ya no se aplica solo.
+- Idea abierta: en el detalle, monto original y pendiente de cada factura.
+- Al final: PR (backend y frontend), decisión del dueño.

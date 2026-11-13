@@ -91,7 +91,7 @@ export default function EgresoDetailPage() {
             <p className="text-content-muted text-sm mt-1 font-accent">
               <button
                 onClick={() => navigate(`/accounts-payable/suppliers/${egreso.supplier.id}`)}
-                className="link-plain font-medium"
+                className="text-content font-semibold underline decoration-content-muted underline-offset-4 hover:decoration-content"
               >
                 {egreso.supplier.thirdParty.name}
               </button>{' '}
@@ -117,7 +117,7 @@ export default function EgresoDetailPage() {
               <Banknote className="w-4 h-4 text-content-muted" />
             </div>
             <div>
-              <p className="text-xs text-content-faint">Formas de pago</p>
+              <p className="text-xs text-content-faint">Dinero pagado</p>
               <p className="text-sm text-content font-medium">
                 {formatCOP(Number(egreso.cashTotal))}
               </p>
@@ -218,7 +218,7 @@ export default function EgresoDetailPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ui-border">
-                {['Documento', 'Abonado', 'Formas de pago', 'Saldo a favor'].map((h) => (
+                {['Documento', 'Abonado', 'Dinero pagado', 'Saldo a favor'].map((h) => (
                   <th
                     key={h}
                     className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
