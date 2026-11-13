@@ -10,8 +10,8 @@ Pendientes 1, 2 y 4 de `odd/backlog/pendientes-2026-11-12.md`. Dos PRs separados
 - S5: Un campo obligatorio vaciado muestra error ("Requerido") y no se guarda como 0.
 
 ## Tasks
-- T1 [S1,S2,S3] backend: ocultar cupo + pruebas + backlog — PR1 — commit: pendiente
-- T2 [S4,S5] frontend: montos borrables sin guardar 0 + pruebas — PR2 — commit: pendiente
+- T1 [S1,S2,S3] backend: ocultar cupo + pruebas + backlog — PR1 — commit: e79d028
+- T2 [S4,S5] frontend: montos borrables sin guardar 0 + pruebas — PR2 — commit: 7634151 (rama fix/amount-fields-clear)
 
 ## Log
 - L1 (2026-11-13): "de lo mas freecos, el 1 y el 2, el 4 no lo entenid" / "el 4 tambien incluyelo!" / "dale" (sobre el plan: PR1 cupo null por rol + cerrar 4 en backlog; PR2 `v ?? null` en 8 campos y vacío obligatorio = "Requerido", nunca 0).
