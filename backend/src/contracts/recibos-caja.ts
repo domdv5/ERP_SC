@@ -30,6 +30,11 @@ export interface ReciboCajaListItem {
   number: string;
   date: string;
   total: string;
+  // Dinero recibido (= total)
+  cashTotal: string;
+  // Σ de los saldos a favor aplicados
+  creditTotal: string;
+  discountAmount: string;
   createdAt: string;
   client: ReceivableClient;
   customerBranch: ReciboCajaBranch | null;
@@ -81,15 +86,35 @@ export interface ReciboCajaAllocation {
   amount: string;
   // Parte de `amount` cubierta por el descuento del recibo
   discountAmount: string;
+  // Parte de `amount` cubierta con saldo a favor; null en recibos anteriores al reparto
+  creditAmount: string | null;
   accountReceivable: ReciboCajaAllocationAccountReceivable;
 }
 
-// Saldo a favor de administración usado como parte del pago; date es null si no es excedente
+// Tramo de un saldo a favor de administración aplicado a una CxC del recibo
 export interface ReciboCajaCreditApplication {
   id: string;
   amount: string;
   customerCreditId: string;
-  customerCredit: { id: string; date: string | null; amount: string };
+  // Null en recibos anteriores al reparto
+  accountReceivableId: string | null;
+  accountReceivable: {
+    id: string;
+    document: {
+      id: string;
+      type: ReceivableDocumentRef['type'];
+      number: string;
+    };
+  } | null;
+  customerCredit: {
+    id: string;
+    kind: CustomerCreditKind;
+    amount: string;
+    // Solo excedentes; una devolución no tiene fecha propia: la UI usa sourceDocument.date
+    date: string | null;
+    // Null en los excedentes
+    sourceDocument: ReceivableDocumentRef | null;
+  };
 }
 
 // GET /recibos-caja/:id y POST /recibos-caja
