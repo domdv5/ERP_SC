@@ -49,7 +49,24 @@ export const RECIBO_CAJA_DETAIL_INCLUDE = {
       id: true,
       amount: true,
       customerCreditId: true,
-      customerCredit: { select: { id: true, date: true, amount: true } },
+      accountReceivableId: true,
+      accountReceivable: {
+        select: {
+          id: true,
+          document: { select: { id: true, type: true, number: true } },
+        },
+      },
+      customerCredit: {
+        select: {
+          id: true,
+          kind: true,
+          amount: true,
+          date: true,
+          sourceDocument: {
+            select: { id: true, type: true, number: true, date: true },
+          },
+        },
+      },
     },
   },
 } satisfies Prisma.ReciboCajaInclude;
@@ -150,11 +167,11 @@ function isSameEgresoRequest(
     (line) => line.customerCreditId,
     (line) => line.amount,
   );
-  const existingCredits = new Map(
-    existing.creditApplications.map((a) => [
-      a.customerCreditId,
-      toCents(a.amount),
-    ]),
+  // Un saldo repartido en varias CxC se guarda en varias filas: se suman por saldo
+  const existingCredits = sumCentsById(
+    existing.creditApplications,
+    (a) => a.customerCreditId,
+    (a) => Number(a.amount),
   );
   if (!sameCents(requestedCredits, existingCredits)) {
     return false;
@@ -288,7 +305,8 @@ export class RecibosCajaService {
       include: {
         document: { select: { number: true, customerBranchId: true } },
       },
-      orderBy: { createdAt: 'asc' },
+      // El id desempata CxC creadas en el mismo instante: el reparto del saldo no cambia entre ejecuciones
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
 
     if (receivables.length !== receivableIds.length) {
@@ -459,17 +477,53 @@ export class RecibosCajaService {
       });
     }
 
+    // Reparto igual que egresos: cada CxC (más antigua primero) consume saldos (más antiguo primero) sobre lo que queda tras su descuento.
+    const creditQueue = [...credits]
+      .sort(
+        (a, b) =>
+          a.createdAt.getTime() - b.createdAt.getTime() ||
+          a.id.localeCompare(b.id),
+      )
+      .map((credit) => ({
+        id: credit.id,
+        remainingCents: creditCentsById.get(credit.id)!,
+      }));
+
     for (const receivable of receivables) {
       const amountCents = requestedCentsByReceivableId.get(receivable.id);
       if (amountCents === undefined) continue;
+
+      const discountShareCents =
+        discountCentsByReceivableId.get(receivable.id) ?? 0;
+      let neededCents = amountCents - discountShareCents;
+      let creditUsedCents = 0;
+
+      for (const chunk of creditQueue) {
+        if (neededCents <= 0) break;
+        if (chunk.remainingCents <= 0) continue;
+
+        const takeCents = Math.min(neededCents, chunk.remainingCents);
+        await tx.customerCreditApplication.create({
+          data: {
+            customerCreditId: chunk.id,
+            reciboCajaId: reciboCaja.id,
+            accountReceivableId: receivable.id,
+            amount: takeCents / 100,
+          },
+        });
+
+        chunk.remainingCents -= takeCents;
+        neededCents -= takeCents;
+        creditUsedCents += takeCents;
+      }
 
       await tx.reciboCajaAllocation.create({
         data: {
           reciboCajaId: reciboCaja.id,
           accountReceivableId: receivable.id,
           amount: amountCents / 100,
-          discountAmount:
-            (discountCentsByReceivableId.get(receivable.id) ?? 0) / 100,
+          discountAmount: discountShareCents / 100,
+          creditAmount: creditUsedCents / 100,
         },
       });
 
@@ -486,15 +540,15 @@ export class RecibosCajaService {
       });
     }
 
+    // El cuadre (pagos + saldos + descuento = abonos) garantiza que todo el saldo pedido se consumió.
+    if (creditQueue.some((chunk) => chunk.remainingCents > 0)) {
+      throw new BadRequestException(
+        'El saldo a favor supera lo que queda por cubrir de las cuentas',
+      );
+    }
+
     for (const credit of credits) {
       const usedCents = creditCentsById.get(credit.id)!;
-      await tx.customerCreditApplication.create({
-        data: {
-          customerCreditId: credit.id,
-          reciboCajaId: reciboCaja.id,
-          amount: usedCents / 100,
-        },
-      });
       const newBalanceCents = toCents(credit.balance) - usedCents;
       await tx.customerCredit.update({
         where: { id: credit.id },
@@ -626,11 +680,13 @@ export class RecibosCajaService {
           number: true,
           date: true,
           total: true,
+          discountAmount: true,
           createdAt: true,
           customerBranch: { select: { id: true, name: true } },
           client: {
             include: { thirdParty: { select: { id: true, name: true } } },
           },
+          creditApplications: { select: { amount: true } },
         },
         skip,
         take: limit,
@@ -642,7 +698,14 @@ export class RecibosCajaService {
     ]);
 
     return matchListContract({
-      items,
+      items: items.map(({ creditApplications, ...recibo }) => ({
+        ...recibo,
+        cashTotal: recibo.total,
+        creditTotal: creditApplications.reduce(
+          (sum, application) => sum.plus(application.amount),
+          new Prisma.Decimal(0),
+        ),
+      })),
       meta: {
         total,
         page,

@@ -47,7 +47,11 @@ describe('RecibosCajaService', () => {
     customerCreditApplication: { create: jest.fn() },
   };
   const prisma = {
-    reciboCaja: { findUnique: jest.fn() },
+    reciboCaja: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+    },
     accountsReceivable: { findMany: jest.fn() },
     customerCredit: { findMany: jest.fn() },
     $transaction: jest.fn(),
@@ -356,6 +360,7 @@ describe('RecibosCajaService', () => {
       status: 'available',
       customerBranchId: null,
       balance: new Prisma.Decimal(50),
+      createdAt: new Date('2026-01-01'),
       ...overrides,
     });
 
@@ -391,7 +396,12 @@ describe('RecibosCajaService', () => {
         data: expect.objectContaining({ total: 70 }),
       });
       expect(tx.customerCreditApplication.create).toHaveBeenCalledWith({
-        data: { customerCreditId: 'cc1', reciboCajaId: 'r1', amount: 30 },
+        data: {
+          customerCreditId: 'cc1',
+          reciboCajaId: 'r1',
+          accountReceivableId: 'ar1',
+          amount: 30,
+        },
       });
       expect(tx.customerCredit.update).toHaveBeenCalledWith({
         where: { id: 'cc1' },
@@ -534,6 +544,238 @@ describe('RecibosCajaService', () => {
           user,
         ),
       ).rejects.toThrow('clave de idempotencia');
+    });
+  });
+
+  describe('create — reparto del saldo a favor por CxC', () => {
+    const credit = (id: string, balance: number, createdAt: string) => ({
+      id,
+      customerId: CLIENT,
+      usableIn: 'administracion',
+      status: 'available',
+      customerBranchId: null,
+      balance: new Prisma.Decimal(balance),
+      createdAt: new Date(createdAt),
+    });
+
+    const splitDto = (
+      payments: number[],
+      credits: { customerCreditId: string; amount: number }[],
+      discount?: { reason: string; amount: number },
+    ): CreateReciboCajaDto =>
+      ({
+        clientId: CLIENT,
+        idempotencyKey: 'key',
+        receivables: [
+          { accountReceivableId: 'ar1', amount: 100 },
+          { accountReceivableId: 'ar2', amount: 50 },
+        ],
+        payments: payments.map((amount) => ({
+          method: 'efectivo_oficina',
+          amount,
+        })),
+        credits,
+        discount,
+      }) as CreateReciboCajaDto;
+
+    const application = (
+      customerCreditId: string,
+      accountReceivableId: string,
+      amount: number,
+    ) => ({
+      data: {
+        customerCreditId,
+        reciboCajaId: 'r1',
+        accountReceivableId,
+        amount,
+      },
+    });
+
+    const allocation = (
+      accountReceivableId: string,
+      fields: Record<string, number>,
+    ) => ({
+      data: expect.objectContaining({ accountReceivableId, ...fields }),
+    });
+
+    beforeEach(() => {
+      tx.accountsReceivable.findMany.mockResolvedValue([
+        receivable('ar1', null, 100),
+        receivable('ar2', null, 50),
+      ]);
+    });
+
+    it('un saldo cubre la CxC más antigua completa y el resto pasa a la siguiente', async () => {
+      tx.customerCredit.findMany.mockResolvedValue([
+        credit('cc1', 120, '2026-01-01'),
+      ]);
+      await service.create(
+        splitDto([30], [{ customerCreditId: 'cc1', amount: 120 }]),
+        user,
+      );
+      expect(tx.customerCreditApplication.create.mock.calls).toEqual([
+        [application('cc1', 'ar1', 100)],
+        [application('cc1', 'ar2', 20)],
+      ]);
+      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+        allocation('ar1', { amount: 100, creditAmount: 100 }),
+      );
+      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+        allocation('ar2', { amount: 50, creditAmount: 20 }),
+      );
+    });
+
+    it('CxC con la misma fecha de creación se desempatan por id para que el reparto sea siempre igual', async () => {
+      tx.customerCredit.findMany.mockResolvedValue([
+        credit('cc1', 120, '2026-01-01'),
+      ]);
+      await service.create(
+        splitDto([30], [{ customerCreditId: 'cc1', amount: 120 }]),
+        user,
+      );
+      expect(tx.accountsReceivable.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        }),
+      );
+    });
+
+    it('dos saldos consumen el más antiguo primero aunque lleguen desordenados', async () => {
+      tx.customerCredit.findMany.mockResolvedValue([
+        credit('ccNew', 60, '2026-02-01'),
+        credit('ccOld', 70, '2026-01-01'),
+      ]);
+      await service.create(
+        splitDto(
+          [20],
+          [
+            { customerCreditId: 'ccNew', amount: 60 },
+            { customerCreditId: 'ccOld', amount: 70 },
+          ],
+        ),
+        user,
+      );
+      expect(tx.customerCreditApplication.create.mock.calls).toEqual([
+        [application('ccOld', 'ar1', 70)],
+        [application('ccNew', 'ar1', 30)],
+        [application('ccNew', 'ar2', 30)],
+      ]);
+      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+        allocation('ar1', { creditAmount: 100 }),
+      );
+      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+        allocation('ar2', { creditAmount: 30 }),
+      );
+    });
+
+    it('con descuento, el saldo solo cubre lo que queda tras el descuento de cada CxC', async () => {
+      tx.customerCredit.findMany.mockResolvedValue([
+        credit('cc1', 60, '2026-01-01'),
+        credit('cc2', 40, '2026-02-01'),
+      ]);
+      await service.create(
+        splitDto(
+          [35],
+          [
+            { customerCreditId: 'cc1', amount: 60 },
+            { customerCreditId: 'cc2', amount: 40 },
+          ],
+          { reason: 'promocion', amount: 15 },
+        ),
+        user,
+      );
+      expect(tx.customerCreditApplication.create.mock.calls).toEqual([
+        [application('cc1', 'ar1', 60)],
+        [application('cc2', 'ar1', 30)],
+        [application('cc2', 'ar2', 10)],
+      ]);
+      // ar1: 0 dinero + 90 saldo + 10 descuento; ar2: 35 dinero + 10 saldo + 5 descuento
+      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+        allocation('ar1', {
+          amount: 100,
+          discountAmount: 10,
+          creditAmount: 90,
+        }),
+      );
+      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+        allocation('ar2', { amount: 50, discountAmount: 5, creditAmount: 10 }),
+      );
+    });
+
+    it('sin saldos a favor guarda creditAmount 0 y no crea aplicaciones', async () => {
+      await service.create(splitDto([150], []), user);
+      expect(tx.customerCreditApplication.create).not.toHaveBeenCalled();
+      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+        allocation('ar1', { creditAmount: 0 }),
+      );
+      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+        allocation('ar2', { creditAmount: 0 }),
+      );
+    });
+
+    it('idempotencia: reintento igual con un saldo repartido en 2 CxC devuelve el recibo guardado', async () => {
+      const existing = {
+        id: 'rc1',
+        clientId: CLIENT,
+        customerBranchId: null,
+        total: new Prisma.Decimal(30),
+        discountAmount: new Prisma.Decimal(0),
+        discountReason: null,
+        allocations: [
+          { accountReceivableId: 'ar1', amount: new Prisma.Decimal(100) },
+          { accountReceivableId: 'ar2', amount: new Prisma.Decimal(50) },
+        ],
+        creditApplications: [
+          { customerCreditId: 'cc1', amount: new Prisma.Decimal(100) },
+          { customerCreditId: 'cc1', amount: new Prisma.Decimal(20) },
+        ],
+      };
+      prisma.reciboCaja.findUnique.mockResolvedValue(existing);
+
+      await expect(
+        service.create(
+          splitDto([30], [{ customerCreditId: 'cc1', amount: 120 }]),
+          user,
+        ),
+      ).resolves.toMatchObject({ id: 'rc1' });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findAll', () => {
+    it('calcula dinero recibido, saldo a favor (Σ aplicaciones) y descuento', async () => {
+      prisma.$transaction.mockResolvedValue([
+        [
+          {
+            id: 'r1',
+            total: new Prisma.Decimal(55),
+            discountAmount: new Prisma.Decimal(5),
+            creditApplications: [
+              { amount: new Prisma.Decimal(30.1) },
+              { amount: new Prisma.Decimal(9.9) },
+            ],
+          },
+        ],
+        1,
+      ]);
+      const result = await service.findAll({});
+      expect(result.items[0]).toMatchObject({
+        cashTotal: new Prisma.Decimal(55),
+        creditTotal: new Prisma.Decimal(40),
+        discountAmount: new Prisma.Decimal(5),
+      });
+      expect(result.items[0]).not.toHaveProperty('creditApplications');
+    });
+  });
+
+  describe('findOne', () => {
+    it('en un recibo viejo creditAmount sigue null (no se convierte en 0)', async () => {
+      prisma.reciboCaja.findUnique.mockResolvedValue({
+        id: 'r1',
+        allocations: [{ id: 'a1', creditAmount: null }],
+      });
+      const result = await service.findOne('r1');
+      expect(result.allocations[0].creditAmount).toBeNull();
     });
   });
 

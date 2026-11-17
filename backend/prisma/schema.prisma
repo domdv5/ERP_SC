@@ -814,8 +814,9 @@ model AccountsReceivable {
   seller   ThirdParty @relation("SellerAR", fields: [sellerId], references: [id])
   document Document   @relation(fields: [documentId], references: [id])
 
-  receivablePayments    ReceivablePayment[]
-  reciboCajaAllocations ReciboCajaAllocation[]
+  receivablePayments         ReceivablePayment[]
+  reciboCajaAllocations      ReciboCajaAllocation[]
+  customerCreditApplications CustomerCreditApplication[]
 
   @@index([clientId, status])
   @@index([sellerId])
@@ -998,23 +999,28 @@ model CustomerCredit {
 }
 
 model CustomerCreditApplication {
-  id               String   @id @default(uuid(7)) @db.Uuid
-  customerCreditId String   @map("customer_credit_id") @db.Uuid
+  id                  String   @id @default(uuid(7)) @db.Uuid
+  customerCreditId    String   @map("customer_credit_id") @db.Uuid
   /// Exactamente uno de saleDocumentId (devolución aplicada al facturar) o reciboCajaId (excedente aplicado en un recibo) — CHECK a mano.
-  saleDocumentId   String?  @map("sale_document_id") @db.Uuid
-  reciboCajaId     String?  @map("recibo_caja_id") @db.Uuid
-  amount           Decimal  @db.Decimal(16, 2)
-  appliedAt        DateTime @default(now()) @map("applied_at") @db.Timestamptz
+  saleDocumentId      String?  @map("sale_document_id") @db.Uuid
+  reciboCajaId        String?  @map("recibo_caja_id") @db.Uuid
+  /// CxC del recibo que cubrió este tramo del saldo. Null en aplicaciones de venta y en recibos anteriores al reparto.
+  accountReceivableId String?  @map("account_receivable_id") @db.Uuid
+  amount              Decimal  @db.Decimal(16, 2)
+  appliedAt           DateTime @default(now()) @map("applied_at") @db.Timestamptz
 
-  customerCredit CustomerCredit @relation(fields: [customerCreditId], references: [id])
-  saleDocument   Document?      @relation("CustomerCreditSaleApplication", fields: [saleDocumentId], references: [id], onDelete: Restrict)
-  reciboCaja     ReciboCaja?    @relation(fields: [reciboCajaId], references: [id], onDelete: Restrict)
+  customerCredit    CustomerCredit      @relation(fields: [customerCreditId], references: [id])
+  saleDocument      Document?           @relation("CustomerCreditSaleApplication", fields: [saleDocumentId], references: [id], onDelete: Restrict)
+  reciboCaja        ReciboCaja?         @relation(fields: [reciboCajaId], references: [id], onDelete: Restrict)
+  accountReceivable AccountsReceivable? @relation(fields: [accountReceivableId], references: [id], onDelete: Restrict)
 
   // Un mismo crédito no se aplica dos veces a la misma venta; el prefijo cubre
   // el lookup "¿este crédito ya tiene aplicaciones?" al anular la DVV.
   @@unique([customerCreditId, saleDocumentId])
-  @@unique([customerCreditId, reciboCajaId])
+  // Un tramo por CxC: el mismo saldo puede cubrir varias CxC del mismo recibo.
+  @@unique([customerCreditId, reciboCajaId, accountReceivableId])
   @@index([saleDocumentId])
+  @@index([accountReceivableId])
   @@index([reciboCajaId])
   @@map("customer_credit_application")
 }
@@ -1105,7 +1111,7 @@ model EgresoAllocation {
 
 // ─── Recibo de caja (documento de tesorería, lado cliente) ───────────────────
 
-/// Paga una o varias CxC de un mismo cliente en un solo movimiento; no se anula ni se edita. Sin saldo a favor: a diferencia de Egreso, no hay líneas de crédito — regla de negocio explícita.
+/// Paga una o varias CxC de un mismo cliente en un solo movimiento; no se anula ni se edita. Los saldos a favor usados quedan en CustomerCreditApplication, repartidos por CxC.
 model ReciboCaja {
   id                String                    @id @default(uuid(7)) @db.Uuid
   /// Consecutivo propio (clave "RECIBO_CAJA" en Sequence), ceros a la izquierda a 6 dígitos para ordenar como texto.
@@ -1116,7 +1122,7 @@ model ReciboCaja {
   /// Sucursal cobrada; null = recibo de CxC sin sucursal (o cliente sin sucursales).
   customerBranchId  String?                   @map("customer_branch_id") @db.Uuid
   userId            String                    @map("user_id") @db.Uuid
-  /// total = suma de las formas de pago; Σ ReciboCajaAllocation.amount = total + discountAmount (lo valida el service, ningún CHECK lo ve).
+  /// total = suma de las formas de pago; Σ ReciboCajaAllocation.amount = total + saldos a favor + discountAmount (lo valida el service, ningún CHECK lo ve).
   total             Decimal                   @db.Decimal(16, 2)
   discountAmount    Decimal                   @default(0) @map("discount_amount") @db.Decimal(16, 2)
   /// Obligatorio si discountAmount > 0 (CHECK a mano).
@@ -1171,13 +1177,15 @@ model ReciboCajaPayment {
 }
 
 model ReciboCajaAllocation {
-  id                  String  @id @default(uuid(7)) @db.Uuid
-  reciboCajaId        String  @map("recibo_caja_id") @db.Uuid
-  accountReceivableId String  @map("account_receivable_id") @db.Uuid
+  id                  String   @id @default(uuid(7)) @db.Uuid
+  reciboCajaId        String   @map("recibo_caja_id") @db.Uuid
+  accountReceivableId String   @map("account_receivable_id") @db.Uuid
   /// Total abonado a esta cuenta por cobrar en este recibo, descuento incluido.
-  amount              Decimal @db.Decimal(16, 2)
+  amount              Decimal  @db.Decimal(16, 2)
   /// Parte de `amount` cubierta por el descuento del recibo.
-  discountAmount      Decimal @default(0) @map("discount_amount") @db.Decimal(16, 2)
+  discountAmount      Decimal  @default(0) @map("discount_amount") @db.Decimal(16, 2)
+  /// Parte de `amount` cubierta con saldo a favor (más antigua primero, igual que egresos). Null en recibos anteriores al reparto.
+  creditAmount        Decimal? @map("credit_amount") @db.Decimal(16, 2)
 
   reciboCaja        ReciboCaja         @relation(fields: [reciboCajaId], references: [id])
   accountReceivable AccountsReceivable @relation(fields: [accountReceivableId], references: [id])
