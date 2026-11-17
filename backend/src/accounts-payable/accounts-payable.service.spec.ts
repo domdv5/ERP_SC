@@ -252,6 +252,24 @@ describe('AccountsPayableService.findSuppliers', () => {
     ).toEqual(expect.arrayContaining(['prime']));
   });
 
+  it('supplierId filtra por tp.id como parámetro; sin supplierId no hay condición', async () => {
+    const id = '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
+    await service.findSuppliers({ supplierId: id });
+
+    const call = prisma.$queryRaw.mock.calls[0];
+    expect(sqlOf(call)).toContain('AND tp.id = ');
+    expect(sqlOf(call)).not.toContain(id);
+    expect(
+      Prisma.sql(call[0] as TemplateStringsArray, ...call.slice(1)).values,
+    ).toEqual(expect.arrayContaining([id]));
+  });
+
+  it('sin supplierId no agrega condición por tp.id', async () => {
+    await service.findSuppliers({});
+
+    expect(sqlOf(prisma.$queryRaw.mock.calls[0])).not.toContain('AND tp.id = ');
+  });
+
   it('sin sort ordena por último movimiento en el page y en el resultado final', async () => {
     await service.findSuppliers({});
 

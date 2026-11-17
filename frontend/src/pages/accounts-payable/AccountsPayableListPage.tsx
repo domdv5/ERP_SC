@@ -7,6 +7,7 @@ import { getPayableSuppliers } from '@/services/accounts-payable.service'
 import {
   StatsGrid,
   TableToolbar,
+  PartySearchSuggestions,
   TableSkeleton,
   EmptyState,
   ErrorState,
@@ -14,6 +15,7 @@ import {
   TablePagination,
   DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
+import type { PickedParty } from '@/components/shared'
 import { formatCOP } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { formatDate } from './accounts-payable.utils'
@@ -46,6 +48,7 @@ export default function AccountsPayableListPage() {
   const navigate = useNavigate()
 
   const [search, setSearch] = useState('')
+  const [picked, setPicked] = useState<PickedParty | null>(null)
   const [statusFilter, setStatusFilter] = useState<PayableSuppliersStatus | ''>('')
   const [sort, setSort] = useState<PayableSuppliersSort>('recent')
   const [dateFrom, setDateFrom] = useState('')
@@ -54,22 +57,27 @@ export default function AccountsPayableListPage() {
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
 
   const [debouncedSearch] = useDebounce(search, 400)
+  // Con un proveedor elegido se filtra por id y se ignora el texto (el debounce puede ir atrasado)
+  const textSearch = picked || !search ? '' : debouncedSearch
+  const pickedId = picked?.id ?? ''
 
   const [prevFilters, setPrevFilters] = useState({
-    debouncedSearch,
+    textSearch,
+    pickedId,
     statusFilter,
     sort,
     dateFrom,
     dateTo,
   })
   if (
-    prevFilters.debouncedSearch !== debouncedSearch ||
+    prevFilters.textSearch !== textSearch ||
+    prevFilters.pickedId !== pickedId ||
     prevFilters.statusFilter !== statusFilter ||
     prevFilters.sort !== sort ||
     prevFilters.dateFrom !== dateFrom ||
     prevFilters.dateTo !== dateTo
   ) {
-    setPrevFilters({ debouncedSearch, statusFilter, sort, dateFrom, dateTo })
+    setPrevFilters({ textSearch, pickedId, statusFilter, sort, dateFrom, dateTo })
     setPage(1)
   }
 
@@ -81,7 +89,8 @@ export default function AccountsPayableListPage() {
     queryKey: [
       'accounts-payable',
       'suppliers',
-      debouncedSearch,
+      textSearch,
+      pickedId,
       statusFilter,
       sort,
       dateFrom,
@@ -91,7 +100,8 @@ export default function AccountsPayableListPage() {
     ],
     queryFn: () =>
       getPayableSuppliers({
-        search: debouncedSearch || undefined,
+        search: textSearch || undefined,
+        supplierId: pickedId || undefined,
         status: statusFilter || undefined,
         sort,
         dateFrom: dateFrom || undefined,
@@ -136,7 +146,7 @@ export default function AccountsPayableListPage() {
     },
   ]
 
-  const hasActiveFilters = Boolean(debouncedSearch || statusFilter || dateFrom || dateTo)
+  const hasActiveFilters = Boolean(textSearch || pickedId || statusFilter || dateFrom || dateTo)
 
   return (
     <div className="space-y-6">
@@ -154,15 +164,33 @@ export default function AccountsPayableListPage() {
 
       {/* Table */}
       <div className="card-hard overflow-hidden">
-        <TableToolbar
+        <PartySearchSuggestions
+          role="supplier"
           search={search}
-          onSearchChange={setSearch}
-          placeholder="Buscar proveedor o marca..."
-          isLoading={isLoading}
-          itemCount={items.length}
-          total={total}
-          onRefresh={() => refetch()}
-        />
+          debouncedSearch={debouncedSearch}
+          picked={picked}
+          onPick={(party) => {
+            setPicked(party)
+            setSearch(party.name)
+          }}
+          onClear={() => {
+            setPicked(null)
+            setSearch('')
+          }}
+        >
+          <TableToolbar
+            search={search}
+            onSearchChange={(value) => {
+              setPicked(null)
+              setSearch(value)
+            }}
+            placeholder="Buscar proveedor o marca..."
+            isLoading={isLoading}
+            itemCount={items.length}
+            total={total}
+            onRefresh={() => refetch()}
+          />
+        </PartySearchSuggestions>
         <div className="px-5 py-3 border-b-2 border-ui-border-medium flex flex-wrap gap-3">
           <select
             value={statusFilter}

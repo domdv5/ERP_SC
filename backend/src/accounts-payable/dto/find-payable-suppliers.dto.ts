@@ -3,6 +3,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   Max,
   Min,
@@ -26,6 +27,10 @@ export class FindPayableSuppliersDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsUUID()
+  supplierId?: string;
 
   @IsOptional()
   @IsIn(['with_balance', 'settled'])

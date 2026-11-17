@@ -233,6 +233,7 @@ export class AccountsPayableService {
       page = 1,
       limit = 20,
       search,
+      supplierId,
       status,
       sort = 'recent',
       dateFrom,
@@ -252,6 +253,7 @@ export class AccountsPayableService {
             ))`
           : Prisma.empty
       }
+      ${supplierId ? Prisma.sql`AND tp.id = ${supplierId}::uuid` : Prisma.empty}
       ${dateFrom ? Prisma.sql`AND d.date >= ${dateFrom}::date` : Prisma.empty}
       ${dateTo ? Prisma.sql`AND d.date <= ${dateTo}::date` : Prisma.empty}`;
     const having =

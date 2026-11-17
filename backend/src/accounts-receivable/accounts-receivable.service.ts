@@ -294,6 +294,7 @@ export class AccountsReceivableService {
       page = 1,
       limit = 20,
       search,
+      clientId,
       status,
       sort = 'recent',
       dateFrom,
@@ -310,6 +311,7 @@ export class AccountsReceivableService {
           )`
           : Prisma.empty
       }
+      ${clientId ? Prisma.sql`AND tp.id = ${clientId}::uuid` : Prisma.empty}
       ${dateFrom ? Prisma.sql`AND d.date >= ${dateFrom}::date` : Prisma.empty}
       ${dateTo ? Prisma.sql`AND d.date <= ${dateTo}::date` : Prisma.empty}`;
     const having =

@@ -471,6 +471,24 @@ describe('AccountsReceivableService.findClients', () => {
     ).toEqual(expect.arrayContaining(['900123']));
   });
 
+  it('clientId filtra por tp.id como parámetro; sin clientId no hay condición', async () => {
+    const id = '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
+    await service.findClients({ clientId: id });
+
+    const call = prisma.$queryRaw.mock.calls[0];
+    expect(sqlOf(call)).toContain('AND tp.id = ');
+    expect(sqlOf(call)).not.toContain(id);
+    expect(
+      Prisma.sql(call[0] as TemplateStringsArray, ...call.slice(1)).values,
+    ).toEqual(expect.arrayContaining([id]));
+  });
+
+  it('sin clientId no agrega condición por tp.id', async () => {
+    await service.findClients({});
+
+    expect(sqlOf(prisma.$queryRaw.mock.calls[0])).not.toContain('AND tp.id = ');
+  });
+
   it('search y fechas viajan como parámetros, no concatenados', async () => {
     await service.findClients({
       search: "x'; DROP TABLE y;--",
