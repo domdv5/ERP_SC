@@ -305,7 +305,8 @@ export class RecibosCajaService {
       include: {
         document: { select: { number: true, customerBranchId: true } },
       },
-      orderBy: { createdAt: 'asc' },
+      // El id desempata CxC creadas en el mismo instante: el reparto del saldo no cambia entre ejecuciones
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
 
     if (receivables.length !== receivableIds.length) {

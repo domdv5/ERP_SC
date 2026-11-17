@@ -24,4 +24,4 @@ Base real: migración aplicada (`_prisma_migrations`), índice único y CHECK ve
 - Jueces A y B (ciegos) confirmaron JD-1 CRITICAL: reintento idéntico con un saldo repartido en 2+ CxC daba 409 (`isSameEgresoRequest` usaba `new Map` y se quedaba con la última fila por saldo).
 - Arreglo: `existingCredits` con `sumCentsById`. Prueba "reintento igual con un saldo repartido en 2 CxC devuelve el recibo guardado": RED (ConflictException) → GREEN. jest recibos 46/46, tsc 0.
 - Re-juicio acotado: A y B sin hallazgos. JUDGMENT: APPROVED.
-- Info (sin arreglar): desempate por id al ordenar CxC con igual `createdAt` (A y B); CHECK de base `credit_amount + discount_amount <= amount` (solo A).
+- Desempate por id al ordenar CxC con igual `createdAt` (A y B): arreglado después a pedido del dueño, prueba "CxC con la misma fecha de creación se desempatan por id…" RED → GREEN. Info (sin arreglar): CHECK de base `credit_amount + discount_amount <= amount` (solo A).

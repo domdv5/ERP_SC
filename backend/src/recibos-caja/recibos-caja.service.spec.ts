@@ -625,6 +625,21 @@ describe('RecibosCajaService', () => {
       );
     });
 
+    it('CxC con la misma fecha de creación se desempatan por id para que el reparto sea siempre igual', async () => {
+      tx.customerCredit.findMany.mockResolvedValue([
+        credit('cc1', 120, '2026-01-01'),
+      ]);
+      await service.create(
+        splitDto([30], [{ customerCreditId: 'cc1', amount: 120 }]),
+        user,
+      );
+      expect(tx.accountsReceivable.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        }),
+      );
+    });
+
     it('dos saldos consumen el más antiguo primero aunque lleguen desordenados', async () => {
       tx.customerCredit.findMany.mockResolvedValue([
         credit('ccNew', 60, '2026-02-01'),
