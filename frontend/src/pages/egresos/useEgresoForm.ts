@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -6,11 +6,10 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { getEgresoOpenItems, createEgreso } from '@/services/egresos.service'
-import { suggestCreditAmounts, limitCreditAmount } from '@/lib/credit-application'
 import { egresoFormSchema, type EgresoFormValues } from './egreso-form.schema'
 import {
-  previewCreditDistribution,
   calculateAmountToPay,
+  calculateFillCreditAmount,
   limitPayableAmount,
 } from './egreso-form.utils'
 import type { CreateEgresoPayload } from '@/types'
@@ -26,7 +25,7 @@ const emptyDefaults = (): EgresoFormValues => ({
   payments: [],
 })
 
-// Toda la lógica de negocio del form de Egresos (carga, cuadre, reparto FIFO, envío) — la página solo arma el layout
+// Toda la lógica de negocio del form de Egresos (carga, cuadre, envío) — la página solo arma el layout
 export function useEgresoForm() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -34,7 +33,15 @@ export function useEgresoForm() {
   // Se regenera por proveedor (abajo): reusar la key entre proveedores daría 409 en vez de crear el nuevo egreso
   const idempotencyKeyRef = useRef(crypto.randomUUID())
 
-  const { control, register, watch, setValue, reset, handleSubmit } = useForm<EgresoFormValues>({
+  const {
+    control,
+    register,
+    watch,
+    setValue,
+    reset,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<EgresoFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(egresoFormSchema) as any,
     defaultValues: emptyDefaults(),
@@ -86,56 +93,20 @@ export function useEgresoForm() {
   const selectedPayables = watchedPayables.filter((p) => p.selected)
   const totalAbonos = selectedPayables.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
 
-  // Tocar un saldo a mano no congela los demás: solo los no tocados se siguen recalculando
-  const creditsTouchedRef = useRef<Set<string>>(new Set())
+  // Saldo a favor arranca en 0: usarlo o guardarlo para otra factura lo decide el operador
+  function setCreditAmount(index: number, next: number) {
+    const balance = watch(`credits.${index}.balance`)
+    const clamped = Number.isNaN(next) || next < 0 ? 0 : Math.min(next, balance)
+    setValue(`credits.${index}.amount`, clamped)
+  }
 
-  useEffect(() => {
-    creditsTouchedRef.current = new Set()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supplierId])
-
-  // Propone aplicar el máximo posible de saldo a favor (los más antiguos primero, tal como
-  // llegan de open-items) hasta cubrir el total de abonos seleccionado.
-  useEffect(() => {
-    if (creditsArray.fields.length === 0) return
-    const touched = creditsTouchedRef.current
-    const current = watch('credits')
-
-    const manuallyAppliedSum = current
-      .filter((c) => touched.has(c.supplierCreditId))
-      .reduce((sum, c) => sum + Math.max(0, Math.min(Number(c.amount) || 0, c.balance)), 0)
-    const remaining = Math.max(totalAbonos - manuallyAppliedSum, 0)
-
-    const proposal = suggestCreditAmounts(
-      current
-        .filter((c) => !touched.has(c.supplierCreditId))
-        .map((c) => ({ id: c.supplierCreditId, balance: c.balance })),
-      remaining,
-    )
-    const proposedById = new Map(proposal.map((p) => [p.id, p.amount]))
-
-    current.forEach((c, index) => {
-      const next = touched.has(c.supplierCreditId)
-        ? c.amount
-        : (proposedById.get(c.supplierCreditId) ?? 0)
-      if (next !== c.amount) setValue(`credits.${index}.amount`, next)
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalAbonos, creditsArray.fields.length])
-
-  function setCreditAmount(supplierCreditId: string, next: number) {
-    creditsTouchedRef.current.add(supplierCreditId)
-    const index = watch('credits').findIndex((c) => c.supplierCreditId === supplierCreditId)
-    if (index < 0) return
-    const credit = watch(`credits.${index}`)
+  function fillCredit(index: number) {
     const othersSum = watch('credits').reduce(
       (sum, c, i) => (i === index ? sum : sum + (Number(c.amount) || 0)),
       0,
     )
-    setValue(
-      `credits.${index}.amount`,
-      limitCreditAmount(next, credit.balance, totalAbonos, othersSum),
-    )
+    const balance = watch(`credits.${index}.balance`)
+    setValue(`credits.${index}.amount`, calculateFillCreditAmount(balance, totalAbonos, othersSum))
   }
 
   function setPayableAmount(accountPayableId: string, next: number) {
@@ -157,21 +128,6 @@ export function useEgresoForm() {
   // No basta con que dineroAPagar === totalPayments: también hay que frenar si el saldo a favor ya supera los abonos
   const cuadraOk =
     Math.round(totalPayments) === Math.round(dineroAPagar) && totalCreditsApplied <= totalAbonos
-
-  // Vista previa informativa del reparto FIFO: en qué CxP entra cada peso del saldo a favor
-  // aplicado. El backend recalcula esto de verdad al crear el egreso.
-  const creditAllocationPreview = useMemo(
-    () =>
-      previewCreditDistribution(
-        selectedPayables.map((p) => ({
-          accountPayableId: p.accountPayableId,
-          amount: Number(p.amount) || 0,
-        })),
-        totalCreditsApplied,
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(selectedPayables), totalCreditsApplied],
-  )
 
   const { mutateAsync: createEgresoMutateAsync, isPending: isCreating } = useMutation({
     mutationFn: createEgreso,
@@ -224,12 +180,13 @@ export function useEgresoForm() {
     setPayableAmount,
     togglePayable,
     setCreditAmount,
+    fillCredit,
+    errors,
     totalAbonos,
     totalCreditsApplied,
     dineroAPagar,
     totalPayments,
     cuadraOk,
-    creditAllocationPreview,
     isLoadingOpenItems,
     hasSupplier: Boolean(supplierId),
     submitEgreso,

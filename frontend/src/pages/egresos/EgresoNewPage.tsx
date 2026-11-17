@@ -4,13 +4,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { Controller } from 'react-hook-form'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Trash2, Loader2, HandCoins } from 'lucide-react'
+import { ArrowLeft, ArrowDownToLine, Plus, Trash2, Loader2, HandCoins } from 'lucide-react'
 
 import { getThirdParties } from '@/services/third-parties.service'
 import { getEgresoOpenItems } from '@/services/egresos.service'
-import { Combobox, CreditsPanel, ThousandsInput } from '@/components/shared'
-import type { ComboboxOption, CreditsPanelCredit } from '@/components/shared'
-import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
+import { Combobox, ThousandsInput } from '@/components/shared'
+import type { ComboboxOption } from '@/components/shared'
+import { formatCOP, docNumber, formatDateOnly, formatBogotaDate } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { useEgresoForm } from './useEgresoForm'
@@ -95,17 +95,19 @@ export default function EgresoNewPage() {
     setPayableAmount,
     togglePayable,
     setCreditAmount,
+    fillCredit,
+    errors,
     totalAbonos,
     totalCreditsApplied,
     dineroAPagar,
     totalPayments,
     cuadraOk,
-    creditAllocationPreview,
     isLoadingOpenItems,
     hasSupplier,
     submitEgreso,
     isSubmitting,
   } = useEgresoForm()
+  const missingPayment = Math.round(dineroAPagar) - Math.round(totalPayments)
 
   const [confirmOpen, setConfirmOpen] = useState(false)
   // Diferido hasta que se cierre el diálogo de confirmación, para no repoblar la tabla detrás de él
@@ -155,36 +157,11 @@ export default function EgresoNewPage() {
 
   const payableById = new Map((openItems?.payables ?? []).map((p) => [p.id, p]))
   const creditById = new Map((openItems?.credits ?? []).map((c) => [c.id, c]))
-  const creditAllocationByPayable = new Map(
-    creditAllocationPreview.map((p) => [p.accountPayableId, p]),
-  )
 
   const watchedPayables = watch('payables')
   const watchedCredits = watch('credits')
 
   const hasSelectedPayable = watchedPayables.some((p) => p.selected)
-  // c.balance es Decimal de Prisma: llega como string en el JSON aunque el tipo diga number.
-  const totalCreditsAvailable = (openItems?.credits ?? []).reduce(
-    (sum, c) => sum + Number(c.balance),
-    0,
-  )
-
-  const creditsPanelData: CreditsPanelCredit[] = creditsFields.map((field, index) => {
-    const openCredit = creditById.get(field.supplierCreditId)
-    return {
-      id: field.supplierCreditId,
-      balance: watchedCredits[index]?.balance ?? field.balance,
-      label: openCredit?.sourceDocument
-        ? docNumber(openCredit.sourceDocument.type, openCredit.sourceDocument.number)
-        : 'Saldo a favor',
-    }
-  })
-  const creditAmounts = Object.fromEntries(
-    creditsFields.map((field, index) => [
-      field.supplierCreditId,
-      watchedCredits[index]?.amount ?? 0,
-    ]),
-  )
 
   const openConfirm = handleSubmit(
     () => setConfirmOpen(true),
@@ -322,14 +299,7 @@ export default function EgresoNewPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-ui-border">
-                          {[
-                            '',
-                            'Documento',
-                            'Fecha',
-                            'Saldo',
-                            'Abono',
-                            'Reparto (vista previa)',
-                          ].map((h) => (
+                          {['', 'Documento', 'Fecha', 'Saldo', 'Abono'].map((h) => (
                             <th
                               key={h}
                               className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -343,7 +313,6 @@ export default function EgresoNewPage() {
                         {payablesFields.map((field, index) => {
                           const row = watchedPayables[index]
                           const openPayable = payableById.get(field.accountPayableId)
-                          const preview = creditAllocationByPayable.get(field.accountPayableId)
                           return (
                             <tr
                               key={field.id}
@@ -385,11 +354,6 @@ export default function EgresoNewPage() {
                                   className="w-32 py-1.5"
                                 />
                               </td>
-                              <td className="px-5 py-3 text-xs text-content-faint whitespace-nowrap">
-                                {row?.selected && preview
-                                  ? `Dinero ${formatCOP(preview.cashAmount)} · Saldo ${formatCOP(preview.creditAmount)}`
-                                  : '—'}
-                              </td>
                             </tr>
                           )
                         })}
@@ -400,14 +364,85 @@ export default function EgresoNewPage() {
               </div>
 
               {/* Saldo a favor del proveedor */}
-              <CreditsPanel
-                title="Saldo a favor del proveedor"
-                credits={creditsPanelData}
-                creditAmounts={creditAmounts}
-                setCreditAmount={setCreditAmount}
-                creditsApplied={totalCreditsApplied}
-                totalAvailable={totalCreditsAvailable}
-              />
+              {creditsFields.length > 0 && (
+                <div className="card-hard overflow-hidden">
+                  <div className="px-6 py-4 border-b border-ui-border">
+                    <h2 className="text-content font-semibold">Saldo a favor del proveedor</h2>
+                    <p className="text-content-muted text-xs mt-0.5 font-accent">
+                      Lo que uses se resta del dinero a pagar
+                    </p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-ui-border">
+                          {['Fecha', 'Origen', 'Saldo', 'Usar en este egreso'].map((h) => (
+                            <th
+                              key={h}
+                              className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
+                            >
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-ui-divide">
+                        {creditsFields.map((field, index) => {
+                          const row = watchedCredits[index]
+                          const openCredit = creditById.get(field.supplierCreditId)
+                          const rowError = errors.credits?.[index]?.amount
+                          return (
+                            <tr key={field.id}>
+                              <td className="px-5 py-3 text-content-muted text-xs whitespace-nowrap">
+                                {openCredit ? formatBogotaDate(openCredit.createdAt) : '—'}
+                              </td>
+                              <td className="px-5 py-3 text-content-secondary text-xs whitespace-nowrap">
+                                {openCredit?.sourceDocument
+                                  ? docNumber(
+                                      openCredit.sourceDocument.type,
+                                      openCredit.sourceDocument.number,
+                                    )
+                                  : 'Sin documento de origen'}
+                              </td>
+                              <td className="px-5 py-3 text-content-secondary text-xs whitespace-nowrap">
+                                {formatCOP(row?.balance ?? 0)}
+                              </td>
+                              <td className="px-5 py-3">
+                                <div className="flex items-center gap-2">
+                                  <ThousandsInput
+                                    value={row?.amount}
+                                    onChange={(v) => setCreditAmount(index, v ?? 0)}
+                                    placeholder="0"
+                                    className="w-32 py-1.5"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => fillCredit(index)}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-brand-secondary border border-brand-secondary/30 rounded-lg hover:bg-brand-secondary/10 transition-colors whitespace-nowrap"
+                                  >
+                                    <ArrowDownToLine className="w-3.5 h-3.5" />
+                                    Usar todo
+                                  </button>
+                                </div>
+                                {rowError && (
+                                  <p className="text-xs text-red-500 font-accent mt-1">
+                                    {rowError.message}
+                                  </p>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {errors.credits?.message && (
+                    <p className="px-6 py-3 text-xs text-red-500 font-accent">
+                      {errors.credits.message}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Formas de pago */}
               <div className="card-hard overflow-hidden">
@@ -573,10 +608,15 @@ export default function EgresoNewPage() {
                   {formatCOP(totalPayments)}
                 </span>
               </div>
-              {!cuadraOk && (
-                <p className="text-xs text-red-500 font-accent">
-                  Las formas de pago deben sumar {formatCOP(dineroAPagar)}
-                </p>
+              {missingPayment !== 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-red-500 font-medium">
+                    {missingPayment > 0 ? 'Falta por pagar' : 'Sobra'}
+                  </span>
+                  <span className="font-mono font-medium text-red-500">
+                    {formatCOP(Math.abs(missingPayment))}
+                  </span>
+                </div>
               )}
             </div>
 
