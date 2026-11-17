@@ -459,6 +459,18 @@ describe('AccountsReceivableService.findClients', () => {
     }
   });
 
+  it('search también busca por NIT/documento del cliente', async () => {
+    await service.findClients({ search: '900123' });
+
+    const call = prisma.$queryRaw.mock.calls[0];
+    expect(sqlOf(call)).toContain(
+      'position(lower(?) in lower(tp.document_number)) > 0',
+    );
+    expect(
+      Prisma.sql(call[0] as TemplateStringsArray, ...call.slice(1)).values,
+    ).toEqual(expect.arrayContaining(['900123']));
+  });
+
   it('search y fechas viajan como parámetros, no concatenados', async () => {
     await service.findClients({
       search: "x'; DROP TABLE y;--",

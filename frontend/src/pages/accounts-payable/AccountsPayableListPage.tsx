@@ -157,7 +157,7 @@ export default function AccountsPayableListPage() {
         <TableToolbar
           search={search}
           onSearchChange={setSearch}
-          placeholder="Buscar proveedor..."
+          placeholder="Buscar proveedor o marca..."
           isLoading={isLoading}
           itemCount={items.length}
           total={total}

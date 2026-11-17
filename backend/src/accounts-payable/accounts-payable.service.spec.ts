@@ -237,6 +237,21 @@ describe('AccountsPayableService.findSuppliers', () => {
     );
   });
 
+  it('search también busca en marcas activas del proveedor con EXISTS (sin duplicar filas)', async () => {
+    await service.findSuppliers({ search: 'prime' });
+
+    const call = prisma.$queryRaw.mock.calls[0];
+    const sql = sqlOf(call);
+    expect(sql).toContain('EXISTS');
+    expect(sql).toContain('FROM brand b');
+    expect(sql).toContain('b.supplier_id = tp.id');
+    expect(sql).toContain('b.active = true');
+    expect(sql).toContain('lower(b.name)');
+    expect(
+      Prisma.sql(call[0] as TemplateStringsArray, ...call.slice(1)).values,
+    ).toEqual(expect.arrayContaining(['prime']));
+  });
+
   it('sin sort ordena por último movimiento en el page y en el resultado final', async () => {
     await service.findSuppliers({});
 

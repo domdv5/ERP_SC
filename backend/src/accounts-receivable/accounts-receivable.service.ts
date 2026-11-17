@@ -302,7 +302,14 @@ export class AccountsReceivableService {
     buildDateColumnRange(dateFrom, dateTo);
 
     const filters = Prisma.sql`
-      ${search ? Prisma.sql`AND position(lower(${search}) in lower(tp.name)) > 0` : Prisma.empty}
+      ${
+        search
+          ? Prisma.sql`AND (
+            position(lower(${search}) in lower(tp.name)) > 0
+            OR position(lower(${search}) in lower(tp.document_number)) > 0
+          )`
+          : Prisma.empty
+      }
       ${dateFrom ? Prisma.sql`AND d.date >= ${dateFrom}::date` : Prisma.empty}
       ${dateTo ? Prisma.sql`AND d.date <= ${dateTo}::date` : Prisma.empty}`;
     const having =

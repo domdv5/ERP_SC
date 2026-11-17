@@ -157,7 +157,7 @@ export default function AccountsReceivableListPage() {
         <TableToolbar
           search={search}
           onSearchChange={setSearch}
-          placeholder="Buscar cliente..."
+          placeholder="Buscar cliente o NIT..."
           isLoading={isLoading}
           itemCount={items.length}
           total={total}
