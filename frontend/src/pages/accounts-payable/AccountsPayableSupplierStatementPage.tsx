@@ -1,30 +1,13 @@
 import { useGoBack } from '@/hooks/useGoBack'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Wallet, CreditCard, FileText, History, Landmark, PiggyBank } from 'lucide-react'
+import { ArrowLeft, Wallet, CreditCard, FileText, PiggyBank } from 'lucide-react'
 import { getSupplierStatement } from '@/services/accounts-payable.service'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
 import { StatusBadge } from './components/StatusBadge'
 import { PaymentDaysCell } from '../accounts-receivable/components/PaymentDaysCell'
-import { formatDate, formatEventDate, DOCUMENT_TYPE_LABELS } from './accounts-payable.utils'
-
-// Estado de una nota de saldo a favor: solo 'available' | 'used' en el backend.
-const CREDIT_STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  available: {
-    label: 'Disponible',
-    className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400',
-  },
-  used: {
-    label: 'Agotado',
-    className: 'bg-surface-hover text-content-muted',
-  },
-}
-const creditStatusBadgeFor = (status: string) =>
-  CREDIT_STATUS_BADGE[status] ?? {
-    label: status,
-    className: 'bg-surface-hover text-content-muted',
-  }
+import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-payable.utils'
 
 export default function AccountsPayableSupplierStatementPage() {
   const { supplierId } = useParams<{ supplierId: string }>()
@@ -90,7 +73,7 @@ export default function AccountsPayableSupplierStatementPage() {
     )
   }
 
-  const { supplier, totals, payables, credits } = statement
+  const { supplier, totals, payables } = statement
   const totalDebt = Number(totals.totalDebt)
   const totalPaid = Number(totals.totalPaid)
   const totalBalance = Number(totals.totalBalance)
@@ -252,87 +235,6 @@ export default function AccountsPayableSupplierStatementPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-      </div>
-
-      {/* Supplier credits */}
-      <div className="card-hard overflow-hidden">
-        <div className="px-6 py-4 border-b-2 border-ui-border-medium">
-          <h2 className="text-content font-semibold">Saldos a favor</h2>
-          <p className="text-content-muted text-xs mt-0.5 font-accent">
-            {credits.length} {credits.length === 1 ? 'nota registrada' : 'notas registradas'}
-          </p>
-        </div>
-
-        {credits.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <History className="w-10 h-10 text-content-faint mb-2" />
-            <p className="text-content-muted text-sm">Este proveedor no tiene saldos a favor</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-ui-divide">
-            {credits.map((credit) => {
-              const badge = creditStatusBadgeFor(credit.status)
-              return (
-                <div key={credit.id} className="px-6 py-4">
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
-                        <PiggyBank className="w-4 h-4 text-content-muted" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-content font-medium">
-                          {formatCOP(Number(credit.amount))}{' '}
-                          <span className="text-content-faint font-normal">
-                            (saldo disponible: {formatCOP(Number(credit.balance))})
-                          </span>
-                        </p>
-                        <p className="text-xs text-content-faint mt-0.5">
-                          {credit.sourceDocument
-                            ? `Origen: ${docNumber(credit.sourceDocument.type, credit.sourceDocument.number)}`
-                            : 'Sin documento de origen'}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={cn('pill-stamp whitespace-nowrap', badge.className)}>
-                      {badge.label}
-                    </span>
-                  </div>
-
-                  {credit.applications.length > 0 && (
-                    <div className="mt-3 ml-11 space-y-1.5">
-                      {credit.applications.map((application) => (
-                        <div
-                          key={application.id}
-                          className="flex items-center gap-2 text-xs text-content-muted"
-                        >
-                          <span className="text-content-faint">
-                            {formatEventDate(application.appliedAt)}
-                          </span>
-                          <span>·</span>
-                          <span className="text-content-secondary font-medium">
-                            {formatCOP(Number(application.amount))}
-                          </span>
-                          <span>aplicado a</span>
-                          {application.egreso ? (
-                            <button
-                              onClick={() => navigate(`/egresos/${application.egreso!.id}`)}
-                              className="flex items-center gap-1 link-plain"
-                            >
-                              <Landmark className="w-3 h-3" />
-                              {docNumber('EG', application.egreso.number)}
-                            </button>
-                          ) : (
-                            <span className="text-content-faint">(aplicación histórica)</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
           </div>
         )}
       </div>
