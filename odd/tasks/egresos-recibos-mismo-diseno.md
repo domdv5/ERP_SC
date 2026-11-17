@@ -61,6 +61,7 @@ Solo frontend (crear, lista, detalle). Cambia el diseño, no las reglas de diner
 - L25 (2026-11-17): Crear Egreso: "Sí, igual que Recibos" (saldo a favor arranca en 0, "Usar todo", sin "Reparto (vista previa)"); riesgo de no usar el saldo es operativo ("el saldo a favor en la factura mas indmeitne no siempre se va a usar ahi mismo"), sin aviso extra. Monto por fila se recorta al saldo, como Recibos. Lógica en `useEgresoForm.ts` + `calculateFillCreditAmount`; tabla inline en `EgresoNewPage.tsx` (CreditsPanel del POS sin tocar).
 - L26 (2026-11-17): "no me esta mostrando cuanto me falta!" → Egresos usa la fila "Falta por pagar / Sobra" de Recibos en lugar de "Las formas de pago deben sumar X" (S1). Dueño: "listo ya probe ye sta bien!".
 - L27 (2026-11-17): "dale" a S3/S6/S7: Recibos usa el texto "El saldo a favor cubre el total — no hace falta forma de pago" (o "El descuento cubre…" si no hay saldo); diálogo "de saldo a favor aplicado"; Egresos muestra errores al lado del abono de cada factura y del monto de cada forma de pago.
+- L28 (2026-11-17): "hagasmos solo el pimero" → números de documento de las tablas del detalle (recibos y egresos) con link visible (blanco, subrayado siempre), igual que el tercero. Dueño: "esta todo bien".
 
 ## Retomar aquí (próxima sesión)
 Rama `feat/egresos-recibos-design` (local, sin push). Commits: e99246b backend reparto, d7aa87a listas, 61f5a43 detalle. Sin commitear (2026-11-17, aprobado en pantalla por el dueño): columna "Aplicado a" en Saldos a favor usados (recibos y egresos, backend egresos incluye `accountPayable.document`); listas = Dinero recibido/pagado · Saldo a favor · Descuento (solo monto); detalle sin tarjeta "Total".
@@ -68,8 +69,7 @@ Rama `feat/egresos-recibos-design` (local, sin push). Commits: e99246b backend r
 Probado en pantalla por el dueño: reparto FIFO con DVV de administración + excedente + descuento (RC-000017) — OK.
 
 Pendiente:
-- Commitear lo de 2026-11-17 (esperando que el dueño lo pida).
-- Decidir: números de documento de las tablas, ¿mismo estilo de link visible?
+- HECHO: números de documento de las tablas con link visible (L28).
 - Crear: HECHO saldo a favor como Recibos y Falta/Sobra en Egresos (L25-L26).
 - Puntos del primer plan (Falta/Sobra, errores inline, ConfirmDialog, textos) descartados con el rediseño: volver a preguntarlos uno por uno al llegar a Crear.
 - Idea abierta: en el detalle, monto original y pendiente de cada factura.

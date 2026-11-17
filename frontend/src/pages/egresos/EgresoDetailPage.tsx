@@ -228,7 +228,7 @@ export default function EgresoDetailPage() {
                     <td className="px-5 py-3.5">
                       <Link
                         to={`/accounts-payable/${allocation.accountPayableId}`}
-                        className="font-mono text-xs font-medium link-plain"
+                        className="font-mono text-xs font-medium text-content underline decoration-content-muted underline-offset-4 hover:decoration-content"
                       >
                         {docNumber(
                           allocation.accountPayable.document.type,
@@ -285,7 +285,7 @@ export default function EgresoDetailPage() {
                       {application.supplierCredit.sourceDocument ? (
                         <Link
                           to={`/documents/${application.supplierCredit.sourceDocument.id}`}
-                          className="font-mono text-xs font-medium link-plain"
+                          className="font-mono text-xs font-medium text-content underline decoration-content-muted underline-offset-4 hover:decoration-content"
                         >
                           {docNumber(
                             application.supplierCredit.sourceDocument.type,
@@ -299,7 +299,7 @@ export default function EgresoDetailPage() {
                     <td className="px-5 py-3.5">
                       <Link
                         to={`/documents/${application.accountPayable.document.id}`}
-                        className="font-mono text-xs font-medium link-plain"
+                        className="font-mono text-xs font-medium text-content underline decoration-content-muted underline-offset-4 hover:decoration-content"
                       >
                         {docNumber(
                           application.accountPayable.document.type,

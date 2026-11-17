@@ -270,7 +270,7 @@ export default function ReciboCajaDetailPage() {
                     <td className="px-5 py-3.5">
                       <Link
                         to={`/documents/${allocation.accountReceivable.documentId}`}
-                        className="font-mono text-xs font-medium link-plain"
+                        className="font-mono text-xs font-medium text-content underline decoration-content-muted underline-offset-4 hover:decoration-content"
                       >
                         {docNumber(
                           allocation.accountReceivable.document.type,
@@ -334,7 +334,7 @@ export default function ReciboCajaDetailPage() {
                       {application.customerCredit.sourceDocument ? (
                         <Link
                           to={`/documents/${application.customerCredit.sourceDocument.id}`}
-                          className="font-mono text-xs font-medium link-plain"
+                          className="font-mono text-xs font-medium text-content underline decoration-content-muted underline-offset-4 hover:decoration-content"
                         >
                           {docNumber(
                             application.customerCredit.sourceDocument.type,
@@ -349,7 +349,7 @@ export default function ReciboCajaDetailPage() {
                       {application.accountReceivable ? (
                         <Link
                           to={`/documents/${application.accountReceivable.document.id}`}
-                          className="font-mono text-xs font-medium link-plain"
+                          className="font-mono text-xs font-medium text-content underline decoration-content-muted underline-offset-4 hover:decoration-content"
                         >
                           {docNumber(
                             application.accountReceivable.document.type,
