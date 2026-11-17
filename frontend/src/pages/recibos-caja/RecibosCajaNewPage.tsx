@@ -503,7 +503,11 @@ export default function RecibosCajaNewPage() {
                   <div>
                     <h2 className="text-content font-semibold">Formas de pago</h2>
                     <p className="text-content-muted text-xs mt-0.5 font-accent">
-                      Deben sumar {formatCOP(expectedPayments)}
+                      {expectedPayments === 0 && hasSelectedReceivable
+                        ? totalCredits > 0
+                          ? 'El saldo a favor cubre el total — no hace falta forma de pago'
+                          : 'El descuento cubre el total — no hace falta forma de pago'
+                        : `Deben sumar ${formatCOP(expectedPayments)}`}
                     </p>
                   </div>
                   <button
@@ -784,7 +788,7 @@ export default function RecibosCajaNewPage() {
         title="Registrar recibo de caja"
         description={
           hasDiscount || totalCredits > 0
-            ? `Se registrará el cobro por ${formatCOP(expectedPayments)} sobre ${formatCOP(totalAbonos)} de deuda${hasDiscount ? `, con un descuento de ${formatCOP(discount)}` : ''}${totalCredits > 0 ? `${hasDiscount ? ' y' : ','} ${formatCOP(totalCredits)} de credits aplicados` : ''}. Esta acción no se puede deshacer.`
+            ? `Se registrará el cobro por ${formatCOP(expectedPayments)} sobre ${formatCOP(totalAbonos)} de deuda${hasDiscount ? `, con un descuento de ${formatCOP(discount)}` : ''}${totalCredits > 0 ? `${hasDiscount ? ' y' : ','} ${formatCOP(totalCredits)} de saldo a favor aplicado` : ''}. Esta acción no se puede deshacer.`
             : `Se registrará el cobro por ${formatCOP(totalAbonos)} a las cuentas por cobrar seleccionadas. Esta acción no se puede deshacer.`
         }
         confirmLabel="Confirmar y registrar"

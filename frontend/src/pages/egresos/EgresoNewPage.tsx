@@ -353,6 +353,11 @@ export default function EgresoNewPage() {
                                   disabled={!row?.selected}
                                   className="w-32 py-1.5"
                                 />
+                                {errors.payables?.[index]?.amount && (
+                                  <p className="text-xs text-red-500 font-accent mt-1">
+                                    {errors.payables[index].amount.message}
+                                  </p>
+                                )}
                               </td>
                             </tr>
                           )
@@ -520,6 +525,11 @@ export default function EgresoNewPage() {
                               />
                             )}
                           />
+                          {errors.payments?.[index]?.amount && (
+                            <p className="text-xs text-red-500 font-accent">
+                              {errors.payments[index].amount.message}
+                            </p>
+                          )}
                         </div>
 
                         <div className="space-y-1">
