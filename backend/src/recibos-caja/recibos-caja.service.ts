@@ -167,11 +167,11 @@ function isSameEgresoRequest(
     (line) => line.customerCreditId,
     (line) => line.amount,
   );
-  const existingCredits = new Map(
-    existing.creditApplications.map((a) => [
-      a.customerCreditId,
-      toCents(a.amount),
-    ]),
+  // Un saldo repartido en varias CxC se guarda en varias filas: se suman por saldo
+  const existingCredits = sumCentsById(
+    existing.creditApplications,
+    (a) => a.customerCreditId,
+    (a) => Number(a.amount),
   );
   if (!sameCents(requestedCredits, existingCredits)) {
     return false;

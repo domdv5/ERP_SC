@@ -697,6 +697,34 @@ describe('RecibosCajaService', () => {
         allocation('ar2', { creditAmount: 0 }),
       );
     });
+
+    it('idempotencia: reintento igual con un saldo repartido en 2 CxC devuelve el recibo guardado', async () => {
+      const existing = {
+        id: 'rc1',
+        clientId: CLIENT,
+        customerBranchId: null,
+        total: new Prisma.Decimal(30),
+        discountAmount: new Prisma.Decimal(0),
+        discountReason: null,
+        allocations: [
+          { accountReceivableId: 'ar1', amount: new Prisma.Decimal(100) },
+          { accountReceivableId: 'ar2', amount: new Prisma.Decimal(50) },
+        ],
+        creditApplications: [
+          { customerCreditId: 'cc1', amount: new Prisma.Decimal(100) },
+          { customerCreditId: 'cc1', amount: new Prisma.Decimal(20) },
+        ],
+      };
+      prisma.reciboCaja.findUnique.mockResolvedValue(existing);
+
+      await expect(
+        service.create(
+          splitDto([30], [{ customerCreditId: 'cc1', amount: 120 }]),
+          user,
+        ),
+      ).resolves.toMatchObject({ id: 'rc1' });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
   });
 
   describe('findAll', () => {

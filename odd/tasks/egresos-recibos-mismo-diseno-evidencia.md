@@ -19,3 +19,9 @@
 
 Conteos (orquestador): backend `tsc --noEmit` 0 errores; jest 68 suites / 697 tests. Frontend `tsc` 0 errores.
 Base real: migración aplicada (`_prisma_migrations`), índice único y CHECK verificados en el catálogo. Crear un recibo contra la base real: pendiente (prueba en pantalla del dueño).
+
+## Judgment Day sobre e99246b (2026-11-17)
+- Jueces A y B (ciegos) confirmaron JD-1 CRITICAL: reintento idéntico con un saldo repartido en 2+ CxC daba 409 (`isSameEgresoRequest` usaba `new Map` y se quedaba con la última fila por saldo).
+- Arreglo: `existingCredits` con `sumCentsById`. Prueba "reintento igual con un saldo repartido en 2 CxC devuelve el recibo guardado": RED (ConflictException) → GREEN. jest recibos 46/46, tsc 0.
+- Re-juicio acotado: A y B sin hallazgos. JUDGMENT: APPROVED.
+- Info (sin arreglar): desempate por id al ordenar CxC con igual `createdAt` (A y B); CHECK de base `credit_amount + discount_amount <= amount` (solo A).
