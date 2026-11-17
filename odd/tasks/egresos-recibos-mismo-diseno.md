@@ -54,24 +54,20 @@ Solo frontend (crear, lista, detalle). Cambia el diseño, no las reglas de diner
 - L18 (2026-11-13): Detalle aplicado según L12-L13: Recibos con resumen como Egresos (Total · Dinero recibido · Saldo a favor · Descuento con motivo), cliente (link) y sucursal en el subtítulo, orden Formas de pago → Cuentas → Saldos, Saldos a favor usados = Origen · Monto aplicado ("Excedente" sin documento), cuentas con Dinero recibido · Saldo a favor ("—" en recibos viejos). Egresos solo renombra "Formas de pago" → "Dinero pagado".
 - L19 (2026-11-13): Nombre del cliente/proveedor en el encabezado del detalle: link visible (blanco, negrita, subrayado siempre); `link-plain` se perdía en el gris. Pendiente decidir si los números de documento de las tablas van igual.
 - L20 (2026-11-13): Dueño corta por hoy ("en la próxima sesión arrancamos con esto de nuevo"). Detalle commiteado sin revisar en pantalla.
+- L21 (2026-11-17): Pruebas en pantalla OK (reparto con DVV de administración + excedente + descuento). Se agrega columna "Aplicado a" en "Saldos a favor usados" de recibos y egresos (egresos: el detalle ahora incluye `accountPayable.document` de cada aplicación; contrato `EgresoCreditApplication.accountPayable`).
+- L22 (2026-11-17): "me gustaria en recibos de caja el total, sea por cuneto fue el total de ese recibo, no que reste saldos a favor ni decuentos ni exccernte etc etc" / "el total a msotrar debe ser efectiamente lo que se recibio en dinero, entonces un descuento, saldo a favor, excdente no se tinei en cuneta" / "el excdente me peuyde lelgar hoy, y lo utilzio entre 15 dias , entonces no tendira sneitdo incluirlo". Decisión: Total (lista y resumen del detalle) = solo el dinero que entró/salió con ese documento, en recibos y egresos. "Dinero recibido" se deja también en el resumen. Reemplaza L16/L17 (Total = dinero + saldo + descuento).
+- L23 (2026-11-17): "pero entonces mostremos en sa lsita, cuanto saldo a favor se uso, si hubo desceunto yq de que tipo y el valor, y tambien excdente, asi la informacon es ams clara no?" + descuento "como la primera opcion, pero deja de estar sugiriendo el gris que eso no se ve nada, y el total conufnde pon dinero recibido". Decisión: lista recibos = Número · Fecha · Cliente · Sucursal · Dinero recibido · Saldo a favor (una sola columna) · Descuento (monto + tipo, sin gris); lista egresos = ... · Dinero pagado · Saldo a favor; se quita "Total" del resumen de los detalles. Backend: lista de recibos devuelve `discountReason`.
+- L24 (2026-11-17): "el tipo de descunto debajo, no em gusto" → elige "No mostrar el tipo en la lista": la columna Descuento muestra solo el monto; el tipo queda en el detalle. Se revierte `discountReason` de la lista en el backend.
 
 ## Retomar aquí (próxima sesión)
-Rama `feat/egresos-recibos-design` (local, sin push). Encima de main: e99246b backend reparto, d7aa87a listas, y el commit del detalle.
+Rama `feat/egresos-recibos-design` (local, sin push). Commits: e99246b backend reparto, d7aa87a listas, 61f5a43 detalle. Sin commitear (2026-11-17, aprobado en pantalla por el dueño): columna "Aplicado a" en Saldos a favor usados (recibos y egresos, backend egresos incluye `accountPayable.document`); listas = Dinero recibido/pagado · Saldo a favor · Descuento (solo monto); detalle sin tarjeta "Total".
 
-Hecho:
-- Backend: reparto del saldo a favor por factura en recibos (migración aplicada en la base local).
-- Listas: una sola columna "Total"; en Recibos = dinero + saldo a favor + descuento.
-- Detalle: Recibos igual a Egresos (resumen, orden de tablas, Saldos a favor usados, cuentas con Dinero/Saldo; "—" en recibos viejos). Egresos solo renombra "Dinero pagado". Link del tercero visible.
-
-Probar en pantalla (nada de esto se probó todavía):
-1. Alto — Crear recibo nuevo con 2 facturas + saldo a favor + plata; en el detalle cada fila: Abonado = Dinero recibido + Saldo a favor + Descuento; la factura más vieja se cubre primero con saldo. Si sale "—", el backend no está guardando el reparto.
-2. Alto — Lista de recibos: Total = plata + saldo + descuento, y coincide con el Total del detalle.
-3. Medio — Recibo viejo (todos los existentes hoy, ej. RC-000015): "—" por factura, nunca $0.
-4. Medio — Recibo con descuento: arriba Descuento con motivo y columna Descuento en la tabla.
-5. Bajo — Saldo tipo excedente dice "Excedente"; egresos sin cambios de números; link del tercero se ve como link.
+Probado en pantalla por el dueño: reparto FIFO con DVV de administración + excedente + descuento (RC-000017) — OK.
 
 Pendiente:
+- Commitear lo de 2026-11-17 (esperando que el dueño lo pida).
 - Decidir: números de documento de las tablas, ¿mismo estilo de link visible?
 - Crear: saldo a favor como tabla de Recibos (arranca en 0, "Usar todo") en las dos; quitar "Reparto (vista previa)" de Egresos. Avisar antes: en Egresos el saldo ya no se aplica solo.
+- Puntos del primer plan (Falta/Sobra, errores inline, ConfirmDialog, textos) descartados con el rediseño: volver a preguntarlos uno por uno al llegar a Crear.
 - Idea abierta: en el detalle, monto original y pendiente de cada factura.
 - Al final: PR (backend y frontend), decisión del dueño.

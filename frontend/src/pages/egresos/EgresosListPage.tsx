@@ -195,7 +195,7 @@ export default function EgresosListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Número', 'Fecha', 'Proveedor', 'Total'].map((h) => (
+                  {['Número', 'Fecha', 'Proveedor', 'Dinero pagado', 'Saldo a favor'].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -235,7 +235,10 @@ export default function EgresosListPage() {
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
-                      {formatCOP(Number(egreso.total))}
+                      {formatCOP(Number(egreso.cashTotal))}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                      {Number(egreso.creditTotal) > 0 ? formatCOP(Number(egreso.creditTotal)) : '—'}
                     </td>
                   </tr>
                 ))}

@@ -15,7 +15,7 @@ import { getReciboCaja } from '@/services/recibos-caja.service'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
 import { RECIBO_CAJA_DISCOUNT_REASON_LABELS } from './recibo-caja-form.schema'
-import { calculateAllocationCash, calculateReciboTotal, sumAmounts } from './recibo-caja-totals'
+import { calculateAllocationCash, sumAmounts } from './recibo-caja-totals'
 
 export default function ReciboCajaDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -83,11 +83,6 @@ export default function ReciboCajaDetailPage() {
   const hasDiscount = Number(reciboCaja.discountAmount) > 0
   const creditApplications = reciboCaja.creditApplications ?? []
   const totalCredits = sumAmounts(creditApplications)
-  const total = calculateReciboTotal({
-    cashTotal: reciboCaja.total,
-    creditTotal: String(totalCredits),
-    discountAmount: reciboCaja.discountAmount,
-  })
 
   return (
     <div className="space-y-6 pb-10">
@@ -126,18 +121,8 @@ export default function ReciboCajaDetailPage() {
 
         {/* Resumen */}
         <div
-          className={`mt-6 grid grid-cols-1 sm:grid-cols-3 ${hasDiscount ? 'lg:grid-cols-4' : ''} gap-5 border-t border-ui-divide pt-5`}
+          className={`mt-6 grid grid-cols-1 sm:grid-cols-2 ${hasDiscount ? 'lg:grid-cols-3' : ''} gap-5 border-t border-ui-divide pt-5`}
         >
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
-              <Wallet className="w-4 h-4 text-content-muted" />
-            </div>
-            <div>
-              <p className="text-xs text-content-faint">Total</p>
-              <p className="text-sm text-content font-medium">{formatCOP(total)}</p>
-            </div>
-          </div>
-
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
               <Banknote className="w-4 h-4 text-content-muted" />
@@ -332,7 +317,7 @@ export default function ReciboCajaDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Origen', 'Monto aplicado'].map((h) => (
+                  {['Origen', 'Aplicado a', 'Monto aplicado'].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -358,6 +343,21 @@ export default function ReciboCajaDetailPage() {
                         </Link>
                       ) : (
                         <span className="text-xs text-content-faint">Excedente</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {application.accountReceivable ? (
+                        <Link
+                          to={`/documents/${application.accountReceivable.document.id}`}
+                          className="font-mono text-xs font-medium link-plain"
+                        >
+                          {docNumber(
+                            application.accountReceivable.document.type,
+                            application.accountReceivable.document.number,
+                          )}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-content-faint">—</span>
                       )}
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">

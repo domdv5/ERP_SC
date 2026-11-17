@@ -92,6 +92,7 @@ export interface EgresoCreditApplication {
   egresoId: string | null;
   amount: string;
   appliedAt: string;
+  accountPayable: { id: string; document: PayableDocumentRef };
   supplierCredit: EgresoCredit;
 }
 
