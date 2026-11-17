@@ -19,7 +19,7 @@ import {
 import {
   calculatePaymentDays,
   findLastPaymentDate,
-} from './helpers/payment-days.helper';
+} from '@/common/utils/payment-days.util';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -294,6 +294,7 @@ export class AccountsReceivableService {
       page = 1,
       limit = 20,
       search,
+      clientId,
       status,
       sort = 'recent',
       dateFrom,
@@ -302,7 +303,15 @@ export class AccountsReceivableService {
     buildDateColumnRange(dateFrom, dateTo);
 
     const filters = Prisma.sql`
-      ${search ? Prisma.sql`AND position(lower(${search}) in lower(tp.name)) > 0` : Prisma.empty}
+      ${
+        search
+          ? Prisma.sql`AND (
+            position(lower(${search}) in lower(tp.name)) > 0
+            OR position(lower(${search}) in lower(tp.document_number)) > 0
+          )`
+          : Prisma.empty
+      }
+      ${clientId ? Prisma.sql`AND tp.id = ${clientId}::uuid` : Prisma.empty}
       ${dateFrom ? Prisma.sql`AND d.date >= ${dateFrom}::date` : Prisma.empty}
       ${dateTo ? Prisma.sql`AND d.date <= ${dateTo}::date` : Prisma.empty}`;
     const having =

@@ -14,6 +14,10 @@ import {
   todayInBogota,
 } from '@/common/utils/date-range.util';
 import {
+  calculatePaymentDays,
+  findLastPaymentDate,
+} from '@/common/utils/payment-days.util';
+import {
   FindAllAccountsPayableDto,
   FindAvailableSupplierCreditsDto,
   FindPayableSuppliersDto,
@@ -65,6 +69,16 @@ const DETAIL_INCLUDE = {
   },
 } satisfies Prisma.AccountsPayableInclude;
 
+// Solo el estado de cuenta: lo mínimo para calcular la fecha del último pago.
+const STATEMENT_INCLUDE = {
+  ...LIST_INCLUDE,
+  creditApplications: {
+    select: { amount: true, egresoId: true, appliedAt: true },
+  },
+  payablePayments: { select: { paymentDate: true } },
+  egresoAllocations: { select: { egreso: { select: { date: true } } } },
+} satisfies Prisma.AccountsPayableInclude;
+
 type ListRow = Prisma.AccountsPayableGetPayload<{
   include: typeof LIST_INCLUDE;
 }>;
@@ -102,6 +116,36 @@ function withDerivedFields<
     ...rest,
     creditApplied,
     balance: row.totalAmount.minus(row.paidAmount),
+  };
+}
+
+type StatementRow = Prisma.AccountsPayableGetPayload<{
+  include: typeof STATEMENT_INCLUDE;
+}>;
+
+/** Último pago: pagos históricos, egresos y saldo a favor sin egreso (los que tienen egreso ya cuentan por su egreso). */
+function withPaymentDays(row: StatementRow, today: Date) {
+  const { payablePayments, egresoAllocations, ...rest } =
+    withDerivedFields(row);
+  const lastPaymentDate = findLastPaymentDate([
+    ...payablePayments.map((payment) => payment.paymentDate),
+    ...egresoAllocations.map((allocation) => allocation.egreso.date),
+    ...row.creditApplications
+      .filter((application) => application.egresoId === null)
+      .map((application) => todayInBogota(application.appliedAt)),
+  ]);
+  const { days, isOpen } = calculatePaymentDays(
+    row.document.date,
+    lastPaymentDate,
+    row.status,
+    today,
+  );
+
+  return {
+    ...rest,
+    lastPaymentDate,
+    paymentDays: days,
+    isPaymentOpen: isOpen,
   };
 }
 
@@ -189,6 +233,7 @@ export class AccountsPayableService {
       page = 1,
       limit = 20,
       search,
+      supplierId,
       status,
       sort = 'recent',
       dateFrom,
@@ -197,7 +242,18 @@ export class AccountsPayableService {
     buildDateColumnRange(dateFrom, dateTo);
 
     const filters = Prisma.sql`
-      ${search ? Prisma.sql`AND position(lower(${search}) in lower(tp.name)) > 0` : Prisma.empty}
+      ${
+        search
+          ? Prisma.sql`AND (
+            position(lower(${search}) in lower(tp.name)) > 0
+            OR EXISTS (
+              SELECT 1 FROM brand b
+              WHERE b.supplier_id = tp.id AND b.active = true
+                AND position(lower(${search}) in lower(b.name)) > 0
+            ))`
+          : Prisma.empty
+      }
+      ${supplierId ? Prisma.sql`AND tp.id = ${supplierId}::uuid` : Prisma.empty}
       ${dateFrom ? Prisma.sql`AND d.date >= ${dateFrom}::date` : Prisma.empty}
       ${dateTo ? Prisma.sql`AND d.date <= ${dateTo}::date` : Prisma.empty}`;
     const having =
@@ -357,7 +413,7 @@ export class AccountsPayableService {
     const [rawPayables, rawCredits] = await Promise.all([
       this.prisma.accountsPayable.findMany({
         where: { supplierId },
-        include: LIST_INCLUDE,
+        include: STATEMENT_INCLUDE,
         orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       }),
       this.prisma.supplierCredit.findMany({
@@ -377,7 +433,8 @@ export class AccountsPayableService {
       }),
     ]);
 
-    const payables = rawPayables.map(withDerivedFields);
+    const today = todayInBogota();
+    const payables = rawPayables.map((row) => withPaymentDays(row, today));
 
     const totalDebt = payables.reduce(
       (sum, payable) => sum.plus(payable.totalAmount),

@@ -237,6 +237,39 @@ describe('AccountsPayableService.findSuppliers', () => {
     );
   });
 
+  it('search también busca en marcas activas del proveedor con EXISTS (sin duplicar filas)', async () => {
+    await service.findSuppliers({ search: 'prime' });
+
+    const call = prisma.$queryRaw.mock.calls[0];
+    const sql = sqlOf(call);
+    expect(sql).toContain('EXISTS');
+    expect(sql).toContain('FROM brand b');
+    expect(sql).toContain('b.supplier_id = tp.id');
+    expect(sql).toContain('b.active = true');
+    expect(sql).toContain('lower(b.name)');
+    expect(
+      Prisma.sql(call[0] as TemplateStringsArray, ...call.slice(1)).values,
+    ).toEqual(expect.arrayContaining(['prime']));
+  });
+
+  it('supplierId filtra por tp.id como parámetro; sin supplierId no hay condición', async () => {
+    const id = '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
+    await service.findSuppliers({ supplierId: id });
+
+    const call = prisma.$queryRaw.mock.calls[0];
+    expect(sqlOf(call)).toContain('AND tp.id = ');
+    expect(sqlOf(call)).not.toContain(id);
+    expect(
+      Prisma.sql(call[0] as TemplateStringsArray, ...call.slice(1)).values,
+    ).toEqual(expect.arrayContaining([id]));
+  });
+
+  it('sin supplierId no agrega condición por tp.id', async () => {
+    await service.findSuppliers({});
+
+    expect(sqlOf(prisma.$queryRaw.mock.calls[0])).not.toContain('AND tp.id = ');
+  });
+
   it('sin sort ordena por último movimiento en el page y en el resultado final', async () => {
     await service.findSuppliers({});
 
@@ -325,5 +358,100 @@ describe('AccountsPayableService.findAll: rango de fechas', () => {
     ).rejects.toThrow(
       new BadRequestException('dateFrom no puede ser posterior a dateTo'),
     );
+  });
+});
+
+describe('AccountsPayableService.getSupplierStatement: días de pago', () => {
+  const prisma = {
+    supplier: { findUnique: jest.fn() },
+    accountsPayable: { findMany: jest.fn() },
+    supplierCredit: { findMany: jest.fn() },
+  };
+  const service = new AccountsPayableService(
+    prisma as unknown as PrismaService,
+  );
+  const day = (value: string) => new Date(`${value}T00:00:00.000Z`);
+
+  const payable = (overrides: Record<string, unknown>) => ({
+    id: 'p1',
+    status: 'paid',
+    totalAmount: new Prisma.Decimal(1000),
+    paidAmount: new Prisma.Decimal(1000),
+    document: { date: day('2026-10-01') },
+    creditApplications: [],
+    payablePayments: [],
+    egresoAllocations: [],
+    ...overrides,
+  });
+
+  const statementOf = async (row: Record<string, unknown>) => {
+    prisma.accountsPayable.findMany.mockResolvedValue([row]);
+    const result = await service.getSupplierStatement('s1');
+    return result.payables[0] as unknown as {
+      lastPaymentDate: Date | null;
+      paymentDays: number;
+      isPaymentOpen: boolean;
+    };
+  };
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.supplier.findUnique.mockResolvedValue({
+      thirdParty: { id: 's1', name: 'Proveedor' },
+    });
+    prisma.supplierCredit.findMany.mockResolvedValue([]);
+  });
+
+  it('CxP abierta: cuenta los días desde la compra hasta hoy', async () => {
+    const row = await statementOf(
+      payable({
+        status: 'partial',
+        paidAmount: new Prisma.Decimal(100),
+        document: { date: day('2026-10-01') },
+        egresoAllocations: [{ egreso: { date: day('2026-10-05') } }],
+      }),
+    );
+
+    const expected = Math.round(
+      (todayInBogota().getTime() - day('2026-10-01').getTime()) / 86_400_000,
+    );
+    expect(row.isPaymentOpen).toBe(true);
+    expect(row.paymentDays).toBe(expected);
+  });
+
+  it('CxP pagada: cuenta los días desde la compra hasta el último pago', async () => {
+    const row = await statementOf(
+      payable({ egresoAllocations: [{ egreso: { date: day('2026-10-11') } }] }),
+    );
+
+    expect(row.isPaymentOpen).toBe(false);
+    expect(row.paymentDays).toBe(10);
+    expect(row.lastPaymentDate).toEqual(day('2026-10-11'));
+  });
+
+  it('último pago = el más reciente entre egreso, pago histórico y saldo a favor sin egreso; el que tiene egreso no cuenta por appliedAt', async () => {
+    const row = await statementOf(
+      payable({
+        payablePayments: [{ paymentDate: day('2026-10-08') }],
+        egresoAllocations: [{ egreso: { date: day('2026-10-10') } }],
+        creditApplications: [
+          // 2026-10-13 02:00 UTC = 12-oct 21:00 en Bogotá
+          {
+            egresoId: null,
+            amount: new Prisma.Decimal(50),
+            appliedAt: new Date('2026-10-13T02:00:00.000Z'),
+          },
+          // con egreso: su fecha posterior no debe contar
+          {
+            egresoId: 'e1',
+            amount: new Prisma.Decimal(50),
+            appliedAt: new Date('2026-10-20T15:00:00.000Z'),
+          },
+        ],
+      }),
+    );
+
+    expect(row.lastPaymentDate).toEqual(day('2026-10-12'));
+    expect(row.paymentDays).toBe(11);
   });
 });

@@ -1,5 +1,3 @@
-import type { AccountsReceivableStatus } from '@prisma/client';
-
 const DAY_MS = 86_400_000;
 
 export function findLastPaymentDate(paymentDates: Date[]): Date | null {
@@ -11,7 +9,7 @@ export function findLastPaymentDate(paymentDates: Date[]): Date | null {
 export function calculatePaymentDays(
   saleDate: Date,
   lastPaymentDate: Date | null,
-  status: AccountsReceivableStatus,
+  status: 'pending' | 'partial' | 'paid',
   today: Date,
 ) {
   const isOpen = status !== 'paid';

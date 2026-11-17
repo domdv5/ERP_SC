@@ -25,6 +25,8 @@ export interface GetPayableSuppliersParams {
   page?: number
   limit?: number
   search?: string
+  // Filtro exacto por tercero (al elegir una sugerencia); reemplaza a search
+  supplierId?: string
   status?: PayableSuppliersStatus
   sort?: PayableSuppliersSort
   // Formato YYYY-MM-DD; filtra las facturas por document.date

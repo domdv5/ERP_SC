@@ -90,7 +90,7 @@ describe('ProductRow — disponible en ventas', () => {
     fireEvent.click(screen.getByRole('combobox'))
     fireEvent.change(screen.getByPlaceholderText('Buscar...'), { target: { value: 'ABC' } })
 
-    const option = await screen.findByText('Disponible: 7')
+    const option = await screen.findByText('ABC — Camisa')
     expect(screen.queryByText(/99/)).toBeNull()
 
     fireEvent.click(option)
@@ -137,7 +137,7 @@ async function pickProduct() {
   vi.mocked(getProducts).mockResolvedValue({ items: [product] } as never)
   fireEvent.click(screen.getByRole('combobox'))
   fireEvent.change(screen.getByPlaceholderText('Buscar...'), { target: { value: 'ABC' } })
-  fireEvent.click(await screen.findByText('Disponible: 7'))
+  fireEvent.click(await screen.findByText('ABC — Camisa'))
 }
 
 describe('ProductRow — elegir producto a mano', () => {
