@@ -147,12 +147,6 @@ export function ProductRow({
   const productOptions: ComboboxOption[] = (productData?.items ?? []).map((p: ProductListItem) => ({
     id: p.id,
     label: `${p.code} — ${p.description}`,
-    // Ventas/salidas: disponible ya neteado; traslados: disponible en la bodega origen; entradas: costo promedio.
-    sublabel: showSaleAvailability
-      ? `Disponible: ${p.availableToSell}`
-      : showTransferAvailability && sourceWarehouseId
-        ? `Disponible: ${p.stockByWarehouse.find((s) => s.warehouseId === sourceWarehouseId)?.quantity ?? 0}`
-        : `Costo prom: ${formatCOP(Number(p.avgCost))}`,
   }))
 
   const displayOptions: ComboboxOption[] =
