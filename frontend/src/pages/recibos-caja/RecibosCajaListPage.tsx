@@ -228,7 +228,15 @@ export default function RecibosCajaListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Número', 'Fecha', 'Cliente', 'Sucursal', 'Total'].map((h) => (
+                  {[
+                    'Número',
+                    'Fecha',
+                    'Cliente',
+                    'Sucursal',
+                    'Dinero recibido',
+                    'Saldo a favor',
+                    'Descuento',
+                  ].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -265,7 +273,17 @@ export default function RecibosCajaListPage() {
                       {reciboCaja.customerBranch?.name ?? '—'}
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
-                      {formatCOP(Number(reciboCaja.total))}
+                      {formatCOP(Number(reciboCaja.cashTotal))}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                      {Number(reciboCaja.creditTotal) > 0
+                        ? formatCOP(Number(reciboCaja.creditTotal))
+                        : '—'}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                      {Number(reciboCaja.discountAmount) > 0
+                        ? formatCOP(Number(reciboCaja.discountAmount))
+                        : '—'}
                     </td>
                   </tr>
                 ))}

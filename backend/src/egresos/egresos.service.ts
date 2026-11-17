@@ -35,6 +35,14 @@ export const EGRESO_DETAIL_INCLUDE = {
   },
   creditApplications: {
     include: {
+      accountPayable: {
+        select: {
+          id: true,
+          document: {
+            select: { id: true, type: true, number: true, date: true },
+          },
+        },
+      },
       supplierCredit: {
         include: {
           sourceDocument: {

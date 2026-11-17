@@ -91,7 +91,7 @@ export default function EgresoDetailPage() {
             <p className="text-content-muted text-sm mt-1 font-accent">
               <button
                 onClick={() => navigate(`/accounts-payable/suppliers/${egreso.supplier.id}`)}
-                className="link-plain font-medium"
+                className="text-content font-semibold underline decoration-content-muted underline-offset-4 hover:decoration-content"
               >
                 {egreso.supplier.thirdParty.name}
               </button>{' '}
@@ -101,23 +101,13 @@ export default function EgresoDetailPage() {
         </div>
 
         {/* Resumen */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-5 border-t border-ui-divide pt-5">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
-              <Wallet className="w-4 h-4 text-content-muted" />
-            </div>
-            <div>
-              <p className="text-xs text-content-faint">Total</p>
-              <p className="text-sm text-content font-medium">{formatCOP(Number(egreso.total))}</p>
-            </div>
-          </div>
-
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5 border-t border-ui-divide pt-5">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
               <Banknote className="w-4 h-4 text-content-muted" />
             </div>
             <div>
-              <p className="text-xs text-content-faint">Formas de pago</p>
+              <p className="text-xs text-content-faint">Dinero pagado</p>
               <p className="text-sm text-content font-medium">
                 {formatCOP(Number(egreso.cashTotal))}
               </p>
@@ -218,7 +208,7 @@ export default function EgresoDetailPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ui-border">
-                {['Documento', 'Abonado', 'Formas de pago', 'Saldo a favor'].map((h) => (
+                {['Documento', 'Abonado', 'Dinero pagado', 'Saldo a favor'].map((h) => (
                   <th
                     key={h}
                     className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -238,7 +228,7 @@ export default function EgresoDetailPage() {
                     <td className="px-5 py-3.5">
                       <Link
                         to={`/accounts-payable/${allocation.accountPayableId}`}
-                        className="font-mono text-xs font-medium link-plain"
+                        className="font-mono text-xs font-medium text-content underline decoration-content-muted underline-offset-4 hover:decoration-content"
                       >
                         {docNumber(
                           allocation.accountPayable.document.type,
@@ -278,7 +268,7 @@ export default function EgresoDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Origen', 'Monto aplicado'].map((h) => (
+                  {['Origen', 'Aplicado a', 'Monto aplicado'].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -295,7 +285,7 @@ export default function EgresoDetailPage() {
                       {application.supplierCredit.sourceDocument ? (
                         <Link
                           to={`/documents/${application.supplierCredit.sourceDocument.id}`}
-                          className="font-mono text-xs font-medium link-plain"
+                          className="font-mono text-xs font-medium text-content underline decoration-content-muted underline-offset-4 hover:decoration-content"
                         >
                           {docNumber(
                             application.supplierCredit.sourceDocument.type,
@@ -305,6 +295,17 @@ export default function EgresoDetailPage() {
                       ) : (
                         <span className="text-xs text-content-faint">Sin documento de origen</span>
                       )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <Link
+                        to={`/documents/${application.accountPayable.document.id}`}
+                        className="font-mono text-xs font-medium text-content underline decoration-content-muted underline-offset-4 hover:decoration-content"
+                      >
+                        {docNumber(
+                          application.accountPayable.document.type,
+                          application.accountPayable.document.number,
+                        )}
+                      </Link>
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                       {formatCOP(Number(application.amount))}

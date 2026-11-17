@@ -1,28 +1,10 @@
-// Vista previa informativa; el backend recalcula todo esto de verdad en la transacción real
-
-export interface PayableAllocationPreview {
-  accountPayableId: string
-  amount: number
-  creditAmount: number
-  cashAmount: number
-}
-
-// Reparto FIFO: cubre cada CxP con saldo a favor primero, en el mismo orden (createdAt asc) que open-items
-export function previewCreditDistribution(
-  selectedPayables: { accountPayableId: string; amount: number }[],
-  totalCreditsApplied: number,
-): PayableAllocationPreview[] {
-  let remaining = Math.max(totalCreditsApplied, 0)
-  return selectedPayables.map((p) => {
-    const creditAmount = Math.min(p.amount, Math.max(remaining, 0))
-    remaining -= creditAmount
-    return {
-      accountPayableId: p.accountPayableId,
-      amount: p.amount,
-      creditAmount,
-      cashAmount: p.amount - creditAmount,
-    }
-  })
+// "Usar todo": lo que falta cubrir de los abonos tras los otros saldos, sin pasar del saldo propio
+export function calculateFillCreditAmount(
+  balance: number,
+  totalAbonos: number,
+  othersSum: number,
+): number {
+  return Math.max(0, Math.min(balance, totalAbonos - othersSum))
 }
 
 // Nunca negativo: si el saldo a favor cubre todo, el excedente no se aplica (se valida aparte)
