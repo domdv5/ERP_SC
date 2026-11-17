@@ -147,10 +147,17 @@ export interface SupplierStatementTotals {
   availableCredit: string;
 }
 
+// Días de pago: abierta = de la compra a hoy; pagada = de la compra al último pago
+export interface SupplierStatementPayable extends AccountsPayable {
+  lastPaymentDate: string | null;
+  paymentDays: number;
+  isPaymentOpen: boolean;
+}
+
 // GET /accounts-payable/suppliers/:supplierId/statement
 export interface SupplierStatement {
   supplier: { id: string; name: string };
   totals: SupplierStatementTotals;
-  payables: AccountsPayable[];
+  payables: SupplierStatementPayable[];
   credits: SupplierCreditWithApplications[];
 }

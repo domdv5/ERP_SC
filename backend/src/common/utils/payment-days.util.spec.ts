@@ -1,7 +1,4 @@
-import {
-  calculatePaymentDays,
-  findLastPaymentDate,
-} from './payment-days.helper';
+import { calculatePaymentDays, findLastPaymentDate } from './payment-days.util';
 
 const day = (value: string) => new Date(`${value}T00:00:00.000Z`);
 

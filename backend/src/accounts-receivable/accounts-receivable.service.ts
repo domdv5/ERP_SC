@@ -19,7 +19,7 @@ import {
 import {
   calculatePaymentDays,
   findLastPaymentDate,
-} from './helpers/payment-days.helper';
+} from '@/common/utils/payment-days.util';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

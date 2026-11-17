@@ -6,6 +6,7 @@ import { getSupplierStatement } from '@/services/accounts-payable.service'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
 import { StatusBadge } from './components/StatusBadge'
+import { PaymentDaysCell } from '../accounts-receivable/components/PaymentDaysCell'
 import { formatDate, formatEventDate, DOCUMENT_TYPE_LABELS } from './accounts-payable.utils'
 
 // Estado de una nota de saldo a favor: solo 'available' | 'used' en el backend.
@@ -190,7 +191,16 @@ export default function AccountsPayableSupplierStatementPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b-2 border-ui-border-medium">
-                  {['Documento', 'Fecha', 'Total', 'Pagado', 'Saldo', 'Estado'].map((h) => (
+                  {[
+                    'Documento',
+                    'Fecha',
+                    'Total',
+                    'Pagado',
+                    'Saldo',
+                    'Último pago',
+                    'Días',
+                    'Estado',
+                  ].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -228,6 +238,12 @@ export default function AccountsPayableSupplierStatementPage() {
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                       {formatCOP(Number(payable.balance))}
+                    </td>
+                    <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
+                      {formatDate(payable.lastPaymentDate)}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                      <PaymentDaysCell days={payable.paymentDays} isOpen={payable.isPaymentOpen} />
                     </td>
                     <td className="px-5 py-3.5">
                       <StatusBadge status={payable.status} />

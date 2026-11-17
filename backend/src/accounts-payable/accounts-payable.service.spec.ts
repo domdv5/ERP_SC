@@ -327,3 +327,98 @@ describe('AccountsPayableService.findAll: rango de fechas', () => {
     );
   });
 });
+
+describe('AccountsPayableService.getSupplierStatement: días de pago', () => {
+  const prisma = {
+    supplier: { findUnique: jest.fn() },
+    accountsPayable: { findMany: jest.fn() },
+    supplierCredit: { findMany: jest.fn() },
+  };
+  const service = new AccountsPayableService(
+    prisma as unknown as PrismaService,
+  );
+  const day = (value: string) => new Date(`${value}T00:00:00.000Z`);
+
+  const payable = (overrides: Record<string, unknown>) => ({
+    id: 'p1',
+    status: 'paid',
+    totalAmount: new Prisma.Decimal(1000),
+    paidAmount: new Prisma.Decimal(1000),
+    document: { date: day('2026-10-01') },
+    creditApplications: [],
+    payablePayments: [],
+    egresoAllocations: [],
+    ...overrides,
+  });
+
+  const statementOf = async (row: Record<string, unknown>) => {
+    prisma.accountsPayable.findMany.mockResolvedValue([row]);
+    const result = await service.getSupplierStatement('s1');
+    return result.payables[0] as unknown as {
+      lastPaymentDate: Date | null;
+      paymentDays: number;
+      isPaymentOpen: boolean;
+    };
+  };
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.supplier.findUnique.mockResolvedValue({
+      thirdParty: { id: 's1', name: 'Proveedor' },
+    });
+    prisma.supplierCredit.findMany.mockResolvedValue([]);
+  });
+
+  it('CxP abierta: cuenta los días desde la compra hasta hoy', async () => {
+    const row = await statementOf(
+      payable({
+        status: 'partial',
+        paidAmount: new Prisma.Decimal(100),
+        document: { date: day('2026-10-01') },
+        egresoAllocations: [{ egreso: { date: day('2026-10-05') } }],
+      }),
+    );
+
+    const expected = Math.round(
+      (todayInBogota().getTime() - day('2026-10-01').getTime()) / 86_400_000,
+    );
+    expect(row.isPaymentOpen).toBe(true);
+    expect(row.paymentDays).toBe(expected);
+  });
+
+  it('CxP pagada: cuenta los días desde la compra hasta el último pago', async () => {
+    const row = await statementOf(
+      payable({ egresoAllocations: [{ egreso: { date: day('2026-10-11') } }] }),
+    );
+
+    expect(row.isPaymentOpen).toBe(false);
+    expect(row.paymentDays).toBe(10);
+    expect(row.lastPaymentDate).toEqual(day('2026-10-11'));
+  });
+
+  it('último pago = el más reciente entre egreso, pago histórico y saldo a favor sin egreso; el que tiene egreso no cuenta por appliedAt', async () => {
+    const row = await statementOf(
+      payable({
+        payablePayments: [{ paymentDate: day('2026-10-08') }],
+        egresoAllocations: [{ egreso: { date: day('2026-10-10') } }],
+        creditApplications: [
+          // 2026-10-13 02:00 UTC = 12-oct 21:00 en Bogotá
+          {
+            egresoId: null,
+            amount: new Prisma.Decimal(50),
+            appliedAt: new Date('2026-10-13T02:00:00.000Z'),
+          },
+          // con egreso: su fecha posterior no debe contar
+          {
+            egresoId: 'e1',
+            amount: new Prisma.Decimal(50),
+            appliedAt: new Date('2026-10-20T15:00:00.000Z'),
+          },
+        ],
+      }),
+    );
+
+    expect(row.lastPaymentDate).toEqual(day('2026-10-12'));
+    expect(row.paymentDays).toBe(11);
+  });
+});

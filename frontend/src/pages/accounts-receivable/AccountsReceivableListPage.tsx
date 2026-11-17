@@ -37,7 +37,7 @@ const COLUMNS = [
   'Pagado',
   'Saldo',
   'Última venta',
-  'Último pago',
+  'Último cobro',
   'Deuda más antigua',
   'Estado',
 ]

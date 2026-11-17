@@ -343,7 +343,7 @@ export default function AccountsReceivableClientStatementPage() {
                     'Total',
                     'Pagado',
                     'Saldo',
-                    'Último pago',
+                    'Último cobro',
                     'Días',
                     'Estado',
                   ].map((h) => (
