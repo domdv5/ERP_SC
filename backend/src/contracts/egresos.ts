@@ -98,6 +98,15 @@ export interface EgresoCreditApplication {
   supplierCredit: EgresoCredit;
 }
 
+export type EgresoVoidReason =
+  | 'valor_equivocado'
+  | 'proveedor_equivocado'
+  | 'factura_equivocada'
+  | 'forma_pago_equivocada'
+  | 'pago_duplicado'
+  | 'pago_no_realizado'
+  | 'otro';
+
 // GET /egresos/:id, POST /egresos y POST /egresos/:id/void
 export interface Egreso {
   id: string;
@@ -111,9 +120,10 @@ export interface Egreso {
   notes: string | null;
   idempotencyKey: string;
   createdAt: string;
-  // Anulación: los tres vienen null si el egreso no está anulado
+  // Anulación: null si no está anulado; voidReasonOther solo viene con motivo otro
   voidedAt: string | null;
-  voidReason: string | null;
+  voidReason: EgresoVoidReason | null;
+  voidReasonOther: string | null;
   voidedBy: { id: string; name: string } | null;
   supplier: PayableSupplier;
   user: { id: string; name: string };

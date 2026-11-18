@@ -3,27 +3,46 @@ import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { VoidEgresoDto } from './void-egreso.dto';
 
-async function errorsFor(reason: unknown) {
-  return validate(plainToInstance(VoidEgresoDto, { reason }));
+async function errorsFor(body: Record<string, unknown>) {
+  return validate(plainToInstance(VoidEgresoDto, body));
 }
 
 describe('VoidEgresoDto', () => {
-  it.each([undefined, '', '   ', 123])(
-    'rechaza el motivo vacío o inválido (%p)',
+  it.each([undefined, '', 'inventado', 123])(
+    'rechaza un motivo fuera de la lista (%p)',
     async (reason) => {
-      const errors = await errorsFor(reason);
+      const errors = await errorsFor({ reason });
       expect(errors).toHaveLength(1);
       expect(Object.values(errors[0].constraints ?? {})).toContain(
-        'Indica el motivo de la anulación',
+        'Elige un motivo de anulación válido',
       );
     },
   );
 
-  it('rechaza más de 500 caracteres', async () => {
-    expect(await errorsFor('a'.repeat(501))).toHaveLength(1);
+  it.each([undefined, '', '   '])(
+    'rechaza "otro" sin texto (%p)',
+    async (reasonOther) => {
+      const errors = await errorsFor({ reason: 'otro', reasonOther });
+      expect(errors).toHaveLength(1);
+      expect(Object.values(errors[0].constraints ?? {})).toContain(
+        'Escribe el motivo de la anulación',
+      );
+    },
+  );
+
+  it('rechaza "otro" con más de 500 caracteres', async () => {
+    const errors = await errorsFor({
+      reason: 'otro',
+      reasonOther: 'a'.repeat(501),
+    });
+    expect(errors).toHaveLength(1);
   });
 
-  it('acepta un motivo normal', async () => {
-    expect(await errorsFor('Error de digitación')).toHaveLength(0);
+  it.each([
+    { reason: 'valor_equivocado' },
+    { reason: 'pago_duplicado', reasonOther: '   ' },
+    { reason: 'otro', reasonOther: 'Error de digitación' },
+  ])('acepta un motivo válido (%j)', async (body) => {
+    expect(await errorsFor(body)).toHaveLength(0);
   });
 });

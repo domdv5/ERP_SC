@@ -58,7 +58,7 @@ describe('EgresosService.void: reversión de dinero', () => {
       { id: 'sc1', balance: dec(0), status: 'used' },
     ]);
 
-    await service.void('e1', { reason: 'Error' }, user);
+    await service.void('e1', { reason: 'otro', reasonOther: 'Error' }, user);
 
     expect(tx.accountsPayable.update).toHaveBeenCalledWith({
       where: { id: 'A' },
@@ -77,7 +77,8 @@ describe('EgresosService.void: reversión de dinero', () => {
       data: {
         voidedAt: expect.any(Date),
         voidedById: 'admin-1',
-        voidReason: 'Error',
+        voidReason: 'otro',
+        voidReasonOther: 'Error',
       },
     });
   });
@@ -92,13 +93,36 @@ describe('EgresosService.void: reversión de dinero', () => {
       payable('A', 1000000, 1000000, 'paid'),
     ]);
 
-    await service.void('e1', { reason: 'Error' }, user);
+    await service.void('e1', { reason: 'otro', reasonOther: 'Error' }, user);
 
     expect(tx.accountsPayable.update).toHaveBeenCalledWith({
       where: { id: 'A' },
       data: { paidAmount: 500000, status: 'partial' },
     });
     expect(tx.supplierCredit.update).not.toHaveBeenCalled();
+  });
+
+  it('con un motivo de la lista guarda reasonOther en null aunque llegue texto', async () => {
+    tx.egreso.findUnique.mockResolvedValue({
+      id: 'e1',
+      allocations: [],
+      creditApplications: [],
+    });
+    tx.accountsPayable.findMany.mockResolvedValue([]);
+
+    await service.void(
+      'e1',
+      { reason: 'pago_duplicado', reasonOther: 'ignorado' },
+      user,
+    );
+
+    expect(tx.egreso.updateMany).toHaveBeenCalledWith({
+      where: { id: 'e1', voidedAt: null },
+      data: expect.objectContaining({
+        voidReason: 'pago_duplicado',
+        voidReasonOther: null,
+      }),
+    });
   });
 
   it('bloquea CxP y luego saldos a favor antes de reclamar el egreso', async () => {
@@ -123,7 +147,7 @@ describe('EgresosService.void: reversión de dinero', () => {
       return Promise.resolve({ count: 1 });
     });
 
-    await service.void('e1', { reason: 'Error' }, user);
+    await service.void('e1', { reason: 'otro', reasonOther: 'Error' }, user);
 
     expect(order).toEqual(['ap', 'sc', 'claim']);
   });
@@ -137,7 +161,7 @@ describe('EgresosService.void: reversión de dinero', () => {
     tx.egreso.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(
-      service.void('e1', { reason: 'Otra vez' }, user),
+      service.void('e1', { reason: 'pago_duplicado' }, user),
     ).rejects.toThrow(new ConflictException('El egreso ya está anulado'));
     expect(tx.accountsPayable.update).not.toHaveBeenCalled();
     expect(tx.supplierCredit.update).not.toHaveBeenCalled();
@@ -146,9 +170,9 @@ describe('EgresosService.void: reversión de dinero', () => {
   it('404 si el egreso no existe', async () => {
     tx.egreso.findUnique.mockResolvedValue(null);
 
-    await expect(service.void('nope', { reason: 'x' }, user)).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(
+      service.void('nope', { reason: 'otro', reasonOther: 'x' }, user),
+    ).rejects.toThrow(NotFoundException);
     expect(tx.egreso.updateMany).not.toHaveBeenCalled();
   });
 });

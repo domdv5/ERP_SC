@@ -15,6 +15,8 @@ Rama `feat/anular-egreso`. Toca dinero (CxP, saldos a favor), una migración adi
 - **S8** — No se puede anular dos veces (incluido concurrente): el segundo intento falla y no cambia nada.
 - **S9** — Bloqueos cruzados: los chequeos que impiden anular una compra (CM) o DVC por estar pagada/usada en un egreso no deben contar egresos anulados. Los listados/reportes de CxP siguen cuadrando (usan `paidAmount`/`status`, que se restauran).
 - **S10** — Pantalla: botón "Anular" en el detalle del egreso (solo con `egreso.void`, oculto si ya está anulado) con confirmación que pide el motivo; banner "Anulado por X el día Y — Motivo: …"; en la lista la fila se marca "Anulado".
+- **S12** — El motivo ya no es texto libre: lista fija `valor_equivocado` (Valor equivocado), `proveedor_equivocado` (Proveedor equivocado), `factura_equivocada` (Factura equivocada), `forma_pago_equivocada` (Forma de pago equivocada), `pago_duplicado` (Pago duplicado), `pago_no_realizado` (Pago no realizado), `otro` (Otro). Con `otro` el texto es obligatorio (máx. 500): 400 'Escribe el motivo de la anulación'. Motivo fuera de la lista → 400. Los egresos ya anulados con texto libre migran a `otro` con su texto.
+- **S13** — Prueba de que las lecturas de CxP (creditApplied, historial, estado de cuenta, último pago) ignoran egresos anulados (hallazgo J2).
 - **S11** — El sistema no lleva caja/bancos: anular no devuelve dinero; el texto de confirmación lo advierte en lenguaje simple.
 
 ## Tasks
@@ -22,6 +24,9 @@ Rama `feat/anular-egreso`. Toca dinero (CxP, saldos a favor), una migración adi
 - [x] **T1** (S2-S9) backend: migración aditiva, permiso seed, `POST /egresos/:id/void`, contrato, bloqueos cruzados, pruebas de dinero — route `nestjs-code-crafter` — commit: ca1c5b8 (slice 1, ~576 líneas; el frontend va en su propio commit)
 - [x] **T2** (S5, S10, S11) frontend: botón, diálogo con motivo, banner, marca en lista — route `react-code-crafter` — commit: ver L6
 - [x] **T3** (S4) verificación con base real (escenario del dueño) + docs CLAUDE.md — route parent — evidencia L5/L6
+
+- [x] **T4** (S12, S13) backend: enum + migración, DTO, contrato, pruebas; prueba de filtros CxP — route `nestjs-code-crafter` — commit: ver git log (fix motivo en lista)
+- [ ] **T5** (S12) frontend: lista desplegable + campo Otro, banner con etiqueta — route `react-code-crafter` — commit: —
 
 ## Log
 
@@ -32,4 +37,5 @@ Rama `feat/anular-egreso`. Toca dinero (CxP, saldos a favor), una migración adi
 - **L6** T2/T3 pantalla (Playwright, admin): detalle de EG-000073 muestra banner 'Anulado por admin el 18/11/2026 13:57:44 — Motivo: Prueba: pago digitado mal' sin botón Anular; lista marca EG-000073/074 'ANULADO' con montos tachados; EG-000072 muestra 'Anular' y el diálogo con motivo, botón deshabilitado vacío (no se confirmó). vitest 247/247, tsc 0. No probado: rol sin egreso.void en pantalla.
 - **L7** Revisión nativa (risk, resilience, reliability) pidió 1 corrección CRITICAL: el borrado de historial al anular CM/DVC no filtraba por egreso anulado; en concurrencia podía borrar un abono vigente. Corregido en 5dcf8ea (filtro `egreso.voidedAt not null`, prueba con el where exacto, mutación detectada). Revisión aprobada y cerrada. Pendientes no bloqueantes: rama de saldos a favor del SQL de último pago sin filtro de anulados; filtros de CxP sin prueba propia; 403 sin prueba de controller; la pantalla no se refresca si la respuesta de anular se pierde.
 - **L8** Judgment Day sobre 54ab4a5..2882c91: 0 CRITICAL (ambos jueces). Info confirmada por ambos: (J1) anular CM/DVC con egreso ya anulado borra las líneas de historial de ese egreso (document-void.service.ts:311-327); (J2) filtros de egresos anulados en lecturas de CxP sin prueba (accounts-payable.service.ts:34-38). Info de un solo juez: 403 de egreso.void sin prueba de controller (A); 409 concurrente no refresca el detalle (A); reintento con idempotencyKey de un egreso anulado devuelve 201 con el anulado (B). Veredicto: APPROVED, sin ronda de arreglos.
+- **L9** Pedido: "el motivo que sea 100% libre no me guista da apra eerores me gustaira mejor una lsita desplegable con lo mas comun y si o esta entonces ahi si un otro no te aprece?" — se propuso la lista de S12 y el plan; el dueño respondió "dale". J1 (historial borrado al anular la CM): se toma la opción recomendada A (dejar así, anotado como pendiente). Se incluye la prueba de CxP (S13).
 - **L3** Respuestas: "puena anualr el admin, y asitendte de ceuntas / si / no / si" → anulan admin y accounts_admin (el rol asistente fue eliminado el 2026-11-04; el dueño eligió "Admin. de Cuentas"), motivo obligatorio, sin límite de tiempo, migración y permiso confirmados.

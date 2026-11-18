@@ -455,3 +455,89 @@ describe('AccountsPayableService.getSupplierStatement: días de pago', () => {
     expect(row.paymentDays).toBe(11);
   });
 });
+
+describe('AccountsPayableService: las lecturas ignoran egresos anulados (S13)', () => {
+  const prisma = {
+    supplier: { findUnique: jest.fn() },
+    accountsPayable: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      count: jest.fn(),
+      aggregate: jest.fn(),
+    },
+    supplierCredit: { findMany: jest.fn() },
+    $queryRaw: jest.fn(),
+    $transaction: jest.fn((queries: unknown[]) => Promise.all(queries)),
+  };
+  const service = new AccountsPayableService(
+    prisma as unknown as PrismaService,
+  );
+
+  const activeApplication = {
+    OR: [{ egresoId: null }, { egreso: { voidedAt: null } }],
+  };
+  const activeAllocation = { egreso: { voidedAt: null } };
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.$transaction.mockImplementation((queries: unknown[]) =>
+      Promise.all(queries),
+    );
+    prisma.accountsPayable.findMany.mockResolvedValue([]);
+    prisma.accountsPayable.count.mockResolvedValue(0);
+    prisma.accountsPayable.aggregate.mockResolvedValue({
+      _sum: { totalAmount: null, paidAmount: null },
+    });
+    prisma.supplierCredit.findMany.mockResolvedValue([]);
+    prisma.supplier.findUnique.mockResolvedValue({
+      id: 's1',
+      thirdParty: { id: 's1', name: 'Proveedor' },
+    });
+  });
+
+  it('creditApplied del listado solo suma saldos a favor de egresos activos', async () => {
+    await service.findAll({});
+
+    const include = prisma.accountsPayable.findMany.mock.calls[0][0].include;
+    expect(include.creditApplications.where).toEqual(activeApplication);
+  });
+
+  it('el historial del detalle no trae abonos ni saldos a favor de egresos anulados', async () => {
+    prisma.accountsPayable.findUnique.mockResolvedValue(null);
+
+    await expect(service.findOne('p1')).rejects.toThrow();
+
+    const include = prisma.accountsPayable.findUnique.mock.calls[0][0].include;
+    expect(include.creditApplications.where).toEqual(activeApplication);
+    expect(include.egresoAllocations.where).toEqual(activeAllocation);
+  });
+
+  it('el estado de cuenta filtra abonos y saldos a favor de egresos anulados', async () => {
+    await service.getSupplierStatement('s1');
+
+    const include = prisma.accountsPayable.findMany.mock.calls[0][0].include;
+    expect(include.creditApplications.where).toEqual(activeApplication);
+    expect(include.egresoAllocations.where).toEqual(activeAllocation);
+
+    const creditsInclude = prisma.supplierCredit.findMany.mock.calls[0][0]
+      .include as { applications: { where: unknown } };
+    expect(creditsInclude.applications.where).toEqual(activeApplication);
+  });
+
+  it('el último pago por proveedor excluye egresos anulados (voided_at IS NULL)', async () => {
+    prisma.$queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { supplier_count: 0, total_amount: '0', paid_amount: '0' },
+      ]);
+
+    await service.findSuppliers({});
+
+    const call = prisma.$queryRaw.mock.calls[0];
+    const sql = Prisma.sql(
+      call[0] as TemplateStringsArray,
+      ...call.slice(1),
+    ).sql;
+    expect(sql).toMatch(/JOIN egreso e ON[\s\S]*?WHERE e\.voided_at IS NULL/);
+  });
+});

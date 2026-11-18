@@ -4,7 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, AccountsPayableStatus } from '@prisma/client';
+import {
+  Prisma,
+  AccountsPayableStatus,
+  EgresoVoidReason,
+} from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import { matchContract } from '@/common/types';
@@ -435,7 +439,7 @@ export class EgresosService {
   async void(id: string, dto: VoidEgresoDto, user: JwtPayload) {
     return matchDetailContract(
       await this.prisma.$transaction(
-        (tx) => this.voidInTransaction(tx, id, dto.reason, user),
+        (tx) => this.voidInTransaction(tx, id, dto, user),
         { timeout: 30000 },
       ),
     );
@@ -444,7 +448,7 @@ export class EgresosService {
   private async voidInTransaction(
     tx: Prisma.TransactionClient,
     id: string,
-    reason: string,
+    dto: VoidEgresoDto,
     user: JwtPayload,
   ) {
     const egreso = await tx.egreso.findUnique({
@@ -469,7 +473,13 @@ export class EgresosService {
     // Reclamo atómico: si dos anulaciones corren a la vez, la segunda ve count 0.
     const claimed = await tx.egreso.updateMany({
       where: { id, voidedAt: null },
-      data: { voidedAt: new Date(), voidedById: user.sub, voidReason: reason },
+      data: {
+        voidedAt: new Date(),
+        voidedById: user.sub,
+        voidReason: dto.reason,
+        voidReasonOther:
+          dto.reason === EgresoVoidReason.otro ? dto.reasonOther : null,
+      },
     });
     if (claimed.count === 0) {
       throw new ConflictException('El egreso ya está anulado');
