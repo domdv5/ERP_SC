@@ -196,7 +196,7 @@ export default function EgresoNewPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
-      <BackLink to="/egresos" label="Egresos" />
+      <BackLink to="/egresos" />
 
       <div>
         <h1 className="text-2xl text-content">Nuevo egreso</h1>

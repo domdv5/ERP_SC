@@ -358,7 +358,7 @@ export default function DocumentDetailPage() {
   if (isError || !doc) {
     return (
       <div className="space-y-4">
-        <BackLink to="/documents" label="Operaciones" />
+        <BackLink to="/documents" />
         <div className="bg-surface rounded-2xl border border-ui-border p-8 text-center">
           <FileText className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar la operación</p>
@@ -451,7 +451,7 @@ export default function DocumentDetailPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
-      <BackLink to="/documents" label="Operaciones" />
+      <BackLink to="/documents" />
 
       {/* Voided banner */}
       {isVoided && (

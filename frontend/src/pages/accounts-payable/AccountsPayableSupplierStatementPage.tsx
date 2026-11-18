@@ -1,7 +1,8 @@
 import { useGoBack } from '@/hooks/useGoBack'
+import { BackLink } from '@/components/shared'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Wallet, CreditCard, FileText, PiggyBank } from 'lucide-react'
+import { Wallet, CreditCard, FileText, PiggyBank } from 'lucide-react'
 import { getSupplierStatement } from '@/services/accounts-payable.service'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
@@ -55,13 +56,7 @@ export default function AccountsPayableSupplierStatementPage() {
   if (isError || !statement) {
     return (
       <div className="space-y-4">
-        <button
-          onClick={goBack}
-          className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver
-        </button>
+        <BackLink onBack={goBack} />
         <div className="card-hard p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar el estado de cuenta</p>
@@ -82,13 +77,7 @@ export default function AccountsPayableSupplierStatementPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
-      <button
-        onClick={goBack}
-        className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Volver
-      </button>
+      <BackLink onBack={goBack} />
 
       {/* Header card */}
       <div className="card-hard p-6">

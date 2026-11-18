@@ -36,7 +36,7 @@ export default function OfficialLedgerProductPage() {
     enabled: Boolean(productId) && !hasInvalidDateRange,
   })
 
-  const backButton = <BackLink to="/official-ledger" label="Libro de facturas" />
+  const backButton = <BackLink to="/official-ledger" />
 
   if (isLoading) {
     return (

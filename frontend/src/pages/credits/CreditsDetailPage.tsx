@@ -55,7 +55,7 @@ export default function CreditsDetailPage() {
       return next
     })
 
-  const backLink = <BackLink to={`/saldos-a-favor?tab=${tab}`} label="Saldos a favor" />
+  const backLink = <BackLink to={`/saldos-a-favor?tab=${tab}`} />
 
   if (isLoading) {
     return (

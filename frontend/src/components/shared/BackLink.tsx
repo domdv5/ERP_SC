@@ -1,22 +1,30 @@
 import { Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 
-interface BackLinkProps {
-  to: string
-  label: string
-}
+type BackLinkProps = { to: string; onBack?: never } | { onBack: () => void; to?: never }
 
-export function BackLink({ to, label }: BackLinkProps) {
+const className = 'btn-secondary inline-flex items-stretch overflow-hidden text-sm p-0'
+
+const content = (
+  <>
+    <span className="flex items-center px-2.5 bg-brand-primary text-brand-secondary">
+      <ArrowLeft className="w-4 h-4" strokeWidth={2.5} aria-hidden="true" />
+    </span>
+    <span className="px-3.5 py-1.5">Atrás</span>
+  </>
+)
+
+export function BackLink(props: BackLinkProps) {
+  if (props.onBack) {
+    return (
+      <button type="button" onClick={props.onBack} className={className}>
+        {content}
+      </button>
+    )
+  }
   return (
-    <Link
-      to={to}
-      aria-label={`Volver a ${label}`}
-      className="btn-secondary inline-flex items-stretch overflow-hidden text-sm p-0"
-    >
-      <span className="flex items-center px-2.5 bg-brand-primary text-brand-secondary">
-        <ArrowLeft className="w-4 h-4" strokeWidth={2.5} />
-      </span>
-      <span className="px-3.5 py-1.5">{label}</span>
+    <Link to={props.to} className={className}>
+      {content}
     </Link>
   )
 }
