@@ -42,6 +42,10 @@ Identificadores en **inglés simple** (comentarios en español); el dueño del r
 - Los nombres de documentos y conceptos del negocio se quedan en español (`egreso`, `reciboCaja`, `preventa`): son dominio, no vocabulario a traducir.
 - Renombrar algo que viaja al frontend (rutas, campos JSON) exige cambiar ambos lados en el mismo PR.
 
+## Botón de volver (regla del dueño, 2026-11-18)
+
+Toda pantalla que necesite volver usa el componente compartido `BackLink` (`frontend/src/components/shared/BackLink.tsx`): franja negra con flecha verde y el texto "Atrás". Nunca un botón o enlace de volver escrito a mano, ni otro texto, color o estilo. `to` para ir a una ruta fija; `onBack` con `useGoBack` cuando hay que volver a la pantalla anterior conservando filtros. Si el diseño cambia, se cambia solo el componente.
+
 ## Contrato front/back
 
 Las respuestas de la API que ya tienen contrato se describen en `backend/src/contracts/` (todos los módulos que consume el frontend salvo auth). Todo endpoint nuevo que el frontend consuma nace con su contrato en `backend/src/contracts/`. Es contract-first: el archivo lo escribe una persona y es la referencia; backend y frontend lo cumplen.
