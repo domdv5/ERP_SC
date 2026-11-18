@@ -57,7 +57,7 @@ export default function CreditsDetailPage() {
   const backLink = (
     <Link
       to={`/saldos-a-favor?tab=${tab}`}
-      className="inline-flex items-center gap-2 text-sm text-content-secondary underline underline-offset-4 hover:text-content transition-colors"
+      className="inline-flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
     >
       <ArrowLeft className="w-4 h-4" />
       Volver a saldos a favor
