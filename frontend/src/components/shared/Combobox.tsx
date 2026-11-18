@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, Loader2, Search } from 'lucide-react'
+import { ChevronDown, Loader2, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface ComboboxOption {
@@ -20,6 +20,8 @@ interface ComboboxProps {
   onSearchChange?: (v: string) => void
   disabled?: boolean
   error?: string | boolean
+  // Solo para filtros: en formularios no se pasa, así nadie deja un campo obligatorio vacío.
+  onClear?: () => void
 }
 
 // Alto del menú abierto: buscador + lista (max-h-52) + bordes
@@ -37,6 +39,7 @@ export function Combobox({
   onSearchChange,
   disabled,
   error,
+  onClear,
 }: ComboboxProps) {
   const [open, setOpen] = useState(false)
   const [localSearch, setLocalSearch] = useState('')
@@ -126,12 +129,27 @@ export function Combobox({
         <span className={cn('truncate', !selectedLabel && 'text-content-faint')}>
           {selectedLabel || placeholder}
         </span>
-        <ChevronDown
-          className={cn(
-            'w-4 h-4 text-content-faint shrink-0 transition-transform',
-            open && 'rotate-180',
+        <div className="flex items-center gap-1 shrink-0">
+          {onClear && value && !disabled && (
+            <button
+              type="button"
+              aria-label="Quitar selección"
+              title="Quitar selección"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClear()
+                handleSearch('')
+                setOpen(false)
+              }}
+              className="p-0.5 rounded text-content-muted hover:text-content hover:bg-surface-hover"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           )}
-        />
+          <ChevronDown
+            className={cn('w-4 h-4 text-content-faint transition-transform', open && 'rotate-180')}
+          />
+        </div>
       </div>
 
       {open &&

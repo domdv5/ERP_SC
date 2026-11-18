@@ -144,6 +144,10 @@ export default function OfficialPurchasesPendingPage() {
                 placeholder="Filtrar por proveedor..."
                 searchValue={supplierSearch}
                 onSearchChange={setSupplierSearch}
+                onClear={() => {
+                  setSupplierId('')
+                  setSupplierSelectedName('')
+                }}
               />
             </div>
             <label className="flex items-center gap-1.5 text-xs text-content-muted">
