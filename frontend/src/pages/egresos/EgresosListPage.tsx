@@ -19,6 +19,7 @@ import {
 import type { ComboboxOption } from '@/components/shared'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
+import { DOC_STATUS_BADGE } from '@/pages/documents/document.constants'
 import type { ThirdPartyDetail } from '@/types/third-party.types'
 
 export default function EgresosListPage() {
@@ -196,14 +197,16 @@ export default function EgresosListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ui-border">
-                  {['Número', 'Fecha', 'Proveedor', 'Dinero pagado', 'Saldo a favor'].map((h) => (
-                    <th
-                      key={h}
-                      className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
-                    >
-                      {h}
-                    </th>
-                  ))}
+                  {['Número', 'Fecha', 'Proveedor', 'Dinero pagado', 'Saldo a favor', 'Estado'].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
+                      >
+                        {h}
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
@@ -214,14 +217,7 @@ export default function EgresosListPage() {
                     className="hover:bg-surface-raised transition-colors group cursor-pointer"
                   >
                     <td className="px-5 py-3.5 font-mono text-xs font-medium text-content whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {docNumber('EG', egreso.number)}
-                        {egreso.voidedAt && (
-                          <span className="pill-stamp bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">
-                            Anulado
-                          </span>
-                        )}
-                      </div>
+                      {docNumber('EG', egreso.number)}
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
                       {formatDateOnly(egreso.date)}
@@ -257,6 +253,16 @@ export default function EgresosListPage() {
                       )}
                     >
                       {Number(egreso.creditTotal) > 0 ? formatCOP(Number(egreso.creditTotal)) : '—'}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span
+                        className={cn(
+                          'pill-stamp',
+                          DOC_STATUS_BADGE[egreso.voidedAt ? 'voided' : 'confirmed'].className,
+                        )}
+                      >
+                        {DOC_STATUS_BADGE[egreso.voidedAt ? 'voided' : 'confirmed'].label}
+                      </span>
                     </td>
                   </tr>
                 ))}
