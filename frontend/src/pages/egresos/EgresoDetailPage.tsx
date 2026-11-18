@@ -1,18 +1,9 @@
 import { useState } from 'react'
+import { BackLink } from '@/components/shared'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import {
-  ArrowLeft,
-  Wallet,
-  Banknote,
-  HandCoins,
-  Landmark,
-  Hash,
-  StickyNote,
-  XCircle,
-  Ban,
-} from 'lucide-react'
+import { Wallet, Banknote, HandCoins, Landmark, Hash, StickyNote, XCircle, Ban } from 'lucide-react'
 
 import { getEgreso, voidEgreso } from '@/services/egresos.service'
 import { usePermission } from '@/hooks/usePermission'
@@ -92,13 +83,7 @@ export default function EgresoDetailPage() {
   if (isError || !egreso) {
     return (
       <div className="space-y-4">
-        <button
-          onClick={() => navigate('/egresos')}
-          className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver a egresos
-        </button>
+        <BackLink to="/egresos" />
         <div className="bg-surface rounded-2xl border border-ui-border p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar el egreso</p>
@@ -113,13 +98,7 @@ export default function EgresoDetailPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
-      <button
-        onClick={() => navigate('/egresos')}
-        className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Volver a egresos
-      </button>
+      <BackLink to="/egresos" />
 
       {egreso.voidedAt && (
         <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-red-500/10 border-2 border-red-500/40">

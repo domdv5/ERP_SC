@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, ClipboardList } from 'lucide-react'
+import { ClipboardList } from 'lucide-react'
 import { getInventoryCase } from '@/services/inventory-cases.service'
-import { ErrorState } from '@/components/shared'
+import { BackLink, ErrorState } from '@/components/shared'
 import { usePermission } from '@/hooks/usePermission'
 import { formatBogotaDate } from '@/lib/format'
 import { formatDaysSince } from '@/lib/utils'
@@ -166,13 +166,7 @@ export default function InventoryCaseDetailPage() {
   return (
     <div className="space-y-4">
       <nav aria-label="Ruta" className="flex items-center gap-2 text-sm text-content-muted">
-        <Link
-          to="/inventory-cases"
-          className="flex items-center gap-2 hover:text-content transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-          Diferencias de inventario
-        </Link>
+        <BackLink to="/inventory-cases" />
         {data && (
           <>
             <span aria-hidden="true">/</span>

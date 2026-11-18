@@ -18,6 +18,7 @@ import {
   BookOpen,
   ChartColumnBig,
   ClipboardCheck,
+  PiggyBank,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -138,6 +139,12 @@ export const navGroups: NavGroup[] = [
         label: 'Cuentas × Pagar',
         icon: TrendingDown,
         permission: 'ap.read',
+      },
+      {
+        to: '/saldos-a-favor',
+        label: 'Saldos a favor',
+        icon: PiggyBank,
+        permission: ['ar.read', 'ap.read'],
       },
     ],
   },

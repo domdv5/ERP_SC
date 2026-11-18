@@ -1,15 +1,7 @@
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { BackLink } from '@/components/shared'
 import { useQuery } from '@tanstack/react-query'
-import {
-  ArrowLeft,
-  Wallet,
-  Banknote,
-  HandCoins,
-  Landmark,
-  Hash,
-  StickyNote,
-  Percent,
-} from 'lucide-react'
+import { Wallet, Banknote, HandCoins, Landmark, Hash, StickyNote, Percent } from 'lucide-react'
 
 import { getReciboCaja } from '@/services/recibos-caja.service'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
@@ -62,13 +54,7 @@ export default function ReciboCajaDetailPage() {
   if (isError || !reciboCaja) {
     return (
       <div className="space-y-4">
-        <button
-          onClick={() => navigate('/recibos-caja')}
-          className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver a recibos de caja
-        </button>
+        <BackLink to="/recibos-caja" />
         <div className="bg-surface rounded-2xl border border-ui-border p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar el recibo de caja</p>
@@ -87,13 +73,7 @@ export default function ReciboCajaDetailPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
-      <button
-        onClick={() => navigate('/recibos-caja')}
-        className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Volver a recibos de caja
-      </button>
+      <BackLink to="/recibos-caja" />
 
       {/* Header card */}
       <div className="card-hard p-6">

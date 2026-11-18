@@ -1,17 +1,8 @@
 import { useGoBack } from '@/hooks/useGoBack'
+import { BackLink } from '@/components/shared'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import {
-  ArrowLeft,
-  Wallet,
-  Calendar,
-  FileText,
-  CreditCard,
-  Landmark,
-  Hash,
-  User,
-  Receipt,
-} from 'lucide-react'
+import { Wallet, Calendar, FileText, CreditCard, Landmark, Hash, User, Receipt } from 'lucide-react'
 import { getAccountReceivable } from '@/services/accounts-receivable.service'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
@@ -81,13 +72,7 @@ export default function AccountsReceivableDetailPage() {
   if (isError || !account) {
     return (
       <div className="space-y-4">
-        <button
-          onClick={goBack}
-          className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver
-        </button>
+        <BackLink onBack={goBack} />
         <div className="card-hard p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar la cuenta por cobrar</p>
@@ -107,13 +92,7 @@ export default function AccountsReceivableDetailPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
-      <button
-        onClick={goBack}
-        className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Volver
-      </button>
+      <BackLink onBack={goBack} />
 
       {/* Header card */}
       <div className="card-hard p-6">

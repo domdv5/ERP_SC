@@ -11,6 +11,7 @@ import { ProductsModule } from './products/products.module';
 import { WarehousesModule } from './warehouses/warehouses.module';
 import { DocumentsModule } from './documents/documents.module';
 import { AccountsPayableModule } from '@/accounts-payable/accounts-payable.module';
+import { CreditsModule } from '@/credits/credits.module';
 import { AccountsReceivableModule } from '@/accounts-receivable/accounts-receivable.module';
 import { EgresosModule } from '@/egresos/egresos.module';
 import { RecibosCajaModule } from '@/recibos-caja/recibos-caja.module';
@@ -53,6 +54,7 @@ import { ReadOnlyModeGuard } from '@/common/guards/read-only-mode.guard';
     ReportsModule,
     LocationsModule,
     InventoryCasesModule,
+    CreditsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

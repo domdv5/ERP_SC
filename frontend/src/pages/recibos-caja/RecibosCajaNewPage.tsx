@@ -1,10 +1,11 @@
 import { useState } from 'react'
+import { BackLink } from '@/components/shared'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { Controller } from 'react-hook-form'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Trash2, Loader2, Wallet, ArrowDownToLine } from 'lucide-react'
+import { Plus, Trash2, Loader2, Wallet, ArrowDownToLine } from 'lucide-react'
 
 import { getThirdParties } from '@/services/third-parties.service'
 import { Combobox, CustomerBranchSelect, ThousandsInput } from '@/components/shared'
@@ -207,13 +208,7 @@ export default function RecibosCajaNewPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
-      <button
-        onClick={() => navigate('/recibos-caja')}
-        className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Volver a recibos de caja
-      </button>
+      <BackLink to="/recibos-caja" />
 
       <div>
         <h1 className="text-2xl text-content">Nuevo recibo de caja</h1>
