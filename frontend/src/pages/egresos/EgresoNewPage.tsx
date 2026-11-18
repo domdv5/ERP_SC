@@ -1,10 +1,11 @@
 import { useState } from 'react'
+import { BackLink } from '@/components/shared'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { Controller } from 'react-hook-form'
 import { toast } from 'sonner'
-import { ArrowLeft, ArrowDownToLine, Plus, Trash2, Loader2, HandCoins } from 'lucide-react'
+import { ArrowDownToLine, Plus, Trash2, Loader2, HandCoins } from 'lucide-react'
 
 import { getThirdParties } from '@/services/third-parties.service'
 import { getEgresoOpenItems } from '@/services/egresos.service'
@@ -195,13 +196,7 @@ export default function EgresoNewPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
-      <button
-        onClick={() => navigate('/egresos')}
-        className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Volver a egresos
-      </button>
+      <BackLink to="/egresos" label="Volver a egresos" />
 
       <div>
         <h1 className="text-2xl text-content">Nuevo egreso</h1>

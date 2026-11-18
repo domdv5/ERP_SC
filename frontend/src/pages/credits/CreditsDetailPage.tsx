@@ -1,7 +1,8 @@
 import { Fragment, useState } from 'react'
-import { Link, useMatch, useParams } from 'react-router-dom'
+import { BackLink } from '@/components/shared'
+import { useMatch, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, ChevronRight, PiggyBank } from 'lucide-react'
+import { ChevronRight, PiggyBank } from 'lucide-react'
 import type {
   CreditDetailItem,
   CreditThirdPartyHeader,
@@ -54,15 +55,7 @@ export default function CreditsDetailPage() {
       return next
     })
 
-  const backLink = (
-    <Link
-      to={`/saldos-a-favor?tab=${tab}`}
-      className="inline-flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
-    >
-      <ArrowLeft className="w-4 h-4" />
-      Volver a saldos a favor
-    </Link>
-  )
+  const backLink = <BackLink to={`/saldos-a-favor?tab=${tab}`} label="Volver a saldos a favor" />
 
   if (isLoading) {
     return (

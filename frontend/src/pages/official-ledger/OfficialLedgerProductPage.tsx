@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { BackLink } from '@/components/shared'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, BookOpen, RefreshCw } from 'lucide-react'
+import { BookOpen, RefreshCw } from 'lucide-react'
 import { getOfficialLedgerProduct } from '@/services/official-ledger.service'
 import { EmptyState, ErrorState } from '@/components/shared'
 import { cn } from '@/lib/utils'
@@ -35,15 +36,7 @@ export default function OfficialLedgerProductPage() {
     enabled: Boolean(productId) && !hasInvalidDateRange,
   })
 
-  const backButton = (
-    <button
-      onClick={() => navigate('/official-ledger')}
-      className="flex items-center gap-2 text-sm text-content-muted hover:text-content transition-colors"
-    >
-      <ArrowLeft className="w-4 h-4" />
-      Volver al libro de facturas
-    </button>
-  )
+  const backButton = <BackLink to="/official-ledger" label="Volver al libro de facturas" />
 
   if (isLoading) {
     return (
