@@ -232,7 +232,7 @@ import { StatsGrid } from '@/components/shared/StatsGrid'
 
 | Component | Key props | Use when |
 |-----------|-----------|----------|
-| `Combobox` | `value`, `onChange(id, opt)`, `options: ComboboxOption[]`, `searchValue?`, `onSearchChange?`, `isLoading?`, `placeholder?`, `disabled?`, `error?` | Searchable dropdown. Controlled mode (pass `searchValue`/`onSearchChange`) for server-side debounce; uncontrolled (omit both) for small client-side datasets. Uses `createPortal` — safe inside overflow containers. |
+| `Combobox` | `value`, `onChange(id, opt)`, `options: ComboboxOption[]`, `searchValue?`, `onSearchChange?`, `isLoading?`, `placeholder?`, `disabled?`, `error?`, `onClear?` | Searchable dropdown. Controlled mode (pass `searchValue`/`onSearchChange`) for server-side debounce; uncontrolled (omit both) for small client-side datasets. Uses `createPortal` — safe inside overflow containers. `onClear` muestra una X dentro del campo cuando hay valor: solo en filtros de listado (Egresos, Compras pendientes), nunca en formularios con campo obligatorio. |
 | `StatsGrid` | `cards: StatCard[]`, `isLoading` | 3-card stat row at top of every list page |
 | `TableToolbar` | `search`, `onSearchChange`, `placeholder`, `isLoading`, `itemCount`, `total`, `onRefresh` | Search + count + refresh bar above table |
 | `TableSkeleton` | `rows?`, `widths: [w1, w2, w3, w4]` | Animated placeholder while data loads |

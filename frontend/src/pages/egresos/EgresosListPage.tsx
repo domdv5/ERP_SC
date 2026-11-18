@@ -136,19 +136,12 @@ export default function EgresosListPage() {
                 placeholder="Todos los proveedores"
                 searchValue={supplierSearch}
                 onSearchChange={setSupplierSearch}
-              />
-            </div>
-            {supplierId && (
-              <button
-                onClick={() => {
+                onClear={() => {
                   setSupplierId('')
                   setSupplierSelectedName('')
                 }}
-                className="text-xs text-content-faint hover:text-content-muted underline"
-              >
-                Quitar proveedor
-              </button>
-            )}
+              />
+            </div>
             <div className="flex items-center gap-2">
               <label className="text-xs text-content-faint">Desde</label>
               <input
