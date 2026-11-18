@@ -10,6 +10,7 @@ import { undoCustomerCreditApplications } from './helpers/customer-credit.helper
 import {
   EGRESO_VOID_STATE,
   isActiveEgresoLink,
+  VOIDED_EGRESO_ROW,
 } from './helpers/egreso-links.helpers';
 import {
   assertAvailableForReservation,
@@ -307,18 +308,21 @@ export class DocumentVoidService {
           }
         }
 
-        // Lo que queda son filas de egresos anulados (historial): se borran para poder borrar la CxP/saldo.
+        // Solo historial de egresos anulados: una fila vigente colada en paralelo hace fallar la FK y aborta la anulación.
         if (document.accountsPayable.length > 0) {
           await tx.egresoAllocation.deleteMany({
-            where: { accountPayable: { documentId: id } },
+            where: { accountPayable: { documentId: id }, ...VOIDED_EGRESO_ROW },
           });
           await tx.supplierCreditApplication.deleteMany({
-            where: { accountPayable: { documentId: id } },
+            where: { accountPayable: { documentId: id }, ...VOIDED_EGRESO_ROW },
           });
         }
         if (document.supplierCredits.length > 0) {
           await tx.supplierCreditApplication.deleteMany({
-            where: { supplierCredit: { sourceDocumentId: id } },
+            where: {
+              supplierCredit: { sourceDocumentId: id },
+              ...VOIDED_EGRESO_ROW,
+            },
           });
         }
 

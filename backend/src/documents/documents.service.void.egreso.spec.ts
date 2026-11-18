@@ -48,7 +48,13 @@ describe('DocumentsService.void: egresos anulados no bloquean', () => {
 
     await expect(service.void('doc-1', fullUser)).resolves.toBeDefined();
 
-    expect(tx.egresoAllocation.deleteMany).toHaveBeenCalled();
+    // Solo borra filas de egresos anulados: una vigente debe quedar para que la FK aborte.
+    expect(tx.egresoAllocation.deleteMany).toHaveBeenCalledWith({
+      where: {
+        accountPayable: { documentId: 'doc-1' },
+        egreso: { voidedAt: { not: null } },
+      },
+    });
     expect(tx.accountsPayable.deleteMany).toHaveBeenCalled();
   });
 
@@ -75,7 +81,12 @@ describe('DocumentsService.void: egresos anulados no bloquean', () => {
 
     await expect(service.void('doc-1', fullUser)).resolves.toBeDefined();
 
-    expect(tx.supplierCreditApplication.deleteMany).toHaveBeenCalled();
+    expect(tx.supplierCreditApplication.deleteMany).toHaveBeenCalledWith({
+      where: {
+        supplierCredit: { sourceDocumentId: 'doc-1' },
+        egreso: { voidedAt: { not: null } },
+      },
+    });
     expect(tx.supplierCredit.deleteMany).toHaveBeenCalled();
   });
 
