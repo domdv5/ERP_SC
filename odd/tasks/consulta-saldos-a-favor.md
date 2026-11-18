@@ -16,8 +16,8 @@ Rama `feat/consulta-saldos-a-favor`. No cambia dinero, base de datos ni permisos
 ## Tasks
 
 - [x] **T1** (S3-S6) backend: endpoints de lista y detalle, contrato, pruebas — route `nestjs-code-crafter` — commit: ver git log (backend credits)
-- [ ] **T2** (S2-S5, S7) frontend: menú, lista con pestañas y búsqueda, detalle — route `react-code-crafter` — commit: —
-- [ ] **T3** verificación con base real y pantalla — route parent — commit: —
+- [x] **T2** (S2-S5, S7) frontend: menú, lista con pestañas y búsqueda, detalle — route `react-code-crafter` — commit: ver git log (frontend credits)
+- [x] **T3** verificación con base real y pantalla — route parent — evidencia L5
 
 ## Log
 
@@ -25,3 +25,4 @@ Rama `feat/consulta-saldos-a-favor`. No cambia dinero, base de datos ni permisos
 - **L2** El dueño: "el backend ya hay una parte hecha porque en cun4etas por apgar y cobrar lo msotrabab".
 - **L3** Respuestas a la propuesta: "En el primer punto punto dejemos por ahora solo admin ya dminsitradora de ceuntas / no me convece porque este es solo de consulta ademas para eso estoy pensando en tora vista dejemos el back preaparado cmomo ya esta / si" → permisos ar.read/ap.read (S6), sin botón anular (S7), anulados visibles en gris (S4).
 - **L4** T1: jest 746/746, tsc 0. API real: /credits/customers?onlyAvailable=true lista con total disponible; búsqueda por documento 900888030 encuentra Cadena Prueba 30 Sucursales; /credits/suppliers/<Industrias Bogotá> muestra DVC-000019 500.000 available sin usos (los usos de EG anulados no aparecen). creditCount cuenta todos los saldos del tercero.
+- **L5** T2/T3 pantalla (Playwright, admin): lista Clientes con 3 terceros y total disponible; búsqueda '90088' encuentra Cadena Prueba 30 Sucursales; detalle muestra Disponible/Usado/Usado en parte/Anulado (gris) con sucursal y uso, total 138.500 = 52.700 + 85.800 (anulado no suma); desplegar DVV-000022 muestra COT-000035 85.800. Se ajustó que toda la fila despliegue (antes solo la flecha). tsc 0, vitest 247. No probado: usuario con solo ar.read o solo ap.read.

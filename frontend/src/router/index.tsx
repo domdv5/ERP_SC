@@ -33,6 +33,8 @@ const AccountsPayableDetailPage = lazy(
 const AccountsPayableSupplierStatementPage = lazy(
   () => import('@/pages/accounts-payable/AccountsPayableSupplierStatementPage'),
 )
+const CreditsListPage = lazy(() => import('@/pages/credits/CreditsListPage'))
+const CreditsDetailPage = lazy(() => import('@/pages/credits/CreditsDetailPage'))
 const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'))
 const StockLookupPage = lazy(() => import('@/pages/stock-lookup/StockLookupPage'))
 const EgresosListPage = lazy(() => import('@/pages/egresos/EgresosListPage'))
@@ -250,6 +252,36 @@ export const router = createBrowserRouter([
           <Lazy>
             <PermissionGuard permission="ap.read">
               <AccountsPayableSupplierStatementPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'saldos-a-favor',
+        element: (
+          <Lazy>
+            <PermissionGuard permission={['ar.read', 'ap.read']}>
+              <CreditsListPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'saldos-a-favor/clientes/:id',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="ar.read">
+              <CreditsDetailPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'saldos-a-favor/proveedores/:id',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="ap.read">
+              <CreditsDetailPage />
             </PermissionGuard>
           </Lazy>
         ),
