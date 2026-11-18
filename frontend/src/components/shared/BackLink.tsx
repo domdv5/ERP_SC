@@ -8,10 +8,7 @@ interface BackLinkProps {
 
 export function BackLink({ to, label }: BackLinkProps) {
   return (
-    <Link
-      to={to}
-      className="inline-flex items-center gap-2 text-sm font-semibold text-content-secondary hover:text-content transition-colors"
-    >
+    <Link to={to} className="btn-secondary inline-flex items-center gap-2 text-sm px-3 py-1.5">
       <ArrowLeft className="w-4 h-4" />
       {label}
     </Link>
