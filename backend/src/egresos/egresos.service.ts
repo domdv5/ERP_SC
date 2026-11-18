@@ -4,7 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, AccountsPayableStatus } from '@prisma/client';
+import {
+  Prisma,
+  AccountsPayableStatus,
+  EgresoVoidReason,
+} from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import { matchContract } from '@/common/types';
@@ -13,6 +17,7 @@ import type { Egreso, EgresoListResponse, EgresoOpenItems } from '@/contracts';
 import { toCents } from '@/common/utils/money.util';
 import { CreateEgresoDto } from './dto/create-egreso.dto';
 import { FindAllEgresosDto } from './dto/find-all-egresos.dto';
+import { VoidEgresoDto } from './dto/void-egreso.dto';
 
 const matchListContract = matchContract<EgresoListResponse>();
 const matchDetailContract = matchContract<Egreso>();
@@ -21,6 +26,7 @@ const matchOpenItemsContract = matchContract<EgresoOpenItems>();
 export const EGRESO_DETAIL_INCLUDE = {
   supplier: { include: { thirdParty: { select: { id: true, name: true } } } },
   user: { select: { id: true, name: true } },
+  voidedBy: { select: { id: true, name: true } },
   payments: true,
   allocations: {
     include: {
@@ -429,6 +435,114 @@ export class EgresosService {
     });
   }
 
+  /** Revierte exactamente lo que hizo create(): resta cada abono a su CxP y devuelve cada saldo a favor usado; las filas hijas se conservan como historial. */
+  async void(id: string, dto: VoidEgresoDto, user: JwtPayload) {
+    return matchDetailContract(
+      await this.prisma.$transaction(
+        (tx) => this.voidInTransaction(tx, id, dto, user),
+        { timeout: 30000 },
+      ),
+    );
+  }
+
+  private async voidInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+    dto: VoidEgresoDto,
+    user: JwtPayload,
+  ) {
+    const egreso = await tx.egreso.findUnique({
+      where: { id },
+      include: { allocations: true, creditApplications: true },
+    });
+    if (!egreso) {
+      throw new NotFoundException('Egreso no encontrado');
+    }
+
+    // Mismo orden de bloqueo que create(): accounts_payable -> supplier_credit.
+    const payableIds = [
+      ...new Set(egreso.allocations.map((a) => a.accountPayableId)),
+    ].sort();
+    await tx.$queryRaw`SELECT id FROM "accounts_payable" WHERE id = ANY(${payableIds}::uuid[]) ORDER BY id FOR UPDATE`;
+
+    const creditIds = [
+      ...new Set(egreso.creditApplications.map((a) => a.supplierCreditId)),
+    ].sort();
+    await tx.$queryRaw`SELECT id FROM "supplier_credit" WHERE id = ANY(${creditIds}::uuid[]) ORDER BY id FOR UPDATE`;
+
+    // Reclamo atómico: si dos anulaciones corren a la vez, la segunda ve count 0.
+    const claimed = await tx.egreso.updateMany({
+      where: { id, voidedAt: null },
+      data: {
+        voidedAt: new Date(),
+        voidedById: user.sub,
+        voidReason: dto.reason,
+        voidReasonOther:
+          dto.reason === EgresoVoidReason.otro ? dto.reasonOther : null,
+      },
+    });
+    if (claimed.count === 0) {
+      throw new ConflictException('El egreso ya está anulado');
+    }
+
+    const payables = await tx.accountsPayable.findMany({
+      where: { id: { in: payableIds } },
+    });
+    const payableById = new Map(payables.map((p) => [p.id, p]));
+
+    for (const allocation of egreso.allocations) {
+      const payable = payableById.get(allocation.accountPayableId)!;
+      const paidCents =
+        toCents(payable.paidAmount) - toCents(allocation.amount);
+      if (paidCents < 0) {
+        throw new ConflictException(
+          'No se puede anular: el abono supera lo pagado en una cuenta por pagar',
+        );
+      }
+      const status =
+        paidCents === 0
+          ? AccountsPayableStatus.pending
+          : paidCents >= toCents(payable.totalAmount)
+            ? AccountsPayableStatus.paid
+            : AccountsPayableStatus.partial;
+
+      await tx.accountsPayable.update({
+        where: { id: payable.id },
+        data: { paidAmount: paidCents / 100, status },
+      });
+    }
+
+    const returnedCentsByCreditId = new Map<string, number>();
+    for (const application of egreso.creditApplications) {
+      returnedCentsByCreditId.set(
+        application.supplierCreditId,
+        (returnedCentsByCreditId.get(application.supplierCreditId) ?? 0) +
+          toCents(application.amount),
+      );
+    }
+
+    const credits = await tx.supplierCredit.findMany({
+      where: { id: { in: creditIds } },
+    });
+    for (const credit of credits) {
+      await tx.supplierCredit.update({
+        where: { id: credit.id },
+        data: {
+          balance:
+            (toCents(credit.balance) +
+              returnedCentsByCreditId.get(credit.id)!) /
+            100,
+          status: 'available',
+        },
+      });
+    }
+
+    return tx.egreso.findUniqueOrThrow({
+      where: { id },
+      include: EGRESO_DETAIL_INCLUDE,
+    });
+  }
+
   async findAll(dto: FindAllEgresosDto) {
     const { page = 1, limit = 20, supplierId, dateFrom, dateTo, number } = dto;
     const skip = (page - 1) * limit;
@@ -455,6 +569,7 @@ export class EgresosService {
           cashTotal: true,
           creditTotal: true,
           createdAt: true,
+          voidedAt: true,
           supplier: {
             include: { thirdParty: { select: { id: true, name: true } } },
           },

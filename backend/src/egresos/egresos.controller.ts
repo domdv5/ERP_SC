@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, Query, Req } from '@nestjs/common';
 import { EgresosService } from './egresos.service';
-import { CreateEgresoDto, FindAllEgresosDto } from './dto/index';
+import { CreateEgresoDto, FindAllEgresosDto, VoidEgresoDto } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import type { RequestWithUser } from '@/common/types';
 
@@ -35,5 +35,15 @@ export class EgresosController {
     @Req() req: RequestWithUser,
   ) {
     return this.egresosService.create(createEgresoDto, req.user);
+  }
+
+  @Post(':id/void')
+  @Permissions('egreso.void')
+  void(
+    @Param('id') id: string,
+    @Body() voidEgresoDto: VoidEgresoDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.egresosService.void(id, voidEgresoDto, req.user);
   }
 }
