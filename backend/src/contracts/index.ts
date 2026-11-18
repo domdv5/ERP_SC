@@ -11,3 +11,4 @@ export type * from './recibos-caja';
 export type * from './official-ledger';
 export type * from './reports';
 export type * from './system';
+export type * from './credits';
