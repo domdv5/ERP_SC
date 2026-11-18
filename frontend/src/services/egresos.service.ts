@@ -30,3 +30,8 @@ export async function createEgreso(payload: CreateEgresoPayload): Promise<Egreso
   const res = await api.post<ApiResponse<Egreso>>('/egresos', payload)
   return res.data.data
 }
+
+export async function voidEgreso(id: string, reason: string): Promise<Egreso> {
+  const res = await api.post<ApiResponse<Egreso>>(`/egresos/${id}/void`, { reason })
+  return res.data.data
+}

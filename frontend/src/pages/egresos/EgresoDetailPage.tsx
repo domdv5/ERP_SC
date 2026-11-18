@@ -1,14 +1,34 @@
+import { useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Wallet, Banknote, HandCoins, Landmark, Hash, StickyNote } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import {
+  ArrowLeft,
+  Wallet,
+  Banknote,
+  HandCoins,
+  Landmark,
+  Hash,
+  StickyNote,
+  XCircle,
+  Ban,
+} from 'lucide-react'
 
-import { getEgreso } from '@/services/egresos.service'
-import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
+import { getEgreso, voidEgreso } from '@/services/egresos.service'
+import { usePermission } from '@/hooks/usePermission'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { formatCOP, docNumber, formatDateOnly, formatDateTimeBogota } from '@/lib/format'
 import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
+import { VoidEgresoDialog } from './VoidEgresoDialog'
+
+const VOID_INVALIDATE_KEYS = ['egresos', 'egresos-open-items', 'accounts-payable', 'documents']
 
 export default function EgresoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const canVoid = usePermission('egreso.void')
+  const [voidOpen, setVoidOpen] = useState(false)
 
   const {
     data: egreso,
@@ -20,6 +40,18 @@ export default function EgresoDetailPage() {
     queryFn: () => getEgreso(id!),
     staleTime: 5 * 60 * 1000,
     enabled: Boolean(id),
+  })
+
+  const { mutate: doVoid, isPending: isVoiding } = useMutation({
+    mutationFn: (reason: string) => voidEgreso(id!, reason),
+    onSuccess: () => {
+      VOID_INVALIDATE_KEYS.forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }))
+      setVoidOpen(false)
+      toast.success('Egreso anulado')
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, 'Error al anular el egreso'))
+    },
   })
 
   // ── loading / error states ────────────────────────────────────────────────
@@ -80,24 +112,45 @@ export default function EgresoDetailPage() {
         Volver a egresos
       </button>
 
+      {egreso.voidedAt && (
+        <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-red-500/10 border-2 border-red-500/40">
+          <XCircle className="w-5 h-5 text-red-500 shrink-0" />
+          <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+            Anulado por {egreso.voidedBy?.name ?? 'un usuario'} el{' '}
+            {formatDateTimeBogota(egreso.voidedAt)} — Motivo: {egreso.voidReason}
+          </p>
+        </div>
+      )}
+
       {/* Header card */}
       <div className="card-hard p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
-            {egreso.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
+              {egreso.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
+            </div>
+            <div>
+              <h1 className="text-2xl text-content font-mono">{docNumber('EG', egreso.number)}</h1>
+              <p className="text-content-muted text-sm mt-1 font-accent">
+                <button
+                  onClick={() => navigate(`/accounts-payable/suppliers/${egreso.supplier.id}`)}
+                  className="text-content font-semibold underline decoration-content-muted underline-offset-4 hover:decoration-content"
+                >
+                  {egreso.supplier.thirdParty.name}
+                </button>{' '}
+                &middot; {formatDateOnly(egreso.date)} &middot; Registrado por {egreso.user.name}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl text-content font-mono">{docNumber('EG', egreso.number)}</h1>
-            <p className="text-content-muted text-sm mt-1 font-accent">
-              <button
-                onClick={() => navigate(`/accounts-payable/suppliers/${egreso.supplier.id}`)}
-                className="text-content font-semibold underline decoration-content-muted underline-offset-4 hover:decoration-content"
-              >
-                {egreso.supplier.thirdParty.name}
-              </button>{' '}
-              &middot; {formatDateOnly(egreso.date)} &middot; Registrado por {egreso.user.name}
-            </p>
-          </div>
+          {canVoid && !egreso.voidedAt && (
+            <button
+              onClick={() => setVoidOpen(true)}
+              className="btn-danger flex items-center gap-2 px-4 py-2 text-sm"
+            >
+              <Ban className="w-4 h-4" />
+              Anular
+            </button>
+          )}
         </div>
 
         {/* Resumen */}
@@ -330,6 +383,15 @@ export default function EgresoDetailPage() {
           </p>
         </div>
       )}
+
+      <VoidEgresoDialog
+        key={voidOpen ? 'open' : 'closed'}
+        open={voidOpen}
+        egresoLabel={docNumber('EG', egreso.number)}
+        isPending={isVoiding}
+        onConfirm={doVoid}
+        onCancel={() => setVoidOpen(false)}
+      />
     </div>
   )
 }

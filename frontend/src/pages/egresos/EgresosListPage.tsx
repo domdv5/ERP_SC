@@ -17,6 +17,7 @@ import {
   DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
+import { cn } from '@/lib/utils'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import type { ThirdPartyDetail } from '@/types/third-party.types'
 
@@ -213,7 +214,14 @@ export default function EgresosListPage() {
                     className="hover:bg-surface-raised transition-colors group cursor-pointer"
                   >
                     <td className="px-5 py-3.5 font-mono text-xs font-medium text-content whitespace-nowrap">
-                      {docNumber('EG', egreso.number)}
+                      <div className="flex items-center gap-2">
+                        {docNumber('EG', egreso.number)}
+                        {egreso.voidedAt && (
+                          <span className="pill-stamp bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">
+                            Anulado
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
                       {formatDateOnly(egreso.date)}
@@ -234,10 +242,20 @@ export default function EgresosListPage() {
                         </button>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                    <td
+                      className={cn(
+                        'px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap',
+                        egreso.voidedAt && 'line-through text-content-faint',
+                      )}
+                    >
                       {formatCOP(Number(egreso.cashTotal))}
                     </td>
-                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                    <td
+                      className={cn(
+                        'px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap',
+                        egreso.voidedAt && 'line-through text-content-faint',
+                      )}
+                    >
                       {Number(egreso.creditTotal) > 0 ? formatCOP(Number(egreso.creditTotal)) : '—'}
                     </td>
                   </tr>
