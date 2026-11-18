@@ -18,7 +18,8 @@ import { getEgreso, voidEgreso } from '@/services/egresos.service'
 import { usePermission } from '@/hooks/usePermission'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { formatCOP, docNumber, formatDateOnly, formatDateTimeBogota } from '@/lib/format'
-import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
+import { EGRESO_PAYMENT_METHOD_LABELS, EGRESO_VOID_REASON_LABELS } from '@/types'
+import type { EgresoVoidReason } from '@/types'
 import { VoidEgresoDialog } from './VoidEgresoDialog'
 
 const VOID_INVALIDATE_KEYS = ['egresos', 'egresos-open-items', 'accounts-payable', 'documents']
@@ -43,16 +44,24 @@ export default function EgresoDetailPage() {
   })
 
   const { mutate: doVoid, isPending: isVoiding } = useMutation({
-    mutationFn: (reason: string) => voidEgreso(id!, reason),
+    mutationFn: (vars: { reason: EgresoVoidReason; reasonOther?: string }) =>
+      voidEgreso(id!, vars.reason, vars.reasonOther),
     onSuccess: () => {
       VOID_INVALIDATE_KEYS.forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }))
       setVoidOpen(false)
       toast.success('Egreso anulado')
     },
     onError: (err: unknown) => {
+      queryClient.invalidateQueries({ queryKey: ['egresos'] })
       toast.error(getApiErrorMessage(err, 'Error al anular el egreso'))
     },
   })
+
+  const voidReasonText = egreso
+    ? egreso.voidReason === 'otro'
+      ? egreso.voidReasonOther
+      : egreso.voidReason && EGRESO_VOID_REASON_LABELS[egreso.voidReason]
+    : null
 
   // ── loading / error states ────────────────────────────────────────────────
   if (isLoading) {
@@ -117,7 +126,8 @@ export default function EgresoDetailPage() {
           <XCircle className="w-5 h-5 text-red-500 shrink-0" />
           <p className="text-sm text-red-600 dark:text-red-400 font-medium">
             Anulado por {egreso.voidedBy?.name ?? 'un usuario'} el{' '}
-            {formatDateTimeBogota(egreso.voidedAt)} — Motivo: {egreso.voidReason}
+            {formatDateTimeBogota(egreso.voidedAt)}{' '}
+            {voidReasonText && <> — Motivo: {voidReasonText}</>}
           </p>
         </div>
       )}

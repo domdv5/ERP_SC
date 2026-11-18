@@ -1,11 +1,5 @@
 import { Transform } from 'class-transformer';
-import {
-  IsEnum,
-  IsNotEmpty,
-  IsString,
-  MaxLength,
-  ValidateIf,
-} from 'class-validator';
+import { IsEnum, Length, ValidateIf } from 'class-validator';
 import { EgresoVoidReason } from '@prisma/client';
 
 export class VoidEgresoDto {
@@ -17,8 +11,11 @@ export class VoidEgresoDto {
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
-  @IsString({ message: 'Escribe el motivo de la anulación' })
-  @IsNotEmpty({ message: 'Escribe el motivo de la anulación' })
-  @MaxLength(500, { message: 'El motivo no puede superar 500 caracteres' })
+  @Length(1, 500, {
+    message: ({ value }) =>
+      typeof value === 'string' && value.length > 500
+        ? 'El motivo no puede superar 500 caracteres'
+        : 'Escribe el motivo de la anulación',
+  })
   reasonOther?: string;
 }

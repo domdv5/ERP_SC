@@ -95,13 +95,14 @@ export type {
   EgresoOpenPayable,
   EgresoPaymentLine,
   EgresoPaymentMethod,
+  EgresoVoidReason,
   GetEgresosParams,
   CreateEgresoPayload,
   CreateEgresoPayablePayload,
   CreateEgresoCreditPayload,
   CreateEgresoPaymentPayload,
 } from './egreso.types'
-export { EGRESO_PAYMENT_METHOD_LABELS } from './egreso.types'
+export { EGRESO_PAYMENT_METHOD_LABELS, EGRESO_VOID_REASON_LABELS } from './egreso.types'
 export type {
   AccountsReceivable,
   AccountsReceivableDetail,

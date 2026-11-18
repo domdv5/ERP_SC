@@ -6,6 +6,7 @@ import type {
   GetEgresosParams,
   EgresoOpenItems,
   CreateEgresoPayload,
+  EgresoVoidReason,
 } from '@/types'
 
 export async function getEgresos(params?: GetEgresosParams): Promise<EgresoListResponse> {
@@ -31,7 +32,11 @@ export async function createEgreso(payload: CreateEgresoPayload): Promise<Egreso
   return res.data.data
 }
 
-export async function voidEgreso(id: string, reason: string): Promise<Egreso> {
-  const res = await api.post<ApiResponse<Egreso>>(`/egresos/${id}/void`, { reason })
+export async function voidEgreso(
+  id: string,
+  reason: EgresoVoidReason,
+  reasonOther?: string,
+): Promise<Egreso> {
+  const res = await api.post<ApiResponse<Egreso>>(`/egresos/${id}/void`, { reason, reasonOther })
   return res.data.data
 }

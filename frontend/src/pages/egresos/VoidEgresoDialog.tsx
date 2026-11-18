@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import { AlertTriangle, Loader2 } from 'lucide-react'
+import { EGRESO_VOID_REASON_LABELS } from '@/types'
+import type { EgresoVoidReason } from '@/types'
 
 const MAX_REASON_LENGTH = 500
+
+const REASON_OPTIONS = Object.entries(EGRESO_VOID_REASON_LABELS) as [EgresoVoidReason, string][]
 
 interface VoidEgresoDialogProps {
   open: boolean
   egresoLabel: string
   isPending: boolean
-  onConfirm: (reason: string) => void
+  onConfirm: (vars: { reason: EgresoVoidReason; reasonOther?: string }) => void
   onCancel: () => void
 }
 
@@ -18,10 +22,13 @@ export function VoidEgresoDialog({
   onConfirm,
   onCancel,
 }: VoidEgresoDialogProps) {
-  const [reason, setReason] = useState('')
+  const [reason, setReason] = useState<EgresoVoidReason | ''>('')
+  const [reasonOther, setReasonOther] = useState('')
   if (!open) return null
 
-  const trimmed = reason.trim()
+  const trimmed = reasonOther.trim()
+  const isOther = reason === 'otro'
+  const canConfirm = reason !== '' && (!isOther || trimmed.length > 0)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -44,19 +51,37 @@ export function VoidEgresoDialog({
             >
               Motivo
             </label>
-            <textarea
+            <select
               id="void-egreso-reason"
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              maxLength={MAX_REASON_LENGTH}
-              rows={3}
+              onChange={(e) => setReason(e.target.value as EgresoVoidReason | '')}
               disabled={isPending}
-              placeholder="¿Por qué se anula este egreso?"
-              className="input-hard w-full text-sm border-ui-border-medium px-3 py-2 text-content resize-none"
-            />
-            <p className="text-xs text-content-faint text-right mt-1">
-              {reason.length}/{MAX_REASON_LENGTH}
-            </p>
+              className="input-hard w-full px-3 py-2 text-sm text-content border-ui-border-medium"
+            >
+              <option value="">Elige un motivo</option>
+              {REASON_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            {isOther && (
+              <>
+                <textarea
+                  aria-label="Escribe el motivo"
+                  value={reasonOther}
+                  onChange={(e) => setReasonOther(e.target.value)}
+                  maxLength={MAX_REASON_LENGTH}
+                  rows={3}
+                  disabled={isPending}
+                  placeholder="Escribe el motivo"
+                  className="input-hard w-full text-sm border-ui-border-medium px-3 py-2 text-content resize-none mt-3"
+                />
+                <p className="text-xs text-content-faint text-right mt-1">
+                  {reasonOther.length}/{MAX_REASON_LENGTH}
+                </p>
+              </>
+            )}
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-6">
@@ -70,8 +95,11 @@ export function VoidEgresoDialog({
           </button>
           <button
             type="button"
-            onClick={() => onConfirm(trimmed)}
-            disabled={isPending || trimmed.length === 0}
+            onClick={() => {
+              if (reason === '') return
+              onConfirm(isOther ? { reason, reasonOther: trimmed } : { reason })
+            }}
+            disabled={isPending || !canConfirm}
             className="btn-danger flex items-center gap-2 px-4 py-2 text-sm disabled:opacity-60"
           >
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}

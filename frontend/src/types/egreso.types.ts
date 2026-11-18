@@ -11,8 +11,9 @@ export type {
   EgresoOpenPayable,
   EgresoPaymentLine,
   EgresoPaymentMethod,
+  EgresoVoidReason,
 } from '@contracts/egresos'
-import type { EgresoPaymentMethod } from '@contracts/egresos'
+import type { EgresoPaymentMethod, EgresoVoidReason } from '@contracts/egresos'
 
 export const EGRESO_PAYMENT_METHOD_LABELS: Record<EgresoPaymentMethod, string> = {
   efectivo_almacen: 'Efectivo almacén',
@@ -20,6 +21,16 @@ export const EGRESO_PAYMENT_METHOD_LABELS: Record<EgresoPaymentMethod, string> =
   cheque: 'Cheque',
   efectivo_oficina: 'Efectivo oficina',
   consignacion_oficina: 'Consignación oficina',
+}
+
+export const EGRESO_VOID_REASON_LABELS: Record<EgresoVoidReason, string> = {
+  valor_equivocado: 'Valor equivocado',
+  proveedor_equivocado: 'Proveedor equivocado',
+  factura_equivocada: 'Factura equivocada',
+  forma_pago_equivocada: 'Forma de pago equivocada',
+  pago_duplicado: 'Pago duplicado',
+  pago_no_realizado: 'Pago no realizado',
+  otro: 'Otro',
 }
 
 export interface GetEgresosParams {
