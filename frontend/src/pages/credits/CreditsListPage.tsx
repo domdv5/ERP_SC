@@ -7,6 +7,7 @@ import { PiggyBank } from 'lucide-react'
 import { getCredits } from '@/services/credits.service'
 import { usePermission } from '@/hooks/usePermission'
 import {
+  PartySearchSuggestions,
   TableToolbar,
   TableSkeleton,
   EmptyState,
@@ -14,6 +15,7 @@ import {
   TablePagination,
   DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
+import type { PickedParty } from '@/components/shared'
 import { cn } from '@/lib/utils'
 import { formatCOP } from '@/lib/format'
 import type { CreditsTab } from './credits.constants'
@@ -35,6 +37,7 @@ export default function CreditsListPage() {
   const party = tab === 'clientes' ? 'customers' : 'suppliers'
 
   const [search, setSearch] = useState('')
+  const [picked, setPicked] = useState<PickedParty | null>(null)
   const [onlyAvailable, setOnlyAvailable] = useState(true)
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
@@ -74,7 +77,11 @@ export default function CreditsListPage() {
                 key={t}
                 role="tab"
                 aria-selected={t === tab}
-                onClick={() => setSearchParams({ tab: t }, { replace: true })}
+                onClick={() => {
+                  setPicked(null)
+                  setSearch('')
+                  setSearchParams({ tab: t }, { replace: true })
+                }}
                 className={cn(
                   'px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors',
                   t === tab
@@ -89,15 +96,34 @@ export default function CreditsListPage() {
         )}
 
         <div className="border-b border-ui-border">
-          <TableToolbar
+          <PartySearchSuggestions
+            key={tab}
+            role={tab === 'clientes' ? 'customer' : 'supplier'}
             search={search}
-            onSearchChange={setSearch}
-            placeholder="Buscar por nombre o documento…"
-            isLoading={isLoading}
-            itemCount={items.length}
-            total={total}
-            onRefresh={refetch}
-          />
+            debouncedSearch={debouncedSearch}
+            picked={picked}
+            onPick={(chosen) => {
+              setPicked(chosen)
+              setSearch(chosen.name)
+            }}
+            onClear={() => {
+              setPicked(null)
+              setSearch('')
+            }}
+          >
+            <TableToolbar
+              search={search}
+              onSearchChange={(value) => {
+                setPicked(null)
+                setSearch(value)
+              }}
+              placeholder="Buscar por nombre o documento…"
+              isLoading={isLoading}
+              itemCount={items.length}
+              total={total}
+              onRefresh={refetch}
+            />
+          </PartySearchSuggestions>
           <div className="px-5 py-3">
             <label className="inline-flex items-center gap-2 text-sm text-content-secondary cursor-pointer">
               <input
