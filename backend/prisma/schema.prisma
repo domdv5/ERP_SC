@@ -483,6 +483,7 @@ model User {
   systemConfigsActivated   SystemConfig[]       @relation("SystemConfigActivatedBy")
   systemConfigsDeactivated SystemConfig[]       @relation("SystemConfigDeactivatedBy")
   egresos                  Egreso[]
+  egresosVoided            Egreso[]             @relation("EgresoVoidedBy")
   customerCreditsCreated   CustomerCredit[]     @relation("CustomerCreditCreatedBy")
   customerCreditsVoided    CustomerCredit[]     @relation("CustomerCreditVoidedBy")
   recibosCaja              ReciboCaja[]
@@ -1046,26 +1047,31 @@ enum EgresoPaymentMethod {
   consignacion_oficina
 }
 
-/// Paga una o varias CxP de un mismo proveedor en un solo movimiento; no se anula ni se edita.
+/// Paga una o varias CxP de un mismo proveedor en un solo movimiento; no se edita, se anula con voidedAt (las filas hijas se conservan como historial).
 model Egreso {
-  id             String   @id @default(uuid(7)) @db.Uuid
+  id             String    @id @default(uuid(7)) @db.Uuid
   /// Consecutivo propio (clave "EGRESO" en Sequence), ceros a la izquierda a 6 dígitos para ordenar como texto.
-  number         String   @unique @db.VarChar(30)
+  number         String    @unique @db.VarChar(30)
   /// Sin @default a propósito: la fija el service en huso Colombia, no el de la base (mismo criterio que Document.date).
-  date           DateTime @db.Date
-  supplierId     String   @map("supplier_id") @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
+  date           DateTime  @db.Date
+  supplierId     String    @map("supplier_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
   /// total = cashTotal + creditTotal (CHECK) y también la suma de EgresoAllocation.amount (eso lo valida el service, ningún CHECK lo ve).
-  total          Decimal  @db.Decimal(16, 2)
-  cashTotal      Decimal  @map("cash_total") @db.Decimal(16, 2)
-  creditTotal    Decimal  @map("credit_total") @db.Decimal(16, 2)
-  notes          String?  @db.VarChar(500)
+  total          Decimal   @db.Decimal(16, 2)
+  cashTotal      Decimal   @map("cash_total") @db.Decimal(16, 2)
+  creditTotal    Decimal   @map("credit_total") @db.Decimal(16, 2)
+  notes          String?   @db.VarChar(500)
   /// Clave que manda el cliente para que un reintento de red no pague dos veces.
-  idempotencyKey String   @unique @map("idempotency_key") @db.VarChar(100)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  idempotencyKey String    @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  /// Anulado si no es null; el motivo es obligatorio al anular.
+  voidedAt       DateTime? @map("voided_at") @db.Timestamptz
+  voidedById     String?   @map("voided_by_id") @db.Uuid
+  voidReason     String?   @map("void_reason") @db.VarChar(500)
 
   supplier           Supplier                    @relation(fields: [supplierId], references: [id])
   user               User                        @relation(fields: [userId], references: [id])
+  voidedBy           User?                       @relation("EgresoVoidedBy", fields: [voidedById], references: [id])
   payments           EgresoPayment[]
   allocations        EgresoAllocation[]
   creditApplications SupplierCreditApplication[]

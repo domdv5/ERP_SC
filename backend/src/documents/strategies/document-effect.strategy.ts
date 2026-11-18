@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { DocumentType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
+import { EGRESO_VOID_STATE } from '@/documents/helpers/egreso-links.helpers';
 
 /** Documento con los includes que el service carga antes de confirmar. */
 export type DocumentWithItems = Prisma.DocumentGetPayload<{
@@ -23,14 +24,14 @@ export const DOCUMENT_TO_VOID_INCLUDE = {
   accountsPayable: {
     include: {
       payablePayments: true,
-      creditApplications: true,
-      egresoAllocations: true,
+      creditApplications: EGRESO_VOID_STATE,
+      egresoAllocations: EGRESO_VOID_STATE,
     },
   },
   accountsReceivable: {
     include: { receivablePayments: true, reciboCajaAllocations: true },
   },
-  supplierCredits: { include: { applications: true } },
+  supplierCredits: { include: { applications: EGRESO_VOID_STATE } },
   customerCredits: { include: { applications: true } },
   appliedCustomerCredits: true,
 } satisfies Prisma.DocumentInclude;

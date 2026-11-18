@@ -8,6 +8,10 @@ import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import { undoCustomerCreditApplications } from './helpers/customer-credit.helpers';
 import {
+  EGRESO_VOID_STATE,
+  isActiveEgresoLink,
+} from './helpers/egreso-links.helpers';
+import {
   assertAvailableForReservation,
   RESERVATION_TYPES,
 } from './helpers/reservation.helpers';
@@ -74,8 +78,8 @@ export class DocumentVoidService {
     const hasPayments = document.accountsPayable.some(
       (payable) =>
         payable.payablePayments.length > 0 ||
-        payable.creditApplications.length > 0 ||
-        payable.egresoAllocations.length > 0,
+        payable.creditApplications.some(isActiveEgresoLink) ||
+        payable.egresoAllocations.some(isActiveEgresoLink),
     );
 
     if (hasPayments) {
@@ -86,8 +90,8 @@ export class DocumentVoidService {
 
     // Si la nota crédito que generó esta devolución ya se aplicó a otra cuenta
     // por pagar, anular el documento la dejaría suelta pero todavía usable.
-    const hasCreditApplications = document.supplierCredits.some(
-      (credit) => credit.applications.length > 0,
+    const hasCreditApplications = document.supplierCredits.some((credit) =>
+      credit.applications.some(isActiveEgresoLink),
     );
 
     if (hasCreditApplications) {
@@ -258,8 +262,8 @@ export class DocumentVoidService {
             where: { documentId: id },
             include: {
               payablePayments: true,
-              creditApplications: true,
-              egresoAllocations: true,
+              creditApplications: EGRESO_VOID_STATE,
+              egresoAllocations: EGRESO_VOID_STATE,
             },
           }),
           tx.accountsReceivable.findMany({
@@ -271,8 +275,8 @@ export class DocumentVoidService {
         const stillHasPayablePayments = freshPayables.some(
           (payable) =>
             payable.payablePayments.length > 0 ||
-            payable.creditApplications.length > 0 ||
-            payable.egresoAllocations.length > 0,
+            payable.creditApplications.some(isActiveEgresoLink) ||
+            payable.egresoAllocations.some(isActiveEgresoLink),
         );
         if (stillHasPayablePayments) {
           throw new ConflictException(
@@ -294,13 +298,28 @@ export class DocumentVoidService {
         if (document.supplierCredits.length > 0) {
           const freshCredit = await tx.supplierCredit.findUnique({
             where: { sourceDocumentId: id },
-            include: { applications: true },
+            include: { applications: EGRESO_VOID_STATE },
           });
-          if (freshCredit && freshCredit.applications.length > 0) {
+          if (freshCredit?.applications.some(isActiveEgresoLink)) {
             throw new ConflictException(
               'No se puede anular: la nota crédito generada por este documento ya fue aplicada a un pago',
             );
           }
+        }
+
+        // Lo que queda son filas de egresos anulados (historial): se borran para poder borrar la CxP/saldo.
+        if (document.accountsPayable.length > 0) {
+          await tx.egresoAllocation.deleteMany({
+            where: { accountPayable: { documentId: id } },
+          });
+          await tx.supplierCreditApplication.deleteMany({
+            where: { accountPayable: { documentId: id } },
+          });
+        }
+        if (document.supplierCredits.length > 0) {
+          await tx.supplierCreditApplication.deleteMany({
+            where: { supplierCredit: { sourceDocumentId: id } },
+          });
         }
 
         await tx.accountsPayable.deleteMany({ where: { documentId: id } });

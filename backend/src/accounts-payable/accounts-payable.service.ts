@@ -31,6 +31,12 @@ const matchDetailContract = matchContract<AccountsPayableDetail>();
 const matchStatementContract = matchContract<SupplierStatement>();
 const matchCreditsContract = matchContract<SupplierCredit[]>();
 
+// Un egreso anulado ya no abona nada: sus filas quedan de historial y no cuentan.
+const ACTIVE_ALLOCATION = { egreso: { voidedAt: null } };
+const ACTIVE_APPLICATION = {
+  OR: [{ egresoId: null }, { egreso: { voidedAt: null } }],
+} satisfies Prisma.SupplierCreditApplicationWhereInput;
+
 const LIST_INCLUDE = {
   supplier: { include: { thirdParty: { select: { id: true, name: true } } } },
   document: {
@@ -43,7 +49,10 @@ const LIST_INCLUDE = {
     },
   },
   // Solo el monto: alcanza para sumar creditApplied sin traer el objeto completo.
-  creditApplications: { select: { amount: true } },
+  creditApplications: {
+    where: ACTIVE_APPLICATION,
+    select: { amount: true },
+  },
 } satisfies Prisma.AccountsPayableInclude;
 
 const DETAIL_INCLUDE = {
@@ -59,12 +68,14 @@ const DETAIL_INCLUDE = {
   },
   payablePayments: { orderBy: { paymentDate: 'desc' } },
   creditApplications: {
+    where: ACTIVE_APPLICATION,
     include: {
       supplierCredit: { select: { id: true, amount: true, balance: true } },
     },
     orderBy: { appliedAt: 'desc' },
   },
   egresoAllocations: {
+    where: ACTIVE_ALLOCATION,
     include: { egreso: { select: { id: true, number: true, date: true } } },
   },
 } satisfies Prisma.AccountsPayableInclude;
@@ -73,10 +84,14 @@ const DETAIL_INCLUDE = {
 const STATEMENT_INCLUDE = {
   ...LIST_INCLUDE,
   creditApplications: {
+    where: ACTIVE_APPLICATION,
     select: { amount: true, egresoId: true, appliedAt: true },
   },
   payablePayments: { select: { paymentDate: true } },
-  egresoAllocations: { select: { egreso: { select: { date: true } } } },
+  egresoAllocations: {
+    where: ACTIVE_ALLOCATION,
+    select: { egreso: { select: { date: true } } },
+  },
 } satisfies Prisma.AccountsPayableInclude;
 
 type ListRow = Prisma.AccountsPayableGetPayload<{
@@ -310,7 +325,8 @@ export class AccountsPayableService {
           FROM scoped s
           JOIN egreso_allocation ea ON ea.account_payable_id = s.id
           JOIN egreso e ON e.id = ea.egreso_id
-          WHERE s.supplier_id IN (SELECT supplier_id FROM page)
+          WHERE e.voided_at IS NULL
+            AND s.supplier_id IN (SELECT supplier_id FROM page)
           UNION ALL
           SELECT s.supplier_id,
                  (sca.applied_at AT TIME ZONE 'America/Bogota')::date AS paid_on
@@ -423,6 +439,7 @@ export class AccountsPayableService {
             select: { id: true, type: true, number: true, date: true },
           },
           applications: {
+            where: ACTIVE_APPLICATION,
             include: {
               egreso: { select: { id: true, number: true, date: true } },
             },

@@ -22,6 +22,8 @@ export interface EgresoListItem {
   cashTotal: string;
   creditTotal: string;
   createdAt: string;
+  // Null si el egreso no está anulado
+  voidedAt: string | null;
   supplier: PayableSupplier;
 }
 
@@ -96,7 +98,7 @@ export interface EgresoCreditApplication {
   supplierCredit: EgresoCredit;
 }
 
-// GET /egresos/:id y POST /egresos
+// GET /egresos/:id, POST /egresos y POST /egresos/:id/void
 export interface Egreso {
   id: string;
   number: string;
@@ -109,6 +111,10 @@ export interface Egreso {
   notes: string | null;
   idempotencyKey: string;
   createdAt: string;
+  // Anulación: los tres vienen null si el egreso no está anulado
+  voidedAt: string | null;
+  voidReason: string | null;
+  voidedBy: { id: string; name: string } | null;
   supplier: PayableSupplier;
   user: { id: string; name: string };
   payments: EgresoPaymentLine[];

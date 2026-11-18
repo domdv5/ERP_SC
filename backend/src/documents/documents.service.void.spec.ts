@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { DocumentStatus, DocumentType } from '@/common/enums';
 import { applyStockChange } from './helpers/stock.helpers';
+import { EGRESO_VOID_STATE } from './helpers/egreso-links.helpers';
 import {
   createVoidHarness,
   fullUser,
@@ -324,7 +325,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
       );
       expect(tx.supplierCredit.findUnique).toHaveBeenCalledWith({
         where: { sourceDocumentId: 'doc-1' },
-        include: { applications: true },
+        include: { applications: EGRESO_VOID_STATE },
       });
       expect(tx.supplierCredit.deleteMany).not.toHaveBeenCalled();
     });

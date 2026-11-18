@@ -83,6 +83,8 @@ export function createVoidHarness() {
     accountsReceivable: { findMany: jest.fn(), deleteMany: jest.fn() },
     supplierCredit: { findUnique: jest.fn(), deleteMany: jest.fn() },
     customerCredit: { deleteMany: jest.fn() },
+    egresoAllocation: { deleteMany: jest.fn() },
+    supplierCreditApplication: { deleteMany: jest.fn() },
     inventoryCase: { updateMany: jest.fn() },
   };
   const prisma = {
