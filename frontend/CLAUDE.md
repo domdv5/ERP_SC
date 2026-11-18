@@ -234,7 +234,7 @@ import { StatsGrid } from '@/components/shared/StatsGrid'
 
 | Component | Key props | Use when |
 |-----------|-----------|----------|
-| `BackLink` | `to`, `label` | Enlace "← Volver a …" de las páginas de detalle y de creación. Usarlo siempre en vez de escribir el botón a mano: así todos se ven iguales y se leen en modo claro (estilo `btn-secondary`, como "Cancelar"). |
+| `BackLink` | `to`, `label` | Botón de volver de las páginas de detalle y de creación; `label` es solo el destino ("Egresos"), sin la palabra "Volver". Usarlo siempre en vez de escribir el botón a mano: así todos se ven iguales y se leen en modo claro (`btn-secondary` con franja negra y flecha verde de marca). |
 | `Combobox` | `value`, `onChange(id, opt)`, `options: ComboboxOption[]`, `searchValue?`, `onSearchChange?`, `isLoading?`, `placeholder?`, `disabled?`, `error?`, `onClear?` | Searchable dropdown. Controlled mode (pass `searchValue`/`onSearchChange`) for server-side debounce; uncontrolled (omit both) for small client-side datasets. Uses `createPortal` — safe inside overflow containers. `onClear` muestra una X dentro del campo cuando hay valor: solo en filtros de listado (Egresos, Compras pendientes), nunca en formularios con campo obligatorio. |
 | `StatsGrid` | `cards: StatCard[]`, `isLoading` | 3-card stat row at top of every list page |
 | `TableToolbar` | `search`, `onSearchChange`, `placeholder`, `isLoading`, `itemCount`, `total`, `onRefresh` | Search + count + refresh bar above table |

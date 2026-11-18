@@ -8,9 +8,15 @@ interface BackLinkProps {
 
 export function BackLink({ to, label }: BackLinkProps) {
   return (
-    <Link to={to} className="btn-secondary inline-flex items-center gap-2 text-sm px-3 py-1.5">
-      <ArrowLeft className="w-4 h-4" />
-      {label}
+    <Link
+      to={to}
+      aria-label={`Volver a ${label}`}
+      className="btn-secondary inline-flex items-stretch overflow-hidden text-sm p-0"
+    >
+      <span className="flex items-center px-2.5 bg-brand-primary text-brand-secondary">
+        <ArrowLeft className="w-4 h-4" strokeWidth={2.5} />
+      </span>
+      <span className="px-3.5 py-1.5">{label}</span>
     </Link>
   )
 }

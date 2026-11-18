@@ -54,7 +54,7 @@ export default function ReciboCajaDetailPage() {
   if (isError || !reciboCaja) {
     return (
       <div className="space-y-4">
-        <BackLink to="/recibos-caja" label="Volver a recibos de caja" />
+        <BackLink to="/recibos-caja" label="Recibos de caja" />
         <div className="bg-surface rounded-2xl border border-ui-border p-8 text-center">
           <Wallet className="w-12 h-12 text-content-faint mx-auto mb-3" />
           <p className="text-content-secondary mb-3">Error al cargar el recibo de caja</p>
@@ -73,7 +73,7 @@ export default function ReciboCajaDetailPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
-      <BackLink to="/recibos-caja" label="Volver a recibos de caja" />
+      <BackLink to="/recibos-caja" label="Recibos de caja" />
 
       {/* Header card */}
       <div className="card-hard p-6">

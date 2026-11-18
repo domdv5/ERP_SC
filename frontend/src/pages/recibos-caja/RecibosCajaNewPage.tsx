@@ -208,7 +208,7 @@ export default function RecibosCajaNewPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
-      <BackLink to="/recibos-caja" label="Volver a recibos de caja" />
+      <BackLink to="/recibos-caja" label="Recibos de caja" />
 
       <div>
         <h1 className="text-2xl text-content">Nuevo recibo de caja</h1>
