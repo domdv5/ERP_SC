@@ -84,10 +84,10 @@ export async function applyCustomerCredits(
       throw new BadRequestException('El saldo a favor citado ya fue utilizado');
     }
 
-    const requestedCents = requestedCentsByCreditId.get(credit.id)!;
-    if (requestedCents > toCents(credit.balance)) {
+    // Regla del dueño (2026-11-20): el saldo a favor no se divide, se usa todo lo disponible o nada
+    if (requestedCentsByCreditId.get(credit.id)! !== toCents(credit.balance)) {
       throw new BadRequestException(
-        `El monto aplicado del saldo a favor excede su saldo disponible: ${Number(
+        `El saldo a favor se usa completo o no se usa. Saldo disponible: ${Number(
           credit.balance,
         ).toFixed(2)}`,
       );

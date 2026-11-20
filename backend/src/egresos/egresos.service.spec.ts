@@ -107,4 +107,31 @@ describe('EgresosService.create — reparto del saldo a favor', () => {
       }),
     });
   });
+
+  it('rechaza usar solo una parte del saldo a favor y no guarda nada', async () => {
+    tx.accountsPayable.findMany.mockResolvedValue([payable('ap1', 100)]);
+    tx.supplierCredit.findMany.mockResolvedValue([
+      {
+        id: 'sc1',
+        supplierId: SUPPLIER,
+        status: 'available',
+        balance: new Prisma.Decimal(120),
+      },
+    ]);
+    const dto = {
+      supplierId: SUPPLIER,
+      idempotencyKey: 'key',
+      payables: [{ accountPayableId: 'ap1', amount: 100 }],
+      payments: [{ method: 'efectivo_almacen', amount: 20 }],
+      credits: [{ supplierCreditId: 'sc1', amount: 80 }],
+    } as CreateEgresoDto;
+
+    await expect(service.create(dto, user)).rejects.toThrow(
+      'El saldo a favor se usa completo o no se usa. Saldo disponible: 120.00',
+    );
+    expect(tx.egreso.create).not.toHaveBeenCalled();
+    expect(tx.supplierCredit.update).not.toHaveBeenCalled();
+    expect(tx.supplierCreditApplication.create).not.toHaveBeenCalled();
+    expect(tx.accountsPayable.update).not.toHaveBeenCalled();
+  });
 });
