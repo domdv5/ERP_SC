@@ -1,4 +1,4 @@
-import { Wallet } from 'lucide-react'
+import { Check, Lock, Plus, Wallet } from 'lucide-react'
 
 import { formatCOP } from '@/lib/format'
 
@@ -21,8 +21,8 @@ interface CreditsPanelProps {
   error?: string
 }
 
-// Casilla "Usar saldo": un saldo se aplica completo o no; sin marcar y sin caber queda deshabilitada, marcada siempre se puede soltar.
-export function UseCreditCheckbox({
+// Botón "Usar saldo": un saldo se aplica completo o no; sin aplicar y sin caber queda bloqueado, aplicado siempre se puede soltar.
+export function UseCreditButton({
   checked,
   canUse,
   onChange,
@@ -32,20 +32,41 @@ export function UseCreditCheckbox({
   onChange: (used: boolean) => void
 }) {
   const blocked = !checked && !canUse
+  const base =
+    'inline-flex items-center justify-center gap-2 min-w-[11rem] px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-secondary'
+
+  if (blocked) {
+    return (
+      <button
+        type="button"
+        disabled
+        title="El saldo es mayor que lo pendiente: aumenta el abono para poder usarlo"
+        className={`${base} border-dashed border-ui-border-medium text-content-faint cursor-not-allowed`}
+      >
+        <Lock className="h-4 w-4" aria-hidden />
+        Mayor que lo pendiente
+      </button>
+    )
+  }
+
   return (
-    <label className="flex items-center gap-2 text-xs text-content-secondary">
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={blocked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 accent-brand-secondary disabled:opacity-50"
-      />
-      <span>Usar saldo</span>
-      {blocked && (
-        <span className="text-content-faint font-accent">Saldo mayor que lo pendiente</span>
+    <button
+      type="button"
+      aria-pressed={checked}
+      onClick={() => onChange(!checked)}
+      className={
+        checked
+          ? `${base} border-brand-secondary bg-brand-secondary text-brand-primary hover:bg-brand-secondary/90`
+          : `${base} border-brand-secondary text-brand-secondary hover:bg-brand-secondary/10`
+      }
+    >
+      {checked ? (
+        <Check className="h-4 w-4" aria-hidden />
+      ) : (
+        <Plus className="h-4 w-4" aria-hidden />
       )}
-    </label>
+      {checked ? 'Saldo aplicado' : 'Usar saldo'}
+    </button>
   )
 }
 
@@ -81,7 +102,7 @@ export function CreditsPanel({
                 Saldo {formatCOP(credit.balance)}
               </p>
             </div>
-            <UseCreditCheckbox
+            <UseCreditButton
               checked={(creditAmounts[credit.id] ?? 0) > 0}
               canUse={canUseCredit(credit.id)}
               onChange={(used) => setCreditUsed(credit.id, used)}

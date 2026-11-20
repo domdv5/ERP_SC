@@ -12,7 +12,7 @@ import {
   Combobox,
   CustomerBranchSelect,
   ThousandsInput,
-  UseCreditCheckbox,
+  UseCreditButton,
 } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
@@ -465,7 +465,7 @@ export default function RecibosCajaNewPage() {
                                 {formatCOP(row?.balance ?? 0)}
                               </td>
                               <td className="px-5 py-3">
-                                <UseCreditCheckbox
+                                <UseCreditButton
                                   checked={(row?.amount ?? 0) > 0}
                                   canUse={canUseCreditAt(index)}
                                   onChange={(used) => toggleCredit(index, used)}

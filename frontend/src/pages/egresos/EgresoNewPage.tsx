@@ -9,7 +9,7 @@ import { Plus, Trash2, Loader2, HandCoins } from 'lucide-react'
 
 import { getThirdParties } from '@/services/third-parties.service'
 import { getEgresoOpenItems } from '@/services/egresos.service'
-import { Combobox, ThousandsInput, UseCreditCheckbox } from '@/components/shared'
+import { Combobox, ThousandsInput, UseCreditButton } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber, formatDateOnly, formatBogotaDate } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
@@ -411,7 +411,7 @@ export default function EgresoNewPage() {
                                 {formatCOP(row?.balance ?? 0)}
                               </td>
                               <td className="px-5 py-3">
-                                <UseCreditCheckbox
+                                <UseCreditButton
                                   checked={(row?.amount ?? 0) > 0}
                                   canUse={canUseCreditAt(index)}
                                   onChange={(used) => toggleCredit(index, used)}
