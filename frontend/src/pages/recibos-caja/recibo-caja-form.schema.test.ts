@@ -86,7 +86,7 @@ describe('reciboCajaFormSchema — saldos a favor', () => {
     const values = form({
       ...base,
       payments: [{ method: 'efectivo_oficina', amount: 70000 }],
-      credits: [{ customerCreditId: 'cc1', balance: 50000, amount: 30000 }],
+      credits: [{ customerCreditId: 'cc1', balance: 30000, amount: 30000 }],
     })
     expect(messages(values)).toEqual([])
   })
@@ -100,20 +100,22 @@ describe('reciboCajaFormSchema — saldos a favor', () => {
     expect(messages(values)).toEqual([])
   })
 
-  it('no deja usar más que el saldo a favor', () => {
+  it.each([30000, 60000])('rechaza un saldo a favor usado a medias (%i de 50000)', (amount) => {
     const values = form({
       ...base,
-      payments: [{ method: 'efectivo_oficina', amount: 40000 }],
-      credits: [{ customerCreditId: 'cc1', balance: 50000, amount: 60000 }],
+      payments: [{ method: 'efectivo_oficina', amount: 100000 - amount }],
+      credits: [{ customerCreditId: 'cc1', balance: 50000, amount }],
     })
-    expect(messages(values)).toContain(`No puede superar el saldo a favor (${formatCOP(50000)})`)
+    expect(messages(values)).toContain(
+      `El saldo a favor se usa completo o no se usa. Saldo disponible: ${formatCOP(50000)}`,
+    )
   })
 
   it('exige que pagos + saldos a favor cuadren con la deuda', () => {
     const values = form({
       ...base,
       payments: [{ method: 'efectivo_oficina', amount: 80000 }],
-      credits: [{ customerCreditId: 'cc1', balance: 50000, amount: 30000 }],
+      credits: [{ customerCreditId: 'cc1', balance: 30000, amount: 30000 }],
     })
     expect(messages(values)).toContain(`Las formas de pago deben sumar ${formatCOP(70000)}`)
   })
@@ -122,7 +124,7 @@ describe('reciboCajaFormSchema — saldos a favor', () => {
     const values = form({
       ...base,
       payments: [],
-      credits: [{ customerCreditId: 'cc1', balance: 200000, amount: 150000 }],
+      credits: [{ customerCreditId: 'cc1', balance: 200000, amount: 200000 }],
     })
     expect(messages(values)).toContain(
       `Los saldos a favor y el descuento superan la deuda (${formatCOP(100000)})`,

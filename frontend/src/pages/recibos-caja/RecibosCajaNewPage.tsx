@@ -5,11 +5,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { Controller } from 'react-hook-form'
 import { toast } from 'sonner'
-import { Plus, Trash2, Loader2, Wallet, ArrowDownToLine } from 'lucide-react'
+import { Plus, Trash2, Loader2, Wallet } from 'lucide-react'
 
 import { getThirdParties } from '@/services/third-parties.service'
 import { Combobox, CustomerBranchSelect, ThousandsInput } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
+import { UseCreditCheckbox } from '@/components/shared/CreditsPanel'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
@@ -103,8 +104,8 @@ export default function RecibosCajaNewPage() {
     handleSubmit,
     receivablesFields,
     creditFields,
-    setCreditAmount,
-    fillCredit,
+    toggleCredit,
+    canUseCreditAt,
     totalCredits,
     paymentsArray,
     errors,
@@ -456,22 +457,11 @@ export default function RecibosCajaNewPage() {
                                 {formatCOP(row?.balance ?? 0)}
                               </td>
                               <td className="px-5 py-3">
-                                <div className="flex items-center gap-2">
-                                  <ThousandsInput
-                                    value={row?.amount}
-                                    onChange={(v) => setCreditAmount(index, v ?? 0)}
-                                    placeholder="0"
-                                    className="w-32 py-1.5"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => fillCredit(index)}
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-brand-secondary border border-brand-secondary/30 rounded-lg hover:bg-brand-secondary/10 transition-colors whitespace-nowrap"
-                                  >
-                                    <ArrowDownToLine className="w-3.5 h-3.5" />
-                                    Usar todo
-                                  </button>
-                                </div>
+                                <UseCreditCheckbox
+                                  checked={(row?.amount ?? 0) > 0}
+                                  canUse={canUseCreditAt(index)}
+                                  onChange={(used) => toggleCredit(index, used)}
+                                />
                                 {rowError && (
                                   <p className="text-xs text-red-500 font-accent mt-1">
                                     {rowError.message}

@@ -325,7 +325,8 @@ export default function POSCheckoutPage() {
                     : 'Saldo a favor',
                 }))}
                 creditAmounts={credits.creditAmounts}
-                setCreditAmount={credits.setCreditAmount}
+                setCreditUsed={credits.setCreditUsed}
+                canUseCredit={credits.canUseCredit}
                 creditsApplied={creditsApplied}
                 totalAvailable={credits.totalAvailable}
               />

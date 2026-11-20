@@ -120,10 +120,10 @@ export const reciboCajaFormSchema = baseSchema.superRefine((data, ctx) => {
   const discount = data.hasDiscount ? data.discountAmount : 0
 
   data.credits.forEach((e, index) => {
-    if (Math.round(e.amount) > Math.round(e.balance)) {
+    if (e.amount > 0 && Math.round(e.amount * 100) !== Math.round(e.balance * 100)) {
       ctx.addIssue({
         code: 'custom',
-        message: `No puede superar el saldo a favor (${formatCOP(e.balance)})`,
+        message: `El saldo a favor se usa completo o no se usa. Saldo disponible: ${formatCOP(e.balance)}`,
         path: ['credits', index, 'amount'],
       })
     }

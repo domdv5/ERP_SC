@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, renderHook, waitFor } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { getAvailableCustomerCredits } from '@/services/documents.service'
 import { useAppliedCredits } from './useAppliedCredits'
@@ -55,16 +55,57 @@ describe('useAppliedCredits', () => {
     expect(result.current.availableCredits.map((c) => c.balance)).toEqual([30.5, 20])
   })
 
-  it('propone montos numéricos que suman bien (30.5 + 9.5, sin concatenar strings)', async () => {
+  it('propone solo saldos completos que caben, sin concatenar strings (30.5 + 20)', async () => {
     vi.mocked(getAvailableCustomerCredits).mockResolvedValue(apiCredits)
-    const { result } = renderCredits({ total: 40, grandTotal: 40 })
+    const { result } = renderCredits({ total: 60, grandTotal: 60 })
 
     await waitFor(() => expect(result.current.selectedCredits).toHaveLength(2))
     expect(result.current.selectedCredits).toEqual([
       { customerCreditId: 'c1', amount: 30.5 },
-      { customerCreditId: 'c2', amount: 9.5 },
+      { customerCreditId: 'c2', amount: 20 },
     ])
-    expect(result.current.creditsApplied).toBe(40)
-    expect(result.current.totalToPay).toBe(0)
+    expect(result.current.creditsApplied).toBe(50.5)
+    expect(result.current.totalToPay).toBe(9.5)
+  })
+
+  it('no propone un saldo mayor que lo que falta y lo deja sin poder marcar', async () => {
+    vi.mocked(getAvailableCustomerCredits).mockResolvedValue(apiCredits)
+    const { result } = renderCredits({ total: 25, grandTotal: 25 })
+
+    await waitFor(() => expect(result.current.availableCredits).toHaveLength(2))
+    expect(result.current.selectedCredits).toEqual([{ customerCreditId: 'c2', amount: 20 }])
+    expect(result.current.canUseCredit('c1')).toBe(false)
+  })
+
+  it('al marcar un saldo se aplica completo, y al desmarcarlo se quita', async () => {
+    vi.mocked(getAvailableCustomerCredits).mockResolvedValue(apiCredits)
+    const { result } = renderCredits({ total: 100, grandTotal: 100 })
+    await waitFor(() => expect(result.current.selectedCredits).toHaveLength(2))
+
+    act(() => result.current.setCreditUsed('c1', false))
+    expect(result.current.selectedCredits).toEqual([{ customerCreditId: 'c2', amount: 20 }])
+
+    act(() => result.current.setCreditUsed('c1', true))
+    expect(result.current.selectedCredits).toContainEqual({ customerCreditId: 'c1', amount: 30.5 })
+  })
+
+  it('suelta un saldo marcado a mano cuando el total baja y ya no cabe', async () => {
+    vi.mocked(getAvailableCustomerCredits).mockResolvedValue(apiCredits)
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+    const { result, rerender } = renderHook(
+      ({ total }) =>
+        useAppliedCredits({ thirdPartyId: 'tp-1', official: false, total, grandTotal: total }),
+      { wrapper, initialProps: { total: 100 } },
+    )
+    await waitFor(() => expect(result.current.selectedCredits).toHaveLength(2))
+    act(() => result.current.setCreditUsed('c1', true))
+
+    rerender({ total: 25 })
+    await waitFor(() =>
+      expect(result.current.selectedCredits).toEqual([{ customerCreditId: 'c2', amount: 20 }]),
+    )
   })
 })

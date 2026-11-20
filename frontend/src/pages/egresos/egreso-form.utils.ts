@@ -1,10 +1,11 @@
-// "Usar todo": lo que falta cubrir de los abonos tras los otros saldos, sin pasar del saldo propio
-export function calculateFillCreditAmount(
-  balance: number,
+// Lo que falta cubrir de los abonos para un saldo: abonos menos los otros saldos ya marcados
+export function calculateCreditPending(
   totalAbonos: number,
-  othersSum: number,
+  creditAmounts: number[],
+  index: number,
 ): number {
-  return Math.max(0, Math.min(balance, totalAbonos - othersSum))
+  const othersSum = creditAmounts.reduce((sum, amount, i) => (i === index ? sum : sum + amount), 0)
+  return Math.max(totalAbonos - othersSum, 0)
 }
 
 // Nunca negativo: si el saldo a favor cubre todo, el excedente no se aplica (se valida aparte)

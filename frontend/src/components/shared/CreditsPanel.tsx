@@ -1,7 +1,6 @@
 import { Wallet } from 'lucide-react'
 
 import { formatCOP } from '@/lib/format'
-import { ThousandsInput } from './ThousandsInput'
 
 export interface CreditsPanelCredit {
   id: string
@@ -13,19 +12,49 @@ export interface CreditsPanelCredit {
 interface CreditsPanelProps {
   title: string
   credits: CreditsPanelCredit[]
-  // Monto aplicado por cada saldo (id del saldo → monto). El usuario lo puede bajar.
+  // Monto aplicado por cada saldo (id del saldo → su saldo completo, ausente si no se usa).
   creditAmounts: Record<string, number>
-  setCreditAmount: (creditId: string, next: number) => void
+  setCreditUsed: (creditId: string, used: boolean) => void
+  canUseCredit: (creditId: string) => boolean
   creditsApplied: number
   totalAvailable: number
 }
 
-// Panel de saldo a favor, compartido entre checkout de ventas y Egresos; propone el máximo (más antiguos primero) y deja ajustar cada monto.
+// Casilla "Usar saldo": un saldo se aplica completo o no se aplica; si no cabe en lo pendiente queda deshabilitada.
+export function UseCreditCheckbox({
+  checked,
+  canUse,
+  onChange,
+}: {
+  checked: boolean
+  canUse: boolean
+  onChange: (used: boolean) => void
+}) {
+  const blocked = !checked && !canUse
+  return (
+    <label className="flex items-center gap-2 text-xs text-content-secondary">
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={blocked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 accent-brand-secondary disabled:opacity-50"
+      />
+      <span>Usar saldo</span>
+      {blocked && (
+        <span className="text-content-faint font-accent">Saldo mayor que lo pendiente</span>
+      )}
+    </label>
+  )
+}
+
+// Panel de saldo a favor del checkout de ventas; propone los saldos completos que caben (más antiguos primero).
 export function CreditsPanel({
   title,
   credits,
   creditAmounts,
-  setCreditAmount,
+  setCreditUsed,
+  canUseCredit,
   creditsApplied,
   totalAvailable,
 }: CreditsPanelProps) {
@@ -50,10 +79,10 @@ export function CreditsPanel({
                 Saldo {formatCOP(credit.balance)}
               </p>
             </div>
-            <ThousandsInput
-              value={creditAmounts[credit.id] ?? 0}
-              onChange={(v) => setCreditAmount(credit.id, v ?? 0)}
-              className="w-32 py-1.5 text-right bg-surface-raised"
+            <UseCreditCheckbox
+              checked={(creditAmounts[credit.id] ?? 0) > 0}
+              canUse={canUseCredit(credit.id)}
+              onChange={(used) => setCreditUsed(credit.id, used)}
             />
           </div>
         ))}

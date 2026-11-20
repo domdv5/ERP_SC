@@ -74,10 +74,10 @@ export const egresoFormSchema = baseSchema.superRefine((data, ctx) => {
   })
 
   data.credits.forEach((c, index) => {
-    if (c.amount > c.balance) {
+    if (c.amount > 0 && Math.round(c.amount * 100) !== Math.round(c.balance * 100)) {
       ctx.addIssue({
         code: 'custom',
-        message: `No puede superar el saldo disponible (${formatCOP(c.balance)})`,
+        message: `El saldo a favor se usa completo o no se usa. Saldo disponible: ${formatCOP(c.balance)}`,
         path: ['credits', index, 'amount'],
       })
     }
