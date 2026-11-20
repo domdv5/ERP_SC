@@ -29,15 +29,3 @@ export function suggestCreditAmounts(credits: CreditBalance[], total: number): A
   }
   return result
 }
-
-// Si el total bajó después de marcar saldos, suelta los que ya no caben enteros (desde el último).
-export function keepCreditsWithinTotal<T extends AppliedCredit>(credits: T[], total: number): T[] {
-  let budget = Math.max(total, 0)
-  const result: T[] = []
-  for (const credit of credits) {
-    if (!canUseCredit(credit.amount, budget)) continue
-    result.push({ ...credit })
-    budget -= credit.amount
-  }
-  return result
-}

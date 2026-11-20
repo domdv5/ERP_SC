@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canUseCredit, keepCreditsWithinTotal, suggestCreditAmounts } from './credit-application'
+import { canUseCredit, suggestCreditAmounts } from './credit-application'
 
 describe('suggestCreditAmounts', () => {
   it('lista vacía → vacío', () => {
@@ -62,38 +62,5 @@ describe('canUseCredit', () => {
 
   it('compara en centavos, sin errores de coma flotante', () => {
     expect(canUseCredit(0.3, 0.1 + 0.2)).toBe(true)
-  })
-})
-
-describe('keepCreditsWithinTotal', () => {
-  it('lista vacía → vacío', () => {
-    expect(keepCreditsWithinTotal([], 100)).toEqual([])
-  })
-
-  it('si la suma cabe en el total no cambia nada', () => {
-    const credits = [
-      { id: 'a', amount: 40 },
-      { id: 'b', amount: 60 },
-    ]
-    expect(keepCreditsWithinTotal(credits, 100)).toEqual(credits)
-  })
-
-  it('cuando el total baja quita saldos completos desde el último, nunca los recorta', () => {
-    const credits = [
-      { id: 'a', amount: 40 },
-      { id: 'b', amount: 60 },
-    ]
-    expect(keepCreditsWithinTotal(credits, 80)).toEqual([{ id: 'a', amount: 40 }])
-  })
-
-  it('total 0 o negativo → vacío', () => {
-    expect(keepCreditsWithinTotal([{ id: 'a', amount: 40 }], 0)).toEqual([])
-  })
-
-  it('conserva las demás propiedades del elemento y no muta la entrada', () => {
-    const credits = [{ id: 'a', amount: 40, extra: 'x' }]
-    const copy = structuredClone(credits)
-    expect(keepCreditsWithinTotal(credits, 100)).toEqual([{ id: 'a', amount: 40, extra: 'x' }])
-    expect(credits).toEqual(copy)
   })
 })
