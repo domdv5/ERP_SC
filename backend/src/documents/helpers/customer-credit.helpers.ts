@@ -25,8 +25,7 @@ export async function applyCustomerCredits(
     return;
   }
 
-  // Agrupa por crédito: si el mismo aparece dos veces, validar cada línea suelta
-  // dejaría pasar una sobre-aplicación que solo se ve al sumarlas.
+  // Suma lo pedido de cada saldo a favor: si un saldo llega repetido, se valida su total, no cada renglón suelto
   const requestedCentsByCreditId = new Map<string, number>();
   for (const application of appliedCustomerCredits) {
     const previous =
