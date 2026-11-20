@@ -15,7 +15,26 @@ const messages = (data: EgresoFormValues) => {
   return result.success ? [] : result.error.issues.map((issue) => issue.message)
 }
 
+const overflowMessage = 'El saldo a favor es mayor que lo pendiente: aumenta el abono o desmárcalo'
+
 const partialMessage = `El saldo a favor se usa completo o no se usa. Saldo disponible: ${formatCOP(50000)}`
+
+describe('egresoFormSchema — saldo marcado que no cabe', () => {
+  it('marca error en la fila del primer saldo que desborda y valida de nuevo al subir el abono', () => {
+    const data = values(50000)
+    data.payables = [{ accountPayableId: 'ap1', balance: 100000, selected: true, amount: 40000 }]
+    data.payments = []
+    const result = egresoFormSchema.safeParse(data)
+    const issue = result.success
+      ? undefined
+      : result.error.issues.find((i) => i.message === overflowMessage)
+    expect(issue?.path).toEqual(['credits', 0, 'amount'])
+
+    data.payables[0].amount = 100000
+    data.payments = [{ method: 'efectivo_oficina', amount: 50000 }]
+    expect(messages(data)).not.toContain(overflowMessage)
+  })
+})
 
 describe('egresoFormSchema — saldo a favor completo o nada', () => {
   it('rechaza un saldo a favor usado a medias', () => {

@@ -565,7 +565,7 @@ export class RecibosCajaService {
     });
   }
 
-  /** Valida los saldos a favor de administración citados (ya bloqueados): del cliente, de la misma sucursal del recibo, disponibles y con saldo suficiente. */
+  /** Valida los saldos a favor de administración citados (ya bloqueados): del cliente, de la misma sucursal del recibo, disponibles y usados por todo su saldo. */
   private async findUsableCredits(
     tx: Prisma.TransactionClient,
     clientId: string,

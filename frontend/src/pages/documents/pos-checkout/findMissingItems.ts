@@ -1,3 +1,4 @@
+import { CREDITS_OVER_TOTAL_MESSAGE } from './useAppliedCredits'
 import {
   arePaymentsValid,
   CREDIT_FULL_SALE_MESSAGE,
@@ -21,6 +22,7 @@ interface FindMissingItemsInput {
   creditLineOverLimit?: boolean
   creditCoversAll?: boolean
   creditUnavailable?: boolean
+  creditsOverTotal?: boolean
 }
 
 // Lista de pendientes que bloquean "Confirmar venta"; vacía = se puede confirmar.
@@ -46,6 +48,7 @@ export function findMissingItems(input: FindMissingItemsInput): string[] {
   if (input.creditCoversAll) missingItems.push(CREDIT_FULL_SALE_MESSAGE)
   if (input.creditLineOverLimit)
     missingItems.push('El crédito de la venta supera el cupo disponible del cliente')
+  if (input.creditsOverTotal) missingItems.push(CREDITS_OVER_TOTAL_MESSAGE)
   if (input.creditUnavailable)
     missingItems.push('No se pudo consultar el cupo de crédito del cliente')
   return missingItems

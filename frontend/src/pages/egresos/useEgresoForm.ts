@@ -6,14 +6,18 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { getEgresoOpenItems, createEgreso } from '@/services/egresos.service'
-import { egresoFormSchema, type EgresoFormValues } from './egreso-form.schema'
+import {
+  egresoFormSchema,
+  findCreditOverflowIndex,
+  type EgresoFormValues,
+} from './egreso-form.schema'
 import {
   calculateAmountToPay,
   calculateCreditPending,
   limitPayableAmount,
 } from './egreso-form.utils'
 import type { CreateEgresoPayload } from '@/types'
-import { canUseCredit, keepCreditsWithinTotal } from '@/lib/credit-application'
+import { canUseCredit } from '@/lib/credit-application'
 import { todayInBogota } from '@/lib/format'
 import { getApiErrorMessage } from '@/lib/api-error'
 
@@ -107,25 +111,6 @@ export function useEgresoForm() {
     )
   }
 
-  // Si bajan los abonos, los saldos marcados que ya no caben enteros se sueltan
-  const creditsKey = watchedCredits.map((c) => Number(c.amount) || 0).join(',')
-  useEffect(() => {
-    const kept = new Set(
-      keepCreditsWithinTotal(
-        watchedCredits
-          .map((c) => ({ id: c.supplierCreditId, amount: Number(c.amount) || 0 }))
-          .filter((c) => c.amount > 0),
-        totalAbonos,
-      ).map((c) => c.id),
-    )
-    watchedCredits.forEach((c, i) => {
-      if ((Number(c.amount) || 0) > 0 && !kept.has(c.supplierCreditId)) {
-        setValue(`credits.${i}.amount`, 0)
-      }
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalAbonos, creditsKey])
-
   function setPayableAmount(accountPayableId: string, next: number) {
     const index = watch('payables').findIndex((p) => p.accountPayableId === accountPayableId)
     if (index < 0) return
@@ -142,9 +127,15 @@ export function useEgresoForm() {
   const totalCreditsApplied = watchedCredits.reduce((sum, c) => sum + (Number(c.amount) || 0), 0)
   const dineroAPagar = calculateAmountToPay(totalAbonos, totalCreditsApplied)
   const totalPayments = watchedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-  // No basta con que dineroAPagar === totalPayments: también hay que frenar si el saldo a favor ya supera los abonos
+  // Un saldo marcado nunca se suelta solo: si ya no cabe en los abonos se bloquea el guardado y la fila muestra el error
+  const creditOverflowIndex = findCreditOverflowIndex(
+    watchedCredits.map((c) => Number(c.amount) || 0),
+    totalAbonos,
+  )
   const cuadraOk =
-    Math.round(totalPayments) === Math.round(dineroAPagar) && totalCreditsApplied <= totalAbonos
+    Math.round(totalPayments) === Math.round(dineroAPagar) &&
+    totalCreditsApplied <= totalAbonos &&
+    creditOverflowIndex < 0
 
   const { mutateAsync: createEgresoMutateAsync, isPending: isCreating } = useMutation({
     mutationFn: createEgreso,
@@ -198,6 +189,7 @@ export function useEgresoForm() {
     togglePayable,
     toggleCredit,
     canUseCreditAt,
+    creditOverflowIndex,
     errors,
     totalAbonos,
     totalCreditsApplied,

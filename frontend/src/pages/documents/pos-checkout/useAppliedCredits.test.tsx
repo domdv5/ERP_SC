@@ -89,7 +89,7 @@ describe('useAppliedCredits', () => {
     expect(result.current.selectedCredits).toContainEqual({ customerCreditId: 'c1', amount: 30.5 })
   })
 
-  it('suelta un saldo marcado a mano cuando el total baja y ya no cabe', async () => {
+  it('un saldo marcado a mano sigue marcado si el total baja: bloquea la venta y se recupera al subir', async () => {
     vi.mocked(getAvailableCustomerCredits).mockResolvedValue(apiCredits)
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const wrapper = ({ children }: { children: ReactNode }) => (
@@ -104,8 +104,11 @@ describe('useAppliedCredits', () => {
     act(() => result.current.setCreditUsed('c1', true))
 
     rerender({ total: 25 })
-    await waitFor(() =>
-      expect(result.current.selectedCredits).toEqual([{ customerCreditId: 'c2', amount: 20 }]),
-    )
+    await waitFor(() => expect(result.current.creditsOverTotal).toBe(true))
+    expect(result.current.selectedCredits).toContainEqual({ customerCreditId: 'c1', amount: 30.5 })
+
+    rerender({ total: 100 })
+    await waitFor(() => expect(result.current.creditsOverTotal).toBe(false))
+    expect(result.current.selectedCredits).toContainEqual({ customerCreditId: 'c1', amount: 30.5 })
   })
 })

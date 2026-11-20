@@ -66,11 +66,17 @@ describe('useReciboCajaForm — saldos a favor', () => {
     expect(result.current.canUseCreditAt(0)).toBe(false)
   })
 
-  it('suelta el saldo marcado cuando bajan los abonos y ya no cabe', async () => {
+  it('el saldo marcado sigue marcado si bajan los abonos: bloquea el guardado y se recupera al subirlos', async () => {
     const { result } = await renderForm()
     act(() => result.current.toggleCredit(0, true))
     act(() => result.current.setReceivableAmount('r1', 100000))
 
-    await waitFor(() => expect(result.current.watch('credits')[0].amount).toBe(0))
+    expect(result.current.watch('credits')[0].amount).toBe(200000)
+    expect(result.current.creditOverflowIndex).toBe(0)
+    expect(result.current.cuadraOk).toBe(false)
+
+    act(() => result.current.setReceivableAmount('r1', 500000))
+    expect(result.current.watch('credits')[0].amount).toBe(200000)
+    expect(result.current.creditOverflowIndex).toBe(-1)
   })
 })

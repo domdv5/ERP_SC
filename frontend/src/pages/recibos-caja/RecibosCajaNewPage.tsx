@@ -8,9 +8,13 @@ import { toast } from 'sonner'
 import { Plus, Trash2, Loader2, Wallet } from 'lucide-react'
 
 import { getThirdParties } from '@/services/third-parties.service'
-import { Combobox, CustomerBranchSelect, ThousandsInput } from '@/components/shared'
+import {
+  Combobox,
+  CustomerBranchSelect,
+  ThousandsInput,
+  UseCreditCheckbox,
+} from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
-import { UseCreditCheckbox } from '@/components/shared/CreditsPanel'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
@@ -18,6 +22,7 @@ import { usePermission } from '@/hooks/usePermission'
 import { RegisterExcedenteModal } from '@/pages/accounts-receivable/components/RegisterExcedenteModal'
 import { useReciboCajaForm, NO_BRANCH } from './useReciboCajaForm'
 import {
+  CREDITS_OVERFLOW_MESSAGE,
   RECIBO_CAJA_PAYMENT_METHODS,
   RECIBO_CAJA_DISCOUNT_REASONS,
   RECIBO_CAJA_DISCOUNT_REASON_LABELS,
@@ -106,6 +111,7 @@ export default function RecibosCajaNewPage() {
     creditFields,
     toggleCredit,
     canUseCreditAt,
+    creditOverflowIndex,
     totalCredits,
     paymentsArray,
     errors,
@@ -444,7 +450,9 @@ export default function RecibosCajaNewPage() {
                         {creditFields.map((field, index) => {
                           const row = watchedCredits[index]
                           const openCredit = creditById.get(field.customerCreditId)
-                          const rowError = errors.credits?.[index]?.amount
+                          const rowError =
+                            errors.credits?.[index]?.amount?.message ??
+                            (index === creditOverflowIndex ? CREDITS_OVERFLOW_MESSAGE : undefined)
                           return (
                             <tr key={field.id}>
                               <td className="px-5 py-3 text-content-muted text-xs whitespace-nowrap">
@@ -464,7 +472,7 @@ export default function RecibosCajaNewPage() {
                                 />
                                 {rowError && (
                                   <p className="text-xs text-red-500 font-accent mt-1">
-                                    {rowError.message}
+                                    {rowError}
                                   </p>
                                 )}
                               </td>

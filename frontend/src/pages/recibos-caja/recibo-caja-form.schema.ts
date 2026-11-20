@@ -78,6 +78,20 @@ const baseSchema = z.object({
 
 export type ReciboCajaFormValues = z.infer<typeof baseSchema>
 
+// Primer saldo marcado que ya no cabe en lo pendiente (-1 si todos caben); compara en centavos como el backend.
+export function findCreditOverflowIndex(amounts: number[], pending: number): number {
+  let total = 0
+  for (let i = 0; i < amounts.length; i++) {
+    if (amounts[i] <= 0) continue
+    total += amounts[i]
+    if (Math.round(total * 100) > Math.round(pending * 100)) return i
+  }
+  return -1
+}
+
+export const CREDITS_OVERFLOW_MESSAGE =
+  'El saldo a favor es mayor que lo pendiente: aumenta el abono o desmárcalo'
+
 // Cuadre exacto (sin saldo a favor): se valida junto, igual que hace el backend en una sola
 // transacción — si algo no cuadra acá, tampoco va a cuadrar allá.
 export const reciboCajaFormSchema = baseSchema.superRefine((data, ctx) => {
@@ -129,6 +143,17 @@ export const reciboCajaFormSchema = baseSchema.superRefine((data, ctx) => {
     }
   })
   const totalCredits = data.credits.reduce((sum, e) => sum + e.amount, 0)
+  const overflowIndex = findCreditOverflowIndex(
+    data.credits.map((e) => e.amount),
+    totalAbonos - discount,
+  )
+  if (overflowIndex >= 0) {
+    ctx.addIssue({
+      code: 'custom',
+      message: CREDITS_OVERFLOW_MESSAGE,
+      path: ['credits', overflowIndex, 'amount'],
+    })
+  }
 
   if (data.hasDiscount) {
     if (data.discountReason === '') {

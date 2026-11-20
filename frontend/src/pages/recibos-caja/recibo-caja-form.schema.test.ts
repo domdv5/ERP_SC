@@ -120,6 +120,29 @@ describe('reciboCajaFormSchema — saldos a favor', () => {
     expect(messages(values)).toContain(`Las formas de pago deben sumar ${formatCOP(70000)}`)
   })
 
+  it('marca error en la fila del saldo que ya no cabe (con descuento) y valida de nuevo al subir el abono', () => {
+    const overflow = 'El saldo a favor es mayor que lo pendiente: aumenta el abono o desmárcalo'
+    const credits = [{ customerCreditId: 'cc1', balance: 30000, amount: 30000 }]
+    const small = form({
+      hasDiscount: true,
+      discountReason: 'oferta',
+      discountAmount: 80000,
+      payments: [],
+      credits,
+      receivables: [
+        { accountReceivableId: 'ar1', balance: 100000, selected: true, amount: 100000 },
+      ],
+    })
+    const result = reciboCajaFormSchema.safeParse(small)
+    const issue = result.success
+      ? undefined
+      : result.error.issues.find((i) => i.message === overflow)
+    expect(issue?.path).toEqual(['credits', 0, 'amount'])
+
+    const ok = form({ ...base, payments: [{ method: 'efectivo_oficina', amount: 70000 }], credits })
+    expect(messages(ok)).not.toContain(overflow)
+  })
+
   it('rechaza saldos a favor que superan la deuda', () => {
     const values = form({
       ...base,

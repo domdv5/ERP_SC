@@ -6,9 +6,13 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { getReciboCajaOpenItems, createReciboCaja } from '@/services/recibos-caja.service'
-import { reciboCajaFormSchema, type ReciboCajaFormValues } from './recibo-caja-form.schema'
+import {
+  findCreditOverflowIndex,
+  reciboCajaFormSchema,
+  type ReciboCajaFormValues,
+} from './recibo-caja-form.schema'
 import { calculateCreditPending } from './recibo-caja-totals'
-import { canUseCredit, keepCreditsWithinTotal } from '@/lib/credit-application'
+import { canUseCredit } from '@/lib/credit-application'
 import type { CreateReciboCajaPayload } from '@/types'
 import type { ReciboCajaBranch } from '@/types/recibo-caja.types'
 import { todayInBogota } from '@/lib/format'
@@ -155,7 +159,13 @@ export function useReciboCajaForm() {
   const watchedCredits = watch('credits')
   const totalCredits = watchedCredits.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
   const expectedPayments = totalAbonos - discount - totalCredits
-  const cuadraOk = Math.round(totalPayments) === Math.round(expectedPayments)
+  // Un saldo marcado nunca se suelta solo: si ya no cabe se bloquea el guardado y la fila muestra el error
+  const creditOverflowIndex = findCreditOverflowIndex(
+    watchedCredits.map((e) => Number(e.amount) || 0),
+    totalAbonos - discount,
+  )
+  const cuadraOk =
+    Math.round(totalPayments) === Math.round(expectedPayments) && creditOverflowIndex < 0
 
   function setReceivableAmount(accountReceivableId: string, next: number) {
     const index = watch('receivables').findIndex(
@@ -179,25 +189,6 @@ export function useReciboCajaForm() {
       calculateCreditPending(totalAbonos, discount, amounts, index),
     )
   }
-
-  // Si bajan los abonos, los saldos marcados que ya no caben enteros se sueltan
-  const creditsKey = watchedCredits.map((c) => Number(c.amount) || 0).join(',')
-  useEffect(() => {
-    const kept = new Set(
-      keepCreditsWithinTotal(
-        watchedCredits
-          .map((c) => ({ id: c.customerCreditId, amount: Number(c.amount) || 0 }))
-          .filter((c) => c.amount > 0),
-        totalAbonos - discount,
-      ).map((c) => c.id),
-    )
-    watchedCredits.forEach((c, i) => {
-      if ((Number(c.amount) || 0) > 0 && !kept.has(c.customerCreditId)) {
-        setValue(`credits.${i}.amount`, 0)
-      }
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalAbonos, discount, creditsKey])
 
   function toggleReceivable(accountReceivableId: string, selected: boolean) {
     const index = watch('receivables').findIndex(
@@ -283,6 +274,7 @@ export function useReciboCajaForm() {
     creditFields: creditsArray.fields,
     toggleCredit,
     canUseCreditAt,
+    creditOverflowIndex,
     totalCredits,
     paymentsArray,
     errors,

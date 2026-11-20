@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getAvailableCustomerCredits } from '@/services/documents.service'
-import {
-  canUseCredit,
-  keepCreditsWithinTotal,
-  suggestCreditAmounts,
-} from '@/lib/credit-application'
+import { canUseCredit, suggestCreditAmounts } from '@/lib/credit-application'
 import { toNumericCredits, type SelectedCredit } from '@/pages/documents/pos-checkout.utils'
+
+export const CREDITS_OVER_TOTAL_MESSAGE =
+  'El saldo a favor es mayor que lo pendiente: aumenta el abono o desmárcalo'
 
 interface UseAppliedCreditsArgs {
   thirdPartyId: string
@@ -43,16 +42,13 @@ export function useAppliedCredits({
     creditsTouchedRef.current = new Set()
   }, [thirdPartyId])
 
-  // Propone los saldos completos más antiguos que caben, sin tocar los marcados a mano (que se sueltan si ya no caben).
+  // Propone los saldos completos más antiguos que caben; los marcados a mano nunca se sueltan solos.
   useEffect(() => {
     setCreditAmounts((prev) => {
       const touched = creditsTouchedRef.current
-      const manual = keepCreditsWithinTotal(
-        availableCredits
-          .filter((c) => touched.has(c.id) && (prev[c.id] ?? 0) > 0)
-          .map((c) => ({ id: c.id, amount: c.balance })),
-        total,
-      )
+      const manual = availableCredits
+        .filter((c) => touched.has(c.id) && (prev[c.id] ?? 0) > 0)
+        .map((c) => ({ id: c.id, amount: c.balance }))
       const manualSum = manual.reduce((sum, c) => sum + c.amount, 0)
       const proposal = suggestCreditAmounts(
         availableCredits.filter((c) => !touched.has(c.id)),
@@ -74,14 +70,12 @@ export function useAppliedCredits({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thirdPartyId, availableCreditsData, total, official])
 
-  // Lista final aplicada: cada saldo marcado va completo y solo entran los que caben en el total.
-  const selectedCredits: SelectedCredit[] = keepCreditsWithinTotal(
-    availableCredits
-      .filter((c) => (creditAmounts[c.id] ?? 0) > 0)
-      .map((c) => ({ id: c.id, amount: c.balance })),
-    total,
-  ).map((c) => ({ customerCreditId: c.id, amount: c.amount }))
+  // Cada saldo marcado va completo; si no caben todos, creditsOverTotal bloquea la venta (nunca se envía Σ > total).
+  const selectedCredits: SelectedCredit[] = availableCredits
+    .filter((c) => (creditAmounts[c.id] ?? 0) > 0)
+    .map((c) => ({ customerCreditId: c.id, amount: c.balance }))
   const creditsApplied = selectedCredits.reduce((sum, c) => sum + c.amount, 0)
+  const creditsOverTotal = Math.round(creditsApplied * 100) > Math.round(total * 100)
   const totalToPay = Math.max(grandTotal - creditsApplied, 0)
   const appliedAmounts = Object.fromEntries(
     selectedCredits.map((c) => [c.customerCreditId, c.amount]),
@@ -108,6 +102,7 @@ export function useAppliedCredits({
     canUseCredit: canUseCreditById,
     selectedCredits,
     creditsApplied,
+    creditsOverTotal,
     totalToPay,
   }
 }

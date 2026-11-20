@@ -18,9 +18,10 @@ interface CreditsPanelProps {
   canUseCredit: (creditId: string) => boolean
   creditsApplied: number
   totalAvailable: number
+  error?: string
 }
 
-// Casilla "Usar saldo": un saldo se aplica completo o no se aplica; si no cabe en lo pendiente queda deshabilitada.
+// Casilla "Usar saldo": un saldo se aplica completo o no; sin marcar y sin caber queda deshabilitada, marcada siempre se puede soltar.
 export function UseCreditCheckbox({
   checked,
   canUse,
@@ -57,6 +58,7 @@ export function CreditsPanel({
   canUseCredit,
   creditsApplied,
   totalAvailable,
+  error,
 }: CreditsPanelProps) {
   if (credits.length === 0) return null
 
@@ -92,6 +94,7 @@ export function CreditsPanel({
         <span className="text-content-secondary">Saldo aplicado</span>
         <span className="text-content font-mono font-semibold">{formatCOP(creditsApplied)}</span>
       </div>
+      {error && <p className="mt-2 text-xs text-red-500 font-accent">{error}</p>}
     </div>
   )
 }

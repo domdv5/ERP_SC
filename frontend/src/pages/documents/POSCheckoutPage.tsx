@@ -22,7 +22,7 @@ import { SaleCart } from './pos-checkout/SaleCart'
 import { SaleHeader } from './pos-checkout/SaleHeader'
 import { SaleSummary } from './pos-checkout/SaleSummary'
 import { findMissingItems } from './pos-checkout/findMissingItems'
-import { useAppliedCredits } from './pos-checkout/useAppliedCredits'
+import { useAppliedCredits, CREDITS_OVER_TOTAL_MESSAGE } from './pos-checkout/useAppliedCredits'
 import { useCartProducts } from './pos-checkout/useCartProducts'
 import { useConfirmSale } from './pos-checkout/useConfirmSale'
 import { useCreditLimit } from './pos-checkout/useCreditLimit'
@@ -129,6 +129,7 @@ export default function POSCheckoutPage() {
     creditExceeded,
     creditCoversAll,
     creditLineOverLimit,
+    creditsOverTotal: credits.creditsOverTotal,
     creditUnavailable: (isCredit || hasCreditLine) && isCreditQueryError && !creditData,
   })
   const canConfirm = missingItems.length === 0
@@ -329,6 +330,7 @@ export default function POSCheckoutPage() {
                 canUseCredit={credits.canUseCredit}
                 creditsApplied={creditsApplied}
                 totalAvailable={credits.totalAvailable}
+                error={credits.creditsOverTotal ? CREDITS_OVER_TOTAL_MESSAGE : undefined}
               />
             )}
           </div>
