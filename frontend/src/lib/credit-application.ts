@@ -29,3 +29,14 @@ export function suggestCreditAmounts(credits: CreditBalance[], total: number): A
   }
   return result
 }
+
+// Primer saldo marcado que ya no cabe en lo pendiente (-1 si todos caben); cada pantalla calcula su propio pendiente.
+export function findCreditOverflowIndex(amounts: number[], pending: number): number {
+  let total = 0
+  for (let i = 0; i < amounts.length; i++) {
+    if (amounts[i] <= 0) continue
+    total += amounts[i]
+    if (Math.round(total * 100) > Math.round(pending * 100)) return i
+  }
+  return -1
+}

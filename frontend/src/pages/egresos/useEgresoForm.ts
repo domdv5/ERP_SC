@@ -6,18 +6,14 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { getEgresoOpenItems, createEgreso } from '@/services/egresos.service'
-import {
-  egresoFormSchema,
-  findCreditOverflowIndex,
-  type EgresoFormValues,
-} from './egreso-form.schema'
+import { egresoFormSchema, type EgresoFormValues } from './egreso-form.schema'
 import {
   calculateAmountToPay,
   calculateCreditPending,
   limitPayableAmount,
 } from './egreso-form.utils'
 import type { CreateEgresoPayload } from '@/types'
-import { canUseCredit } from '@/lib/credit-application'
+import { canUseCredit, findCreditOverflowIndex } from '@/lib/credit-application'
 import { todayInBogota } from '@/lib/format'
 import { getApiErrorMessage } from '@/lib/api-error'
 

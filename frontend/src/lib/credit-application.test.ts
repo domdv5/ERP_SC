@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canUseCredit, suggestCreditAmounts } from './credit-application'
+import { canUseCredit, findCreditOverflowIndex, suggestCreditAmounts } from './credit-application'
 
 describe('suggestCreditAmounts', () => {
   it('lista vacía → vacío', () => {
@@ -62,5 +62,24 @@ describe('canUseCredit', () => {
 
   it('compara en centavos, sin errores de coma flotante', () => {
     expect(canUseCredit(0.3, 0.1 + 0.2)).toBe(true)
+  })
+})
+
+describe('findCreditOverflowIndex', () => {
+  it('todos caben → -1', () => {
+    expect(findCreditOverflowIndex([40, 60], 100)).toBe(-1)
+  })
+
+  it('devuelve el primer saldo marcado que hace pasar la suma de lo pendiente', () => {
+    expect(findCreditOverflowIndex([40, 30, 50], 100)).toBe(2)
+  })
+
+  it('ignora los saldos sin marcar (monto 0)', () => {
+    expect(findCreditOverflowIndex([0, 120, 0], 100)).toBe(1)
+    expect(findCreditOverflowIndex([0, 0], 0)).toBe(-1)
+  })
+
+  it('compara en centavos, sin errores de coma flotante', () => {
+    expect(findCreditOverflowIndex([0.1, 0.2], 0.3)).toBe(-1)
   })
 })

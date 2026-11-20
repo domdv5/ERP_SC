@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { formatCOP } from '@/lib/format'
+import { findCreditOverflowIndex } from '@/lib/credit-application'
 
 // El input con separador de miles (ThousandsInput) devuelve vacío como `undefined`; se trata
 // como 0 para que la validación siempre sume números.
@@ -77,17 +78,6 @@ const baseSchema = z.object({
 })
 
 export type ReciboCajaFormValues = z.infer<typeof baseSchema>
-
-// Primer saldo marcado que ya no cabe en lo pendiente (-1 si todos caben); compara en centavos como el backend.
-export function findCreditOverflowIndex(amounts: number[], pending: number): number {
-  let total = 0
-  for (let i = 0; i < amounts.length; i++) {
-    if (amounts[i] <= 0) continue
-    total += amounts[i]
-    if (Math.round(total * 100) > Math.round(pending * 100)) return i
-  }
-  return -1
-}
 
 export const CREDITS_OVERFLOW_MESSAGE =
   'El saldo a favor es mayor que lo pendiente: aumenta el abono o desmárcalo'

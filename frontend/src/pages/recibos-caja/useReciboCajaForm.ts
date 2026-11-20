@@ -6,13 +6,9 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { getReciboCajaOpenItems, createReciboCaja } from '@/services/recibos-caja.service'
-import {
-  findCreditOverflowIndex,
-  reciboCajaFormSchema,
-  type ReciboCajaFormValues,
-} from './recibo-caja-form.schema'
+import { reciboCajaFormSchema, type ReciboCajaFormValues } from './recibo-caja-form.schema'
 import { calculateCreditPending } from './recibo-caja-totals'
-import { canUseCredit } from '@/lib/credit-application'
+import { canUseCredit, findCreditOverflowIndex } from '@/lib/credit-application'
 import type { CreateReciboCajaPayload } from '@/types'
 import type { ReciboCajaBranch } from '@/types/recibo-caja.types'
 import { todayInBogota } from '@/lib/format'
