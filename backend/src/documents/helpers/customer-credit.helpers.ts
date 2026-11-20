@@ -25,8 +25,7 @@ export async function applyCustomerCredits(
     return;
   }
 
-  // Agrupa por crédito: si el mismo aparece dos veces, validar cada línea suelta
-  // dejaría pasar una sobre-aplicación que solo se ve al sumarlas.
+  // Suma lo pedido de cada saldo a favor: si un saldo llega repetido, se valida su total, no cada renglón suelto
   const requestedCentsByCreditId = new Map<string, number>();
   for (const application of appliedCustomerCredits) {
     const previous =
@@ -84,10 +83,10 @@ export async function applyCustomerCredits(
       throw new BadRequestException('El saldo a favor citado ya fue utilizado');
     }
 
-    const requestedCents = requestedCentsByCreditId.get(credit.id)!;
-    if (requestedCents > toCents(credit.balance)) {
+    // Regla del dueño (2026-11-20): el saldo a favor no se divide, se usa todo lo disponible o nada
+    if (requestedCentsByCreditId.get(credit.id)! !== toCents(credit.balance)) {
       throw new BadRequestException(
-        `El monto aplicado del saldo a favor excede su saldo disponible: ${Number(
+        `El saldo a favor se usa completo o no se usa. Saldo disponible: ${Number(
           credit.balance,
         ).toFixed(2)}`,
       );

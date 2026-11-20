@@ -283,10 +283,12 @@ export class EgresosService {
             'La nota crédito citada ya fue utilizada',
           );
         }
-        const requestedCents = requestedCentsByCreditId.get(credit.id)!;
-        if (requestedCents > toCents(credit.balance)) {
+        // Regla del dueño (2026-11-20): el saldo a favor no se divide, se usa todo lo disponible o nada
+        if (
+          requestedCentsByCreditId.get(credit.id)! !== toCents(credit.balance)
+        ) {
           throw new BadRequestException(
-            `El monto aplicado de la nota crédito excede su saldo disponible: ${Number(credit.balance).toFixed(2)}`,
+            `El saldo a favor se usa completo o no se usa. Saldo disponible: ${Number(credit.balance).toFixed(2)}`,
           );
         }
       }

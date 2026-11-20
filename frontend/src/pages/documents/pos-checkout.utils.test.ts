@@ -375,12 +375,12 @@ describe('toNumericCredits', () => {
   it('convierte el saldo Decimal (string) a número y el reparto suma bien', () => {
     const credits = toNumericCredits([credit('a', '1500.00'), credit('b', '2000.50')])
     expect(credits.map((c) => c.balance)).toEqual([1500, 2000.5])
-    const applied = suggestCreditAmounts(credits, 3000)
+    const applied = suggestCreditAmounts(credits, 4000)
     expect(applied).toEqual([
       { id: 'a', amount: 1500 },
-      { id: 'b', amount: 1500 },
+      { id: 'b', amount: 2000.5 },
     ])
-    expect(applied.reduce((sum, c) => sum + c.amount, 0)).toBe(3000)
+    expect(applied.reduce((sum, c) => sum + c.amount, 0)).toBe(3500.5)
   })
 
   it('conserva sourceDocument null', () => {

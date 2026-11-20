@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { PaymentLine } from '@/pages/documents/pos-checkout.utils'
 import { findMissingItems } from './findMissingItems'
+import { CREDITS_OVER_TOTAL_MESSAGE } from './useAppliedCredits'
 
 type Input = Parameters<typeof findMissingItems>[0]
 
@@ -42,6 +43,9 @@ describe('findMissingItems', () => {
   })
 
   it('devuelve lista vacía cuando la venta está completa', () => {
+    expect(findMissingItems({ ...completeSale, creditsOverTotal: true })).toEqual([
+      CREDITS_OVER_TOTAL_MESSAGE,
+    ])
     expect(findMissingItems(completeSale)).toEqual([])
   })
 

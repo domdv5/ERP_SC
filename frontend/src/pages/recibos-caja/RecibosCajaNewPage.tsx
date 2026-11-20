@@ -5,10 +5,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { Controller } from 'react-hook-form'
 import { toast } from 'sonner'
-import { Plus, Trash2, Loader2, Wallet, ArrowDownToLine } from 'lucide-react'
+import { Plus, Trash2, Loader2, Wallet } from 'lucide-react'
 
 import { getThirdParties } from '@/services/third-parties.service'
-import { Combobox, CustomerBranchSelect, ThousandsInput } from '@/components/shared'
+import {
+  Combobox,
+  CustomerBranchSelect,
+  ThousandsInput,
+  UseCreditButton,
+} from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
@@ -17,6 +22,7 @@ import { usePermission } from '@/hooks/usePermission'
 import { RegisterExcedenteModal } from '@/pages/accounts-receivable/components/RegisterExcedenteModal'
 import { useReciboCajaForm, NO_BRANCH } from './useReciboCajaForm'
 import {
+  CREDITS_OVERFLOW_MESSAGE,
   RECIBO_CAJA_PAYMENT_METHODS,
   RECIBO_CAJA_DISCOUNT_REASONS,
   RECIBO_CAJA_DISCOUNT_REASON_LABELS,
@@ -103,8 +109,9 @@ export default function RecibosCajaNewPage() {
     handleSubmit,
     receivablesFields,
     creditFields,
-    setCreditAmount,
-    fillCredit,
+    toggleCredit,
+    canUseCreditAt,
+    creditOverflowIndex,
     totalCredits,
     paymentsArray,
     errors,
@@ -443,7 +450,9 @@ export default function RecibosCajaNewPage() {
                         {creditFields.map((field, index) => {
                           const row = watchedCredits[index]
                           const openCredit = creditById.get(field.customerCreditId)
-                          const rowError = errors.credits?.[index]?.amount
+                          const rowError =
+                            errors.credits?.[index]?.amount?.message ??
+                            (index === creditOverflowIndex ? CREDITS_OVERFLOW_MESSAGE : undefined)
                           return (
                             <tr key={field.id}>
                               <td className="px-5 py-3 text-content-muted text-xs whitespace-nowrap">
@@ -456,25 +465,14 @@ export default function RecibosCajaNewPage() {
                                 {formatCOP(row?.balance ?? 0)}
                               </td>
                               <td className="px-5 py-3">
-                                <div className="flex items-center gap-2">
-                                  <ThousandsInput
-                                    value={row?.amount}
-                                    onChange={(v) => setCreditAmount(index, v ?? 0)}
-                                    placeholder="0"
-                                    className="w-32 py-1.5"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => fillCredit(index)}
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-brand-secondary border border-brand-secondary/30 rounded-lg hover:bg-brand-secondary/10 transition-colors whitespace-nowrap"
-                                  >
-                                    <ArrowDownToLine className="w-3.5 h-3.5" />
-                                    Usar todo
-                                  </button>
-                                </div>
+                                <UseCreditButton
+                                  checked={(row?.amount ?? 0) > 0}
+                                  canUse={canUseCreditAt(index)}
+                                  onChange={(used) => toggleCredit(index, used)}
+                                />
                                 {rowError && (
                                   <p className="text-xs text-red-500 font-accent mt-1">
-                                    {rowError.message}
+                                    {rowError}
                                   </p>
                                 )}
                               </td>

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { formatCOP } from '@/lib/format'
+import { findCreditOverflowIndex } from '@/lib/credit-application'
 
 // El input con separador de miles (ThousandsInput) devuelve vacío como `undefined`; se trata
 // como 0 para que la validación siempre sume números.
@@ -78,6 +79,9 @@ const baseSchema = z.object({
 
 export type ReciboCajaFormValues = z.infer<typeof baseSchema>
 
+export const CREDITS_OVERFLOW_MESSAGE =
+  'El saldo a favor es mayor que lo pendiente: aumenta el abono o desmárcalo'
+
 // Cuadre exacto (sin saldo a favor): se valida junto, igual que hace el backend en una sola
 // transacción — si algo no cuadra acá, tampoco va a cuadrar allá.
 export const reciboCajaFormSchema = baseSchema.superRefine((data, ctx) => {
@@ -120,15 +124,26 @@ export const reciboCajaFormSchema = baseSchema.superRefine((data, ctx) => {
   const discount = data.hasDiscount ? data.discountAmount : 0
 
   data.credits.forEach((e, index) => {
-    if (Math.round(e.amount) > Math.round(e.balance)) {
+    if (e.amount > 0 && Math.round(e.amount * 100) !== Math.round(e.balance * 100)) {
       ctx.addIssue({
         code: 'custom',
-        message: `No puede superar el saldo a favor (${formatCOP(e.balance)})`,
+        message: `El saldo a favor se usa completo o no se usa. Saldo disponible: ${formatCOP(e.balance)}`,
         path: ['credits', index, 'amount'],
       })
     }
   })
   const totalCredits = data.credits.reduce((sum, e) => sum + e.amount, 0)
+  const overflowIndex = findCreditOverflowIndex(
+    data.credits.map((e) => e.amount),
+    totalAbonos - discount,
+  )
+  if (overflowIndex >= 0) {
+    ctx.addIssue({
+      code: 'custom',
+      message: CREDITS_OVERFLOW_MESSAGE,
+      path: ['credits', overflowIndex, 'amount'],
+    })
+  }
 
   if (data.hasDiscount) {
     if (data.discountReason === '') {

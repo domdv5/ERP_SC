@@ -1,4 +1,5 @@
-// Reparto de saldos a favor, compartido entre checkout POS/COT y Egresos; genérico sobre `id`, cada llamador mapea al campo de su payload.
+// Reparto de saldos a favor, compartido entre checkout POS/COT, Recibos y Egresos; genérico sobre `id`, cada llamador mapea al campo de su payload.
+// Regla del dueño (2026-11-20): un saldo a favor se usa por todo su disponible o no se usa.
 
 export interface CreditBalance {
   id: string
@@ -10,44 +11,32 @@ export interface AppliedCredit {
   amount: number
 }
 
-// Recorre los saldos en el orden recibido (más antiguo primero) asignando el mínimo entre saldo y lo que falta, hasta cubrir el total.
+const toCents = (value: number) => Math.round(value * 100)
+
+export function canUseCredit(balance: number, pending: number): boolean {
+  const balanceCents = toCents(balance)
+  return balanceCents > 0 && balanceCents <= toCents(pending)
+}
+
+// En el orden recibido (más antiguo primero) toma cada saldo completo que todavía cabe en lo que falta.
 export function suggestCreditAmounts(credits: CreditBalance[], total: number): AppliedCredit[] {
   let remaining = Math.max(total, 0)
   const result: AppliedCredit[] = []
   for (const credit of credits) {
-    if (remaining <= 0) break
-    const amount = Math.min(credit.balance, remaining)
-    if (amount <= 0) continue
-    result.push({ id: credit.id, amount })
-    remaining -= amount
+    if (!canUseCredit(credit.balance, remaining)) continue
+    result.push({ id: credit.id, amount: credit.balance })
+    remaining -= credit.balance
   }
   return result
 }
 
-// Tope para un cambio manual del monto aplicado de un saldo a favor: no puede ser negativo, ni
-// pasar de su propio saldo, ni hacer que la suma de todos los saldos aplicados supere el total.
-export function limitCreditAmount(
-  next: number,
-  creditBalance: number,
-  total: number,
-  othersSum: number,
-): number {
-  if (Number.isNaN(next) || next < 0) return 0
-  const ceiling = Math.min(creditBalance, Math.max(total - othersSum, 0))
-  return Math.min(next, ceiling)
-}
-
-// Recorte final de la lista de saldos aplicados para que su suma nunca supere el total (por si
-// el total bajó después de fijar los montos). Recorta desde el último.
-export function limitCreditsToTotal(credits: AppliedCredit[], total: number): AppliedCredit[] {
-  let budget = Math.max(total, 0)
-  const result: AppliedCredit[] = []
-  for (const credit of credits) {
-    if (budget <= 0) break
-    const amount = Math.min(credit.amount, budget)
-    if (amount <= 0) continue
-    result.push({ ...credit, amount })
-    budget -= amount
+// Primer saldo marcado que ya no cabe en lo pendiente (-1 si todos caben); cada pantalla calcula su propio pendiente.
+export function findCreditOverflowIndex(amounts: number[], pending: number): number {
+  let total = 0
+  for (let i = 0; i < amounts.length; i++) {
+    if (amounts[i] <= 0) continue
+    total += amounts[i]
+    if (Math.round(total * 100) > Math.round(pending * 100)) return i
   }
-  return result
+  return -1
 }

@@ -565,7 +565,7 @@ export class RecibosCajaService {
     });
   }
 
-  /** Valida los saldos a favor de administración citados (ya bloqueados): del cliente, de la misma sucursal del recibo, disponibles y con saldo suficiente. */
+  /** Valida los saldos a favor de administración citados (ya bloqueados): del cliente, de la misma sucursal del recibo, disponibles y usados por todo su saldo. */
   private async findUsableCredits(
     tx: Prisma.TransactionClient,
     clientId: string,
@@ -601,9 +601,10 @@ export class RecibosCajaService {
           'El saldo a favor pertenece a otra sucursal: solo se aplica a facturas de su sucursal',
         );
       }
-      if (requestedCentsById.get(credit.id)! > toCents(credit.balance)) {
+      // Regla del dueño (2026-11-20): el saldo a favor no se divide, se usa todo lo disponible o nada
+      if (requestedCentsById.get(credit.id)! !== toCents(credit.balance)) {
         throw new BadRequestException(
-          `El valor usado excede el saldo a favor. Saldo disponible: ${Number(credit.balance).toFixed(2)}`,
+          `El saldo a favor se usa completo o no se usa. Saldo disponible: ${Number(credit.balance).toFixed(2)}`,
         );
       }
     }

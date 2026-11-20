@@ -386,8 +386,10 @@ describe('RecibosCajaService', () => {
 
     beforeEach(() => mockReceivable(null));
 
-    it('usa el saldo a favor como pago y descuenta su saldo', async () => {
-      tx.customerCredit.findMany.mockResolvedValue([credit()]);
+    it('usa el saldo a favor completo como pago y queda usado', async () => {
+      tx.customerCredit.findMany.mockResolvedValue([
+        credit({ balance: new Prisma.Decimal(30) }),
+      ]);
       await service.create(
         dtoWith([70], [{ customerCreditId: 'cc1', amount: 30 }]),
         user,
@@ -405,7 +407,7 @@ describe('RecibosCajaService', () => {
       });
       expect(tx.customerCredit.update).toHaveBeenCalledWith({
         where: { id: 'cc1' },
-        data: { balance: 20, status: 'available' },
+        data: { balance: 0, status: 'used' },
       });
       expect(tx.accountsReceivable.update).toHaveBeenCalledWith({
         where: { id: 'ar1' },
@@ -509,12 +511,29 @@ describe('RecibosCajaService', () => {
           dtoWith([40], [{ customerCreditId: 'cc1', amount: 60 }]),
           user,
         ),
-      ).rejects.toThrow('El valor usado excede el saldo a favor');
+      ).rejects.toThrow(
+        'El saldo a favor se usa completo o no se usa. Saldo disponible: 50.00',
+      );
+      expectNothingSaved();
+    });
+
+    it('rechaza usar solo una parte del saldo a favor', async () => {
+      tx.customerCredit.findMany.mockResolvedValue([credit()]);
+      await expect(
+        service.create(
+          dtoWith([70], [{ customerCreditId: 'cc1', amount: 30 }]),
+          user,
+        ),
+      ).rejects.toThrow(
+        'El saldo a favor se usa completo o no se usa. Saldo disponible: 50.00',
+      );
       expectNothingSaved();
     });
 
     it('rechaza si pagos + saldos a favor no cuadran con los abonos', async () => {
-      tx.customerCredit.findMany.mockResolvedValue([credit()]);
+      tx.customerCredit.findMany.mockResolvedValue([
+        credit({ balance: new Prisma.Decimal(30) }),
+      ]);
       await expect(
         service.create(
           dtoWith([80], [{ customerCreditId: 'cc1', amount: 30 }]),

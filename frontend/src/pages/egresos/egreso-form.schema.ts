@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { formatCOP } from '@/lib/format'
+import { findCreditOverflowIndex } from '@/lib/credit-application'
 
 // El input con separador de miles (ThousandsInput) devuelve vacío como `undefined`; se trata
 // como 0 para que la validación siempre sume números.
@@ -43,6 +44,9 @@ const baseSchema = z.object({
 
 export type EgresoFormValues = z.infer<typeof baseSchema>
 
+export const CREDITS_OVERFLOW_MESSAGE =
+  'El saldo a favor es mayor que lo pendiente: aumenta el abono o desmárcalo'
+
 // Todo el cuadre (abonos, saldo a favor, formas de pago) se valida junto, igual que hace el
 // backend en una sola transacción: si algo no cuadra acá, tampoco va a cuadrar allá.
 export const egresoFormSchema = baseSchema.superRefine((data, ctx) => {
@@ -74,16 +78,27 @@ export const egresoFormSchema = baseSchema.superRefine((data, ctx) => {
   })
 
   data.credits.forEach((c, index) => {
-    if (c.amount > c.balance) {
+    if (c.amount > 0 && Math.round(c.amount * 100) !== Math.round(c.balance * 100)) {
       ctx.addIssue({
         code: 'custom',
-        message: `No puede superar el saldo disponible (${formatCOP(c.balance)})`,
+        message: `El saldo a favor se usa completo o no se usa. Saldo disponible: ${formatCOP(c.balance)}`,
         path: ['credits', index, 'amount'],
       })
     }
   })
 
   const totalAbonos = selectedPayables.reduce((sum, p) => sum + p.amount, 0)
+  const overflowIndex = findCreditOverflowIndex(
+    data.credits.map((c) => c.amount),
+    totalAbonos,
+  )
+  if (overflowIndex >= 0) {
+    ctx.addIssue({
+      code: 'custom',
+      message: CREDITS_OVERFLOW_MESSAGE,
+      path: ['credits', overflowIndex, 'amount'],
+    })
+  }
   const totalCredits = data.credits.reduce((sum, c) => sum + c.amount, 0)
   const totalPayments = data.payments.reduce((sum, p) => sum + p.amount, 0)
   const dineroAPagar = Math.max(totalAbonos - totalCredits, 0)

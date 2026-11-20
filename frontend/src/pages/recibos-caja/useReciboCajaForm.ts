@@ -7,6 +7,8 @@ import { toast } from 'sonner'
 
 import { getReciboCajaOpenItems, createReciboCaja } from '@/services/recibos-caja.service'
 import { reciboCajaFormSchema, type ReciboCajaFormValues } from './recibo-caja-form.schema'
+import { calculateCreditPending } from './recibo-caja-totals'
+import { canUseCredit, findCreditOverflowIndex } from '@/lib/credit-application'
 import type { CreateReciboCajaPayload } from '@/types'
 import type { ReciboCajaBranch } from '@/types/recibo-caja.types'
 import { todayInBogota } from '@/lib/format'
@@ -131,8 +133,8 @@ export function useReciboCajaForm() {
         .map((e) => ({
           customerCreditId: e.id,
           balance: Number(e.balance),
-          // Si otro recibo gastó parte del saldo a favor, lo ya escrito no puede pasar del saldo nuevo
-          amount: Math.min(previousCredits.get(e.id)?.amount ?? 0, Number(e.balance)),
+          // Un saldo ya marcado sigue marcado, por su saldo nuevo completo
+          amount: (previousCredits.get(e.id)?.amount ?? 0) > 0 ? Number(e.balance) : 0,
         })),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -153,7 +155,13 @@ export function useReciboCajaForm() {
   const watchedCredits = watch('credits')
   const totalCredits = watchedCredits.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
   const expectedPayments = totalAbonos - discount - totalCredits
-  const cuadraOk = Math.round(totalPayments) === Math.round(expectedPayments)
+  // Un saldo marcado nunca se suelta solo: si ya no cabe se bloquea el guardado y la fila muestra el error
+  const creditOverflowIndex = findCreditOverflowIndex(
+    watchedCredits.map((e) => Number(e.amount) || 0),
+    totalAbonos - discount,
+  )
+  const cuadraOk =
+    Math.round(totalPayments) === Math.round(expectedPayments) && creditOverflowIndex < 0
 
   function setReceivableAmount(accountReceivableId: string, next: number) {
     const index = watch('receivables').findIndex(
@@ -165,21 +173,17 @@ export function useReciboCajaForm() {
     setValue(`receivables.${index}.amount`, clamped)
   }
 
-  function setCreditAmount(index: number, next: number) {
-    const balance = watch(`credits.${index}.balance`)
-    const clamped = Number.isNaN(next) || next < 0 ? 0 : Math.min(next, balance)
-    setValue(`credits.${index}.amount`, clamped)
+  // Un saldo se aplica completo o no se aplica
+  function toggleCredit(index: number, used: boolean) {
+    setValue(`credits.${index}.amount`, used ? watch(`credits.${index}.balance`) : 0)
   }
 
-  // Usa lo que falta de la deuda (tras descuento y otros saldos a favor), sin pasar del saldo del saldo a favor
-  function fillCredit(index: number) {
-    const others = watch('credits').reduce(
-      (sum, e, i) => (i === index ? sum : sum + (Number(e.amount) || 0)),
-      0,
+  function canUseCreditAt(index: number): boolean {
+    const amounts = watchedCredits.map((e) => Number(e.amount) || 0)
+    return canUseCredit(
+      watchedCredits[index]?.balance ?? 0,
+      calculateCreditPending(totalAbonos, discount, amounts, index),
     )
-    const remaining = totalAbonos - discount - others
-    const balance = watch(`credits.${index}.balance`)
-    setValue(`credits.${index}.amount`, Math.max(0, Math.min(balance, remaining)))
   }
 
   function toggleReceivable(accountReceivableId: string, selected: boolean) {
@@ -264,8 +268,9 @@ export function useReciboCajaForm() {
     handleSubmit,
     receivablesFields: receivablesArray.fields,
     creditFields: creditsArray.fields,
-    setCreditAmount,
-    fillCredit,
+    toggleCredit,
+    canUseCreditAt,
+    creditOverflowIndex,
     totalCredits,
     paymentsArray,
     errors,
