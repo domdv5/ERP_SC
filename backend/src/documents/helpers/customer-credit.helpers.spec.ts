@@ -97,6 +97,22 @@ describe('applyCustomerCredits — completo o nada', () => {
     expect(tx.customerCredit.update).not.toHaveBeenCalled();
   });
 
+  it('acepta el mismo saldo en dos líneas que suman todo lo disponible', async () => {
+    await applyCustomerCredits(tx as unknown as Prisma.TransactionClient, {
+      customerId: 'c1',
+      saleDocumentId: 'sale1',
+      saleTotal: 100000,
+      appliedCustomerCredits: [
+        { customerCreditId: 'cc1', amount: 15000 },
+        { customerCreditId: 'cc1', amount: 25000 },
+      ],
+    });
+    expect(tx.customerCredit.update).toHaveBeenCalledWith({
+      where: { id: 'cc1' },
+      data: { balance: 0, status: 'used' },
+    });
+  });
+
   it('un saldo ya usado en parte se aplica por todo lo que le queda', async () => {
     await apply(40000);
     expect(tx.customerCreditApplication.create).toHaveBeenCalledWith({
