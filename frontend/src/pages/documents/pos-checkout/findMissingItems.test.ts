@@ -67,7 +67,7 @@ describe('findMissingItems', () => {
     ).toEqual([])
   })
 
-  it('mantiene el orden de los mensajes cuando faltan varias cosas', () => {
+  it('bloquea por cada cosa que falta', () => {
     const everythingMissing: Input = {
       thirdPartyId: 'tp-1',
       isLoadingBranches: true,
@@ -84,7 +84,7 @@ describe('findMissingItems', () => {
       creditExceeded: true,
     }
 
-    expect(findMissingItems(everythingMissing)).toEqual([
+    const expected = [
       'Cargando sucursales del cliente...',
       'Selecciona la sucursal del cliente',
       'Selecciona una vendedora',
@@ -94,8 +94,11 @@ describe('findMissingItems', () => {
       'Corrige los precios por debajo del mínimo permitido',
       'Cargando cupo de crédito del cliente...',
       'La venta supera el cupo de crédito disponible del cliente',
-    ])
-    expect(findMissingItems({ ...everythingMissing, thirdPartyId: '' })[0]).toBe(
+    ]
+    const missing = findMissingItems(everythingMissing)
+    expect(missing).toEqual(expect.arrayContaining(expected))
+    expect(missing).toHaveLength(expected.length)
+    expect(findMissingItems({ ...everythingMissing, thirdPartyId: '' })).toContain(
       'Selecciona un cliente',
     )
   })

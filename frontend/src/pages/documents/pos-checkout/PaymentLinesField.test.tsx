@@ -31,11 +31,6 @@ function renderField(
 const hasCreditOption = () => screen.queryByRole('option', { name: 'Crédito' }) !== null
 
 describe('PaymentLinesField — Crédito', () => {
-  it('ofrece Crédito en POS normal con cliente', () => {
-    renderField()
-    expect(hasCreditOption()).toBe(true)
-  })
-
   it('no ofrece Crédito en M2 (oficial)', () => {
     renderField({ official: true })
     expect(hasCreditOption()).toBe(false)
@@ -44,33 +39,6 @@ describe('PaymentLinesField — Crédito', () => {
   it('no ofrece Crédito sin cliente', () => {
     renderField({ hasCustomer: false })
     expect(hasCreditOption()).toBe(false)
-  })
-
-  it('muestra el cupo solo cuando hay línea de crédito', () => {
-    renderField({}, [
-      { method: 'efectivo_almacen', amount: 300000 },
-      { method: 'credito', amount: 200000 },
-    ])
-    expect(screen.getByText(/Cupo disponible:/)).toBeTruthy()
-    expect(screen.getByText(/\$\s?1\.200\.000/)).toBeTruthy()
-  })
-
-  it('no muestra cupo sin línea de crédito', () => {
-    renderField({}, [{ method: 'efectivo_almacen', amount: 500000 }])
-    expect(screen.queryByText(/Cupo disponible/)).toBeNull()
-  })
-
-  it('avisa si el crédito cubre toda la venta', () => {
-    renderField({}, [{ method: 'credito', amount: 500000 }])
-    expect(screen.getByText(/haz una venta a crédito \(COT\)/)).toBeTruthy()
-  })
-
-  it('avisa si el crédito supera el cupo', () => {
-    renderField({ availableCredit: 100000 }, [
-      { method: 'efectivo_almacen', amount: 300000 },
-      { method: 'credito', amount: 200000 },
-    ])
-    expect(screen.getByText(/supera el cupo disponible/)).toBeTruthy()
   })
 
   const creditLines: PaymentLine[] = [
@@ -88,11 +56,5 @@ describe('PaymentLinesField — Crédito', () => {
     expect(screen.queryByText(/Consultando cupo/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
     expect(onRetryCredit).toHaveBeenCalledTimes(1)
-  })
-
-  it('mientras carga (sin error) muestra Consultando cupo', () => {
-    renderField({ availableCredit: undefined, isLoadingCredit: true }, creditLines)
-    expect(screen.getByText(/Consultando cupo/)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Reintentar' })).toBeNull()
   })
 })

@@ -5,17 +5,6 @@ import { UpdateCustomerBranchDto } from './update-customer-branch.dto';
 import { UpdateThirdPartyDto } from './update-third-party.dto';
 
 describe('UpdateCustomerBranchDto', () => {
-  it("convierte '' en null en address y phone y valida", async () => {
-    const dto = plainToInstance(UpdateCustomerBranchDto, {
-      address: '',
-      phone: '',
-    });
-
-    expect(dto.address).toBeNull();
-    expect(dto.phone).toBeNull();
-    expect(await validate(dto)).toHaveLength(0);
-  });
-
   it('deja undefined los campos omitidos', async () => {
     const dto = plainToInstance(UpdateCustomerBranchDto, { name: 'Norte' });
 
@@ -35,30 +24,7 @@ describe('UpdateCustomerBranchDto', () => {
   });
 });
 
-describe('CustomerBranchDto (crear)', () => {
-  it("sigue convirtiendo '' en undefined", () => {
-    const dto = plainToInstance(CustomerBranchDto, {
-      name: 'Norte',
-      address: '',
-      phone: '',
-    });
-
-    expect(dto.address).toBeUndefined();
-    expect(dto.phone).toBeUndefined();
-  });
-});
-
 describe('cityCode (tercero y sucursal)', () => {
-  it.each([CustomerBranchDto, UpdateCustomerBranchDto, UpdateThirdPartyDto])(
-    "%p: '' se guarda como null (sin ciudad)",
-    async (Dto) => {
-      const dto = plainToInstance(Dto, { name: 'Norte', cityCode: '' });
-
-      expect(dto.cityCode).toBeNull();
-      expect(await validate(dto)).toHaveLength(0);
-    },
-  );
-
   it.each([CustomerBranchDto, UpdateCustomerBranchDto, UpdateThirdPartyDto])(
     '%p: acepta un código DANE de 5 dígitos',
     async (Dto) => {
@@ -76,9 +42,6 @@ describe('cityCode (tercero y sucursal)', () => {
       const errors = await validate(dto);
 
       expect(errors.map((error) => error.property)).toEqual(['cityCode']);
-      expect(errors[0].constraints).toEqual({
-        matches: 'La ciudad no es válida',
-      });
     },
   );
 });

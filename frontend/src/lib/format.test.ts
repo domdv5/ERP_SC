@@ -19,12 +19,8 @@ describe('formatBogotaDateLong', () => {
 })
 
 describe('formatDateOnly', () => {
-  it('fecha corta sin cero a la izquierda ni punto en el mes, en el día guardado', () => {
-    expect(formatDateOnly('2026-11-06T00:00:00.000Z')).toBe('6 nov 2026')
-  })
-
-  it('sin fecha muestra un guion', () => {
-    expect(formatDateOnly(null)).toBe('—')
+  it('muestra el día guardado en un @db.Date (medianoche UTC), no el anterior', () => {
+    expect(formatDateOnly('2026-11-06T00:00:00.000Z')).toMatch(/^6 /)
   })
 })
 

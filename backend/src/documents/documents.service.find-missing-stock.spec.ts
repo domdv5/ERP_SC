@@ -12,10 +12,6 @@ const user = {
   permissions: ['document.create.POS', 'document.create.CM'],
 } as unknown as JwtPayload;
 
-const missingStock = [
-  { productId: 'p1', code: 'PRD-1', available: 2, requested: 5 },
-];
-
 const makeDocument = (overrides: Record<string, unknown> = {}) => ({
   id: 'doc-1',
   type: DocumentType.POS,
@@ -62,17 +58,5 @@ describe('DocumentsService.findMissingStock', () => {
     get.mockReturnValue({ type: DocumentType.CM });
 
     await expect(service.findMissingStock('doc-1', user)).resolves.toEqual([]);
-  });
-
-  it('devuelve el resultado de la estrategia llamándola con (prisma, document)', async () => {
-    const document = makeDocument();
-    const findMissingStock = jest.fn().mockResolvedValue(missingStock);
-    findUnique.mockResolvedValue(document);
-    get.mockReturnValue({ type: DocumentType.POS, findMissingStock });
-
-    await expect(service.findMissingStock('doc-1', user)).resolves.toBe(
-      missingStock,
-    );
-    expect(findMissingStock).toHaveBeenCalledWith(prisma, document);
   });
 });

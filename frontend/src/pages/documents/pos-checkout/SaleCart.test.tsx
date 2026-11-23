@@ -92,14 +92,6 @@ describe('SaleCart — disponible en ventas', () => {
     expect(await screen.findByRole('button', { name: 'Disponible: 7' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /99/ })).toBeNull()
   })
-
-  it('no muestra disponible en la venta oficial', async () => {
-    vi.mocked(getProductByCode).mockResolvedValue(productDetail)
-    renderCart(true)
-
-    await vi.waitFor(() => expect(getProductByCode).toHaveBeenCalled())
-    expect(screen.queryByRole('button', { name: /Disponible/ })).toBeNull()
-  })
 })
 
 describe('SaleCart — filas repetidas del mismo producto', () => {

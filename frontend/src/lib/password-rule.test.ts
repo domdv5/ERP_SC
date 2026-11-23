@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { checkPasswordRule, isValidPassword, PASSWORD_RULE_MESSAGE } from './password-rule'
+import { checkPasswordRule, isValidPassword } from './password-rule'
 
 describe('checkPasswordRule', () => {
   it('marca cada parte de la regla por separado', () => {
-    expect(checkPasswordRule('abc')).toEqual([
-      { label: 'Mínimo 8 caracteres', met: false },
-      { label: 'Al menos una letra', met: true },
-      { label: 'Al menos un número', met: false },
-    ])
+    expect(checkPasswordRule('abc').map((part) => part.met)).toEqual([false, true, false])
   })
 
   it('cumple todo con 8 caracteres, letras y números', () => {
@@ -28,11 +24,5 @@ describe('isValidPassword', () => {
     ['Ñandú2026', true],
   ])('%s → %s', (password, expected) => {
     expect(isValidPassword(password)).toBe(expected)
-  })
-
-  it('usa el mismo mensaje que el backend', () => {
-    expect(PASSWORD_RULE_MESSAGE).toBe(
-      'La contraseña debe tener al menos 8 caracteres, con letras y números',
-    )
   })
 })

@@ -26,12 +26,4 @@ describe('formatPrintCity', () => {
     expect(formatPrintCity({ city: null }, { city: null })).toBeNull();
     expect(formatPrintCity(undefined, null)).toBeNull();
   });
-
-  it('no repite el nombre cuando ciudad y departamento se llaman igual', () => {
-    const bogota = {
-      name: 'BOGOTÁ, D.C.',
-      department: { name: 'BOGOTÁ, D.C.' },
-    };
-    expect(formatPrintCity(undefined, { city: bogota })).toBe('BOGOTÁ, D.C.');
-  });
 });

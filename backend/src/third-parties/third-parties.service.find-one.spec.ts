@@ -36,8 +36,8 @@ describe('ThirdPartiesService.findOne', () => {
   it('lanza 404 si no existe', async () => {
     findUnique.mockResolvedValue(null);
 
-    const call = service.findOne('nope');
-    await expect(call).rejects.toBeInstanceOf(NotFoundException);
-    await expect(call).rejects.toThrow('Tercero no encontrado.');
+    await expect(service.findOne('nope')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });

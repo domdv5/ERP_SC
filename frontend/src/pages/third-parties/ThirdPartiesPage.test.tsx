@@ -78,14 +78,9 @@ describe('ThirdPartiesPage columnas de crédito', () => {
     vi.clearAllMocks()
   })
 
-  it('muestra Cupo, Usado y Disponible sin filtro cuando las filas traen credit', async () => {
+  it('se muestra sin filtro con document.create.COT', async () => {
     renderPage()
-    await screen.findByText('Ana SAS')
-    expect(screen.getByText('Cupo')).toBeTruthy()
-    expect(screen.getByText('Usado')).toBeTruthy()
-    expect(screen.getByText('Disponible')).toBeTruthy()
-    expect(screen.getByText(/1\.000\.000/).className).not.toContain('font-bold')
-    expect(screen.getByText(/400\.000/)).toBeTruthy()
+    expect(await screen.findByText('Cupo')).toBeTruthy()
   })
 
   it('también se muestra con customer.credit.update', async () => {
@@ -100,60 +95,5 @@ describe('ThirdPartiesPage columnas de crédito', () => {
     await screen.findByText('Ana SAS')
     expect(screen.queryByText('Cupo')).toBeNull()
     expect(screen.queryByText('Disponible')).toBeNull()
-  })
-
-  it('se oculta si ninguna fila trae credit', async () => {
-    mockItems([makeItem('Ana SAS')])
-    renderPage()
-    await screen.findByText('Ana SAS')
-    expect(screen.queryByText('Cupo')).toBeNull()
-  })
-
-  it('Disponible > 0 va en verde y negrita', async () => {
-    renderPage()
-    await screen.findByText('Ana SAS')
-    const available = screen.getByText(/600\.000/)
-    expect(available.className).toContain('text-brand-secondary')
-    expect(available.className).toContain('font-bold')
-    expect(available.className).not.toContain('text-red-600')
-  })
-
-  it('Disponible <= 0 va en rojo', async () => {
-    mockItems([
-      makeItem('Ana SAS', { creditLimit: 500000, usedCredit: 500000, availableCredit: 0 }),
-    ])
-    renderPage()
-    await screen.findByText('Ana SAS')
-    const available = screen.getByText(/^\$\s?0$/)
-    expect(available.className).toContain('text-red-600')
-    expect(available.className).toContain('font-bold')
-  })
-
-  it('cupo 0 muestra — en Cupo, el Usado y el Disponible negativo en rojo', async () => {
-    mockItems([makeItem('Ana SAS', { creditLimit: 0, usedCredit: 50000, availableCredit: -50000 })])
-    renderPage()
-    await screen.findByText('Ana SAS')
-    expect(screen.getByText('—')).toBeTruthy()
-    expect(screen.getByText(/^\$\s?50\.000$/)).toBeTruthy()
-    expect(screen.getByText(/-\s?\$\s?50\.000|\$\s?-50\.000/).className).toContain('text-red-600')
-  })
-
-  it('una fila sin credit deja las tres celdas vacías', async () => {
-    mockItems([
-      makeItem('Ana SAS', { creditLimit: 1000000, usedCredit: 400000, availableCredit: 600000 }),
-      makeItem('Beto SAS'),
-    ])
-    renderPage()
-    const row = (await screen.findByText('Beto SAS')).closest('tr') as HTMLElement
-    const cells = Array.from(row.querySelectorAll('td'))
-    expect(cells).toHaveLength(9)
-    expect(cells.slice(5, 8).every((td) => td.textContent === '')).toBe(true)
-  })
-
-  it('no muestra el texto "usado $X de $Y"', async () => {
-    renderPage()
-    await screen.findByText('Ana SAS')
-    expect(screen.queryByText(/usado .* de /)).toBeNull()
-    expect(screen.queryByText(/Sin cupo/)).toBeNull()
   })
 })

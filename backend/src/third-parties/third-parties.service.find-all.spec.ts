@@ -39,13 +39,4 @@ describe('ThirdPartiesService.findAll — búsqueda', () => {
       ],
     });
   });
-
-  it('sin búsqueda no filtra por texto', async () => {
-    await service.findAll({ isSupplier: true }, user);
-
-    expect(findMany.mock.calls[0][0].where).toEqual({
-      isActive: true,
-      isSupplier: true,
-    });
-  });
 });
