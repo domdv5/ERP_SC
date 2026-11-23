@@ -34,7 +34,7 @@ export abstract class AbstractReservationStrategy
         })
       : null;
 
-    if (!thirdParty?.customer) {
+    if (!thirdParty?.customer || !thirdParty.isCustomer) {
       throw new BadRequestException(`${noun} requiere un cliente válido`);
     }
 
