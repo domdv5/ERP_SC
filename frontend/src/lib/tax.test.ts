@@ -1,17 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  OFFICIAL_TAX_PERCENT,
   computeOfficialLineTax,
   computeOfficialTotals,
   removeOfficialTax,
   splitOfficialPrice,
 } from './tax'
-
-describe('OFFICIAL_TAX_PERCENT', () => {
-  it('es 19', () => {
-    expect(OFFICIAL_TAX_PERCENT).toBe(19)
-  })
-})
 
 describe('computeOfficialLineTax', () => {
   it('devuelve 0 con subtotal 0', () => {

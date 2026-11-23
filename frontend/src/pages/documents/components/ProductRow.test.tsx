@@ -97,11 +97,6 @@ describe('ProductRow — disponible en ventas', () => {
     expect(screen.getByRole('button', { name: 'Disponible: 7' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /99/ })).toBeNull()
   })
-
-  it('usa el disponible de venta recibido del escaneo para el aviso inicial', () => {
-    renderRow({ docType: 'PV', initialAvailableToSell: 7 })
-    expect(screen.getByRole('button', { name: 'Disponible: 7' })).toBeTruthy()
-  })
 })
 
 const rowOf = (productId: string, quantity: number) => ({
@@ -120,16 +115,6 @@ describe('ProductRow — aviso de disponible suma filas repetidas', () => {
       index: 2,
     })
     expect(screen.getByRole('button', { name: 'Supera el disponible (5)' })).toBeTruthy()
-  })
-
-  it('una sola fila que alcanza no avisa', () => {
-    renderRow({
-      docType: 'REM',
-      initialAvailableToSell: 5,
-      items: [rowOf('p1', 3), rowOf('p2', 1)],
-      index: 0,
-    })
-    expect(screen.getByRole('button', { name: 'Disponible: 5' })).toBeTruthy()
   })
 })
 

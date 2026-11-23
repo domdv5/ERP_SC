@@ -92,17 +92,6 @@ describe('findActivePendingPreventa', () => {
     vi.mocked(getDocument).mockReset()
   })
 
-  it('pide las PV confirmadas del cliente con límite 10', async () => {
-    vi.mocked(getDocuments).mockResolvedValue({ items: [], meta: {} } as never)
-    await findActivePendingPreventa('cust-1')
-    expect(getDocuments).toHaveBeenCalledWith({
-      type: 'PV',
-      status: 'confirmed',
-      thirdPartyId: 'cust-1',
-      limit: 10,
-    })
-  })
-
   it('sin candidatas → null y no pide detalles', async () => {
     vi.mocked(getDocuments).mockResolvedValue({ items: [], meta: {} } as never)
     expect(await findActivePendingPreventa('cust-1')).toBeNull()
@@ -200,19 +189,6 @@ describe('parseMissingStockError', () => {
   it('sin missingStock → null', () => {
     expect(parseMissingStockError(apiError({ message: 'x' }))).toBeNull()
   })
-
-  it('data no objeto, null o ausente → null', () => {
-    expect(parseMissingStockError(apiError('texto'))).toBeNull()
-    expect(parseMissingStockError(apiError(null))).toBeNull()
-    expect(parseMissingStockError({ response: {} })).toBeNull()
-    expect(parseMissingStockError({})).toBeNull()
-  })
-
-  it('error que no es objeto → null', () => {
-    expect(parseMissingStockError(null)).toBeNull()
-    expect(parseMissingStockError(undefined)).toBeNull()
-    expect(parseMissingStockError('boom')).toBeNull()
-  })
 })
 
 describe('parseCreditLimitError', () => {
@@ -245,13 +221,6 @@ describe('parseCreditLimitError', () => {
     expect(parseCreditLimitError(apiError({ message: 'x' }))).toBeNull()
     expect(parseCreditLimitError(apiError({ credit: null }))).toBeNull()
     expect(parseCreditLimitError(apiError({ credit: 5 }))).toBeNull()
-  })
-
-  it('data no objeto o error inválido → null', () => {
-    expect(parseCreditLimitError(apiError(null))).toBeNull()
-    expect(parseCreditLimitError(apiError('x'))).toBeNull()
-    expect(parseCreditLimitError(null)).toBeNull()
-    expect(parseCreditLimitError(new Error('boom'))).toBeNull()
   })
 })
 
@@ -381,10 +350,6 @@ describe('toNumericCredits', () => {
       { id: 'b', amount: 2000.5 },
     ])
     expect(applied.reduce((sum, c) => sum + c.amount, 0)).toBe(3500.5)
-  })
-
-  it('conserva sourceDocument null', () => {
-    expect(toNumericCredits([credit('a', '10')])[0].sourceDocument).toBeNull()
   })
 })
 

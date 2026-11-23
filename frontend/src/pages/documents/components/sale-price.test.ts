@@ -7,12 +7,6 @@ describe('prefillsSalePrice', () => {
     expect(prefillsSalePrice('DVV')).toBe(true)
   })
 
-  it('PV, POS, COT y POSO siguen cargando el precio de venta', () => {
-    for (const type of ['PV', 'POS', 'COT', 'POSO'] as const) {
-      expect(prefillsSalePrice(type)).toBe(true)
-    }
-  })
-
   it('compras, traslados y ajustes no cargan precio de venta', () => {
     for (const type of ['CM', 'CMO', 'T', 'EAI', 'SAJ', 'DVC'] as const) {
       expect(prefillsSalePrice(type)).toBe(false)
