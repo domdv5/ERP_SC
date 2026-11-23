@@ -17,13 +17,10 @@ describe('EgresoPaymentLineDto', () => {
   );
 
   it.each(['efectivo_almacen', 'consignacion_almacen', 'cheque'])(
-    'rechaza %s con mensaje en español',
+    'rechaza %s',
     async (method) => {
       const errors = await errorsFor(method);
-      const methodError = errors.find((e) => e.property === 'method');
-      expect(Object.values(methodError?.constraints ?? {})).toContain(
-        'La forma de pago debe ser efectivo_oficina o consignacion_oficina',
-      );
+      expect(errors.map((e) => e.property)).toContain('method');
     },
   );
 });

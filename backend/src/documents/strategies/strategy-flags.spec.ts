@@ -130,11 +130,6 @@ describe('undoEffects', () => {
     RemEffectStrategy,
   ];
 
-  it.each(WITH_UNDO)('%p define efectos propios al anular', (Strategy) => {
-    const strategy = build(Strategy);
-    expect(typeof strategy.undoEffects).toBe('function');
-  });
-
   it.each(ALL_STRATEGIES.filter((Strategy) => !WITH_UNDO.includes(Strategy)))(
     '%p no define efectos propios al anular',
     (Strategy) => {

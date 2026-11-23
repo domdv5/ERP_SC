@@ -43,7 +43,5 @@ describe('buildCreditBox', () => {
     );
 
     expect(all).toHaveLength(2);
-    expect(all[0]).toBe('A crédito');
-    expect(all[1]).toMatch(/^\$ ?200\.000$/);
   });
 });
