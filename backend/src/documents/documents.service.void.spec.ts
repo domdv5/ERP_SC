@@ -119,14 +119,12 @@ describe('DocumentsService.void: validaciones y estado', () => {
       },
     );
 
-    it('rechaza una cuenta por pagar con pagos, notas crédito aplicadas o egresos', async () => {
+    it('rechaza una cuenta por pagar con notas crédito aplicadas o egresos', async () => {
       const empty = {
-        payablePayments: [],
         creditApplications: [],
         egresoAllocations: [],
       };
       for (const used of [
-        { payablePayments: [{ id: 'x' }] },
         { creditApplications: [{ id: 'x' }] },
         { egresoAllocations: [{ id: 'x' }] },
       ]) {
@@ -140,6 +138,40 @@ describe('DocumentsService.void: validaciones y estado', () => {
           ),
         );
       }
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('rechaza una cuenta por pagar con monto abonado aunque no tenga egresos ni notas crédito', async () => {
+      loadDocument(DocumentType.CM, {
+        accountsPayable: [
+          {
+            creditApplications: [],
+            egresoAllocations: [],
+            paidAmount: '50000',
+          },
+        ],
+      });
+
+      await expect(service.void('doc-1', fullUser)).rejects.toThrow(
+        new ConflictException(
+          'No se puede anular: la cuenta por pagar ya tiene pagos registrados',
+        ),
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('rechaza una cuenta por cobrar con monto abonado aunque no tenga recibos de caja', async () => {
+      loadDocument(DocumentType.COT, {
+        accountsReceivable: [
+          { reciboCajaAllocations: [], paidAmount: '50000' },
+        ],
+      });
+
+      await expect(service.void('doc-1', fullUser)).rejects.toThrow(
+        new ConflictException(
+          'No se puede anular: la cuenta por cobrar ya tiene pagos registrados',
+        ),
+      );
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
@@ -169,11 +201,8 @@ describe('DocumentsService.void: validaciones y estado', () => {
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
-    it('rechaza una cuenta por cobrar con pagos o recibos de caja', async () => {
-      for (const used of [
-        { receivablePayments: [{ id: 'x' }], reciboCajaAllocations: [] },
-        { receivablePayments: [], reciboCajaAllocations: [{ id: 'x' }] },
-      ]) {
+    it('rechaza una cuenta por cobrar con recibos de caja', async () => {
+      for (const used of [{ reciboCajaAllocations: [{ id: 'x' }] }]) {
         loadDocument(DocumentType.COT, { accountsReceivable: [used] });
 
         await expect(service.void('doc-1', fullUser)).rejects.toThrow(
@@ -186,9 +215,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
     });
     it('POS con parte a crédito: rechaza si la CxC ya tiene un recibo de caja', async () => {
       loadDocument(DocumentType.POS, {
-        accountsReceivable: [
-          { receivablePayments: [], reciboCajaAllocations: [{ id: 'r1' }] },
-        ],
+        accountsReceivable: [{ reciboCajaAllocations: [{ id: 'r1' }] }],
       });
 
       await expect(service.void('doc-1', fullUser)).rejects.toThrow(
@@ -251,7 +278,6 @@ describe('DocumentsService.void: validaciones y estado', () => {
       loadDocument(DocumentType.CM);
       tx.accountsPayable.findMany.mockResolvedValue([
         {
-          payablePayments: [],
           creditApplications: [],
           egresoAllocations: [{ id: 'e1' }],
         },
@@ -265,10 +291,38 @@ describe('DocumentsService.void: validaciones y estado', () => {
       expect(tx.accountsPayable.deleteMany).not.toHaveBeenCalled();
     });
 
+    it('lanza 409 si la cuenta por pagar quedó con monto abonado entre el chequeo y el lock', async () => {
+      loadDocument(DocumentType.CM);
+      tx.accountsPayable.findMany.mockResolvedValue([
+        { creditApplications: [], egresoAllocations: [], paidAmount: '50000' },
+      ]);
+
+      await expect(service.void('doc-1', fullUser)).rejects.toThrow(
+        new ConflictException(
+          'No se puede anular: la cuenta por pagar ya tiene pagos registrados',
+        ),
+      );
+      expect(tx.accountsPayable.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('lanza 409 si la cuenta por cobrar quedó con monto abonado entre el chequeo y el lock', async () => {
+      loadDocument(DocumentType.COT);
+      tx.accountsReceivable.findMany.mockResolvedValue([
+        { reciboCajaAllocations: [], paidAmount: '50000' },
+      ]);
+
+      await expect(service.void('doc-1', fullUser)).rejects.toThrow(
+        new ConflictException(
+          'No se puede anular: la cuenta por cobrar ya tiene pagos registrados',
+        ),
+      );
+      expect(tx.accountsReceivable.deleteMany).not.toHaveBeenCalled();
+    });
+
     it('lanza 409 si un recibo de caja concurrente pagó la cuenta por cobrar', async () => {
       loadDocument(DocumentType.COT);
       tx.accountsReceivable.findMany.mockResolvedValue([
-        { receivablePayments: [], reciboCajaAllocations: [{ id: 'r1' }] },
+        { reciboCajaAllocations: [{ id: 'r1' }] },
       ]);
 
       await expect(service.void('doc-1', fullUser)).rejects.toThrow(
@@ -281,12 +335,10 @@ describe('DocumentsService.void: validaciones y estado', () => {
 
     it('POS con parte a crédito: borra su CxC al anular', async () => {
       loadDocument(DocumentType.POS, {
-        accountsReceivable: [
-          { receivablePayments: [], reciboCajaAllocations: [] },
-        ],
+        accountsReceivable: [{ reciboCajaAllocations: [] }],
       });
       tx.accountsReceivable.findMany.mockResolvedValue([
-        { receivablePayments: [], reciboCajaAllocations: [] },
+        { reciboCajaAllocations: [] },
       ]);
 
       await service.void('doc-1', fullUser);
@@ -299,7 +351,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
     it('POS con parte a crédito: lanza 409 si un recibo concurrente abonó la CxC', async () => {
       loadDocument(DocumentType.POS);
       tx.accountsReceivable.findMany.mockResolvedValue([
-        { receivablePayments: [{ id: 'p1' }], reciboCajaAllocations: [] },
+        { reciboCajaAllocations: [{ id: 'p1' }] },
       ]);
 
       await expect(service.void('doc-1', fullUser)).rejects.toThrow(

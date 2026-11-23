@@ -23,13 +23,12 @@ export const DOCUMENT_TO_VOID_INCLUDE = {
   },
   accountsPayable: {
     include: {
-      payablePayments: true,
       creditApplications: EGRESO_VOID_STATE,
       egresoAllocations: EGRESO_VOID_STATE,
     },
   },
   accountsReceivable: {
-    include: { receivablePayments: true, reciboCajaAllocations: true },
+    include: { reciboCajaAllocations: true },
   },
   supplierCredits: { include: { applications: EGRESO_VOID_STATE } },
   customerCredits: { include: { applications: true } },

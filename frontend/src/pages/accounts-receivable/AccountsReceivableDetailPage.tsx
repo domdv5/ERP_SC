@@ -2,7 +2,7 @@ import { useGoBack } from '@/hooks/useGoBack'
 import { BackLink } from '@/components/shared'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Wallet, Calendar, FileText, CreditCard, Landmark, Hash, User, Receipt } from 'lucide-react'
+import { Wallet, FileText, CreditCard, Landmark, User, Receipt } from 'lucide-react'
 import { getAccountReceivable } from '@/services/accounts-receivable.service'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
@@ -10,8 +10,7 @@ import { StatusBadge } from './components/StatusBadge'
 import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-receivable.utils'
 import type { AccountsReceivableHistoryEntry } from '@/types'
 
-// Distingue de un vistazo si cada fila del historial es un abono moderno (Recibo de Caja)
-// o un pago registrado antes del rework.
+// Distingue de un vistazo el origen de cada fila del historial.
 const ORIGIN_BADGE: Record<
   AccountsReceivableHistoryEntry['source'],
   { label: string; className: string }
@@ -19,10 +18,6 @@ const ORIGIN_BADGE: Record<
   recibo_caja: {
     label: 'Recibo de caja',
     className: 'bg-brand-secondary/10 text-brand-secondary',
-  },
-  pago_historico: {
-    label: 'Pago histórico',
-    className: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
   },
 }
 
@@ -156,16 +151,6 @@ export default function AccountsReceivableDetailPage() {
 
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
-              <Calendar className="w-4 h-4 text-content-muted" />
-            </div>
-            <div>
-              <p className="text-xs text-content-faint">Vencimiento</p>
-              <p className="text-sm text-content font-medium">{formatDate(account.dueDate)}</p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-surface-raised flex items-center justify-center shrink-0">
               <FileText className="w-4 h-4 text-content-muted" />
             </div>
             <div>
@@ -202,7 +187,7 @@ export default function AccountsReceivableDetailPage() {
               Aún no hay movimientos registrados
             </p>
             <p className="text-content-faint text-xs mt-1 font-accent">
-              Los abonos desde Recibos de Caja y los movimientos históricos aparecerán aquí
+              Los abonos desde Recibos de Caja aparecerán aquí
             </p>
           </div>
         ) : (
@@ -210,7 +195,7 @@ export default function AccountsReceivableDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b-2 border-ui-border-medium">
-                  {['Fecha', 'Origen', 'Monto', 'Detalle', 'Referencia'].map((h) => (
+                  {['Fecha', 'Origen', 'Monto', 'Detalle'].map((h) => (
                     <th
                       key={h}
                       className="text-left text-xs font-semibold text-content-faint uppercase tracking-wider px-5 py-3"
@@ -256,22 +241,6 @@ export default function AccountsReceivableDetailPage() {
                             <Landmark className="w-3.5 h-3.5" />
                             {docNumber('RC', entry.reciboCaja.number)}
                           </button>
-                        )}
-                        {entry.source === 'pago_historico' && (
-                          <span className="flex items-center gap-1.5 text-content-muted text-xs">
-                            <Landmark className="w-3.5 h-3.5 text-content-faint" />
-                            {entry.paymentMethod}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 text-content-muted text-xs">
-                        {entry.source === 'pago_historico' && entry.reference ? (
-                          <span className="flex items-center gap-1.5">
-                            <Hash className="w-3.5 h-3.5 text-content-faint" />
-                            {entry.reference}
-                          </span>
-                        ) : (
-                          '—'
                         )}
                       </td>
                     </tr>

@@ -57,7 +57,6 @@ export interface EgresoAllocationAccountPayable {
   documentId: string;
   totalAmount: string;
   paidAmount: string;
-  dueDate: string | null;
   status: AccountsPayableStatus;
   createdAt: string;
   updatedAt: string;
@@ -139,7 +138,6 @@ export interface EgresoOpenPayable {
   documentId: string;
   totalAmount: string;
   paidAmount: string;
-  dueDate: string | null;
   status: AccountsPayableStatus;
   createdAt: string;
   updatedAt: string;

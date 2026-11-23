@@ -45,7 +45,6 @@ describe('DocumentsService.void: compra y costos', () => {
         inventoryMovements: [movement],
         accountsPayable: [
           {
-            payablePayments: [],
             creditApplications: [],
             egresoAllocations: [],
           },

@@ -35,7 +35,6 @@ export interface AccountsReceivable {
   sellerId: string;
   documentId: string;
   totalAmount: string;
-  dueDate: string | null;
   status: AccountsReceivableStatus;
   createdAt: string;
   updatedAt: string;
@@ -50,22 +49,14 @@ export interface AccountsReceivable {
   isPaymentOpen: boolean;
 }
 
-export type AccountsReceivableHistoryEntry =
-  | {
-      source: 'recibo_caja';
-      date: string;
-      amount: string;
-      // Parte de `amount` cubierta por el descuento del recibo
-      discountAmount: string;
-      reciboCaja: { id: string; number: string; date: string };
-    }
-  | {
-      source: 'pago_historico';
-      date: string;
-      amount: string;
-      paymentMethod: string;
-      reference: string | null;
-    };
+export type AccountsReceivableHistoryEntry = {
+  source: 'recibo_caja';
+  date: string;
+  amount: string;
+  // Parte de `amount` cubierta por el descuento del recibo
+  discountAmount: string;
+  reciboCaja: { id: string; number: string; date: string };
+};
 
 // GET /accounts-receivable/:id (sin los pagos crudos: van resumidos en history)
 export interface AccountsReceivableDetail extends Omit<

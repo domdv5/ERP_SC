@@ -34,6 +34,11 @@ const SALE_VOID_TYPES: ReadonlySet<DocumentType> = new Set([
   DocumentType.REM,
 ]);
 
+// Red final: el abonado guardado bloquea la anulación aunque falte la fila del abono que lo explica
+function hasPaidAmount(account: { paidAmount?: unknown }) {
+  return Number(account.paidAmount ?? 0) > 0;
+}
+
 @Injectable()
 export class DocumentVoidService {
   constructor(
@@ -78,7 +83,7 @@ export class DocumentVoidService {
     // Un pago saldado 100% con nota crédito no deja fila de pago propia; hay que chequear también las notas crédito aplicadas.
     const hasPayments = document.accountsPayable.some(
       (payable) =>
-        payable.payablePayments.length > 0 ||
+        hasPaidAmount(payable) ||
         payable.creditApplications.some(isActiveEgresoLink) ||
         payable.egresoAllocations.some(isActiveEgresoLink),
     );
@@ -117,7 +122,7 @@ export class DocumentVoidService {
     // puede anular (quedarían sueltos). Mismo criterio que la cuenta por pagar de arriba.
     const hasReceivablePayments = document.accountsReceivable.some(
       (receivable) =>
-        receivable.receivablePayments.length > 0 ||
+        hasPaidAmount(receivable) ||
         receivable.reciboCajaAllocations.length > 0,
     );
 
@@ -262,20 +267,19 @@ export class DocumentVoidService {
           tx.accountsPayable.findMany({
             where: { documentId: id },
             include: {
-              payablePayments: true,
               creditApplications: EGRESO_VOID_STATE,
               egresoAllocations: EGRESO_VOID_STATE,
             },
           }),
           tx.accountsReceivable.findMany({
             where: { documentId: id },
-            include: { receivablePayments: true, reciboCajaAllocations: true },
+            include: { reciboCajaAllocations: true },
           }),
         ]);
 
         const stillHasPayablePayments = freshPayables.some(
           (payable) =>
-            payable.payablePayments.length > 0 ||
+            hasPaidAmount(payable) ||
             payable.creditApplications.some(isActiveEgresoLink) ||
             payable.egresoAllocations.some(isActiveEgresoLink),
         );
@@ -287,7 +291,7 @@ export class DocumentVoidService {
 
         const stillHasReceivablePayments = freshReceivables.some(
           (receivable) =>
-            receivable.receivablePayments.length > 0 ||
+            hasPaidAmount(receivable) ||
             receivable.reciboCajaAllocations.length > 0,
         );
         if (stillHasReceivablePayments) {

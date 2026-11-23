@@ -41,7 +41,6 @@ const LIST_INCLUDE = {
       customerBranch: { select: { id: true, name: true } },
     },
   },
-  receivablePayments: { select: { paymentDate: true } },
   reciboCajaAllocations: { select: { reciboCaja: { select: { date: true } } } },
 } satisfies Prisma.AccountsReceivableInclude;
 
@@ -57,7 +56,6 @@ const DETAIL_INCLUDE = {
       customerBranch: { select: { id: true, name: true } },
     },
   },
-  receivablePayments: { orderBy: { paymentDate: 'desc' } },
   reciboCajaAllocations: {
     include: {
       reciboCaja: { select: { id: true, number: true, date: true } },
@@ -90,9 +88,8 @@ function buildTotals(totals: {
 
 /** Agrega el saldo derivado (totalAmount - paidAmount) sobre una fila, mismo patrón que AccountsPayableService. */
 function withDerivedFields(row: ListRow, today: Date) {
-  const { receivablePayments, reciboCajaAllocations, ...rest } = row;
+  const { reciboCajaAllocations, ...rest } = row;
   const lastPaymentDate = findLastPaymentDate([
-    ...receivablePayments.map((payment) => payment.paymentDate),
     ...reciboCajaAllocations.map((allocation) => allocation.reciboCaja.date),
   ]);
   const { days, isOpen } = calculatePaymentDays(
@@ -111,7 +108,7 @@ function withDerivedFields(row: ListRow, today: Date) {
   };
 }
 
-/** Combina receivablePayments (histórico, pre-Recibo de Caja) y reciboCajaAllocations en un único historial ordenado por fecha, mismo patrón que buildHistory de AccountsPayableService. */
+/** Historial de abonos de una CxC (recibos de caja) ordenado por fecha, mismo patrón que buildHistory de AccountsPayableService. */
 function buildHistory(accountReceivable: DetailRow) {
   const fromRecibosCaja = accountReceivable.reciboCajaAllocations.map(
     (allocation) => ({
@@ -123,17 +120,7 @@ function buildHistory(accountReceivable: DetailRow) {
     }),
   );
 
-  const fromHistoricPayments = accountReceivable.receivablePayments.map(
-    (payment) => ({
-      source: 'pago_historico' as const,
-      date: payment.paymentDate,
-      amount: payment.amount,
-      paymentMethod: payment.paymentMethod,
-      reference: payment.reference,
-    }),
-  );
-
-  return [...fromRecibosCaja, ...fromHistoricPayments].sort(
+  return [...fromRecibosCaja].sort(
     (a, b) => b.date.getTime() - a.date.getTime(),
   );
 }
@@ -358,11 +345,6 @@ export class AccountsReceivableService {
           LIMIT ${limit} OFFSET ${(page - 1) * limit}
         ),
         payment_dates AS (
-          SELECT s.client_id, rp.payment_date AS paid_on
-          FROM scoped s
-          JOIN receivable_payments rp ON rp.account_receivable_id = s.id
-          WHERE s.client_id IN (SELECT client_id FROM page)
-          UNION ALL
           SELECT s.client_id, rc.date AS paid_on
           FROM scoped s
           JOIN recibo_caja_allocation rca ON rca.account_receivable_id = s.id
@@ -432,10 +414,9 @@ export class AccountsReceivableService {
       throw new NotFoundException('Cuenta por cobrar no encontrada');
     }
 
-    // receivablePayments/reciboCajaAllocations ya quedan resumidos en `history`
+    // reciboCajaAllocations ya quedan resumidos en `history`
     // — no se devuelven crudos para no duplicar la misma info.
-    const { receivablePayments, reciboCajaAllocations, ...rest } =
-      accountReceivable;
+    const { reciboCajaAllocations, ...rest } = accountReceivable;
 
     return matchDetailContract({
       ...rest,
