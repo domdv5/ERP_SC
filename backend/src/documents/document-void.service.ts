@@ -78,7 +78,6 @@ export class DocumentVoidService {
     // Un pago saldado 100% con nota crédito no deja fila de pago propia; hay que chequear también las notas crédito aplicadas.
     const hasPayments = document.accountsPayable.some(
       (payable) =>
-        payable.payablePayments.length > 0 ||
         payable.creditApplications.some(isActiveEgresoLink) ||
         payable.egresoAllocations.some(isActiveEgresoLink),
     );
@@ -116,9 +115,7 @@ export class DocumentVoidService {
     // La venta a crédito genera una cuenta por cobrar; si ya recibió pagos no se
     // puede anular (quedarían sueltos). Mismo criterio que la cuenta por pagar de arriba.
     const hasReceivablePayments = document.accountsReceivable.some(
-      (receivable) =>
-        receivable.receivablePayments.length > 0 ||
-        receivable.reciboCajaAllocations.length > 0,
+      (receivable) => receivable.reciboCajaAllocations.length > 0,
     );
 
     if (hasReceivablePayments) {
@@ -262,20 +259,18 @@ export class DocumentVoidService {
           tx.accountsPayable.findMany({
             where: { documentId: id },
             include: {
-              payablePayments: true,
               creditApplications: EGRESO_VOID_STATE,
               egresoAllocations: EGRESO_VOID_STATE,
             },
           }),
           tx.accountsReceivable.findMany({
             where: { documentId: id },
-            include: { receivablePayments: true, reciboCajaAllocations: true },
+            include: { reciboCajaAllocations: true },
           }),
         ]);
 
         const stillHasPayablePayments = freshPayables.some(
           (payable) =>
-            payable.payablePayments.length > 0 ||
             payable.creditApplications.some(isActiveEgresoLink) ||
             payable.egresoAllocations.some(isActiveEgresoLink),
         );
@@ -286,9 +281,7 @@ export class DocumentVoidService {
         }
 
         const stillHasReceivablePayments = freshReceivables.some(
-          (receivable) =>
-            receivable.receivablePayments.length > 0 ||
-            receivable.reciboCajaAllocations.length > 0,
+          (receivable) => receivable.reciboCajaAllocations.length > 0,
         );
         if (stillHasReceivablePayments) {
           throw new ConflictException(

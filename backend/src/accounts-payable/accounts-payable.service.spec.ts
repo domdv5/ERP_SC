@@ -140,11 +140,10 @@ describe('AccountsPayableService.findSuppliers', () => {
     expect(result.items[0].lastPaymentDate).toBeNull();
   });
 
-  it('la consulta de pagos cubre pagos históricos, egresos y créditos sin egreso', async () => {
+  it('la consulta de pagos cubre egresos y créditos sin egreso', async () => {
     await service.findSuppliers({});
 
     const sql = sqlOf(prisma.$queryRaw.mock.calls[0]);
-    expect(sql).toContain('payable_payments');
     expect(sql).toContain('egreso_allocation');
     expect(sql).toContain('sca.egreso_id IS NULL');
   });
@@ -379,7 +378,6 @@ describe('AccountsPayableService.getSupplierStatement: días de pago', () => {
     paidAmount: new Prisma.Decimal(1000),
     document: { date: day('2026-10-01') },
     creditApplications: [],
-    payablePayments: [],
     egresoAllocations: [],
     ...overrides,
   });
@@ -429,10 +427,9 @@ describe('AccountsPayableService.getSupplierStatement: días de pago', () => {
     expect(row.lastPaymentDate).toEqual(day('2026-10-11'));
   });
 
-  it('último pago = el más reciente entre egreso, pago histórico y saldo a favor sin egreso; el que tiene egreso no cuenta por appliedAt', async () => {
+  it('último pago = el más reciente entre egreso y saldo a favor sin egreso; el que tiene egreso no cuenta por appliedAt', async () => {
     const row = await statementOf(
       payable({
-        payablePayments: [{ paymentDate: day('2026-10-08') }],
         egresoAllocations: [{ egreso: { date: day('2026-10-10') } }],
         creditApplications: [
           // 2026-10-13 02:00 UTC = 12-oct 21:00 en Bogotá

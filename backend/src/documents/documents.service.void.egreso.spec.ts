@@ -19,7 +19,6 @@ jest.mock('./helpers/customer-credit.helpers', () => ({
 const voidedEgreso = { egreso: { voidedAt: new Date() } };
 const liveEgreso = { egreso: { voidedAt: null } };
 const payable = (overrides: Record<string, unknown>) => ({
-  payablePayments: [],
   creditApplications: [],
   egresoAllocations: [],
   ...overrides,

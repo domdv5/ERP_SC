@@ -37,8 +37,7 @@ model Category {
   active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  products          Product[]
-  equivalenceTables EquivalenceTable[]
+  products Product[]
 
   @@index([active])
   @@map("category")
@@ -93,7 +92,6 @@ model ThirdParty {
   receivedDocuments  Document[]           @relation("DocumentReceiver")
   soldToCustomers    Customer[]           @relation("SellerThirdParty")
   accountsReceivable AccountsReceivable[] @relation("SellerAR")
-  equivalenceTables  EquivalenceTable[]
   deletedBy          User?                @relation("ThirdPartyDeletedBy", fields: [deletedById], references: [id])
   city               City?                @relation(fields: [cityCode], references: [code])
 
@@ -254,23 +252,6 @@ model Product {
   @@index([active, genderId, createdAt])
   // DRIFT ACEPTADO: product_code_trgm_idx / product_legacy_code_trgm_idx (GIN trigram) existen en la DB pero no en este schema — ver "Migration workaround" en backend/CLAUDE.md antes de armar una migración nueva.
   @@map("product")
-}
-
-// ─── Equivalence table ────────────────────────────────────────────────────────
-
-model EquivalenceTable {
-  id             String   @id @default(uuid(7)) @db.Uuid
-  supplierId     String   @map("supplier_id") @db.Uuid
-  categoryId     String   @map("category_id") @db.Uuid
-  equivalentCode String   @map("equivalent_code") @db.VarChar(100)
-  cost           String   @db.VarChar(5)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
-
-  supplier ThirdParty @relation(fields: [supplierId], references: [id])
-  category Category   @relation(fields: [categoryId], references: [id])
-
-  @@map("equivalence_table")
 }
 
 // ─── Warehouse / location ─────────────────────────────────────────────────────
@@ -817,7 +798,6 @@ model AccountsReceivable {
   totalAmount Decimal                  @map("total_amount") @db.Decimal(16, 2)
   /// Abonado acumulado, cacheado para filtrar/ordenar sin agregar en cada consulta. Reforzado por CHECKs a mano. Mismo criterio que AccountsPayable.paidAmount.
   paidAmount  Decimal                  @default(0) @map("paid_amount") @db.Decimal(16, 2)
-  dueDate     DateTime?                @map("due_date") @db.Date
   status      AccountsReceivableStatus @default(pending)
   createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
@@ -826,30 +806,13 @@ model AccountsReceivable {
   seller   ThirdParty @relation("SellerAR", fields: [sellerId], references: [id])
   document Document   @relation(fields: [documentId], references: [id])
 
-  receivablePayments         ReceivablePayment[]
   reciboCajaAllocations      ReciboCajaAllocation[]
   customerCreditApplications CustomerCreditApplication[]
 
   @@index([clientId, status])
   @@index([sellerId])
   @@index([documentId])
-  @@index([dueDate])
   @@map("accounts_receivable")
-}
-
-model ReceivablePayment {
-  id                  String   @id @default(uuid(7)) @db.Uuid
-  accountReceivableId String   @map("account_receivable_id") @db.Uuid
-  amount              Decimal  @db.Decimal(16, 2)
-  paymentDate         DateTime @map("payment_date") @db.Date
-  paymentMethod       String   @map("payment_method")
-  reference           String?
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  accountReceivable AccountsReceivable @relation(fields: [accountReceivableId], references: [id])
-
-  @@index([accountReceivableId])
-  @@map("receivable_payments")
 }
 
 // ─── Accounts payable ────────────────────────────────────────────────────────
@@ -867,14 +830,12 @@ model AccountsPayable {
   totalAmount Decimal               @map("total_amount") @db.Decimal(16, 2)
   /// Abonado acumulado (efectivo + saldo a favor), cacheado para filtrar/ordenar sin agregar en cada consulta. Reforzado por CHECKs a mano.
   paidAmount  Decimal               @default(0) @map("paid_amount") @db.Decimal(16, 2)
-  dueDate     DateTime?             @map("due_date") @db.Date
   status      AccountsPayableStatus @default(pending)
   createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime              @updatedAt @map("updated_at") @db.Timestamptz
 
   supplier           Supplier                    @relation(fields: [supplierId], references: [id])
   document           Document                    @relation(fields: [documentId], references: [id])
-  payablePayments    PayablePayment[]
   creditApplications SupplierCreditApplication[]
   egresoAllocations  EgresoAllocation[]
 
@@ -882,27 +843,7 @@ model AccountsPayable {
   @@index([supplierId, status])
   // void() de un documento hace deleteMany({ where: { documentId } }).
   @@index([documentId])
-  // Listado global ordenado por vencimiento; en PostgreSQL un índice ASC ya es
-  // NULLS LAST, que es justo el orderBy del service.
-  @@index([dueDate])
   @@map("accounts_payable")
-}
-
-model PayablePayment {
-  id               String   @id @default(uuid(7)) @db.Uuid
-  accountPayableId String   @map("account_payable_id") @db.Uuid
-  amount           Decimal  @db.Decimal(16, 2)
-  paymentDate      DateTime @map("payment_date") @db.Date
-  paymentMethod    String   @map("payment_method")
-  bankDestination  String?  @map("bank_destination")
-  reference        String?
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  accountPayable AccountsPayable @relation(fields: [accountPayableId], references: [id])
-
-  // Histórico de abonos en el detalle de la CxP. Sin esto es seq scan.
-  @@index([accountPayableId])
-  @@map("payable_payments")
 }
 
 // ─── Supplier credit (saldo a favor de proveedor) ────────────────────────────

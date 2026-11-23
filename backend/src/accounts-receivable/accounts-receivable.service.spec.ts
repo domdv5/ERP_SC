@@ -64,7 +64,6 @@ describe('AccountsReceivableService.getClientStatement', () => {
         paidAmount: decimal('40'),
         status: 'partial',
         document: { customerBranchId: null, date: saleDate },
-        receivablePayments: [],
         reciboCajaAllocations: [],
       },
       {
@@ -73,7 +72,6 @@ describe('AccountsReceivableService.getClientStatement', () => {
         paidAmount: decimal('50'),
         status: 'paid',
         document: { customerBranchId: null, date: saleDate },
-        receivablePayments: [],
         reciboCajaAllocations: [],
       },
     ]);
@@ -115,7 +113,7 @@ describe('AccountsReceivableService.getClientStatement', () => {
     expect(result.credits).toHaveLength(3);
   });
 
-  it('cada CxC trae la fecha del último pago (pago histórico o recibo de caja) y los días, sin los pagos crudos', async () => {
+  it('cada CxC trae la fecha del último pago (recibo de caja) y los días, sin los pagos crudos', async () => {
     prisma.customer.findUnique.mockResolvedValue({
       id: 'c1',
       thirdParty: { id: 'c1', name: 'Cliente Uno' },
@@ -127,9 +125,6 @@ describe('AccountsReceivableService.getClientStatement', () => {
         paidAmount: decimal('50'),
         status: 'paid',
         document: { customerBranchId: null, date: saleDate },
-        receivablePayments: [
-          { paymentDate: new Date('2026-09-05T00:00:00.000Z') },
-        ],
         reciboCajaAllocations: [
           { reciboCaja: { date: new Date('2026-09-15T00:00:00.000Z') } },
         ],
@@ -140,7 +135,6 @@ describe('AccountsReceivableService.getClientStatement', () => {
         paidAmount: decimal('0'),
         status: 'pending',
         document: { customerBranchId: null, date: saleDate },
-        receivablePayments: [],
         reciboCajaAllocations: [],
       },
     ]);
@@ -154,7 +148,6 @@ describe('AccountsReceivableService.getClientStatement', () => {
     expect(paid.isPaymentOpen).toBe(false);
     expect(pending.lastPaymentDate).toBeNull();
     expect(pending.isPaymentOpen).toBe(true);
-    expect(paid).not.toHaveProperty('receivablePayments');
     expect(paid).not.toHaveProperty('reciboCajaAllocations');
   });
 });
@@ -190,7 +183,6 @@ describe('AccountsReceivableService: sucursales del cliente', () => {
       customerBranch: branch,
       date: saleDate,
     },
-    receivablePayments: [],
     reciboCajaAllocations: [],
   });
   const centro = { id: 'b1', name: 'Centro' };

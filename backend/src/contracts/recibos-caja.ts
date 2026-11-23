@@ -72,7 +72,6 @@ export interface ReciboCajaAllocationAccountReceivable {
   documentId: string;
   totalAmount: string;
   paidAmount: string;
-  dueDate: string | null;
   status: AccountsReceivableStatus;
   createdAt: string;
   updatedAt: string;
@@ -149,7 +148,6 @@ export interface ReciboCajaOpenReceivable {
   documentId: string;
   totalAmount: string;
   paidAmount: string;
-  dueDate: string | null;
   status: AccountsReceivableStatus;
   createdAt: string;
   updatedAt: string;

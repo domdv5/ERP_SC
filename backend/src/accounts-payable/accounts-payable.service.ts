@@ -66,7 +66,6 @@ const DETAIL_INCLUDE = {
       receiver: { select: { id: true, name: true } },
     },
   },
-  payablePayments: { orderBy: { paymentDate: 'desc' } },
   creditApplications: {
     where: ACTIVE_APPLICATION,
     include: {
@@ -87,7 +86,6 @@ const STATEMENT_INCLUDE = {
     where: ACTIVE_APPLICATION,
     select: { amount: true, egresoId: true, appliedAt: true },
   },
-  payablePayments: { select: { paymentDate: true } },
   egresoAllocations: {
     where: ACTIVE_ALLOCATION,
     select: { egreso: { select: { date: true } } },
@@ -138,12 +136,10 @@ type StatementRow = Prisma.AccountsPayableGetPayload<{
   include: typeof STATEMENT_INCLUDE;
 }>;
 
-/** Último pago: pagos históricos, egresos y saldo a favor sin egreso (los que tienen egreso ya cuentan por su egreso). */
+/** Último pago: egresos y saldo a favor sin egreso (los que tienen egreso ya cuentan por su egreso). */
 function withPaymentDays(row: StatementRow, today: Date) {
-  const { payablePayments, egresoAllocations, ...rest } =
-    withDerivedFields(row);
+  const { egresoAllocations, ...rest } = withDerivedFields(row);
   const lastPaymentDate = findLastPaymentDate([
-    ...payablePayments.map((payment) => payment.paymentDate),
     ...egresoAllocations.map((allocation) => allocation.egreso.date),
     ...row.creditApplications
       .filter((application) => application.egresoId === null)
@@ -306,7 +302,7 @@ export class AccountsPayableService {
         ${having}
       )`;
 
-    // Pagos = históricos, egresos y aplicaciones de saldo a favor sin egreso (las con egreso ya cuentan vía el egreso).
+    // Pagos = egresos y aplicaciones de saldo a favor sin egreso (las con egreso ya cuentan vía el egreso).
     const [rows, [totals]] = await this.prisma.$transaction([
       this.prisma.$queryRaw<SupplierGroupRow[]>`
         WITH ${groupedSuppliers},
@@ -316,11 +312,6 @@ export class AccountsPayableService {
           LIMIT ${limit} OFFSET ${(page - 1) * limit}
         ),
         payment_dates AS (
-          SELECT s.supplier_id, pp.payment_date AS paid_on
-          FROM scoped s
-          JOIN payable_payments pp ON pp.account_payable_id = s.id
-          WHERE s.supplier_id IN (SELECT supplier_id FROM page)
-          UNION ALL
           SELECT s.supplier_id, e.date AS paid_on
           FROM scoped s
           JOIN egreso_allocation ea ON ea.account_payable_id = s.id
@@ -398,10 +389,9 @@ export class AccountsPayableService {
       throw new NotFoundException('Cuenta por pagar no encontrada');
     }
 
-    // payablePayments/egresoAllocations/creditApplications ya quedan resumidos
+    // egresoAllocations/creditApplications ya quedan resumidos
     // en `history` — no se devuelven crudos para no duplicar la misma info.
-    const { payablePayments, egresoAllocations, creditApplications, ...rest } =
-      accountPayable;
+    const { egresoAllocations, creditApplications, ...rest } = accountPayable;
     const creditApplied = creditApplications.reduce(
       (sum, application) => sum.plus(application.amount),
       new Prisma.Decimal(0),
@@ -496,7 +486,7 @@ export class AccountsPayableService {
   }
 }
 
-/** Historial unificado de abonos de una CxP: egresos, pagos históricos y aplicaciones de saldo a favor sin egreso (las que ya tienen egreso se excluyen para no duplicar). */
+/** Historial unificado de abonos de una CxP: egresos y aplicaciones de saldo a favor sin egreso (las que ya tienen egreso se excluyen para no duplicar). */
 function buildHistory(accountPayable: DetailRow) {
   const fromEgresos = accountPayable.egresoAllocations.map((allocation) => ({
     source: 'egreso' as const,
@@ -505,17 +495,6 @@ function buildHistory(accountPayable: DetailRow) {
     creditAmount: allocation.creditAmount,
     egreso: allocation.egreso,
   }));
-
-  const fromHistoricPayments = accountPayable.payablePayments.map(
-    (payment) => ({
-      source: 'pago_historico' as const,
-      date: payment.paymentDate,
-      amount: payment.amount,
-      paymentMethod: payment.paymentMethod,
-      bankDestination: payment.bankDestination,
-      reference: payment.reference,
-    }),
-  );
 
   const fromHistoricCredits = accountPayable.creditApplications
     .filter((application) => application.egresoId === null)
@@ -526,7 +505,7 @@ function buildHistory(accountPayable: DetailRow) {
       supplierCredit: application.supplierCredit,
     }));
 
-  return [...fromEgresos, ...fromHistoricPayments, ...fromHistoricCredits].sort(
+  return [...fromEgresos, ...fromHistoricCredits].sort(
     (a, b) => b.date.getTime() - a.date.getTime(),
   );
 }

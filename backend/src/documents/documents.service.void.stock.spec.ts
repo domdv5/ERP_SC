@@ -113,9 +113,7 @@ describe('DocumentsService.void: stock por tipo', () => {
     it('COT: devuelve el stock, borra la CxC y restituye saldos a favor', async () => {
       loadDocument(DocumentType.COT, {
         inventoryMovements: [makeMovement({ quantity: -1 })],
-        accountsReceivable: [
-          { receivablePayments: [], reciboCajaAllocations: [] },
-        ],
+        accountsReceivable: [{ reciboCajaAllocations: [] }],
         appliedCustomerCredits: [{ id: 'ac1' }, { id: 'ac2' }],
       });
 

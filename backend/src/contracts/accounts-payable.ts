@@ -33,7 +33,6 @@ export interface AccountsPayable {
   supplierId: string;
   documentId: string;
   totalAmount: string;
-  dueDate: string | null;
   status: AccountsPayableStatus;
   createdAt: string;
   updatedAt: string;
@@ -53,14 +52,6 @@ export type AccountsPayableHistoryEntry =
       amount: string;
       creditAmount: string;
       egreso: { id: string; number: string; date: string };
-    }
-  | {
-      source: 'pago_historico';
-      date: string;
-      amount: string;
-      paymentMethod: string;
-      bankDestination: string | null;
-      reference: string | null;
     }
   | {
       source: 'nota_credito_historica';
