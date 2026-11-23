@@ -7,7 +7,7 @@ export const formatDate = formatDateOnly
 // formatDate, este sí se lee en horario Bogotá para mostrar el día en que ocurrió localmente.
 export const formatEventDate = formatBogotaDate
 
-// El historial de una CxP mezcla fechas @db.Date (egreso/pago_historico) con un timestamptz real
+// El historial de una CxP mezcla fechas @db.Date (egreso) con un timestamptz real
 // (nota_credito_historica → appliedAt) en un mismo campo `date` — el source decide el formateador.
 export const formatHistoryDate = (entry: Pick<AccountsPayableHistoryEntry, 'source' | 'date'>) =>
   entry.source === 'nota_credito_historica' ? formatEventDate(entry.date) : formatDate(entry.date)
