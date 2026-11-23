@@ -34,6 +34,11 @@ const SALE_VOID_TYPES: ReadonlySet<DocumentType> = new Set([
   DocumentType.REM,
 ]);
 
+// Red final: el abonado guardado bloquea la anulación aunque falte la fila del abono que lo explica
+function hasPaidAmount(account: { paidAmount?: unknown }) {
+  return Number(account.paidAmount ?? 0) > 0;
+}
+
 @Injectable()
 export class DocumentVoidService {
   constructor(
@@ -78,6 +83,7 @@ export class DocumentVoidService {
     // Un pago saldado 100% con nota crédito no deja fila de pago propia; hay que chequear también las notas crédito aplicadas.
     const hasPayments = document.accountsPayable.some(
       (payable) =>
+        hasPaidAmount(payable) ||
         payable.creditApplications.some(isActiveEgresoLink) ||
         payable.egresoAllocations.some(isActiveEgresoLink),
     );
@@ -115,7 +121,9 @@ export class DocumentVoidService {
     // La venta a crédito genera una cuenta por cobrar; si ya recibió pagos no se
     // puede anular (quedarían sueltos). Mismo criterio que la cuenta por pagar de arriba.
     const hasReceivablePayments = document.accountsReceivable.some(
-      (receivable) => receivable.reciboCajaAllocations.length > 0,
+      (receivable) =>
+        hasPaidAmount(receivable) ||
+        receivable.reciboCajaAllocations.length > 0,
     );
 
     if (hasReceivablePayments) {
@@ -271,6 +279,7 @@ export class DocumentVoidService {
 
         const stillHasPayablePayments = freshPayables.some(
           (payable) =>
+            hasPaidAmount(payable) ||
             payable.creditApplications.some(isActiveEgresoLink) ||
             payable.egresoAllocations.some(isActiveEgresoLink),
         );
@@ -281,7 +290,9 @@ export class DocumentVoidService {
         }
 
         const stillHasReceivablePayments = freshReceivables.some(
-          (receivable) => receivable.reciboCajaAllocations.length > 0,
+          (receivable) =>
+            hasPaidAmount(receivable) ||
+            receivable.reciboCajaAllocations.length > 0,
         );
         if (stillHasReceivablePayments) {
           throw new ConflictException(

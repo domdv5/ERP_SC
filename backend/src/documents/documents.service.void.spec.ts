@@ -141,6 +141,40 @@ describe('DocumentsService.void: validaciones y estado', () => {
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
+    it('rechaza una cuenta por pagar con monto abonado aunque no tenga egresos ni notas crédito', async () => {
+      loadDocument(DocumentType.CM, {
+        accountsPayable: [
+          {
+            creditApplications: [],
+            egresoAllocations: [],
+            paidAmount: '50000',
+          },
+        ],
+      });
+
+      await expect(service.void('doc-1', fullUser)).rejects.toThrow(
+        new ConflictException(
+          'No se puede anular: la cuenta por pagar ya tiene pagos registrados',
+        ),
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('rechaza una cuenta por cobrar con monto abonado aunque no tenga recibos de caja', async () => {
+      loadDocument(DocumentType.COT, {
+        accountsReceivable: [
+          { reciboCajaAllocations: [], paidAmount: '50000' },
+        ],
+      });
+
+      await expect(service.void('doc-1', fullUser)).rejects.toThrow(
+        new ConflictException(
+          'No se puede anular: la cuenta por cobrar ya tiene pagos registrados',
+        ),
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
     it('rechaza una DVC cuya nota crédito ya se aplicó', async () => {
       loadDocument(DocumentType.DVC, {
         supplierCredits: [{ applications: [{ id: 'a1' }] }],
@@ -255,6 +289,34 @@ describe('DocumentsService.void: validaciones y estado', () => {
         ),
       );
       expect(tx.accountsPayable.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('lanza 409 si la cuenta por pagar quedó con monto abonado entre el chequeo y el lock', async () => {
+      loadDocument(DocumentType.CM);
+      tx.accountsPayable.findMany.mockResolvedValue([
+        { creditApplications: [], egresoAllocations: [], paidAmount: '50000' },
+      ]);
+
+      await expect(service.void('doc-1', fullUser)).rejects.toThrow(
+        new ConflictException(
+          'No se puede anular: la cuenta por pagar ya tiene pagos registrados',
+        ),
+      );
+      expect(tx.accountsPayable.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('lanza 409 si la cuenta por cobrar quedó con monto abonado entre el chequeo y el lock', async () => {
+      loadDocument(DocumentType.COT);
+      tx.accountsReceivable.findMany.mockResolvedValue([
+        { reciboCajaAllocations: [], paidAmount: '50000' },
+      ]);
+
+      await expect(service.void('doc-1', fullUser)).rejects.toThrow(
+        new ConflictException(
+          'No se puede anular: la cuenta por cobrar ya tiene pagos registrados',
+        ),
+      );
+      expect(tx.accountsReceivable.deleteMany).not.toHaveBeenCalled();
     });
 
     it('lanza 409 si un recibo de caja concurrente pagó la cuenta por cobrar', async () => {
