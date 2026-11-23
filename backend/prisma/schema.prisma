@@ -392,14 +392,14 @@ model InventoryMovement {
   product      Product       @relation(fields: [productId], references: [id])
   warehouse    Warehouse     @relation(fields: [warehouseId], references: [id])
   bin          Bin?          @relation(fields: [binId], references: [id])
-  document     Document?     @relation(fields: [documentId], references: [id])
-  documentItem DocumentItem? @relation(fields: [documentItemId], references: [id])
+  document     Document?     @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  documentItem DocumentItem? @relation(fields: [documentItemId], references: [id], onDelete: Restrict)
   user         User?         @relation(fields: [userId], references: [id])
 
-  @@index([productId])
   @@index([productId, createdAt])
   @@index([warehouseId])
   @@index([documentId])
+  @@index([documentItemId])
   @@index([createdAt])
   @@index([movementType])
   @@map("inventory_movements")
@@ -649,7 +649,7 @@ model Document {
   destWarehouse    Warehouse?      @relation("DocumentDestWarehouse", fields: [destWarehouseId], references: [id], onDelete: Restrict)
   sourceBin        Bin?            @relation("DocumentSourceBin", fields: [sourceBinId], references: [id], onDelete: Restrict)
   destBin          Bin?            @relation("DocumentDestBin", fields: [destBinId], references: [id], onDelete: Restrict)
-  sourceDocument   Document?       @relation("DocumentSource", fields: [sourceDocumentId], references: [id])
+  sourceDocument   Document?       @relation("DocumentSource", fields: [sourceDocumentId], references: [id], onDelete: Restrict)
   derivedDocuments Document[]      @relation("DocumentSource")
 
   documentItems          DocumentItem[]
@@ -907,21 +907,27 @@ model PayablePayment {
 
 // ─── Supplier credit (saldo a favor de proveedor) ────────────────────────────
 
+enum CreditStatus {
+  available
+  used
+  voided
+}
+
 model SupplierCredit {
-  id               String   @id @default(uuid(7)) @db.Uuid
-  supplierId       String   @map("supplier_id") @db.Uuid
+  id               String       @id @default(uuid(7)) @db.Uuid
+  supplierId       String       @map("supplier_id") @db.Uuid
   // Monto original de la nota crédito. Se guarda en positivo (a diferencia de la
   // AccountsPayable negativa que este modelo reemplaza) porque es un saldo a favor.
-  amount           Decimal  @db.Decimal(16, 2)
+  amount           Decimal      @db.Decimal(16, 2)
   // Invariante: 0 <= balance <= amount; al llegar a 0, status pasa a 'used'. Reforzado por el CHECK "supplier_credit_balance_range_chk" (a mano).
-  balance          Decimal  @db.Decimal(16, 2)
-  sourceDocumentId String?  @map("source_document_id") @db.Uuid
-  /// available | used
-  status           String   @default("available") @db.VarChar(10)
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  balance          Decimal      @db.Decimal(16, 2)
+  sourceDocumentId String?      @map("source_document_id") @db.Uuid
+  // Nunca usa voided: anular solo existe para excedentes de cliente.
+  status           CreditStatus @default(available)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz
 
   supplier       Supplier                    @relation(fields: [supplierId], references: [id])
-  sourceDocument Document?                   @relation("DvcSupplierCredit", fields: [sourceDocumentId], references: [id])
+  sourceDocument Document?                   @relation("DvcSupplierCredit", fields: [sourceDocumentId], references: [id], onDelete: Restrict)
   applications   SupplierCreditApplication[]
 
   // Una DVC genera exactamente un crédito: bloquea duplicados por doble confirm o retry.
@@ -990,12 +996,12 @@ model CustomerCredit {
   // Invariante: 0 <= balance <= amount; llega a 0 → status 'used'. Único CHECK a mano del schema ("customer_credit_balance_range_chk"), red final contra saldo corrupto.
   balance          Decimal                @db.Decimal(16, 2)
   sourceDocumentId String?                @map("source_document_id") @db.Uuid
-  /// available | used | voided (voided: excedente anulado sin haberse usado)
-  status           String                 @default("available") @db.VarChar(10)
+  /// voided: excedente anulado sin haberse usado
+  status           CreditStatus           @default(available)
   createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz
 
   customer       Customer                    @relation(fields: [customerId], references: [id])
-  sourceDocument Document?                   @relation("DvvCustomerCredit", fields: [sourceDocumentId], references: [id])
+  sourceDocument Document?                   @relation("DvvCustomerCredit", fields: [sourceDocumentId], references: [id], onDelete: Restrict)
   customerBranch CustomerBranch?             @relation(fields: [customerBranchId], references: [id], onDelete: Restrict)
   user           User?                       @relation("CustomerCreditCreatedBy", fields: [userId], references: [id], onDelete: Restrict)
   voidedBy       User?                       @relation("CustomerCreditVoidedBy", fields: [voidedById], references: [id], onDelete: Restrict)
