@@ -41,11 +41,12 @@ Borrar o recortar pruebas que no cumplen el hábito 7 del CLAUDE.md raíz (texto
 
 ## Tasks
 
-- T1 — backend S2-S5, S8-S9 — worker — commit: pending
-- T2 — frontend S2-S3, S6-S8, S9 — worker — commit: pending
+- T1 — backend S2-S5, S8-S9 — worker — commit: f3fbf17 (71 suites / 733 tests, tsc ok)
+- T2 — frontend S2-S3, S6-S8, S9 — worker — commit: 36757f8 (27 files / 221 tests, build ok)
 
 ## Log
 
 - L1 — Dueño: "si mira, quioer que revises el codigo y hagamso un analsis de losa rchivos de prueba, polrque siento que hay pruebas que son inncesarisas ,e tnpocnes no le veo sentido a que todo lo que se haga tenga pruebas, es sdecir si es algo visual o infinmo pues no tienen sentidio, solamente deberia tener pruebas aquello que es critico, como los docuemntos, pagos, reibid dinero, ventas etc etc"
 - L2 — Análisis con 2 exploradores; el padre corrigió: `documents.contract.spec.ts` se queda (CI tsc). Lista fija de document-permissions: recomendación del padre dejarla; el dueño no la objetó.
 - L3 — Dueño: "dale" (plan completo: borrar + recortar, commit backend y frontend separados).
+- L4 — Se quedaron contra la lista (S2): api-error (bug e08e426), PaymentLinesField reintentar (88c5065), findMissingItems (único test de bloqueos de venta, sin orden), ThirdPartiesPage columna con COT (1e0e37a), resolve-report-range fechas inexistentes, pdf-totals POSO, reports getSalesBySeller (conversión BigInt), duplicados aparentes de inventory-cases/recibos-caja/accounts-receivable (eran métodos/flujos distintos). find-all/find-one recortados, no borrados (filtro de activos). city.spec reemplazado por update-branch.spec: la sucursal solo se edita desde su cliente (mutación quitando `customerId` del where: DETECTADA).
