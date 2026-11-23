@@ -63,7 +63,8 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
         })
       : null;
 
-    if (!thirdParty?.supplier) {
+    // Desmarcar la casilla no borra el registro de proveedor: hay que mirar las dos cosas
+    if (!thirdParty?.supplier || !thirdParty.isSupplier) {
       throw new BadRequestException(
         'El documento requiere un proveedor válido',
       );
@@ -78,7 +79,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
         })
       : null;
 
-    if (!thirdParty?.customer) {
+    if (!thirdParty?.customer || !thirdParty.isCustomer) {
       throw new BadRequestException('El documento requiere un cliente válido');
     }
   }
@@ -120,7 +121,7 @@ export abstract class BaseEffectStrategy implements DocumentEffectStrategy {
         })
       : null;
 
-    if (!thirdParty?.customer) {
+    if (!thirdParty?.customer || !thirdParty.isCustomer) {
       throw new BadRequestException('La venta requiere un cliente válido');
     }
 

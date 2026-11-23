@@ -33,7 +33,7 @@ export class CotEffectStrategy extends BaseEffectStrategy {
         })
       : null;
 
-    if (!thirdParty?.customer) {
+    if (!thirdParty?.customer || !thirdParty.isCustomer) {
       throw new BadRequestException('La venta requiere un cliente válido');
     }
 
