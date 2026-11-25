@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AccountsPayableService } from './accounts-payable.service';
 import {
   FindAllAccountsPayableDto,
@@ -40,6 +41,7 @@ export class AccountsPayableController {
 
   // Mismo motivo de orden que "credits" arriba: "suppliers" no debe caer en :id.
   @Get('suppliers/:supplierId/statement')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Permissions('ap.read')
   getSupplierStatement(@Param('supplierId') supplierId: string) {
     return this.accountsPayableService.getSupplierStatement(supplierId);

@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ThrottlerModule } from '@nestjs/throttler';
 import { DocumentsService } from './documents.service';
 import { DocumentsQueryService } from './documents-query.service';
 import { DocumentConversionService } from './document-conversion.service';
@@ -35,10 +34,6 @@ import {
 } from './print/index';
 
 @Module({
-  // Solo acá (no en AppModule): el rate limit queda scoped a GET /documents/:id/print.
-  imports: [
-    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 6 }]),
-  ],
   controllers: [DocumentsController],
   providers: [
     DocumentsService,

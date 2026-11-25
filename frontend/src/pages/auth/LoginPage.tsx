@@ -47,11 +47,15 @@ export default function LoginPage() {
     onError: (err: unknown) => {
       const status = (err as { response?: { status?: number } })?.response?.status
       const msg = findApiErrorMessage(err)
-      // Un 401 con otro texto es el usuario desactivado; el resto mantiene el mensaje genérico.
+      // 429: demasiados intentos (no es contraseña mala). Un 401 con otro texto es el usuario desactivado.
+      const isBlocked = status === 429
+      const isDeactivated = status === 401 && msg && msg !== 'Credenciales inválidas'
       toast.error(
-        status === 401 && msg && msg !== 'Credenciales inválidas'
-          ? msg
-          : 'Usuario o contraseña incorrectos',
+        isBlocked
+          ? (msg ?? 'Demasiados intentos. Espera un momento e intenta de nuevo.')
+          : isDeactivated
+            ? msg
+            : 'Usuario o contraseña incorrectos',
       )
     },
   })

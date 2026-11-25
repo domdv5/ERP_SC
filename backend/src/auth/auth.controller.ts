@@ -7,9 +7,8 @@ import {
   Param,
   Query,
   Req,
-  UseGuards,
 } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import {
   ChangePasswordDto,
@@ -48,7 +47,6 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   login(@Body() loginAuthDto: LoginAuthDto) {
     return this.authService.login(loginAuthDto);
@@ -56,7 +54,6 @@ export class AuthController {
 
   // Sin @Permissions: cualquier usuario autenticado cambia solo la suya; va antes de `PATCH :id`
   @Patch('me/password')
-  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   changePassword(
     @Req() req: RequestWithUser,
