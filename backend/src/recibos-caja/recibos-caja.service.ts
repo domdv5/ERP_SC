@@ -9,6 +9,7 @@ import {
   AccountsReceivableStatus,
   CustomerCreditUsableIn,
   ReciboCajaDiscountReason,
+  ReciboCajaVoidReason,
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
@@ -21,6 +22,7 @@ import type {
 } from '@/contracts';
 import { toCents } from '@/common/utils/money.util';
 import { CreateReciboCajaDto } from './dto/create-recibo-caja.dto';
+import { VoidReciboCajaDto } from './dto/void-recibo-caja.dto';
 import { FindAllRecibosCajaDto } from './dto/find-all-recibos-caja.dto';
 import { NO_BRANCH_FILTER } from './dto/find-open-items.dto';
 
@@ -32,6 +34,7 @@ export const RECIBO_CAJA_DETAIL_INCLUDE = {
   client: { include: { thirdParty: { select: { id: true, name: true } } } },
   customerBranch: { select: { id: true, name: true } },
   user: { select: { id: true, name: true } },
+  voidedBy: { select: { id: true, name: true } },
   payments: true,
   allocations: {
     include: {
@@ -565,6 +568,114 @@ export class RecibosCajaService {
     });
   }
 
+  async void(id: string, dto: VoidReciboCajaDto, user: JwtPayload) {
+    return matchDetailContract(
+      await this.prisma.$transaction(
+        (tx) => this.voidInTransaction(tx, id, dto, user),
+        { timeout: 30000 },
+      ),
+    );
+  }
+
+  private async voidInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+    dto: VoidReciboCajaDto,
+    user: JwtPayload,
+  ) {
+    const reciboCaja = await tx.reciboCaja.findUnique({
+      where: { id },
+      include: { allocations: true, creditApplications: true },
+    });
+    if (!reciboCaja) {
+      throw new NotFoundException('Recibo de caja no encontrado');
+    }
+
+    // Mismo orden de bloqueo que create(): customer_credit -> accounts_receivable.
+    const creditIds = [
+      ...new Set(reciboCaja.creditApplications.map((a) => a.customerCreditId)),
+    ].sort();
+    await tx.$queryRaw`SELECT id FROM "customer_credit" WHERE id = ANY(${creditIds}::uuid[]) ORDER BY id FOR UPDATE`;
+
+    const receivableIds = [
+      ...new Set(reciboCaja.allocations.map((a) => a.accountReceivableId)),
+    ].sort();
+    await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE id = ANY(${receivableIds}::uuid[]) ORDER BY id FOR UPDATE`;
+
+    // Reclamo atómico: si dos anulaciones corren a la vez, la segunda ve count 0.
+    const claimed = await tx.reciboCaja.updateMany({
+      where: { id, voidedAt: null },
+      data: {
+        voidedAt: new Date(),
+        voidedById: user.sub,
+        voidReason: dto.reason,
+        voidReasonOther:
+          dto.reason === ReciboCajaVoidReason.otro ? dto.reasonOther : null,
+      },
+    });
+    if (claimed.count === 0) {
+      throw new ConflictException('El recibo de caja ya está anulado');
+    }
+
+    const receivables = await tx.accountsReceivable.findMany({
+      where: { id: { in: receivableIds } },
+    });
+    const receivableById = new Map(receivables.map((r) => [r.id, r]));
+
+    // allocation.amount ya incluye pago + descuento + saldo a favor de esa CxC
+    for (const allocation of reciboCaja.allocations) {
+      const receivable = receivableById.get(allocation.accountReceivableId)!;
+      const paidCents =
+        toCents(receivable.paidAmount) - toCents(allocation.amount);
+      if (paidCents < 0) {
+        throw new ConflictException(
+          'No se puede anular: el abono supera lo pagado en una cuenta por cobrar',
+        );
+      }
+      const status =
+        paidCents === 0
+          ? AccountsReceivableStatus.pending
+          : paidCents >= toCents(receivable.totalAmount)
+            ? AccountsReceivableStatus.paid
+            : AccountsReceivableStatus.partial;
+
+      await tx.accountsReceivable.update({
+        where: { id: receivable.id },
+        data: { paidAmount: paidCents / 100, status },
+      });
+    }
+
+    const returnedCentsByCreditId = new Map<string, number>();
+    for (const application of reciboCaja.creditApplications) {
+      returnedCentsByCreditId.set(
+        application.customerCreditId,
+        (returnedCentsByCreditId.get(application.customerCreditId) ?? 0) +
+          toCents(application.amount),
+      );
+    }
+
+    const credits = await tx.customerCredit.findMany({
+      where: { id: { in: creditIds } },
+    });
+    for (const credit of credits) {
+      await tx.customerCredit.update({
+        where: { id: credit.id },
+        data: {
+          balance:
+            (toCents(credit.balance) +
+              returnedCentsByCreditId.get(credit.id)!) /
+            100,
+          status: 'available',
+        },
+      });
+    }
+
+    return tx.reciboCaja.findUniqueOrThrow({
+      where: { id },
+      include: RECIBO_CAJA_DETAIL_INCLUDE,
+    });
+  }
+
   /** Valida los saldos a favor de administración citados (ya bloqueados): del cliente, de la misma sucursal del recibo, disponibles y usados por todo su saldo. */
   private async findUsableCredits(
     tx: Prisma.TransactionClient,
@@ -683,6 +794,7 @@ export class RecibosCajaService {
           total: true,
           discountAmount: true,
           createdAt: true,
+          voidedAt: true,
           customerBranch: { select: { id: true, name: true } },
           client: {
             include: { thirdParty: { select: { id: true, name: true } } },

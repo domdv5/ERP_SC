@@ -25,6 +25,15 @@ export interface ReciboCajaBranch {
   name: string;
 }
 
+export type ReciboCajaVoidReason =
+  | 'valor_equivocado'
+  | 'cliente_equivocado'
+  | 'factura_equivocada'
+  | 'forma_pago_equivocada'
+  | 'pago_duplicado'
+  | 'pago_no_recibido'
+  | 'otro';
+
 export interface ReciboCajaListItem {
   id: string;
   number: string;
@@ -36,6 +45,8 @@ export interface ReciboCajaListItem {
   creditTotal: string;
   discountAmount: string;
   createdAt: string;
+  // Null si el recibo no está anulado
+  voidedAt: string | null;
   client: ReceivableClient;
   customerBranch: ReciboCajaBranch | null;
 }
@@ -116,7 +127,7 @@ export interface ReciboCajaCreditApplication {
   };
 }
 
-// GET /recibos-caja/:id y POST /recibos-caja
+// GET /recibos-caja/:id, POST /recibos-caja y POST /recibos-caja/:id/void
 export interface ReciboCaja {
   id: string;
   number: string;
@@ -132,6 +143,11 @@ export interface ReciboCaja {
   notes: string | null;
   idempotencyKey: string;
   createdAt: string;
+  // Anulación: null si no está anulado; voidReasonOther solo viene con motivo otro
+  voidedAt: string | null;
+  voidReason: ReciboCajaVoidReason | null;
+  voidReasonOther: string | null;
+  voidedBy: { id: string; name: string } | null;
   client: ReceivableClient;
   customerBranch: ReciboCajaBranch | null;
   user: { id: string; name: string };

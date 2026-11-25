@@ -13,6 +13,7 @@ import {
   CreateReciboCajaDto,
   FindAllRecibosCajaDto,
   FindOpenItemsDto,
+  VoidReciboCajaDto,
 } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import type { RequestWithUser } from '@/common/types';
@@ -54,5 +55,15 @@ export class RecibosCajaController {
     @Req() req: RequestWithUser,
   ) {
     return this.recibosCajaService.create(createReciboCajaDto, req.user);
+  }
+
+  @Post(':id/void')
+  @Permissions('recibo.void')
+  void(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() voidReciboCajaDto: VoidReciboCajaDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.recibosCajaService.void(id, voidReciboCajaDto, req.user);
   }
 }

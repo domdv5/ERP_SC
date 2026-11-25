@@ -114,6 +114,22 @@ describe('CreditsService', () => {
     });
   });
 
+  it('el detalle de cliente deja fuera aplicaciones de recibos anulados', async () => {
+    prisma.customer.findUnique.mockResolvedValue({
+      thirdParty: { id: 'c1', name: 'Ana', documentNumber: '1' },
+      customerCredits: [],
+    });
+
+    await service.findCustomerDetail('c1');
+
+    const include =
+      prisma.customer.findUnique.mock.calls[0][0].select.customerCredits
+        .include;
+    expect(include.applications.where).toEqual({
+      OR: [{ reciboCajaId: null }, { reciboCaja: { voidedAt: null } }],
+    });
+  });
+
   it('el detalle de cliente calcula estado, usado y total sin contar anulados', async () => {
     const base = { createdAt: new Date(), date: null, sourceDocument: null };
     prisma.customer.findUnique.mockResolvedValue({
