@@ -91,6 +91,35 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
     });
   });
 
+  it('un mismo saldo a favor repartido entre dos CxC devuelve la suma de sus tramos', async () => {
+    tx.reciboCaja.findUnique.mockResolvedValue({
+      id: 'r1',
+      allocations: [
+        { accountReceivableId: 'COT10', amount: dec(100000) },
+        { accountReceivableId: 'COT11', amount: dec(50000) },
+      ],
+      creditApplications: [
+        { customerCreditId: 'cc1', amount: dec(15000) },
+        { customerCreditId: 'cc1', amount: dec(5000) },
+      ],
+    });
+    tx.accountsReceivable.findMany.mockResolvedValue([
+      receivable('COT10', 100000, 100000, 'paid'),
+      receivable('COT11', 50000, 50000, 'paid'),
+    ]);
+    tx.customerCredit.findMany.mockResolvedValue([
+      { id: 'cc1', balance: dec(0), status: 'used' },
+    ]);
+
+    await service.void('r1', { reason: 'pago_duplicado' }, user);
+
+    expect(tx.customerCredit.update).toHaveBeenCalledTimes(1);
+    expect(tx.customerCredit.update).toHaveBeenCalledWith({
+      where: { id: 'cc1' },
+      data: { balance: 20000, status: 'available' },
+    });
+  });
+
   it('respeta lo que otro recibo abonó después: anular R1 deja la CxC en parcial con lo de R2', async () => {
     tx.reciboCaja.findUnique.mockResolvedValue({
       id: 'r1',
