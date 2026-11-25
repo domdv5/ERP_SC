@@ -54,3 +54,17 @@ export function invalidateAfterDocumentChange(
     if (id) queryClient.invalidateQueries({ queryKey: ['document', id] })
   })
 }
+
+// Anular un recibo de caja devuelve saldo a las CxC y a los saldos a favor, y puede desbloquear la anulación de la venta
+export function invalidateAfterReciboCajaVoid(queryClient: QueryClient) {
+  invalidateKeys(queryClient, [
+    'recibos-caja',
+    'recibos-caja-open-items',
+    'accounts-receivable',
+    'customer-credit',
+    'customer-available-credits',
+    'documents',
+    'document',
+  ])
+  invalidateThirdParties(queryClient)
+}

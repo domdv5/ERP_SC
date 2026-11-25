@@ -145,7 +145,9 @@ export type {
   CreateReciboCajaPayload,
   CreateReciboCajaReceivablePayload,
   CreateReciboCajaPaymentPayload,
+  ReciboCajaVoidReason,
 } from './recibo-caja.types'
+export { RECIBO_CAJA_VOID_REASON_LABELS } from './recibo-caja.types'
 export type { SystemStatus, SystemStatusActivatedBy } from './system.types'
 export type {
   OfficialLedgerItem,

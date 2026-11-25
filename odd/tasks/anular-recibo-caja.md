@@ -18,7 +18,7 @@ Rama `feat/anular-recibo-caja`. Toca dinero (CxC, saldos a favor), una migració
 
 ## Tasks
 
-- [ ] **T1** (S1-S8) backend: migración aditiva + enum, permiso seed, `POST /recibos-caja/:id/void`, DTO, contrato, desbloqueos y filtros de lecturas, pruebas de dinero — route: reversión (S1, S2, S6) parent; resto `nestjs-code-crafter` — commit: —
+- [x] **T1** (S1-S8) backend: migración aditiva + enum, permiso seed, `POST /recibos-caja/:id/void`, DTO, contrato, desbloqueos y filtros de lecturas, pruebas de dinero — route: reversión (S1, S2, S6) parent; resto `nestjs-code-crafter` — commit: de840eb (slice 1, ~864 líneas, mayoría pruebas; el frontend va en su propio commit)
 - [ ] **T2** (S3, S7, S9) frontend: botón, diálogo con motivo, banner, marca en lista — route `react-code-crafter` — commit: —
 - [ ] **T3** (S10) verificación con base real y pantalla + docs CLAUDE.md — route parent — evidencia: —
 
@@ -28,3 +28,4 @@ Rama `feat/anular-recibo-caja`. Toca dinero (CxC, saldos a favor), una migració
 - **L2** Pregunta del dueño: "y que pasria etnonces si se puede anualr recibos de caja? que se revertira de punt a punta?" — se explicó con el ejemplo de S10.
 - **L3** Decisión del dueño: "que sea tal cual como esta en egresos entonces!" → quién anula, motivo de lista, sin límite de tiempo y reversión igual que egresos. Motivos adaptados al cliente: proveedor_equivocado → cliente_equivocado, pago_no_realizado → pago_no_recibido.
 - **L4** Plan presentado (S1-S10, T1-T3, migración aditiva y permiso `recibo.void` en el seed); el dueño respondió "dale".
+- **L5** T1: jest 784/784, tsc 0, migración aplicada y seed corrido; 10 mutaciones detectadas (ver anular-recibo-caja-evidencia.md). Decisión heredada de egresos: anular una venta cuyo recibo ya está anulado borra las líneas de ese recibo anulado (FK); la cabecera queda.
