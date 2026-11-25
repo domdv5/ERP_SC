@@ -160,6 +160,18 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'user.manage',
     'system.manage',
   ],
+  // Solo lectura: consulta informes y cuentas sin poder crear, anular ni editar nada
+  gerencia: [
+    'report.read',
+    'ar.read',
+    'ap.read',
+    'document.read',
+    'product.read',
+    'thirdparty.read',
+    'recibo.read',
+    'egreso.read',
+    'cash.read',
+  ],
 };
 
 export async function seedRolePermissions(prisma: PrismaClient) {

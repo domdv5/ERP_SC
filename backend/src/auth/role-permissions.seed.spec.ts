@@ -24,6 +24,21 @@ describe('ROLE_PERMISSIONS', () => {
     expect(holders.sort()).toEqual(egresoHolders.sort());
   });
 
+  it('gerencia reads reports and accounts but has no write permission nor the official book', () => {
+    const permissions = ROLE_PERMISSIONS.gerencia;
+    const writeVerbs =
+      /\.(create|update|delete|void|manage|convert|release|close|reopen|print)(\.|$)/;
+
+    expect(permissions).toEqual(
+      expect.arrayContaining(['report.read', 'ar.read', 'ap.read']),
+    );
+    expect(permissions.filter((code) => writeVerbs.test(code))).toEqual([]);
+    expect(
+      permissions.filter((code) => code.startsWith('thirdparty.role.')),
+    ).toEqual([]);
+    expect(permissions).not.toContain('official.read');
+  });
+
   it('billing_lead cannot void POSO nor read the official book', () => {
     expect(ROLE_PERMISSIONS.billing_lead).not.toContain('document.void.POSO');
     expect(ROLE_PERMISSIONS.billing_lead).not.toContain('official.read');
