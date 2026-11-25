@@ -25,6 +25,7 @@ import {
   assertCanViewDocument,
   findVisibleDocumentTypes,
 } from './helpers/document-visibility.helpers';
+import { ACTIVE_RECIBO_LINK } from './helpers/recibo-links.helpers';
 
 export const DETAIL_INCLUDE = {
   documentItems: {
@@ -87,6 +88,7 @@ export const DETAIL_INCLUDE = {
   customerCredits: {
     include: {
       applications: {
+        where: ACTIVE_RECIBO_LINK,
         select: {
           id: true,
           amount: true,

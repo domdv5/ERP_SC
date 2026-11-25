@@ -2,6 +2,10 @@ export const RECIBO_VOID_STATE = {
   select: { reciboCaja: { select: { voidedAt: true } } },
 } as const;
 
+export const ACTIVE_RECIBO_LINK = {
+  OR: [{ reciboCajaId: null }, { reciboCaja: { voidedAt: null } }],
+};
+
 export const VOIDED_RECIBO_ROW = {
   reciboCaja: { voidedAt: { not: null } },
 } as const;

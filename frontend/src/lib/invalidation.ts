@@ -63,6 +63,7 @@ export function invalidateAfterReciboCajaVoid(queryClient: QueryClient) {
     'accounts-receivable',
     'customer-credit',
     'customer-available-credits',
+    'credits',
     'documents',
     'document',
   ])

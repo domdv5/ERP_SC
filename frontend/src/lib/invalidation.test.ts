@@ -38,6 +38,8 @@ describe('invalidateAfterReciboCajaVoid', () => {
     expect(keys).toContainEqual(['accounts-receivable'])
     expect(keys).toContainEqual(['customer-credit'])
     expect(keys).toContainEqual(['customer-available-credits'])
+    // Pantalla Saldos a favor (lista y detalle)
+    expect(keys).toContainEqual(['credits'])
     expect(keys).toContainEqual(['recibos-caja-open-items'])
     expect(prefixes).toContain('third-parties')
   })
