@@ -9,9 +9,8 @@ import {
   Query,
   Req,
   Res,
-  UseGuards,
 } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
 import { DocumentsQueryService } from './documents-query.service';
@@ -131,8 +130,7 @@ export class DocumentsController {
   // passthrough: false evita que ResponseFormatInterceptor envuelva el PDF binario en {success, data}.
   @Get(':id/print')
   @Permissions('document.read')
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   async print(
     @Param('id') id: string,
     @Req() req: RequestWithUser,

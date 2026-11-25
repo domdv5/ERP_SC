@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AccountsReceivableService } from './accounts-receivable.service';
 import {
   ClientStatementQueryDto,
@@ -28,6 +29,7 @@ export class AccountsReceivableController {
 
   // "clients" debe declararse antes de :id para que no lo capture como id.
   @Get('clients/:clientId/statement')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Permissions('ar.read')
   getClientStatement(
     @Param('clientId') clientId: string,
