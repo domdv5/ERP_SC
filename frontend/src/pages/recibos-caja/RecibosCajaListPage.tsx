@@ -18,7 +18,9 @@ import {
   DEFAULT_PAGE_SIZE,
 } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
+import { cn } from '@/lib/utils'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
+import { DOC_STATUS_BADGE } from '@/pages/documents/document.constants'
 import type { ThirdPartyDetail } from '@/types/third-party.types'
 
 export default function RecibosCajaListPage() {
@@ -236,6 +238,7 @@ export default function RecibosCajaListPage() {
                     'Dinero recibido',
                     'Saldo a favor',
                     'Descuento',
+                    'Estado',
                   ].map((h) => (
                     <th
                       key={h}
@@ -272,18 +275,43 @@ export default function RecibosCajaListPage() {
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
                       {reciboCaja.customerBranch?.name ?? '—'}
                     </td>
-                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                    <td
+                      className={cn(
+                        'px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap',
+                        reciboCaja.voidedAt && 'line-through text-content-faint',
+                      )}
+                    >
                       {formatCOP(Number(reciboCaja.cashTotal))}
                     </td>
-                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                    <td
+                      className={cn(
+                        'px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap',
+                        reciboCaja.voidedAt && 'line-through text-content-faint',
+                      )}
+                    >
                       {Number(reciboCaja.creditTotal) > 0
                         ? formatCOP(Number(reciboCaja.creditTotal))
                         : '—'}
                     </td>
-                    <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
+                    <td
+                      className={cn(
+                        'px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap',
+                        reciboCaja.voidedAt && 'line-through text-content-faint',
+                      )}
+                    >
                       {Number(reciboCaja.discountAmount) > 0
                         ? formatCOP(Number(reciboCaja.discountAmount))
                         : '—'}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span
+                        className={cn(
+                          'pill-stamp',
+                          DOC_STATUS_BADGE[reciboCaja.voidedAt ? 'voided' : 'confirmed'].className,
+                        )}
+                      >
+                        {DOC_STATUS_BADGE[reciboCaja.voidedAt ? 'voided' : 'confirmed'].label}
+                      </span>
                     </td>
                   </tr>
                 ))}

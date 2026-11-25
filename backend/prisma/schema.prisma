@@ -465,6 +465,7 @@ model User {
   systemConfigsDeactivated SystemConfig[]       @relation("SystemConfigDeactivatedBy")
   egresos                  Egreso[]
   egresosVoided            Egreso[]             @relation("EgresoVoidedBy")
+  recibosCajaVoided        ReciboCaja[]         @relation("ReciboCajaVoidedBy")
   customerCreditsCreated   CustomerCredit[]     @relation("CustomerCreditCreatedBy")
   customerCreditsVoided    CustomerCredit[]     @relation("CustomerCreditVoidedBy")
   recibosCaja              ReciboCaja[]
@@ -542,6 +543,17 @@ enum EgresoVoidReason {
   forma_pago_equivocada
   pago_duplicado
   pago_no_realizado
+  otro
+}
+
+/// Motivo de anulación de un recibo de caja; otro exige voidReasonOther.
+enum ReciboCajaVoidReason {
+  valor_equivocado
+  cliente_equivocado
+  factura_equivocada
+  forma_pago_equivocada
+  pago_duplicado
+  pago_no_recibido
   otro
 }
 
@@ -1076,7 +1088,7 @@ model EgresoAllocation {
 
 // ─── Recibo de caja (documento de tesorería, lado cliente) ───────────────────
 
-/// Paga una o varias CxC de un mismo cliente en un solo movimiento; no se anula ni se edita. Los saldos a favor usados quedan en CustomerCreditApplication, repartidos por CxC.
+/// Paga una o varias CxC de un mismo cliente en un solo movimiento; no se edita, se anula con voidedAt (las filas hijas se conservan como historial). Los saldos a favor usados quedan en CustomerCreditApplication, repartidos por CxC.
 model ReciboCaja {
   id                String                    @id @default(uuid(7)) @db.Uuid
   /// Consecutivo propio (clave "RECIBO_CAJA" en Sequence), ceros a la izquierda a 6 dígitos para ordenar como texto.
@@ -1098,10 +1110,16 @@ model ReciboCaja {
   /// Clave que manda el cliente para que un reintento de red no cobre dos veces.
   idempotencyKey    String                    @unique @map("idempotency_key") @db.VarChar(100)
   createdAt         DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  /// Anulado si no es null; el motivo es obligatorio al anular.
+  voidedAt          DateTime?                 @map("voided_at") @db.Timestamptz
+  voidedById        String?                   @map("voided_by_id") @db.Uuid
+  voidReason        ReciboCajaVoidReason?     @map("void_reason")
+  voidReasonOther   String?                   @map("void_reason_other") @db.VarChar(500)
 
   client             Customer                    @relation(fields: [clientId], references: [id])
   customerBranch     CustomerBranch?             @relation(fields: [customerBranchId], references: [id], onDelete: Restrict)
   user               User                        @relation(fields: [userId], references: [id])
+  voidedBy           User?                       @relation("ReciboCajaVoidedBy", fields: [voidedById], references: [id])
   payments           ReciboCajaPayment[]
   allocations        ReciboCajaAllocation[]
   creditApplications CustomerCreditApplication[]

@@ -13,6 +13,11 @@ import {
   VOIDED_EGRESO_ROW,
 } from './helpers/egreso-links.helpers';
 import {
+  isActiveReciboLink,
+  RECIBO_VOID_STATE,
+  VOIDED_RECIBO_ROW,
+} from './helpers/recibo-links.helpers';
+import {
   assertAvailableForReservation,
   RESERVATION_TYPES,
 } from './helpers/reservation.helpers';
@@ -109,7 +114,7 @@ export class DocumentVoidService {
     // Igual del lado cliente: si el saldo a favor de esta DVV ya se aplicó a una
     // venta, anularla lo dejaría inconsistente. Primero hay que anular la venta.
     const hasCustomerCreditApplications = document.customerCredits.some(
-      (credit) => credit.applications.length > 0,
+      (credit) => credit.applications.some(isActiveReciboLink),
     );
 
     if (hasCustomerCreditApplications) {
@@ -123,7 +128,7 @@ export class DocumentVoidService {
     const hasReceivablePayments = document.accountsReceivable.some(
       (receivable) =>
         hasPaidAmount(receivable) ||
-        receivable.reciboCajaAllocations.length > 0,
+        receivable.reciboCajaAllocations.some(isActiveReciboLink),
     );
 
     if (hasReceivablePayments) {
@@ -273,7 +278,7 @@ export class DocumentVoidService {
           }),
           tx.accountsReceivable.findMany({
             where: { documentId: id },
-            include: { reciboCajaAllocations: true },
+            include: { reciboCajaAllocations: RECIBO_VOID_STATE },
           }),
         ]);
 
@@ -292,7 +297,7 @@ export class DocumentVoidService {
         const stillHasReceivablePayments = freshReceivables.some(
           (receivable) =>
             hasPaidAmount(receivable) ||
-            receivable.reciboCajaAllocations.length > 0,
+            receivable.reciboCajaAllocations.some(isActiveReciboLink),
         );
         if (stillHasReceivablePayments) {
           throw new ConflictException(
@@ -326,6 +331,30 @@ export class DocumentVoidService {
             where: {
               supplierCredit: { sourceDocumentId: id },
               ...VOIDED_EGRESO_ROW,
+            },
+          });
+        }
+
+        // Solo historial de recibos anulados: una fila vigente colada en paralelo hace fallar la FK y aborta la anulación.
+        if (document.accountsReceivable.length > 0) {
+          await tx.reciboCajaAllocation.deleteMany({
+            where: {
+              accountReceivable: { documentId: id },
+              ...VOIDED_RECIBO_ROW,
+            },
+          });
+          await tx.customerCreditApplication.deleteMany({
+            where: {
+              accountReceivable: { documentId: id },
+              ...VOIDED_RECIBO_ROW,
+            },
+          });
+        }
+        if (document.customerCredits.length > 0) {
+          await tx.customerCreditApplication.deleteMany({
+            where: {
+              customerCredit: { sourceDocumentId: id },
+              ...VOIDED_RECIBO_ROW,
             },
           });
         }

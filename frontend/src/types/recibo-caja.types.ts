@@ -12,10 +12,21 @@ export type {
   ReciboCajaOpenItems,
   ReciboCajaOpenReceivable,
   ReciboCajaPaymentLine,
+  ReciboCajaVoidReason,
 } from '@contracts/recibos-caja'
-import type { ReciboCajaDiscountReason } from '@contracts/recibos-caja'
+import type { ReciboCajaDiscountReason, ReciboCajaVoidReason } from '@contracts/recibos-caja'
 // Reusa las formas de pago de Egresos (regla de negocio del backend)
 import type { EgresoPaymentMethod } from '@contracts/egresos'
+
+export const RECIBO_CAJA_VOID_REASON_LABELS: Record<ReciboCajaVoidReason, string> = {
+  valor_equivocado: 'Valor equivocado',
+  cliente_equivocado: 'Cliente equivocado',
+  factura_equivocada: 'Factura equivocada',
+  forma_pago_equivocada: 'Forma de pago equivocada',
+  pago_duplicado: 'Pago duplicado',
+  pago_no_recibido: 'Pago no recibido',
+  otro: 'Otro',
+}
 
 export interface GetRecibosCajaParams {
   page?: number

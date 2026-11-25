@@ -12,6 +12,18 @@ describe('ROLE_PERMISSIONS', () => {
     ]);
   });
 
+  it('recibo.void es solo de admin y accounts_admin, igual que egreso.void', () => {
+    const holders = Object.entries(ROLE_PERMISSIONS)
+      .filter(([, permissions]) => permissions.includes('recibo.void'))
+      .map(([role]) => role);
+    const egresoHolders = Object.entries(ROLE_PERMISSIONS)
+      .filter(([, permissions]) => permissions.includes('egreso.void'))
+      .map(([role]) => role);
+
+    expect(holders.sort()).toEqual(['accounts_admin', 'admin']);
+    expect(holders.sort()).toEqual(egresoHolders.sort());
+  });
+
   it('billing_lead cannot void POSO nor read the official book', () => {
     expect(ROLE_PERMISSIONS.billing_lead).not.toContain('document.void.POSO');
     expect(ROLE_PERMISSIONS.billing_lead).not.toContain('official.read');

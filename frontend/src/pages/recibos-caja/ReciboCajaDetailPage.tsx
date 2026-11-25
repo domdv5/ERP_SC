@@ -1,17 +1,37 @@
+import { useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { BackLink } from '@/components/shared'
-import { useQuery } from '@tanstack/react-query'
-import { Wallet, Banknote, HandCoins, Landmark, Hash, StickyNote, Percent } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import {
+  Wallet,
+  Banknote,
+  HandCoins,
+  Landmark,
+  Hash,
+  StickyNote,
+  Percent,
+  XCircle,
+  Ban,
+} from 'lucide-react'
 
-import { getReciboCaja } from '@/services/recibos-caja.service'
-import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
-import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
+import { getReciboCaja, voidReciboCaja } from '@/services/recibos-caja.service'
+import { usePermission } from '@/hooks/usePermission'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { invalidateAfterReciboCajaVoid } from '@/lib/invalidation'
+import { formatCOP, docNumber, formatDateOnly, formatDateTimeBogota } from '@/lib/format'
+import { EGRESO_PAYMENT_METHOD_LABELS, RECIBO_CAJA_VOID_REASON_LABELS } from '@/types'
+import type { ReciboCajaVoidReason } from '@/types'
+import { VoidReciboCajaDialog } from './VoidReciboCajaDialog'
 import { RECIBO_CAJA_DISCOUNT_REASON_LABELS } from './recibo-caja-form.schema'
 import { calculateAllocationCash, sumAmounts } from './recibo-caja-totals'
 
 export default function ReciboCajaDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const canVoid = usePermission('recibo.void')
+  const [voidOpen, setVoidOpen] = useState(false)
 
   const {
     data: reciboCaja,
@@ -24,6 +44,26 @@ export default function ReciboCajaDetailPage() {
     staleTime: 5 * 60 * 1000,
     enabled: Boolean(id),
   })
+
+  const { mutate: doVoid, isPending: isVoiding } = useMutation({
+    mutationFn: (vars: { reason: ReciboCajaVoidReason; reasonOther?: string }) =>
+      voidReciboCaja(id!, vars.reason, vars.reasonOther),
+    onSuccess: () => {
+      invalidateAfterReciboCajaVoid(queryClient)
+      setVoidOpen(false)
+      toast.success('Recibo de caja anulado')
+    },
+    onError: (err: unknown) => {
+      queryClient.invalidateQueries({ queryKey: ['recibos-caja'] })
+      toast.error(getApiErrorMessage(err, 'Error al anular el recibo de caja'))
+    },
+  })
+
+  const voidReasonText = reciboCaja
+    ? reciboCaja.voidReason === 'otro'
+      ? reciboCaja.voidReasonOther
+      : reciboCaja.voidReason && RECIBO_CAJA_VOID_REASON_LABELS[reciboCaja.voidReason]
+    : null
 
   // ── loading / error states ────────────────────────────────────────────────
   if (isLoading) {
@@ -75,28 +115,50 @@ export default function ReciboCajaDetailPage() {
       {/* Back */}
       <BackLink to="/recibos-caja" />
 
+      {reciboCaja.voidedAt && (
+        <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-red-500/10 border-2 border-red-500/40">
+          <XCircle className="w-5 h-5 text-red-500 shrink-0" />
+          <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+            Anulado por {reciboCaja.voidedBy?.name ?? 'un usuario'} el{' '}
+            {formatDateTimeBogota(reciboCaja.voidedAt)}{' '}
+            {voidReasonText && <> — Motivo: {voidReasonText}</>}
+          </p>
+        </div>
+      )}
+
       {/* Header card */}
       <div className="card-hard p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
-            {reciboCaja.client.thirdParty.name[0]?.toUpperCase() ?? '?'}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 gradient-user">
+              {reciboCaja.client.thirdParty.name[0]?.toUpperCase() ?? '?'}
+            </div>
+            <div>
+              <h1 className="text-2xl text-content font-mono">
+                {docNumber('RC', reciboCaja.number)}
+              </h1>
+              <p className="text-content-muted text-sm mt-1 font-accent">
+                <button
+                  onClick={() => navigate(`/accounts-receivable/clients/${reciboCaja.client.id}`)}
+                  className="text-content font-semibold underline decoration-content-muted underline-offset-4 hover:decoration-content"
+                >
+                  {reciboCaja.client.thirdParty.name}
+                </button>
+                {reciboCaja.customerBranch && <> &middot; {reciboCaja.customerBranch.name}</>}{' '}
+                &middot; {formatDateOnly(reciboCaja.date)} &middot; Registrado por{' '}
+                {reciboCaja.user.name}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl text-content font-mono">
-              {docNumber('RC', reciboCaja.number)}
-            </h1>
-            <p className="text-content-muted text-sm mt-1 font-accent">
-              <button
-                onClick={() => navigate(`/accounts-receivable/clients/${reciboCaja.client.id}`)}
-                className="text-content font-semibold underline decoration-content-muted underline-offset-4 hover:decoration-content"
-              >
-                {reciboCaja.client.thirdParty.name}
-              </button>
-              {reciboCaja.customerBranch && <> &middot; {reciboCaja.customerBranch.name}</>}{' '}
-              &middot; {formatDateOnly(reciboCaja.date)} &middot; Registrado por{' '}
-              {reciboCaja.user.name}
-            </p>
-          </div>
+          {canVoid && !reciboCaja.voidedAt && (
+            <button
+              onClick={() => setVoidOpen(true)}
+              className="btn-danger flex items-center gap-2 px-4 py-2 text-sm"
+            >
+              <Ban className="w-4 h-4" />
+              Anular
+            </button>
+          )}
         </div>
 
         {/* Resumen */}
@@ -363,6 +425,15 @@ export default function ReciboCajaDetailPage() {
           </p>
         </div>
       )}
+
+      <VoidReciboCajaDialog
+        key={voidOpen ? 'open' : 'closed'}
+        open={voidOpen}
+        reciboLabel={docNumber('RC', reciboCaja.number)}
+        isPending={isVoiding}
+        onConfirm={doVoid}
+        onCancel={() => setVoidOpen(false)}
+      />
     </div>
   )
 }

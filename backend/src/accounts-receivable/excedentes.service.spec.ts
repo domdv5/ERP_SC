@@ -130,6 +130,17 @@ describe('ExcedentesService', () => {
       expect(tx.customerCredit.update).not.toHaveBeenCalled();
     });
 
+    it('no cuenta como uso las aplicaciones de recibos anulados', async () => {
+      tx.customerCredit.findUnique.mockResolvedValue(excedente());
+      await service.void('cc1', user);
+      expect(tx.customerCreditApplication.count).toHaveBeenCalledWith({
+        where: {
+          customerCreditId: 'cc1',
+          OR: [{ reciboCajaId: null }, { reciboCaja: { voidedAt: null } }],
+        },
+      });
+    });
+
     it('rechaza anular un saldo de devolución', async () => {
       tx.customerCredit.findUnique.mockResolvedValue(
         excedente({ kind: 'devolucion' }),

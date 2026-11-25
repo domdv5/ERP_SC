@@ -28,6 +28,12 @@ const matchClientsContract = matchContract<ReceivableClientsResponse>();
 const matchDetailContract = matchContract<AccountsReceivableDetail>();
 const matchStatementContract = matchContract<ClientStatement>();
 
+// Los abonos y saldos de un recibo anulado no cuentan como historial ni como uso.
+const ACTIVE_ALLOCATION = { reciboCaja: { voidedAt: null } };
+const ACTIVE_APPLICATION = {
+  OR: [{ reciboCajaId: null }, { reciboCaja: { voidedAt: null } }],
+};
+
 const LIST_INCLUDE = {
   client: { include: { thirdParty: { select: { id: true, name: true } } } },
   seller: { select: { id: true, name: true } },
@@ -41,7 +47,10 @@ const LIST_INCLUDE = {
       customerBranch: { select: { id: true, name: true } },
     },
   },
-  reciboCajaAllocations: { select: { reciboCaja: { select: { date: true } } } },
+  reciboCajaAllocations: {
+    where: ACTIVE_ALLOCATION,
+    select: { reciboCaja: { select: { date: true } } },
+  },
 } satisfies Prisma.AccountsReceivableInclude;
 
 const DETAIL_INCLUDE = {
@@ -57,6 +66,7 @@ const DETAIL_INCLUDE = {
     },
   },
   reciboCajaAllocations: {
+    where: ACTIVE_ALLOCATION,
     include: {
       reciboCaja: { select: { id: true, number: true, date: true } },
     },
@@ -349,7 +359,8 @@ export class AccountsReceivableService {
           FROM scoped s
           JOIN recibo_caja_allocation rca ON rca.account_receivable_id = s.id
           JOIN recibo_caja rc ON rc.id = rca.recibo_caja_id
-          WHERE s.client_id IN (SELECT client_id FROM page)
+          WHERE rc.voided_at IS NULL
+            AND s.client_id IN (SELECT client_id FROM page)
         )
         SELECT p.*,
                (SELECT MAX(pd.paid_on) FROM payment_dates pd
@@ -454,6 +465,7 @@ export class AccountsReceivableService {
           user: { select: { id: true, name: true } },
           voidedBy: { select: { id: true, name: true } },
           applications: {
+            where: ACTIVE_APPLICATION,
             include: {
               saleDocument: {
                 select: { id: true, type: true, number: true, date: true },

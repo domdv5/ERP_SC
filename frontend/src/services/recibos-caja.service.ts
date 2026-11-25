@@ -6,6 +6,7 @@ import type {
   GetRecibosCajaParams,
   ReciboCajaOpenItems,
   CreateReciboCajaPayload,
+  ReciboCajaVoidReason,
 } from '@/types'
 
 export async function getRecibosCaja(
@@ -34,5 +35,17 @@ export async function getReciboCajaOpenItems(
 
 export async function createReciboCaja(payload: CreateReciboCajaPayload): Promise<ReciboCaja> {
   const res = await api.post<ApiResponse<ReciboCaja>>('/recibos-caja', payload)
+  return res.data.data
+}
+
+export async function voidReciboCaja(
+  id: string,
+  reason: ReciboCajaVoidReason,
+  reasonOther?: string,
+): Promise<ReciboCaja> {
+  const res = await api.post<ApiResponse<ReciboCaja>>(`/recibos-caja/${id}/void`, {
+    reason,
+    reasonOther,
+  })
   return res.data.data
 }

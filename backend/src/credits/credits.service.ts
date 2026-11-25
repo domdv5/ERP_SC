@@ -44,10 +44,16 @@ const SOURCE_DOCUMENT_SELECT = {
   select: { type: true, number: true, date: true },
 } as const;
 
+// Las aplicaciones de un recibo anulado no cuentan como uso.
+const ACTIVE_CUSTOMER_APPLICATION = {
+  OR: [{ reciboCajaId: null }, { reciboCaja: { voidedAt: null } }],
+} satisfies Prisma.CustomerCreditApplicationWhereInput;
+
 const CUSTOMER_CREDIT_INCLUDE = {
   sourceDocument: SOURCE_DOCUMENT_SELECT,
   customerBranch: { select: { name: true } },
   applications: {
+    where: ACTIVE_CUSTOMER_APPLICATION,
     include: {
       saleDocument: { select: { type: true, number: true } },
       reciboCaja: { select: { number: true } },
