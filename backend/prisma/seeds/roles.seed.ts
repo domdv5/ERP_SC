@@ -63,6 +63,11 @@ export async function seedRoles(prisma: PrismaClient) {
         description:
           'Investiga y cierra los casos de diferencias de inventario',
       },
+
+      {
+        name: 'gerencia',
+        description: 'Consulta informes y cuentas en solo lectura',
+      },
     ],
 
     skipDuplicates: true,
