@@ -19,3 +19,7 @@
 | M8 | Estado de cuenta cuenta saldos de recibos anulados | DETECTADA | AR: estado de cuenta |
 | M9 | Excedente usado en recibo anulado no se puede anular | DETECTADA | Excedentes: void |
 | M10 | Detalle de saldos cuenta recibos anulados | DETECTADA | Credits: detalle de cliente |
+
+## T3 base real (2026-11-25)
+
+Todas las specs S1-S10 PASS por API y Playwright contra la base local (detalle en el Log L7 del documento de la feature). jest 784/784, vitest 222/222. No probado: anulación concurrente real, campo 'Otro' en pantalla, 403 contra un recibo activo.

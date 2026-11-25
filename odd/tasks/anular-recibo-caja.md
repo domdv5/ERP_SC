@@ -19,8 +19,8 @@ Rama `feat/anular-recibo-caja`. Toca dinero (CxC, saldos a favor), una migració
 ## Tasks
 
 - [x] **T1** (S1-S8) backend: migración aditiva + enum, permiso seed, `POST /recibos-caja/:id/void`, DTO, contrato, desbloqueos y filtros de lecturas, pruebas de dinero — route: reversión (S1, S2, S6) parent; resto `nestjs-code-crafter` — commit: de840eb (slice 1, ~864 líneas, mayoría pruebas; el frontend va en su propio commit)
-- [ ] **T2** (S3, S7, S9) frontend: botón, diálogo con motivo, banner, marca en lista — route `react-code-crafter` — commit: —
-- [ ] **T3** (S10) verificación con base real y pantalla + docs CLAUDE.md — route parent — evidencia: —
+- [x] **T2** (S3, S7, S9) frontend: botón, diálogo con motivo, banner, marca en lista — route `react-code-crafter` — commit: 5b2ecb9
+- [x] **T3** (S10) verificación con base real y pantalla + docs CLAUDE.md — route gentle-ai-verify — evidencia: L7
 
 ## Log
 
@@ -29,3 +29,5 @@ Rama `feat/anular-recibo-caja`. Toca dinero (CxC, saldos a favor), una migració
 - **L3** Decisión del dueño: "que sea tal cual como esta en egresos entonces!" → quién anula, motivo de lista, sin límite de tiempo y reversión igual que egresos. Motivos adaptados al cliente: proveedor_equivocado → cliente_equivocado, pago_no_realizado → pago_no_recibido.
 - **L4** Plan presentado (S1-S10, T1-T3, migración aditiva y permiso `recibo.void` en el seed); el dueño respondió "dale".
 - **L5** T1: jest 784/784, tsc 0, migración aplicada y seed corrido; 10 mutaciones detectadas (ver anular-recibo-caja-evidencia.md). Decisión heredada de egresos: anular una venta cuyo recibo ya está anulado borra las líneas de ese recibo anulado (FK); la cabecera queda.
+- **L6** T2: vitest 222/222, tsc 0. Refresco tras anular en `invalidateAfterReciboCajaVoid` (cartera, saldos a favor, cupo, documentos). Sin probar en pantalla todavía (T3).
+- **L7** T3 base real (API + Playwright, cliente 'ZZ PRUEBA VERIFICADOR ANULAR RC 942726'): RC-000019 pagó COT-000044 (100.000) y COT-000045 (50.000) con 120.000 efectivo + 20.000 excedente + 10.000 descuento; al anular → ambas 0 pending, saldo 20.000 available (S1, S2, S10). Segundo void 409 sin cambios (S6, no concurrente). Variante RC-000020 (40.000) + RC-000021 (60.000): anular solo R1 → 60.000/100.000 partial; anular R2 → pending. Con R2 activo anular COT-44 → 409; con ambos anulados → 201 (S8). Excedente usado solo en recibo anulado → se anula (200). billing → 403 (S5). Motivos inválidos → 400 con los textos de S7. Pantalla: banner, sin botón en anulado, diálogo con la lista y la advertencia, lista con ANULADO (S9). Sin defectos. Usuario de prueba creado: zzverif989626 (billing). No probado: anulación concurrente real; campo de texto al elegir 'Otro' en pantalla; 403 contra un recibo activo.
