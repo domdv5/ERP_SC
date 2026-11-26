@@ -352,7 +352,6 @@ describe('DocumentsService.void: compra y costos', () => {
 
     it.each([
       [DocumentType.DVV, 2],
-      [DocumentType.SAJ, -2],
       [DocumentType.DVC, -2],
       [DocumentType.POS, -2],
       [DocumentType.COT, -2],

@@ -46,6 +46,7 @@ export type {
 export type {
   DocumentType,
   DocumentStatus,
+  DocumentVoidReason,
   DocumentListItem,
   DocumentDetail,
   DocumentItem,
@@ -62,6 +63,7 @@ export type {
   ReleaseItemsPayload,
   ReleaseDocumentItemPayload,
 } from './document.types'
+export { DOCUMENT_VOID_REASON_LABELS, DOCUMENT_VOID_REASONS_BY_TYPE } from './document.types'
 export type {
   AccountsPayable,
   AccountsPayableDetail,

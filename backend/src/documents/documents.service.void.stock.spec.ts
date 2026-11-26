@@ -31,31 +31,7 @@ describe('DocumentsService.void: stock por tipo', () => {
     resetVoidHarness(harness);
   });
 
-  describe('ajustes (EAI / SAJ)', () => {
-    it('SAJ: la salida se revierte devolviendo el stock y se registra la anulación', async () => {
-      loadDocument(DocumentType.SAJ, {
-        inventoryMovements: [makeMovement({ quantity: -2, unitCost: 40 })],
-      });
-
-      await service.void('doc-1', fullUser);
-
-      expect(applyStockChange).toHaveBeenCalledWith(tx, {
-        productId: 'p1',
-        warehouseId: 'w1',
-        delta: 2,
-      });
-      expect(applyBinStockChange).not.toHaveBeenCalled();
-      expect(assertAvailableForReservation).not.toHaveBeenCalled();
-      expect(tx.inventoryMovement.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          movementType: MovementType.void,
-          quantity: 2,
-          unitCost: 40,
-          documentId: 'doc-1',
-        }),
-      });
-    });
-
+  describe('ajustes (EAI)', () => {
     it('EAI en bodega tienda valida reservas antes de quitar el stock', async () => {
       loadDocument(DocumentType.EAI, {
         inventoryMovements: [makeMovement({ documentItem: { unitCost: 0 } })],

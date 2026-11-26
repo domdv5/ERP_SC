@@ -24,6 +24,16 @@ export type EaiAdjustmentReason =
   'negativo' | 'inventario_general' | 'traspaso_costo' | 'otro';
 export type DvvRefundMethod =
   'saldo_a_favor' | 'cambio_producto' | 'devolucion_dinero';
+export type DocumentVoidReason =
+  | 'cantidad_equivocada'
+  | 'producto_equivocado'
+  | 'costo_equivocado'
+  | 'proveedor_equivocado'
+  | 'cliente_equivocado'
+  | 'bodega_equivocada'
+  | 'documento_duplicado'
+  | 'operacion_no_realizada'
+  | 'otro';
 export type CreditUsableIn = 'facturacion' | 'administracion';
 export type PvConversionStatus = 'none' | 'pending' | 'converted';
 
@@ -169,6 +179,8 @@ interface DocumentBase {
   editedAt: string | null;
   confirmedAt: string | null;
   voidedAt: string | null;
+  voidReason: DocumentVoidReason | null;
+  voidReasonOther: string | null;
   createdAt: string;
   pv: PvStatus | null;
   // Solo CM: sus CMO no anuladas; null en otros tipos.

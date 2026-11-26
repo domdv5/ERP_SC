@@ -104,6 +104,11 @@ export function createVoidHarness() {
   );
   const found = { id: 'doc-1' };
 
+  // Los tipos con motivo obligatorio lo reciben por defecto; las pruebas del motivo pasan su propio dto.
+  const voidWithReason = service.void.bind(service);
+  service.void = (id, user, dto = { reason: 'documento_duplicado' }) =>
+    voidWithReason(id, user, dto);
+
   const loadDocument = (
     type: DocumentType,
     overrides: Record<string, unknown> = {},

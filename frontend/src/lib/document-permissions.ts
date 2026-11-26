@@ -23,6 +23,8 @@ const ALL_DOCUMENT_TYPES = Object.keys(DOCUMENT_TYPE_KEYS) as DocumentType[]
 const VOID_PERMISSION_TYPES: ReadonlySet<DocumentType> = new Set(['POS', 'COT', 'POSO', 'REM'])
 
 export function canVoidDocument(type: DocumentType, permissions: readonly string[]): boolean {
+  // La salida por ajuste no se anula: se corrige con una EAI (igual que el backend)
+  if (type === 'SAJ') return false
   const action = VOID_PERMISSION_TYPES.has(type) ? 'void' : 'create'
   return permissions.includes(`document.${action}.${type}`)
 }

@@ -5,3 +5,4 @@ export * from './find-all-documents.dto';
 export * from './release-items.dto';
 export * from './convert-document.dto';
 export * from './find-pending-official-purchases.dto';
+export * from './void-document.dto';

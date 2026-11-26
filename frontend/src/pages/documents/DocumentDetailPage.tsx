@@ -37,6 +37,9 @@ import {
   printDocument,
 } from '@/services/documents.service'
 import type { DocumentType } from '@/types/document.types'
+import type { VoidDocumentPayload } from '@/services/documents.service'
+import { DOCUMENT_VOID_REASON_LABELS } from '@/types'
+import { VoidDocumentDialog } from './VoidDocumentDialog'
 import { usePermission } from '@/hooks/usePermission'
 import { cn, daysSince, formatDaysSince } from '@/lib/utils'
 import { formatCOP, docNumber, formatBogotaDateLong, formatDateOnlyLong } from '@/lib/format'
@@ -274,7 +277,7 @@ export default function DocumentDetailPage() {
   })
 
   const { mutate: doVoid, isPending: isVoiding } = useMutation({
-    mutationFn: () => voidDocument(id!),
+    mutationFn: (body: VoidDocumentPayload) => voidDocument(id!, body),
     onSuccess: () => {
       invalidate()
       setVoidOpen(false)
@@ -377,6 +380,10 @@ export default function DocumentDetailPage() {
   const isDraft = doc.status === 'draft'
   const isConfirmed = doc.status === 'confirmed'
   const isVoided = doc.status === 'voided'
+  const voidReasonText =
+    doc.voidReason === 'otro'
+      ? doc.voidReasonOther
+      : doc.voidReason && DOCUMENT_VOID_REASON_LABELS[doc.voidReason]
 
   // SAJ/T no guardan costo/subtotal en la línea; se calculan en vivo desde el costo promedio del producto.
   const usesAvgCostFallback = doc.type === 'SAJ' || doc.type === 'T'
@@ -514,6 +521,7 @@ export default function DocumentDetailPage() {
               {doc.status === 'voided' && doc.voidedBy && (
                 <p className="text-content-muted text-sm font-accent">
                   Anulado por {doc.voidedBy.name}
+                  {voidReasonText && <> — Motivo: {voidReasonText}</>}
                 </p>
               )}
               {doc.updatedBy && (
@@ -1210,24 +1218,17 @@ export default function DocumentDetailPage() {
       />
 
       {/* Void document */}
-      <ConfirmDialog
+      <VoidDocumentDialog
         open={voidOpen}
-        title="Anular operación"
+        type={doc.type}
         description={
           isOfficialType
             ? `Al anular ${docRef}, dejará de contar en el libro de facturas. Esta acción no se puede deshacer.`
             : `Al anular ${docRef}, todos los movimientos de inventario generados por esta operación serán revertidos. Esta acción afecta el stock y no se puede deshacer.`
         }
-        confirmLabel="Anular operación"
-        confirmClass="btn-danger"
         isPending={isVoiding}
         onConfirm={doVoid}
         onCancel={() => setVoidOpen(false)}
-        icon={
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-500/15 shrink-0">
-            <AlertTriangle className="w-5 h-5 text-red-500" />
-          </div>
-        }
       />
 
       {/* Delete document */}

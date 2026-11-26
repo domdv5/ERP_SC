@@ -25,6 +25,7 @@ import {
   FindPendingOfficialPurchasesDto,
   ReleaseItemsDto,
   UpdateDocumentDto,
+  VoidDocumentDto,
 } from './dto/index';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import type { RequestWithUser } from '@/common/types';
@@ -109,8 +110,12 @@ export class DocumentsController {
   }
 
   @Post(':id/void')
-  void(@Param('id') id: string, @Req() req: RequestWithUser) {
-    return this.documentVoid.void(id, req.user);
+  void(
+    @Param('id') id: string,
+    @Body() dto: VoidDocumentDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.documentVoid.void(id, req.user, dto);
   }
 
   @Post(':id/duplicate')

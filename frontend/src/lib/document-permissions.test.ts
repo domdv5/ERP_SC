@@ -95,6 +95,14 @@ describe('canVoidDocument', () => {
     expect(canVoidDocument('CMO', ['document.create.CMO'])).toBe(true)
   })
 
+  it('SAJ nunca se anula, ni con document.create.SAJ ni con document.void.SAJ', () => {
+    expect(canVoidDocument('SAJ', ['document.create.SAJ', 'document.void.SAJ'])).toBe(false)
+  })
+
+  it('EAI se anula si la crea', () => {
+    expect(canVoidDocument('EAI', ['document.create.EAI'])).toBe(true)
+  })
+
   it('no anula un tipo que no es venta si solo lo ve', () => {
     expect(canVoidDocument('CM', ['ap.read', 'document.void.POS', 'document.read'])).toBe(false)
   })
