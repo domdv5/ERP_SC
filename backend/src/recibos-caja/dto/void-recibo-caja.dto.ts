@@ -6,7 +6,7 @@ export class VoidReciboCajaDto {
   @IsEnum(ReciboCajaVoidReason, {
     message: 'Elige un motivo de anulación válido',
   })
-  reason: ReciboCajaVoidReason;
+  reason!: ReciboCajaVoidReason;
 
   // Solo se valida (y se guarda) con motivo "otro"; con cualquier otro se ignora.
   @ValidateIf(

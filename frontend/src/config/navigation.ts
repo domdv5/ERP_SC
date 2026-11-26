@@ -1,5 +1,4 @@
 import {
-  LayoutDashboard,
   Contact,
   Package,
   Warehouse,
@@ -51,17 +50,13 @@ export interface NavItem {
 }
 
 export interface NavGroup {
-  // Sin label: grupo sin encabezado (Dashboard).
-  label?: string
+  label: string
   items: NavItem[]
 }
 
 // Estructura completa del menú lateral como dato. El Sidebar solo la recorre y
 // filtra por permiso; no debe haber booleanos `can*` sueltos para navegación.
 export const navGroups: NavGroup[] = [
-  {
-    items: [{ to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
-  },
   {
     label: 'Maestros',
     items: [
@@ -181,3 +176,17 @@ export const navGroups: NavGroup[] = [
     items: [{ to: '/users', label: 'Usuarios', icon: ShieldCheck, permission: 'user.manage' }],
   },
 ]
+
+// Pantalla de entrada tras el login: la primera de la lista cuyo permiso tiene; Productos no pide permiso
+const HOME_PATHS: { to: string; permission?: string }[] = [
+  { to: '/reports', permission: 'report.read' },
+  { to: '/documents', permission: 'document.read' },
+  { to: '/products' },
+]
+
+export function findHomePath(permissions: string[]): string {
+  const home = HOME_PATHS.find(
+    (candidate) => !candidate.permission || permissions.includes(candidate.permission),
+  )
+  return home!.to
+}

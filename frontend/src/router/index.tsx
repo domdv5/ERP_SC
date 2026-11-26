@@ -1,12 +1,13 @@
-import { createBrowserRouter, Navigate, useSearchParams } from 'react-router-dom'
+import { createBrowserRouter, useSearchParams } from 'react-router-dom'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AuthGuard } from '@/components/layout/AuthGuard'
 import { PermissionGuard } from '@/components/layout/PermissionGuard'
 import { PageLoader } from '@/components/shared/PageLoader'
+import { ErrorPage } from '@/components/shared/ErrorPage'
+import { HomeRedirect } from '@/components/layout/HomeRedirect'
 
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
-const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'))
 const ThirdPartiesPage = lazy(() => import('@/pages/third-parties/ThirdPartiesPage'))
 const ProductsPage = lazy(() => import('@/pages/products/ProductsPage'))
 const WarehousesPage = lazy(() => import('@/pages/warehouses/WarehousesPage'))
@@ -99,15 +100,7 @@ export const router = createBrowserRouter([
       </AuthGuard>
     ),
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
-      {
-        path: 'dashboard',
-        element: (
-          <Lazy>
-            <DashboardPage />
-          </Lazy>
-        ),
-      },
+      { index: true, element: <HomeRedirect /> },
       {
         path: 'third-parties',
         element: (
@@ -426,6 +419,7 @@ export const router = createBrowserRouter([
           </Lazy>
         ),
       },
+      { path: '*', element: <ErrorPage variant="not-found" /> },
     ],
   },
 ])
