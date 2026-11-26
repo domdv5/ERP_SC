@@ -41,7 +41,7 @@ export function invalidateAfterDocumentChange(
     'customer-credit',
     'customer-available-credits',
     'supplier-payments-open-items',
-    'recibos-caja-open-items',
+    'customer-payments-open-items',
     'official-ledger',
     'official-purchases-pending',
   ])
@@ -56,10 +56,10 @@ export function invalidateAfterDocumentChange(
 }
 
 // Anular un recibo de caja devuelve saldo a las CxC y a los saldos a favor, y puede desbloquear la anulación de la venta
-export function invalidateAfterReciboCajaVoid(queryClient: QueryClient) {
+export function invalidateAfterCustomerPaymentVoid(queryClient: QueryClient) {
   invalidateKeys(queryClient, [
-    'recibos-caja',
-    'recibos-caja-open-items',
+    'customer-payments',
+    'customer-payments-open-items',
     'accounts-receivable',
     'customer-credit',
     'customer-available-credits',

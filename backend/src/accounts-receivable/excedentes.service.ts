@@ -87,7 +87,10 @@ export class ExcedentesService {
       const applications = await tx.customerCreditApplication.count({
         where: {
           customerCreditId: id,
-          OR: [{ reciboCajaId: null }, { reciboCaja: { voidedAt: null } }],
+          OR: [
+            { customerPaymentId: null },
+            { customerPayment: { voidedAt: null } },
+          ],
         },
       });
       if (

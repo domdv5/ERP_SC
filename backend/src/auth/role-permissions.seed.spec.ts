@@ -12,9 +12,11 @@ describe('ROLE_PERMISSIONS', () => {
     ]);
   });
 
-  it('recibo.void es solo de admin y accounts_admin, igual que supplier_payment.void', () => {
+  it('customer_payment.void es solo de admin y accounts_admin, igual que supplier_payment.void', () => {
     const holders = Object.entries(ROLE_PERMISSIONS)
-      .filter(([, permissions]) => permissions.includes('recibo.void'))
+      .filter(([, permissions]) =>
+        permissions.includes('customer_payment.void'),
+      )
       .map(([role]) => role);
     const supplierPaymentHolders = Object.entries(ROLE_PERMISSIONS)
       .filter(([, permissions]) =>

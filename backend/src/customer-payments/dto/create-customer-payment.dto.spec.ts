@@ -1,17 +1,17 @@
 import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { ReciboCajaPaymentLineDto } from './create-recibo-caja.dto';
+import { CustomerPaymentMethodLineDto } from './create-customer-payment.dto';
 
 async function errorsFor(method: string) {
-  const line = plainToInstance(ReciboCajaPaymentLineDto, {
+  const line = plainToInstance(CustomerPaymentMethodLineDto, {
     method,
     amount: 1000,
   });
   return validate(line);
 }
 
-describe('ReciboCajaPaymentLineDto', () => {
+describe('CustomerPaymentMethodLineDto', () => {
   it.each(['efectivo_oficina', 'consignacion_oficina'])(
     'acepta %s',
     async (method) => {

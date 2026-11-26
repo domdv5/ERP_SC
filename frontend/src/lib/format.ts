@@ -17,7 +17,7 @@ const composeLocaleDate = (date: Date, timeZone: string) => {
   return `${day} ${month} ${year}`
 }
 
-// Para campos @db.Date (Document.date, SupplierPayment.date, ReciboCaja.date): Prisma los serializa como medianoche UTC, leerlos en horario Bogotá corre el día uno atrás.
+// Para campos @db.Date (Document.date, SupplierPayment.date, CustomerPayment.date): Prisma los serializa como medianoche UTC, leerlos en horario Bogotá corre el día uno atrás.
 export const formatDateOnly = (iso: string | null) => {
   if (!iso) return '—'
   return composeLocaleDate(new Date(iso), 'UTC')

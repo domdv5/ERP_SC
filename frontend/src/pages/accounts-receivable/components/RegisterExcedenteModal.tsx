@@ -64,7 +64,7 @@ function RegisterExcedenteForm({
     try {
       await mutateAsync()
       queryClient.invalidateQueries({ queryKey: ['accounts-receivable'] })
-      queryClient.invalidateQueries({ queryKey: ['recibos-caja-open-items', clientId] })
+      queryClient.invalidateQueries({ queryKey: ['customer-payments-open-items', clientId] })
       toast.success('Excedente registrado correctamente')
       onCreated?.()
       onClose()

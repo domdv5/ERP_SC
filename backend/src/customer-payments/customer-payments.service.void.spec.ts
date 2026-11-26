@@ -2,7 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { JwtPayload } from '@/common/types';
-import { RecibosCajaService } from './recibos-caja.service';
+import { CustomerPaymentsService } from './customer-payments.service';
 
 const user = { sub: 'admin-1' } as JwtPayload;
 const dec = (n: number) => new Prisma.Decimal(n);
@@ -19,10 +19,10 @@ const receivable = (
   status,
 });
 
-describe('RecibosCajaService.void: reversión de dinero', () => {
+describe('CustomerPaymentsService.void: reversión de dinero', () => {
   const tx = {
     $queryRaw: jest.fn(),
-    reciboCaja: {
+    customerPayment: {
       findUnique: jest.fn(),
       updateMany: jest.fn(),
       findUniqueOrThrow: jest.fn(),
@@ -31,7 +31,7 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
     customerCredit: { findMany: jest.fn(), update: jest.fn() },
   };
   const prisma = { $transaction: jest.fn() };
-  const service = new RecibosCajaService(
+  const service = new CustomerPaymentsService(
     prisma as unknown as PrismaService,
     {
       next: jest.fn(),
@@ -45,12 +45,12 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
     );
     tx.$queryRaw.mockResolvedValue([]);
     tx.customerCredit.findMany.mockResolvedValue([]);
-    tx.reciboCaja.updateMany.mockResolvedValue({ count: 1 });
-    tx.reciboCaja.findUniqueOrThrow.mockResolvedValue({ id: 'r1' });
+    tx.customerPayment.updateMany.mockResolvedValue({ count: 1 });
+    tx.customerPayment.findUniqueOrThrow.mockResolvedValue({ id: 'r1' });
   });
 
   it('S10: COT-10 (100.000) y COT-11 (50.000) pagadas con 120.000 + 20.000 de saldo + 10.000 de descuento vuelven a pendiente y el saldo queda disponible', async () => {
-    tx.reciboCaja.findUnique.mockResolvedValue({
+    tx.customerPayment.findUnique.mockResolvedValue({
       id: 'r1',
       allocations: [
         { accountReceivableId: 'COT10', amount: dec(100000) },
@@ -80,7 +80,7 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
       where: { id: 'cc1' },
       data: { balance: 20000, status: 'available' },
     });
-    expect(tx.reciboCaja.updateMany).toHaveBeenCalledWith({
+    expect(tx.customerPayment.updateMany).toHaveBeenCalledWith({
       where: { id: 'r1', voidedAt: null },
       data: {
         voidedAt: expect.any(Date),
@@ -92,7 +92,7 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
   });
 
   it('un mismo saldo a favor repartido entre dos CxC devuelve la suma de sus tramos', async () => {
-    tx.reciboCaja.findUnique.mockResolvedValue({
+    tx.customerPayment.findUnique.mockResolvedValue({
       id: 'r1',
       allocations: [
         { accountReceivableId: 'COT10', amount: dec(100000) },
@@ -121,7 +121,7 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
   });
 
   it('respeta lo que otro recibo abonó después: anular R1 deja la CxC en parcial con lo de R2', async () => {
-    tx.reciboCaja.findUnique.mockResolvedValue({
+    tx.customerPayment.findUnique.mockResolvedValue({
       id: 'r1',
       allocations: [{ accountReceivableId: 'A', amount: dec(40000) }],
       creditApplications: [],
@@ -140,7 +140,7 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
   });
 
   it('si el recibo abonó más de lo que la CxC tiene pagado aborta con 409', async () => {
-    tx.reciboCaja.findUnique.mockResolvedValue({
+    tx.customerPayment.findUnique.mockResolvedValue({
       id: 'r1',
       allocations: [{ accountReceivableId: 'A', amount: dec(40000) }],
       creditApplications: [],
@@ -156,7 +156,7 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
   });
 
   it('con un motivo de la lista guarda reasonOther en null aunque llegue texto', async () => {
-    tx.reciboCaja.findUnique.mockResolvedValue({
+    tx.customerPayment.findUnique.mockResolvedValue({
       id: 'r1',
       allocations: [],
       creditApplications: [],
@@ -169,7 +169,7 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
       user,
     );
 
-    expect(tx.reciboCaja.updateMany).toHaveBeenCalledWith({
+    expect(tx.customerPayment.updateMany).toHaveBeenCalledWith({
       where: { id: 'r1', voidedAt: null },
       data: expect.objectContaining({
         voidReason: 'pago_duplicado',
@@ -179,7 +179,7 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
   });
 
   it('bloquea saldos a favor y luego CxC antes de reclamar el recibo', async () => {
-    tx.reciboCaja.findUnique.mockResolvedValue({
+    tx.customerPayment.findUnique.mockResolvedValue({
       id: 'r1',
       allocations: [{ accountReceivableId: 'A', amount: dec(100) }],
       creditApplications: [{ customerCreditId: 'cc1', amount: dec(100) }],
@@ -197,7 +197,7 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
       );
       return Promise.resolve([]);
     });
-    tx.reciboCaja.updateMany.mockImplementation(() => {
+    tx.customerPayment.updateMany.mockImplementation(() => {
       order.push('claim');
       return Promise.resolve({ count: 1 });
     });
@@ -208,12 +208,12 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
   });
 
   it('un segundo intento falla con 409 y no cambia nada', async () => {
-    tx.reciboCaja.findUnique.mockResolvedValue({
+    tx.customerPayment.findUnique.mockResolvedValue({
       id: 'r1',
       allocations: [{ accountReceivableId: 'A', amount: dec(100) }],
       creditApplications: [],
     });
-    tx.reciboCaja.updateMany.mockResolvedValue({ count: 0 });
+    tx.customerPayment.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(
       service.void('r1', { reason: 'pago_duplicado' }, user),
@@ -225,11 +225,11 @@ describe('RecibosCajaService.void: reversión de dinero', () => {
   });
 
   it('404 si el recibo no existe', async () => {
-    tx.reciboCaja.findUnique.mockResolvedValue(null);
+    tx.customerPayment.findUnique.mockResolvedValue(null);
 
     await expect(
       service.void('nope', { reason: 'otro', reasonOther: 'x' }, user),
     ).rejects.toThrow(NotFoundException);
-    expect(tx.reciboCaja.updateMany).not.toHaveBeenCalled();
+    expect(tx.customerPayment.updateMany).not.toHaveBeenCalled();
   });
 });

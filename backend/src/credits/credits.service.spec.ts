@@ -129,7 +129,10 @@ describe('CreditsService', () => {
       prisma.customer.findUnique.mock.calls[0][0].select.customerCredits
         .include;
     expect(include.applications.where).toEqual({
-      OR: [{ reciboCajaId: null }, { reciboCaja: { voidedAt: null } }],
+      OR: [
+        { customerPaymentId: null },
+        { customerPayment: { voidedAt: null } },
+      ],
     });
   });
 

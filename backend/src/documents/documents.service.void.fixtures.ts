@@ -85,7 +85,7 @@ export function createVoidHarness() {
     customerCredit: { deleteMany: jest.fn() },
     supplierPaymentAllocation: { deleteMany: jest.fn() },
     supplierCreditApplication: { deleteMany: jest.fn() },
-    reciboCajaAllocation: { deleteMany: jest.fn() },
+    customerPaymentAllocation: { deleteMany: jest.fn() },
     customerCreditApplication: { deleteMany: jest.fn() },
     inventoryCase: { updateMany: jest.fn() },
   };

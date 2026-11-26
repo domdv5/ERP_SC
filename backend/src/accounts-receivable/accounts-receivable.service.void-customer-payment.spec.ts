@@ -2,9 +2,9 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AccountsReceivableService } from './accounts-receivable.service';
 
-const ONLY_ACTIVE_ALLOCATION = { reciboCaja: { voidedAt: null } };
+const ONLY_ACTIVE_ALLOCATION = { customerPayment: { voidedAt: null } };
 const ONLY_ACTIVE_APPLICATION = {
-  OR: [{ reciboCajaId: null }, { reciboCaja: { voidedAt: null } }],
+  OR: [{ customerPaymentId: null }, { customerPayment: { voidedAt: null } }],
 };
 
 describe('AccountsReceivableService: recibos anulados no cuentan', () => {
@@ -40,7 +40,7 @@ describe('AccountsReceivableService: recibos anulados no cuentan', () => {
 
     const receivablesQuery =
       prisma.accountsReceivable.findMany.mock.calls[0][0];
-    expect(receivablesQuery.include.reciboCajaAllocations.where).toEqual(
+    expect(receivablesQuery.include.customerPaymentAllocations.where).toEqual(
       ONLY_ACTIVE_ALLOCATION,
     );
     const creditsQuery = prisma.customerCredit.findMany.mock.calls[0][0];
@@ -54,13 +54,13 @@ describe('AccountsReceivableService: recibos anulados no cuentan', () => {
       id: 'a1',
       totalAmount: new Prisma.Decimal(100),
       paidAmount: new Prisma.Decimal(0),
-      reciboCajaAllocations: [],
+      customerPaymentAllocations: [],
     });
 
     await service.findOne('a1');
 
     const detailQuery = prisma.accountsReceivable.findUnique.mock.calls[0][0];
-    expect(detailQuery.include.reciboCajaAllocations.where).toEqual(
+    expect(detailQuery.include.customerPaymentAllocations.where).toEqual(
       ONLY_ACTIVE_ALLOCATION,
     );
   });
@@ -82,6 +82,6 @@ describe('AccountsReceivableService: recibos anulados no cuentan', () => {
         ).sql.replace(/\s+/g, ' '),
       )
       .join(' ');
-    expect(sql).toContain('WHERE rc.voided_at IS NULL');
+    expect(sql).toContain('WHERE payment.voided_at IS NULL');
   });
 });

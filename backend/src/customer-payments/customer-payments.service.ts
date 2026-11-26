@@ -8,29 +8,29 @@ import {
   Prisma,
   AccountsReceivableStatus,
   CustomerCreditUsableIn,
-  ReciboCajaDiscountReason,
-  ReciboCajaVoidReason,
+  CustomerPaymentDiscountReason,
+  CustomerPaymentVoidReason,
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import { matchContract } from '@/common/types';
 import type { JwtPayload } from '@/common/types';
 import type {
-  ReciboCaja,
-  ReciboCajaListResponse,
-  ReciboCajaOpenItems,
+  CustomerPayment,
+  CustomerPaymentListResponse,
+  CustomerPaymentOpenItems,
 } from '@/contracts';
 import { toCents } from '@/common/utils/money.util';
-import { CreateReciboCajaDto } from './dto/create-recibo-caja.dto';
-import { VoidReciboCajaDto } from './dto/void-recibo-caja.dto';
-import { FindAllRecibosCajaDto } from './dto/find-all-recibos-caja.dto';
+import { CreateCustomerPaymentDto } from './dto/create-customer-payment.dto';
+import { VoidCustomerPaymentDto } from './dto/void-customer-payment.dto';
+import { FindAllCustomerPaymentsDto } from './dto/find-all-customer-payments.dto';
 import { NO_BRANCH_FILTER } from './dto/find-open-items.dto';
 
-const matchListContract = matchContract<ReciboCajaListResponse>();
-const matchDetailContract = matchContract<ReciboCaja>();
-const matchOpenItemsContract = matchContract<ReciboCajaOpenItems>();
+const matchListContract = matchContract<CustomerPaymentListResponse>();
+const matchDetailContract = matchContract<CustomerPayment>();
+const matchOpenItemsContract = matchContract<CustomerPaymentOpenItems>();
 
-export const RECIBO_CAJA_DETAIL_INCLUDE = {
+export const CUSTOMER_PAYMENT_DETAIL_INCLUDE = {
   client: { include: { thirdParty: { select: { id: true, name: true } } } },
   customerBranch: { select: { id: true, name: true } },
   user: { select: { id: true, name: true } },
@@ -72,14 +72,14 @@ export const RECIBO_CAJA_DETAIL_INCLUDE = {
       },
     },
   },
-} satisfies Prisma.ReciboCajaInclude;
+} satisfies Prisma.CustomerPaymentInclude;
 
-type ExistingReciboCajaForIdempotency = {
+type ExistingCustomerPaymentForIdempotency = {
   clientId: string;
   customerBranchId: string | null;
   total: Prisma.Decimal;
   discountAmount: Prisma.Decimal;
-  discountReason: ReciboCajaDiscountReason | null;
+  discountReason: CustomerPaymentDiscountReason | null;
   allocations: { accountReceivableId: string; amount: Prisma.Decimal }[];
   creditApplications: { customerCreditId: string; amount: Prisma.Decimal }[];
 };
@@ -110,9 +110,9 @@ function sameCents(
 }
 
 // Motivos que pueden saldar toda la deuda sin que entre dinero.
-const FULL_COVER_DISCOUNT_REASONS: ReciboCajaDiscountReason[] = [
-  ReciboCajaDiscountReason.castigo_cartera,
-  ReciboCajaDiscountReason.mercancia_extraviada,
+const FULL_COVER_DISCOUNT_REASONS: CustomerPaymentDiscountReason[] = [
+  CustomerPaymentDiscountReason.castigo_cartera,
+  CustomerPaymentDiscountReason.mercancia_extraviada,
 ];
 
 /** Reparte el descuento entre las líneas proporcional a su abono; los centavos sobrantes van a los residuos más grandes para que la suma sea exacta. */
@@ -142,8 +142,8 @@ function splitDiscountCents(
 
 /** Compara el reintento contra el recibo ya guardado con la misma idempotencyKey: receivables exacto, payments solo por total (el reparto interno lo decide el service). Mismo patrón que isSameSupplierPaymentRequest de SupplierPaymentsService. */
 function isSameCustomerPaymentRequest(
-  dto: CreateReciboCajaDto,
-  existing: ExistingReciboCajaForIdempotency,
+  dto: CreateCustomerPaymentDto,
+  existing: ExistingCustomerPaymentForIdempotency,
 ): boolean {
   if (existing.clientId !== dto.clientId) {
     return false;
@@ -209,19 +209,19 @@ function isSameCustomerPaymentRequest(
 }
 
 @Injectable()
-export class RecibosCajaService {
+export class CustomerPaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sequenceService: SequenceService,
   ) {}
 
   /** Cobra una o varias CxC de un cliente: cuadre exacto (Σ abonos = Σ formas de pago + descuento, sin saldo a favor — regla de negocio explícita), idempotente por idempotencyKey. */
-  async create(dto: CreateReciboCajaDto, user: JwtPayload) {
+  async create(dto: CreateCustomerPaymentDto, user: JwtPayload) {
     // Corto circuito rápido antes de la transacción pesada: la mayoría de los
     // reintentos (doble clic) llegan bien después de que el primero ya terminó.
-    const alreadyCreated = await this.prisma.reciboCaja.findUnique({
+    const alreadyCreated = await this.prisma.customerPayment.findUnique({
       where: { idempotencyKey: dto.idempotencyKey },
-      include: RECIBO_CAJA_DETAIL_INCLUDE,
+      include: CUSTOMER_PAYMENT_DETAIL_INCLUDE,
     });
     if (alreadyCreated) {
       if (!isSameCustomerPaymentRequest(dto, alreadyCreated)) {
@@ -249,9 +249,9 @@ export class RecibosCajaService {
           'idempotency_key',
         )
       ) {
-        const existing = await this.prisma.reciboCaja.findUnique({
+        const existing = await this.prisma.customerPayment.findUnique({
           where: { idempotencyKey: dto.idempotencyKey },
-          include: RECIBO_CAJA_DETAIL_INCLUDE,
+          include: CUSTOMER_PAYMENT_DETAIL_INCLUDE,
         });
         if (existing) {
           if (!isSameCustomerPaymentRequest(dto, existing)) {
@@ -268,7 +268,7 @@ export class RecibosCajaService {
 
   private async createInTransaction(
     tx: Prisma.TransactionClient,
-    dto: CreateReciboCajaDto,
+    dto: CreateCustomerPaymentDto,
     user: JwtPayload,
   ) {
     const client = await tx.customer.findUnique({
@@ -301,9 +301,9 @@ export class RecibosCajaService {
     // Re-chequeo tras el lock: un recibo concurrente con la misma idempotencyKey pudo
     // haber comprometido mientras esperábamos el FOR UPDATE — sin esto, el segundo
     // request choca contra "ya está totalmente pagada" en vez de recibir el mismo recibo.
-    const concurrentlyCreated = await tx.reciboCaja.findUnique({
+    const concurrentlyCreated = await tx.customerPayment.findUnique({
       where: { idempotencyKey: dto.idempotencyKey },
-      include: RECIBO_CAJA_DETAIL_INCLUDE,
+      include: CUSTOMER_PAYMENT_DETAIL_INCLUDE,
     });
     if (concurrentlyCreated) {
       if (!isSameCustomerPaymentRequest(dto, concurrentlyCreated)) {
@@ -463,7 +463,7 @@ export class RecibosCajaService {
     // Número tomado como último bloqueo, después de accounts_receivable.
     const number = await this.sequenceService.next(tx, 'RECIBO_CAJA');
 
-    const reciboCaja = await tx.reciboCaja.create({
+    const customerPayment = await tx.customerPayment.create({
       data: {
         number,
         date: new Date(dateStr),
@@ -480,9 +480,9 @@ export class RecibosCajaService {
     });
 
     if (paymentLines.length > 0) {
-      await tx.reciboCajaPayment.createMany({
+      await tx.customerPaymentMethod.createMany({
         data: paymentLines.map((payment) => ({
-          reciboCajaId: reciboCaja.id,
+          customerPaymentId: customerPayment.id,
           method: payment.method,
           // toCents()/100, no el monto crudo del cliente: así la suma de payments
           // siempre cuadra exacto con `total` (que ya se calculó en centavos redondeados).
@@ -522,7 +522,7 @@ export class RecibosCajaService {
         await tx.customerCreditApplication.create({
           data: {
             customerCreditId: chunk.id,
-            reciboCajaId: reciboCaja.id,
+            customerPaymentId: customerPayment.id,
             accountReceivableId: receivable.id,
             amount: takeCents / 100,
           },
@@ -533,9 +533,9 @@ export class RecibosCajaService {
         creditUsedCents += takeCents;
       }
 
-      await tx.reciboCajaAllocation.create({
+      await tx.customerPaymentAllocation.create({
         data: {
-          reciboCajaId: reciboCaja.id,
+          customerPaymentId: customerPayment.id,
           accountReceivableId: receivable.id,
           amount: amountCents / 100,
           discountAmount: discountShareCents / 100,
@@ -575,13 +575,13 @@ export class RecibosCajaService {
       });
     }
 
-    return tx.reciboCaja.findUniqueOrThrow({
-      where: { id: reciboCaja.id },
-      include: RECIBO_CAJA_DETAIL_INCLUDE,
+    return tx.customerPayment.findUniqueOrThrow({
+      where: { id: customerPayment.id },
+      include: CUSTOMER_PAYMENT_DETAIL_INCLUDE,
     });
   }
 
-  async void(id: string, dto: VoidReciboCajaDto, user: JwtPayload) {
+  async void(id: string, dto: VoidCustomerPaymentDto, user: JwtPayload) {
     return matchDetailContract(
       await this.prisma.$transaction(
         (tx) => this.voidInTransaction(tx, id, dto, user),
@@ -593,21 +593,21 @@ export class RecibosCajaService {
   private async voidInTransaction(
     tx: Prisma.TransactionClient,
     id: string,
-    dto: VoidReciboCajaDto,
+    dto: VoidCustomerPaymentDto,
     user: JwtPayload,
   ) {
-    const reciboCaja = await tx.reciboCaja.findUnique({
+    const customerPayment = await tx.customerPayment.findUnique({
       where: { id },
       include: { allocations: true, creditApplications: true },
     });
-    if (!reciboCaja) {
+    if (!customerPayment) {
       throw new NotFoundException('Recibo de caja no encontrado');
     }
 
     // Mismo orden de bloqueo que create(): customer_credit -> accounts_receivable.
     const customerCreditIds = [
       ...new Set(
-        reciboCaja.creditApplications.map(
+        customerPayment.creditApplications.map(
           (application) => application.customerCreditId,
         ),
       ),
@@ -616,7 +616,7 @@ export class RecibosCajaService {
 
     const accountReceivableIds = [
       ...new Set(
-        reciboCaja.allocations.map(
+        customerPayment.allocations.map(
           (allocation) => allocation.accountReceivableId,
         ),
       ),
@@ -624,14 +624,16 @@ export class RecibosCajaService {
     await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE id = ANY(${accountReceivableIds}::uuid[]) ORDER BY id FOR UPDATE`;
 
     // Reclamo atómico: si dos anulaciones corren a la vez, la segunda ve count 0.
-    const claimed = await tx.reciboCaja.updateMany({
+    const claimed = await tx.customerPayment.updateMany({
       where: { id, voidedAt: null },
       data: {
         voidedAt: new Date(),
         voidedById: user.sub,
         voidReason: dto.reason,
         voidReasonOther:
-          dto.reason === ReciboCajaVoidReason.otro ? dto.reasonOther : null,
+          dto.reason === CustomerPaymentVoidReason.otro
+            ? dto.reasonOther
+            : null,
       },
     });
     if (claimed.count === 0) {
@@ -646,7 +648,7 @@ export class RecibosCajaService {
     );
 
     // allocation.amount ya incluye pago + descuento + saldo a favor de esa CxC
-    for (const allocation of reciboCaja.allocations) {
+    for (const allocation of customerPayment.allocations) {
       const receivable = receivableById.get(allocation.accountReceivableId)!;
       const paidCents =
         toCents(receivable.paidAmount) - toCents(allocation.amount);
@@ -669,7 +671,7 @@ export class RecibosCajaService {
     }
 
     const returnedCentsByCreditId = new Map<string, number>();
-    for (const application of reciboCaja.creditApplications) {
+    for (const application of customerPayment.creditApplications) {
       returnedCentsByCreditId.set(
         application.customerCreditId,
         (returnedCentsByCreditId.get(application.customerCreditId) ?? 0) +
@@ -693,9 +695,9 @@ export class RecibosCajaService {
       });
     }
 
-    return tx.reciboCaja.findUniqueOrThrow({
+    return tx.customerPayment.findUniqueOrThrow({
       where: { id },
-      include: RECIBO_CAJA_DETAIL_INCLUDE,
+      include: CUSTOMER_PAYMENT_DETAIL_INCLUDE,
     });
   }
 
@@ -783,7 +785,7 @@ export class RecibosCajaService {
     }
   }
 
-  async findAll(dto: FindAllRecibosCajaDto) {
+  async findAll(dto: FindAllCustomerPaymentsDto) {
     const {
       page = 1,
       limit = 20,
@@ -795,7 +797,7 @@ export class RecibosCajaService {
     } = dto;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.ReciboCajaWhereInput = {
+    const where: Prisma.CustomerPaymentWhereInput = {
       ...(clientId && { clientId }),
       ...(customerBranchId && { customerBranchId }),
       ...(number && { number: { contains: number } }),
@@ -808,7 +810,7 @@ export class RecibosCajaService {
     };
 
     const [items, total] = await this.prisma.$transaction([
-      this.prisma.reciboCaja.findMany({
+      this.prisma.customerPayment.findMany({
         where,
         select: {
           id: true,
@@ -830,13 +832,13 @@ export class RecibosCajaService {
         // string da el mismo orden que ordenar por el número real.
         orderBy: { number: 'desc' },
       }),
-      this.prisma.reciboCaja.count({ where }),
+      this.prisma.customerPayment.count({ where }),
     ]);
 
     return matchListContract({
-      items: items.map(({ creditApplications, ...recibo }) => ({
-        ...recibo,
-        cashTotal: recibo.total,
+      items: items.map(({ creditApplications, ...customerPayment }) => ({
+        ...customerPayment,
+        cashTotal: customerPayment.total,
         creditTotal: creditApplications.reduce(
           (sum, application) => sum.plus(application.amount),
           new Prisma.Decimal(0),
@@ -852,16 +854,16 @@ export class RecibosCajaService {
   }
 
   async findOne(id: string) {
-    const reciboCaja = await this.prisma.reciboCaja.findUnique({
+    const customerPayment = await this.prisma.customerPayment.findUnique({
       where: { id },
-      include: RECIBO_CAJA_DETAIL_INCLUDE,
+      include: CUSTOMER_PAYMENT_DETAIL_INCLUDE,
     });
 
-    if (!reciboCaja) {
+    if (!customerPayment) {
       throw new NotFoundException('Recibo de caja no encontrado');
     }
 
-    return matchDetailContract(reciboCaja);
+    return matchDetailContract(customerPayment);
   }
 
   /** CxC abiertas y saldos a favor de administración disponibles de un cliente (credits y devoluciones), para armar el formulario de recibo de caja. */

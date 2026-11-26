@@ -46,7 +46,7 @@ const SOURCE_DOCUMENT_SELECT = {
 
 // Las aplicaciones de un recibo anulado no cuentan como uso.
 const ACTIVE_CUSTOMER_APPLICATION = {
-  OR: [{ reciboCajaId: null }, { reciboCaja: { voidedAt: null } }],
+  OR: [{ customerPaymentId: null }, { customerPayment: { voidedAt: null } }],
 } satisfies Prisma.CustomerCreditApplicationWhereInput;
 
 const CUSTOMER_CREDIT_INCLUDE = {
@@ -56,7 +56,7 @@ const CUSTOMER_CREDIT_INCLUDE = {
     where: ACTIVE_CUSTOMER_APPLICATION,
     include: {
       saleDocument: { select: { type: true, number: true } },
-      reciboCaja: { select: { number: true } },
+      customerPayment: { select: { number: true } },
     },
     orderBy: { appliedAt: 'desc' },
   },
@@ -144,7 +144,7 @@ function buildCustomerCredit(credit: CustomerCreditRow) {
       documentType: application.saleDocument?.type ?? 'RC',
       documentNumber:
         application.saleDocument?.number ??
-        application.reciboCaja?.number ??
+        application.customerPayment?.number ??
         null,
       amount: application.amount,
       date: application.appliedAt,

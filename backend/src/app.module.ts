@@ -15,7 +15,7 @@ import { AccountsPayableModule } from '@/accounts-payable/accounts-payable.modul
 import { CreditsModule } from '@/credits/credits.module';
 import { AccountsReceivableModule } from '@/accounts-receivable/accounts-receivable.module';
 import { SupplierPaymentsModule } from '@/supplier-payments/supplier-payments.module';
-import { RecibosCajaModule } from '@/recibos-caja/recibos-caja.module';
+import { CustomerPaymentsModule } from '@/customer-payments/customer-payments.module';
 import { SystemConfigModule } from '@/system-config/system-config.module';
 import { OfficialLedgerModule } from '@/official-ledger/official-ledger.module';
 import { ReportsModule } from '@/reports/reports.module';
@@ -54,7 +54,7 @@ import {
     AccountsPayableModule,
     AccountsReceivableModule,
     SupplierPaymentsModule,
-    RecibosCajaModule,
+    CustomerPaymentsModule,
     SystemConfigModule,
     OfficialLedgerModule,
     ReportsModule,

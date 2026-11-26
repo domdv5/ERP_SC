@@ -50,12 +50,12 @@ export interface AccountsReceivable {
 }
 
 export type AccountsReceivableHistoryEntry = {
-  source: 'recibo_caja';
+  source: 'customer_payment';
   date: string;
   amount: string;
   // Parte de `amount` cubierta por el descuento del recibo
   discountAmount: string;
-  reciboCaja: { id: string; number: string; date: string };
+  customerPayment: { id: string; number: string; date: string };
 };
 
 // GET /accounts-receivable/:id (sin los pagos crudos: van resumidos en history)
@@ -131,11 +131,11 @@ export interface ClientCreditApplication {
   id: string;
   customerCreditId: string;
   saleDocumentId: string | null;
-  reciboCajaId: string | null;
+  customerPaymentId: string | null;
   amount: string;
   appliedAt: string;
   saleDocument: ReceivableDocumentRef | null;
-  reciboCaja: { id: string; number: string; date: string } | null;
+  customerPayment: { id: string; number: string; date: string } | null;
 }
 
 // status es texto libre en la BD (available | used | voided): el backend no manda unión

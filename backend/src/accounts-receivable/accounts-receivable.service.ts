@@ -29,9 +29,9 @@ const matchDetailContract = matchContract<AccountsReceivableDetail>();
 const matchStatementContract = matchContract<ClientStatement>();
 
 // Los abonos y saldos de un recibo anulado no cuentan como historial ni como uso.
-const ACTIVE_ALLOCATION = { reciboCaja: { voidedAt: null } };
+const ACTIVE_ALLOCATION = { customerPayment: { voidedAt: null } };
 const ACTIVE_APPLICATION = {
-  OR: [{ reciboCajaId: null }, { reciboCaja: { voidedAt: null } }],
+  OR: [{ customerPaymentId: null }, { customerPayment: { voidedAt: null } }],
 };
 
 const LIST_INCLUDE = {
@@ -47,9 +47,9 @@ const LIST_INCLUDE = {
       customerBranch: { select: { id: true, name: true } },
     },
   },
-  reciboCajaAllocations: {
+  customerPaymentAllocations: {
     where: ACTIVE_ALLOCATION,
-    select: { reciboCaja: { select: { date: true } } },
+    select: { customerPayment: { select: { date: true } } },
   },
 } satisfies Prisma.AccountsReceivableInclude;
 
@@ -65,10 +65,10 @@ const DETAIL_INCLUDE = {
       customerBranch: { select: { id: true, name: true } },
     },
   },
-  reciboCajaAllocations: {
+  customerPaymentAllocations: {
     where: ACTIVE_ALLOCATION,
     include: {
-      reciboCaja: { select: { id: true, number: true, date: true } },
+      customerPayment: { select: { id: true, number: true, date: true } },
     },
   },
 } satisfies Prisma.AccountsReceivableInclude;
@@ -98,9 +98,11 @@ function buildTotals(totals: {
 
 /** Agrega el saldo derivado (totalAmount - paidAmount) sobre una fila, mismo patrón que AccountsPayableService. */
 function withDerivedFields(row: ListRow, today: Date) {
-  const { reciboCajaAllocations, ...rest } = row;
+  const { customerPaymentAllocations, ...rest } = row;
   const lastPaymentDate = findLastPaymentDate([
-    ...reciboCajaAllocations.map((allocation) => allocation.reciboCaja.date),
+    ...customerPaymentAllocations.map(
+      (allocation) => allocation.customerPayment.date,
+    ),
   ]);
   const { days, isOpen } = calculatePaymentDays(
     row.document.date,
@@ -120,17 +122,17 @@ function withDerivedFields(row: ListRow, today: Date) {
 
 /** Historial de abonos de una CxC (recibos de caja) ordenado por fecha, mismo patrón que buildHistory de AccountsPayableService. */
 function buildHistory(accountReceivable: DetailRow) {
-  const fromRecibosCaja = accountReceivable.reciboCajaAllocations.map(
+  const fromCustomerPayments = accountReceivable.customerPaymentAllocations.map(
     (allocation) => ({
-      source: 'recibo_caja' as const,
-      date: allocation.reciboCaja.date,
+      source: 'customer_payment' as const,
+      date: allocation.customerPayment.date,
       amount: allocation.amount,
       discountAmount: allocation.discountAmount,
-      reciboCaja: allocation.reciboCaja,
+      customerPayment: allocation.customerPayment,
     }),
   );
 
-  return [...fromRecibosCaja].sort(
+  return [...fromCustomerPayments].sort(
     (a, b) => b.date.getTime() - a.date.getTime(),
   );
 }
@@ -355,11 +357,11 @@ export class AccountsReceivableService {
           LIMIT ${limit} OFFSET ${(page - 1) * limit}
         ),
         payment_dates AS (
-          SELECT s.client_id, rc.date AS paid_on
+          SELECT s.client_id, payment.date AS paid_on
           FROM scoped s
-          JOIN recibo_caja_allocation rca ON rca.account_receivable_id = s.id
-          JOIN recibo_caja rc ON rc.id = rca.recibo_caja_id
-          WHERE rc.voided_at IS NULL
+          JOIN customer_payment_allocation allocation ON allocation.account_receivable_id = s.id
+          JOIN customer_payment payment ON payment.id = allocation.customer_payment_id
+          WHERE payment.voided_at IS NULL
             AND s.client_id IN (SELECT client_id FROM page)
         )
         SELECT p.*,
@@ -425,9 +427,9 @@ export class AccountsReceivableService {
       throw new NotFoundException('Cuenta por cobrar no encontrada');
     }
 
-    // reciboCajaAllocations ya quedan resumidos en `history`
+    // customerPaymentAllocations ya quedan resumidos en `history`
     // — no se devuelven crudos para no duplicar la misma info.
-    const { reciboCajaAllocations, ...rest } = accountReceivable;
+    const { customerPaymentAllocations, ...rest } = accountReceivable;
 
     return matchDetailContract({
       ...rest,
@@ -470,7 +472,9 @@ export class AccountsReceivableService {
               saleDocument: {
                 select: { id: true, type: true, number: true, date: true },
               },
-              reciboCaja: { select: { id: true, number: true, date: true } },
+              customerPayment: {
+                select: { id: true, number: true, date: true },
+              },
             },
             orderBy: { appliedAt: 'desc' },
           },

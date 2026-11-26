@@ -17,13 +17,13 @@ import {
 import { Type } from 'class-transformer';
 import {
   TreasuryPaymentMethod,
-  ReciboCajaDiscountReason,
+  CustomerPaymentDiscountReason,
 } from '@prisma/client';
 import { OFFICE_PAYMENT_METHODS } from '@/common/enums/office-payment-methods';
 import { IsValidChequeReference } from '@/common/validators/is-valid-cheque-reference.validator';
 
 /** Abono a una cuenta por cobrar dentro del recibo de caja. */
-export class ReciboCajaReceivableLineDto {
+export class CustomerPaymentReceivableLineDto {
   @IsUUID()
   accountReceivableId!: string;
 
@@ -33,7 +33,7 @@ export class ReciboCajaReceivableLineDto {
 }
 
 /** Saldo a favor de administración (excedente o devolución) usado como pago en este recibo. */
-export class ReciboCajaCreditLineDto {
+export class CustomerPaymentCreditLineDto {
   @IsUUID()
   customerCreditId!: string;
 
@@ -42,7 +42,7 @@ export class ReciboCajaCreditLineDto {
   amount!: number;
 }
 
-export class ReciboCajaPaymentLineDto {
+export class CustomerPaymentMethodLineDto {
   @IsIn(OFFICE_PAYMENT_METHODS, {
     message:
       'La forma de pago debe ser efectivo_oficina o consignacion_oficina',
@@ -63,18 +63,18 @@ export class ReciboCajaPaymentLineDto {
   bank?: string;
 }
 
-export class ReciboCajaDiscountDto {
-  @IsEnum(ReciboCajaDiscountReason, {
+export class CustomerPaymentDiscountDto {
+  @IsEnum(CustomerPaymentDiscountReason, {
     message: 'Selecciona un motivo de descuento válido',
   })
-  reason!: ReciboCajaDiscountReason;
+  reason!: CustomerPaymentDiscountReason;
 
   @IsNumber()
   @IsPositive()
   amount!: number;
 }
 
-export class CreateReciboCajaDto {
+export class CreateCustomerPaymentDto {
   @IsUUID()
   clientId!: string;
 
@@ -100,7 +100,7 @@ export class CreateReciboCajaDto {
   @MaxLength(500)
   notes?: string;
 
-  // La genera el frontend al abrir el formulario; un reintento con la misma clave no duplica si el resto del body coincide (ver RecibosCajaService.create).
+  // La genera el frontend al abrir el formulario; un reintento con la misma clave no duplica si el resto del body coincide (ver CustomerPaymentsService.create).
   @IsUUID()
   idempotencyKey!: string;
 
@@ -110,25 +110,25 @@ export class CreateReciboCajaDto {
   @ArrayMinSize(1)
   @ArrayMaxSize(100)
   @ValidateNested({ each: true })
-  @Type(() => ReciboCajaReceivableLineDto)
-  receivables!: ReciboCajaReceivableLineDto[];
+  @Type(() => CustomerPaymentReceivableLineDto)
+  receivables!: CustomerPaymentReceivableLineDto[];
 
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(100)
   @ValidateNested({ each: true })
-  @Type(() => ReciboCajaPaymentLineDto)
-  payments?: ReciboCajaPaymentLineDto[];
+  @Type(() => CustomerPaymentMethodLineDto)
+  payments?: CustomerPaymentMethodLineDto[];
 
   @IsOptional()
   @ValidateNested()
-  @Type(() => ReciboCajaDiscountDto)
-  discount?: ReciboCajaDiscountDto;
+  @Type(() => CustomerPaymentDiscountDto)
+  discount?: CustomerPaymentDiscountDto;
 
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(50)
   @ValidateNested({ each: true })
-  @Type(() => ReciboCajaCreditLineDto)
-  credits?: ReciboCajaCreditLineDto[];
+  @Type(() => CustomerPaymentCreditLineDto)
+  credits?: CustomerPaymentCreditLineDto[];
 }

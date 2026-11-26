@@ -47,9 +47,15 @@ const SupplierPaymentDetailPage = lazy(
 const SupplierPaymentNewPage = lazy(
   () => import('@/pages/supplier-payments/SupplierPaymentNewPage'),
 )
-const RecibosCajaListPage = lazy(() => import('@/pages/recibos-caja/RecibosCajaListPage'))
-const ReciboCajaDetailPage = lazy(() => import('@/pages/recibos-caja/ReciboCajaDetailPage'))
-const RecibosCajaNewPage = lazy(() => import('@/pages/recibos-caja/RecibosCajaNewPage'))
+const CustomerPaymentsListPage = lazy(
+  () => import('@/pages/customer-payments/CustomerPaymentsListPage'),
+)
+const CustomerPaymentDetailPage = lazy(
+  () => import('@/pages/customer-payments/CustomerPaymentDetailPage'),
+)
+const CustomerPaymentNewPage = lazy(
+  () => import('@/pages/customer-payments/CustomerPaymentNewPage'),
+)
 const OfficialPurchasesPendingPage = lazy(
   () => import('@/pages/official-purchases/OfficialPurchasesPendingPage'),
 )
@@ -316,31 +322,31 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'recibos-caja',
+        path: 'customer-payments',
         element: (
           <Lazy>
-            <PermissionGuard permission="recibo.read">
-              <RecibosCajaListPage />
+            <PermissionGuard permission="customer_payment.read">
+              <CustomerPaymentsListPage />
             </PermissionGuard>
           </Lazy>
         ),
       },
       {
-        path: 'recibos-caja/new',
+        path: 'customer-payments/new',
         element: (
           <Lazy>
-            <PermissionGuard permission="recibo.create">
-              <RecibosCajaNewPage />
+            <PermissionGuard permission="customer_payment.create">
+              <CustomerPaymentNewPage />
             </PermissionGuard>
           </Lazy>
         ),
       },
       {
-        path: 'recibos-caja/:id',
+        path: 'customer-payments/:id',
         element: (
           <Lazy>
-            <PermissionGuard permission="recibo.read">
-              <ReciboCajaDetailPage />
+            <PermissionGuard permission="customer_payment.read">
+              <CustomerPaymentDetailPage />
             </PermissionGuard>
           </Lazy>
         ),

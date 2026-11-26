@@ -16,11 +16,11 @@ jest.mock('./helpers/customer-credit.helpers', () => ({
   undoCustomerCreditApplications: jest.fn(),
 }));
 
-const voidedRecibo = { reciboCaja: { voidedAt: new Date() } };
-const liveRecibo = { reciboCaja: { voidedAt: null } };
+const voidedCustomerPayment = { customerPayment: { voidedAt: new Date() } };
+const liveCustomerPayment = { customerPayment: { voidedAt: null } };
 const receivable = (overrides: Record<string, unknown>) => ({
   paidAmount: 0,
-  reciboCajaAllocations: [],
+  customerPaymentAllocations: [],
   ...overrides,
 });
 
@@ -35,11 +35,11 @@ describe('DocumentsService.void: recibos anulados no bloquean', () => {
   it('anula una COT cuyo único recibo fue anulado y borra solo las filas de recibos anulados', async () => {
     loadDocument(DocumentType.COT, {
       accountsReceivable: [
-        receivable({ reciboCajaAllocations: [voidedRecibo] }),
+        receivable({ customerPaymentAllocations: [voidedCustomerPayment] }),
       ],
     });
     tx.accountsReceivable.findMany.mockResolvedValue([
-      receivable({ reciboCajaAllocations: [voidedRecibo] }),
+      receivable({ customerPaymentAllocations: [voidedCustomerPayment] }),
     ]);
 
     await expect(service.void('doc-1', fullUser)).resolves.toBeDefined();
@@ -48,10 +48,12 @@ describe('DocumentsService.void: recibos anulados no bloquean', () => {
     const onlyVoided = {
       where: {
         accountReceivable: { documentId: 'doc-1' },
-        reciboCaja: { voidedAt: { not: null } },
+        customerPayment: { voidedAt: { not: null } },
       },
     };
-    expect(tx.reciboCajaAllocation.deleteMany).toHaveBeenCalledWith(onlyVoided);
+    expect(tx.customerPaymentAllocation.deleteMany).toHaveBeenCalledWith(
+      onlyVoided,
+    );
     expect(tx.customerCreditApplication.deleteMany).toHaveBeenCalledWith(
       onlyVoided,
     );
@@ -61,7 +63,12 @@ describe('DocumentsService.void: recibos anulados no bloquean', () => {
   it('sigue bloqueando una COT con un abono de un recibo vigente', async () => {
     loadDocument(DocumentType.COT, {
       accountsReceivable: [
-        receivable({ reciboCajaAllocations: [voidedRecibo, liveRecibo] }),
+        receivable({
+          customerPaymentAllocations: [
+            voidedCustomerPayment,
+            liveCustomerPayment,
+          ],
+        }),
       ],
     });
 
@@ -74,11 +81,11 @@ describe('DocumentsService.void: recibos anulados no bloquean', () => {
   it('sigue bloqueando si un recibo vigente aparece justo antes de borrar la CxC', async () => {
     loadDocument(DocumentType.COT, {
       accountsReceivable: [
-        receivable({ reciboCajaAllocations: [voidedRecibo] }),
+        receivable({ customerPaymentAllocations: [voidedCustomerPayment] }),
       ],
     });
     tx.accountsReceivable.findMany.mockResolvedValue([
-      receivable({ reciboCajaAllocations: [liveRecibo] }),
+      receivable({ customerPaymentAllocations: [liveCustomerPayment] }),
     ]);
 
     await expect(service.void('doc-1', fullUser)).rejects.toThrow(
@@ -92,7 +99,7 @@ describe('DocumentsService.void: recibos anulados no bloquean', () => {
       accountsReceivable: [
         receivable({
           paidAmount: 1000,
-          reciboCajaAllocations: [voidedRecibo],
+          customerPaymentAllocations: [voidedCustomerPayment],
         }),
       ],
     });
@@ -104,7 +111,7 @@ describe('DocumentsService.void: recibos anulados no bloquean', () => {
 
   it('anula una DVV cuyo saldo solo se usó en recibos anulados y borra esas aplicaciones', async () => {
     loadDocument(DocumentType.DVV, {
-      customerCredits: [{ applications: [voidedRecibo] }],
+      customerCredits: [{ applications: [voidedCustomerPayment] }],
     });
 
     await expect(service.void('doc-1', fullUser)).resolves.toBeDefined();
@@ -112,16 +119,21 @@ describe('DocumentsService.void: recibos anulados no bloquean', () => {
     expect(tx.customerCreditApplication.deleteMany).toHaveBeenCalledWith({
       where: {
         customerCredit: { sourceDocumentId: 'doc-1' },
-        reciboCaja: { voidedAt: { not: null } },
+        customerPayment: { voidedAt: { not: null } },
       },
     });
     expect(tx.customerCredit.deleteMany).toHaveBeenCalled();
   });
 
   it('sigue bloqueando una DVV con una aplicación de un recibo vigente o de una venta', async () => {
-    for (const application of [liveRecibo, { reciboCaja: null }]) {
+    for (const application of [
+      liveCustomerPayment,
+      { customerPayment: null },
+    ]) {
       loadDocument(DocumentType.DVV, {
-        customerCredits: [{ applications: [voidedRecibo, application] }],
+        customerCredits: [
+          { applications: [voidedCustomerPayment, application] },
+        ],
       });
 
       await expect(service.void('doc-1', fullUser)).rejects.toThrow(
