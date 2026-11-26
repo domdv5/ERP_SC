@@ -19,6 +19,7 @@ export type {
   DocumentType,
   DocumentUser,
   DocumentWarehouse,
+  DocumentVoidReason,
   DvvRefundMethod,
   EaiAdjustmentReason,
   MissingStockItem,
@@ -34,6 +35,7 @@ import type {
   CreditLimitSummary,
   DocumentDetail,
   DocumentType,
+  DocumentVoidReason,
   DocumentStatus,
   EaiAdjustmentReason,
   DvvRefundMethod,
@@ -42,6 +44,40 @@ import type {
 
 // Destino del saldo a favor de una DVV; sale del contrato para no duplicar el union.
 export type CreditUsableIn = NonNullable<DocumentDetail['creditUsableIn']>
+
+export const DOCUMENT_VOID_REASON_LABELS: Record<DocumentVoidReason, string> = {
+  cantidad_equivocada: 'Cantidad equivocada',
+  producto_equivocado: 'Producto equivocado',
+  costo_equivocado: 'Costo o precio equivocado',
+  proveedor_equivocado: 'Proveedor equivocado',
+  cliente_equivocado: 'Cliente equivocado',
+  bodega_equivocada: 'Bodega equivocada',
+  documento_duplicado: 'Documento duplicado',
+  operacion_no_realizada: 'Operación no realizada',
+  otro: 'Otro',
+}
+
+const ALL_VOID_REASONS = Object.keys(DOCUMENT_VOID_REASON_LABELS) as DocumentVoidReason[]
+const allReasonsExcept = (...excluded: DocumentVoidReason[]) =>
+  ALL_VOID_REASONS.filter((reason) => !excluded.includes(reason))
+
+// Debe coincidir con VOID_REASONS_BY_TYPE de backend/src/documents/helpers/document-void-reason.helpers.ts
+export const DOCUMENT_VOID_REASONS_BY_TYPE: Partial<
+  Record<DocumentType, readonly DocumentVoidReason[]>
+> = {
+  CM: allReasonsExcept('cliente_equivocado'),
+  DVC: allReasonsExcept('cliente_equivocado'),
+  CMO: allReasonsExcept('cliente_equivocado', 'bodega_equivocada'),
+  DVV: allReasonsExcept('proveedor_equivocado'),
+  EAI: [
+    'cantidad_equivocada',
+    'producto_equivocado',
+    'costo_equivocado',
+    'bodega_equivocada',
+    'documento_duplicado',
+    'otro',
+  ],
+}
 
 export interface GetPendingOfficialPurchasesParams {
   page?: number

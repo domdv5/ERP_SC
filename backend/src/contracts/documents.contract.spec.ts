@@ -34,6 +34,8 @@ function buildResult() {
         editedAt: null,
         confirmedAt: null,
         voidedAt: null,
+        voidReason: null,
+        voidReasonOther: null,
         createdAt: new Date('2026-10-29'),
         pv: null,
         officialPurchases: null,

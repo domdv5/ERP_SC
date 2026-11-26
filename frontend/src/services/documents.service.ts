@@ -1,5 +1,11 @@
 import { api } from './api'
 import type { ApiResponse } from '@/types'
+import type { DocumentVoidReason } from '@contracts/documents'
+
+export interface VoidDocumentPayload {
+  reason?: DocumentVoidReason
+  reasonOther?: string
+}
 import type {
   DocumentDetail,
   DocumentListItem,
@@ -60,8 +66,11 @@ export async function confirmDocument(
   return res.data.data
 }
 
-export async function voidDocument(id: string): Promise<DocumentDetail> {
-  const res = await api.post<ApiResponse<DocumentDetail>>(`/documents/${id}/void`)
+export async function voidDocument(
+  id: string,
+  body: VoidDocumentPayload = {},
+): Promise<DocumentDetail> {
+  const res = await api.post<ApiResponse<DocumentDetail>>(`/documents/${id}/void`, body)
   return res.data.data
 }
 

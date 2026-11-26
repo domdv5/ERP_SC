@@ -535,6 +535,19 @@ enum PaymentMethod {
   credito
 }
 
+/// Motivo de anulación de un documento (CM, CMO, DVC, DVV, EAI); cada tipo acepta solo los suyos y otro exige voidReasonOther.
+enum DocumentVoidReason {
+  cantidad_equivocada
+  producto_equivocado
+  costo_equivocado
+  proveedor_equivocado
+  cliente_equivocado
+  bodega_equivocada
+  documento_duplicado
+  operacion_no_realizada
+  otro
+}
+
 /// Motivo de anulación de un egreso; otro exige voidReasonOther.
 enum SupplierPaymentVoidReason {
   valor_equivocado
@@ -617,6 +630,9 @@ model Document {
   /// Quién anuló — null si nunca fue anulado
   voidedById            String?                 @map("voided_by_id") @db.Uuid
   voidedAt              DateTime?               @map("voided_at") @db.Timestamptz
+  /// Por qué se anuló — null en tipos sin motivo y en anulados antes de existir el motivo
+  voidReason            DocumentVoidReason?     @map("void_reason")
+  voidReasonOther       String?                 @map("void_reason_other") @db.VarChar(500)
   /// Quién editó por última vez el borrador — null si nunca se editó tras crear
   updatedById           String?                 @map("updated_by_id") @db.Uuid
   /// Cuándo se editó por última vez el borrador; `updatedAt` no sirve porque también cambia al confirmar o anular

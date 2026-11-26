@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -36,6 +37,83 @@ describe('DocumentsService.void: validaciones y estado', () => {
 
   beforeEach(() => {
     resetVoidHarness(harness);
+  });
+
+  describe('motivo de anulación', () => {
+    it('SAJ no se anula: 400 sin entrar a la transacción ni tocar el estado', async () => {
+      loadDocument(DocumentType.SAJ, {
+        inventoryMovements: [makeMovement({ quantity: -2 })],
+      });
+
+      await expect(
+        service.void('doc-1', fullUser, { reason: 'otro', reasonOther: 'x' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(tx.document.updateMany).not.toHaveBeenCalled();
+      expect(applyStockChange).not.toHaveBeenCalled();
+    });
+
+    it('CM sin motivo: 400 y el documento sigue confirmado', async () => {
+      loadDocument(DocumentType.CM);
+
+      await expect(service.void('doc-1', fullUser, {})).rejects.toThrow(
+        new BadRequestException('Elige el motivo de la anulación'),
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(tx.document.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('CM con "otro" y sin texto: 400 y el documento sigue confirmado', async () => {
+      loadDocument(DocumentType.CM);
+
+      await expect(
+        service.void('doc-1', fullUser, { reason: 'otro', reasonOther: '  ' }),
+      ).rejects.toThrow(
+        new BadRequestException('Escribe el motivo de la anulación'),
+      );
+      expect(tx.document.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('CM con un motivo que no es suyo: 400', async () => {
+      loadDocument(DocumentType.CM);
+
+      await expect(
+        service.void('doc-1', fullUser, { reason: 'cliente_equivocado' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(tx.document.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('CM con motivo válido lo guarda al anular', async () => {
+      loadDocument(DocumentType.CM, { inventoryMovements: [makeMovement()] });
+
+      await service.void('doc-1', fullUser, {
+        reason: 'otro',
+        reasonOther: ' Se digitó en otra bodega ',
+      });
+
+      expect(tx.document.updateMany).toHaveBeenCalledWith({
+        where: { id: 'doc-1', status: DocumentStatus.confirmed },
+        data: expect.objectContaining({
+          status: DocumentStatus.voided,
+          voidReason: 'otro',
+          voidReasonOther: 'Se digitó en otra bodega',
+        }),
+      });
+    });
+
+    it('una venta se anula sin body, con document.void.POS, y guarda motivo null', async () => {
+      loadDocument(DocumentType.POS);
+
+      await service.void('doc-1', makeUser(['document.void.POS']), {});
+
+      expect(tx.document.updateMany).toHaveBeenCalledWith({
+        where: { id: 'doc-1', status: DocumentStatus.confirmed },
+        data: expect.objectContaining({
+          voidReason: null,
+          voidReasonOther: null,
+        }),
+      });
+    });
   });
 
   describe('validaciones previas a la transacción', () => {
@@ -239,6 +317,8 @@ describe('DocumentsService.void: validaciones y estado', () => {
           status: DocumentStatus.voided,
           voidedById: 'u1',
           voidedAt: expect.any(Date),
+          voidReason: null,
+          voidReasonOther: null,
         },
       });
       expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {

@@ -24,7 +24,9 @@ import {
 import { applyBinStockChange, applyStockChange } from './helpers/stock.helpers';
 import { matchConvertedItemsByProduct } from './helpers/conversion.helpers';
 import { assertDocumentPermission } from './helpers/document-guards.helpers';
+import { resolveVoidReason } from './helpers/document-void-reason.helpers';
 import { DocumentsQueryService } from './documents-query.service';
+import { VoidDocumentDto } from './dto/index';
 import {
   DOCUMENT_TO_VOID_INCLUDE,
   DocumentEffectsRegistry,
@@ -53,7 +55,7 @@ export class DocumentVoidService {
   ) {}
 
   /** Anular es genérico para todos los tipos: revierte los movimientos de inventario y borra las CxP/CxC del documento. */
-  async void(id: string, user: JwtPayload) {
+  async void(id: string, user: JwtPayload, dto: VoidDocumentDto = {}) {
     const document = await this.prisma.document.findUnique({
       where: { id },
       include: DOCUMENT_TO_VOID_INCLUDE,
@@ -67,6 +69,12 @@ export class DocumentVoidService {
       user,
       document.type,
       SALE_VOID_TYPES.has(document.type) ? 'void' : 'create',
+    );
+
+    const voidReason = resolveVoidReason(
+      document.type,
+      dto.reason,
+      dto.reasonOther,
     );
 
     if (document.status !== DocumentStatus.confirmed) {
@@ -145,6 +153,8 @@ export class DocumentVoidService {
             status: DocumentStatus.voided,
             voidedById: user.sub,
             voidedAt: new Date(),
+            voidReason: voidReason.reason,
+            voidReasonOther: voidReason.reasonOther,
           },
         });
 
