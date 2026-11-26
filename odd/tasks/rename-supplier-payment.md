@@ -20,10 +20,10 @@ Pasar a inglés los nombres técnicos del egreso (tablas, carpetas, archivos, cl
 
 ## Tasks
 
-- T1 [S1,S3,S5] schema + migración + backend + seed RBAC + contrato + backend/CLAUDE.md — nestjs-code-crafter — commit: pendiente
-- T2 [S1,S2,S5] frontend (carpeta, pantallas, rutas, permisos, import del contrato) + frontend/CLAUDE.md — react-code-crafter — commit: pendiente
-- T3 [S4] regla de nombres en CLAUDE.md raíz — parent — commit: pendiente
-- T4 [S5] verificación completa, PR — parent — commit: pendiente
+- T1 [S1,S3,S5] schema + migración + backend + seed RBAC + contrato + backend/CLAUDE.md — nestjs-code-crafter — commit: a321512
+- T2 [S1,S2,S5] frontend (carpeta, pantallas, rutas, permisos, import del contrato) + frontend/CLAUDE.md — react-code-crafter — commit: a321512
+- T3 [S4] regla de nombres en CLAUDE.md raíz — parent — commit: a321512
+- T4 [S5] verificación completa, PR — parent — commit: a321512
 
 ## Log
 
@@ -31,3 +31,4 @@ Pasar a inglés los nombres técnicos del egreso (tablas, carpetas, archivos, cl
 - L2 (dueño): "los valores en español no me importa tanto ni las variables tampoco tanto, es más el nombre de las carpetas y de las tablas" → se acotó a egreso y recibo de caja completos (2 PRs); valores de enums y variables sueltas quedan.
 - L3 (dueño): "dale" al mapa de nombres `supplier_payment` / `customer_payment`. Redirecciones de rutas viejas: sin respuesta → no se hacen.
 - L4: decisión del parent: el enum compartido `EgresoPaymentMethod` pasa a `TreasuryPaymentMethod` (lo usa también el recibo de caja, así que no puede llevar "SupplierPayment").
+- L5: evidencia — jest 787/787, vitest 229/229, tsc 0, build frontend OK; migrate diff solo los 2 trigram; filas iguales (55/62/64/15, role_permission 164); verificador independiente PASS S1/S3; mutación seed (accounts_admin sin supplier_payment.void) DETECTADA por role-permissions.seed.spec; prueba en pantalla (lista, detalle, nuevo, CxP con badge Egreso, /egresos → 404). Revisión nativa no corrió: lens_context_budget_exceeded (68 archivos).
