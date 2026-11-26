@@ -11,6 +11,8 @@ All commands run from the `backend/` directory using `pnpm`. See `backend/packag
 > 2. Create `prisma/migrations/<timestamp>_<name>/migration.sql` manually with that SQL
 > 3. `pnpm exec prisma migrate deploy --config prisma/prisma.config.ts` → apply
 > 4. `pnpm exec prisma generate --config prisma/prisma.config.ts` → regenerate client
+>
+> **Descripción de tablas (2026-11-26)**: cada tabla tiene una descripción corta en español con `COMMENT ON TABLE` (migración `20261126120000_table_comments`), que el dueño ve en su cliente de base de datos. Prisma no las genera ni las detecta: toda tabla nueva agrega su `COMMENT ON TABLE "tabla" IS '…';` a mano en su propia migración.
 
 ## Pruebas
 
