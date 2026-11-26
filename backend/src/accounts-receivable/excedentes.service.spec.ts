@@ -136,7 +136,10 @@ describe('ExcedentesService', () => {
       expect(tx.customerCreditApplication.count).toHaveBeenCalledWith({
         where: {
           customerCreditId: 'cc1',
-          OR: [{ reciboCajaId: null }, { reciboCaja: { voidedAt: null } }],
+          OR: [
+            { customerPaymentId: null },
+            { customerPayment: { voidedAt: null } },
+          ],
         },
       });
     });

@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { DocumentType } from '@/common/enums';
 import { CreateDocumentDto } from '@/documents/dto/index';
 import { SUPPLIER_PAYMENT_VOID_STATE } from '@/documents/helpers/supplier-payment-links.helpers';
-import { RECIBO_VOID_STATE } from '@/documents/helpers/recibo-links.helpers';
+import { CUSTOMER_PAYMENT_VOID_STATE } from '@/documents/helpers/customer-payment-links.helpers';
 
 /** Documento con los includes que el service carga antes de confirmar. */
 export type DocumentWithItems = Prisma.DocumentGetPayload<{
@@ -29,10 +29,10 @@ export const DOCUMENT_TO_VOID_INCLUDE = {
     },
   },
   accountsReceivable: {
-    include: { reciboCajaAllocations: RECIBO_VOID_STATE },
+    include: { customerPaymentAllocations: CUSTOMER_PAYMENT_VOID_STATE },
   },
   supplierCredits: { include: { applications: SUPPLIER_PAYMENT_VOID_STATE } },
-  customerCredits: { include: { applications: RECIBO_VOID_STATE } },
+  customerCredits: { include: { applications: CUSTOMER_PAYMENT_VOID_STATE } },
   appliedCustomerCredits: true,
 } satisfies Prisma.DocumentInclude;
 

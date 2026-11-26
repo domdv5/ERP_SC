@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { formatCOP } from '@/lib/format'
-import { reciboCajaFormSchema, type ReciboCajaFormValues } from './recibo-caja-form.schema'
+import {
+  customerPaymentFormSchema,
+  type CustomerPaymentFormValues,
+} from './customer-payment-form.schema'
 
-const form = (overrides: Partial<ReciboCajaFormValues>): ReciboCajaFormValues => ({
+const form = (overrides: Partial<CustomerPaymentFormValues>): CustomerPaymentFormValues => ({
   clientId: 'c1',
   customerBranchId: 'none',
   date: '2026-10-30',
@@ -15,12 +18,12 @@ const form = (overrides: Partial<ReciboCajaFormValues>): ReciboCajaFormValues =>
   ...overrides,
 })
 
-const messages = (values: ReciboCajaFormValues) => {
-  const result = reciboCajaFormSchema.safeParse(values)
+const messages = (values: CustomerPaymentFormValues) => {
+  const result = customerPaymentFormSchema.safeParse(values)
   return result.success ? [] : result.error.issues.map((issue) => issue.message)
 }
 
-describe('reciboCajaFormSchema — descuento', () => {
+describe('customerPaymentFormSchema — descuento', () => {
   it('acepta pagos + descuento que saldan la factura', () => {
     expect(messages(form({}))).toEqual([])
   })
@@ -75,7 +78,7 @@ describe('reciboCajaFormSchema — descuento', () => {
   })
 })
 
-describe('reciboCajaFormSchema — saldos a favor', () => {
+describe('customerPaymentFormSchema — saldos a favor', () => {
   const base = {
     hasDiscount: false,
     discountReason: '' as const,
@@ -133,7 +136,7 @@ describe('reciboCajaFormSchema — saldos a favor', () => {
         { accountReceivableId: 'ar1', balance: 100000, selected: true, amount: 100000 },
       ],
     })
-    const result = reciboCajaFormSchema.safeParse(small)
+    const result = customerPaymentFormSchema.safeParse(small)
     const issue = result.success
       ? undefined
       : result.error.issues.find((i) => i.message === overflow)

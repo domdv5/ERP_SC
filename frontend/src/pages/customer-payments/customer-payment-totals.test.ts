@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { calculateAllocationCash, calculateCreditPending, sumAmounts } from './recibo-caja-totals'
+import {
+  calculateAllocationCash,
+  calculateCreditPending,
+  sumAmounts,
+} from './customer-payment-totals'
 
 describe('calculateAllocationCash', () => {
   it('resta saldo a favor y descuento de lo abonado', () => {

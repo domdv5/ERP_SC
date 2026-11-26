@@ -5,12 +5,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import { getReciboCajaOpenItems, createReciboCaja } from '@/services/recibos-caja.service'
-import { reciboCajaFormSchema, type ReciboCajaFormValues } from './recibo-caja-form.schema'
-import { calculateCreditPending } from './recibo-caja-totals'
+import {
+  getCustomerPaymentOpenItems,
+  createCustomerPayment,
+} from '@/services/customer-payments.service'
+import {
+  customerPaymentFormSchema,
+  type CustomerPaymentFormValues,
+} from './customer-payment-form.schema'
+import { calculateCreditPending } from './customer-payment-totals'
 import { canUseCredit, findCreditOverflowIndex } from '@/lib/credit-application'
-import type { CreateReciboCajaPayload } from '@/types'
-import type { ReciboCajaBranch } from '@/types/recibo-caja.types'
+import type { CreateCustomerPaymentPayload } from '@/types'
+import type { CustomerPaymentBranch } from '@/types/customer-payment.types'
 import { todayInBogota } from '@/lib/format'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import { getApiErrorMessage } from '@/lib/api-error'
@@ -18,7 +24,7 @@ import { invalidateThirdParties } from '@/lib/invalidation'
 
 export const NO_BRANCH = 'none'
 
-const emptyDefaults = (): ReciboCajaFormValues => ({
+const emptyDefaults = (): CustomerPaymentFormValues => ({
   clientId: '',
   customerBranchId: '',
   date: todayInBogota(),
@@ -32,7 +38,7 @@ const emptyDefaults = (): ReciboCajaFormValues => ({
 })
 
 // Toda la lógica de negocio del form de Recibos de Caja (carga, cuadre, envío) — la página solo arma el layout
-export function useReciboCajaForm() {
+export function useCustomerPaymentForm() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -47,9 +53,9 @@ export function useReciboCajaForm() {
     reset,
     handleSubmit,
     formState: { errors },
-  } = useForm<ReciboCajaFormValues>({
+  } = useForm<CustomerPaymentFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(reciboCajaFormSchema) as any,
+    resolver: zodResolver(customerPaymentFormSchema) as any,
     defaultValues: emptyDefaults(),
   })
 
@@ -66,15 +72,15 @@ export function useReciboCajaForm() {
   )
 
   const { data: allOpenItems, isLoading: isLoadingAllOpenItems } = useQuery({
-    queryKey: ['recibos-caja-open-items', clientId, 'all'],
-    queryFn: () => getReciboCajaOpenItems(clientId),
+    queryKey: ['customer-payments-open-items', clientId, 'all'],
+    queryFn: () => getCustomerPaymentOpenItems(clientId),
     enabled: Boolean(clientId),
     staleTime: 30 * 1000,
   })
   const isLoadingBranches = isLoadingActiveBranches || isLoadingAllOpenItems
 
   // Suma las sucursales inactivas que todavía tienen facturas pendientes: si no, esas facturas no se podrían cobrar.
-  const branches: ReciboCajaBranch[] = [...activeBranches]
+  const branches: CustomerPaymentBranch[] = [...activeBranches]
   for (const receivable of allOpenItems?.receivables ?? []) {
     const branch = receivable.document.customerBranch
     if (branch && !branches.some((b) => b.id === branch.id)) branches.push(branch)
@@ -89,8 +95,8 @@ export function useReciboCajaForm() {
 
   const openItemsBranch = hasBranches ? branchId : undefined
   const { data: openItems, isLoading: isLoadingOpenItemsQuery } = useQuery({
-    queryKey: ['recibos-caja-open-items', clientId, openItemsBranch ?? 'all'],
-    queryFn: () => getReciboCajaOpenItems(clientId, openItemsBranch),
+    queryKey: ['customer-payments-open-items', clientId, openItemsBranch ?? 'all'],
+    queryFn: () => getCustomerPaymentOpenItems(clientId, openItemsBranch),
     enabled: Boolean(clientId) && !isLoadingBranches && !awaitingBranch,
     staleTime: 30 * 1000,
   })
@@ -210,12 +216,12 @@ export function useReciboCajaForm() {
     })
   }
 
-  const { mutateAsync: createReciboCajaMutateAsync, isPending: isCreating } = useMutation({
-    mutationFn: createReciboCaja,
+  const { mutateAsync: createCustomerPaymentMutateAsync, isPending: isCreating } = useMutation({
+    mutationFn: createCustomerPayment,
   })
 
-  async function submitReciboCaja(values: ReciboCajaFormValues) {
-    const payload: CreateReciboCajaPayload = {
+  async function submitCustomerPayment(values: CustomerPaymentFormValues) {
+    const payload: CreateCustomerPaymentPayload = {
       clientId: values.clientId,
       customerBranchId:
         hasBranches && values.customerBranchId !== NO_BRANCH
@@ -245,13 +251,13 @@ export function useReciboCajaForm() {
     }
 
     try {
-      const reciboCaja = await createReciboCajaMutateAsync(payload)
+      const customerPayment = await createCustomerPaymentMutateAsync(payload)
       queryClient.invalidateQueries({ queryKey: ['accounts-receivable'] })
-      queryClient.invalidateQueries({ queryKey: ['recibos-caja'] })
+      queryClient.invalidateQueries({ queryKey: ['customer-payments'] })
       invalidateThirdParties(queryClient)
-      queryClient.invalidateQueries({ queryKey: ['recibos-caja-open-items', values.clientId] })
-      toast.success(`Recibo de caja RC-${reciboCaja.number} registrado correctamente`)
-      navigate(`/recibos-caja/${reciboCaja.id}`)
+      queryClient.invalidateQueries({ queryKey: ['customer-payments-open-items', values.clientId] })
+      toast.success(`Recibo de caja RC-${customerPayment.number} registrado correctamente`)
+      navigate(`/customer-payments/${customerPayment.id}`)
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Error al registrar el recibo de caja'))
       // No invalidamos open-items acá: repoblaría receivables debajo del diálogo todavía abierto — el caller lo hace al cerrarlo
@@ -292,7 +298,7 @@ export function useReciboCajaForm() {
     changeClient,
     changeBranch,
     hasClient: Boolean(clientId),
-    submitReciboCaja,
+    submitCustomerPayment,
     isSubmitting: isCreating,
   }
 }

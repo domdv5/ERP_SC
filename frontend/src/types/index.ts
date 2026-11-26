@@ -130,27 +130,27 @@ export type {
   ReceivableDocumentRef,
 } from './accounts-receivable.types'
 export type {
-  ReciboCaja,
-  ReciboCajaAllocation,
-  ReciboCajaAllocationAccountReceivable,
-  ReciboCajaBranch,
-  ReciboCajaCreditApplication,
-  ReciboCajaDiscountReason,
-  ReciboCajaListItem,
-  ReciboCajaListMeta,
-  ReciboCajaListResponse,
-  ReciboCajaOpenCredit,
-  ReciboCajaOpenItems,
-  ReciboCajaOpenReceivable,
-  ReciboCajaPaymentLine,
-  GetRecibosCajaParams,
-  CreateReciboCajaCreditPayload,
-  CreateReciboCajaPayload,
-  CreateReciboCajaReceivablePayload,
-  CreateReciboCajaPaymentPayload,
-  ReciboCajaVoidReason,
-} from './recibo-caja.types'
-export { RECIBO_CAJA_VOID_REASON_LABELS } from './recibo-caja.types'
+  CustomerPayment,
+  CustomerPaymentAllocation,
+  CustomerPaymentAllocationAccountReceivable,
+  CustomerPaymentBranch,
+  CustomerPaymentCreditApplication,
+  CustomerPaymentDiscountReason,
+  CustomerPaymentListItem,
+  CustomerPaymentListMeta,
+  CustomerPaymentListResponse,
+  CustomerPaymentOpenCredit,
+  CustomerPaymentOpenItems,
+  CustomerPaymentOpenReceivable,
+  CustomerPaymentMethodLine,
+  GetCustomerPaymentsParams,
+  CreateCustomerPaymentCreditPayload,
+  CreateCustomerPaymentPayload,
+  CreateCustomerPaymentReceivablePayload,
+  CreateCustomerPaymentMethodPayload,
+  CustomerPaymentVoidReason,
+} from './customer-payment.types'
+export { CUSTOMER_PAYMENT_VOID_REASON_LABELS } from './customer-payment.types'
 export type { SystemStatus, SystemStatusActivatedBy } from './system.types'
 export type {
   OfficialLedgerItem,

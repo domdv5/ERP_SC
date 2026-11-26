@@ -2,8 +2,8 @@ import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { JwtPayload } from '@/common/types';
-import { RecibosCajaService } from './recibos-caja.service';
-import { CreateReciboCajaDto } from './dto/create-recibo-caja.dto';
+import { CustomerPaymentsService } from './customer-payments.service';
+import { CreateCustomerPaymentDto } from './dto/create-customer-payment.dto';
 
 const CLIENT = 'c1';
 const BRANCH_A = 'branch-a';
@@ -22,7 +22,7 @@ const receivable = (id: string, branchId: string | null, total = 100) => ({
 const buildDto = (
   receivableId: string,
   customerBranchId?: string,
-): CreateReciboCajaDto => ({
+): CreateCustomerPaymentDto => ({
   clientId: CLIENT,
   customerBranchId,
   idempotencyKey: 'key',
@@ -30,24 +30,24 @@ const buildDto = (
   payments: [{ method: 'efectivo_oficina', amount: 100 }],
 });
 
-describe('RecibosCajaService', () => {
+describe('CustomerPaymentsService', () => {
   const tx = {
     customer: { findUnique: jest.fn() },
     $queryRaw: jest.fn(),
-    reciboCaja: {
+    customerPayment: {
       findUnique: jest.fn(),
       create: jest.fn(),
       findUniqueOrThrow: jest.fn(),
     },
     accountsReceivable: { findMany: jest.fn(), update: jest.fn() },
     customerBranch: { findFirst: jest.fn() },
-    reciboCajaPayment: { createMany: jest.fn() },
-    reciboCajaAllocation: { create: jest.fn() },
+    customerPaymentMethod: { createMany: jest.fn() },
+    customerPaymentAllocation: { create: jest.fn() },
     customerCredit: { findMany: jest.fn(), update: jest.fn() },
     customerCreditApplication: { create: jest.fn() },
   };
   const prisma = {
-    reciboCaja: {
+    customerPayment: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
       count: jest.fn(),
@@ -57,14 +57,14 @@ describe('RecibosCajaService', () => {
     $transaction: jest.fn(),
   };
   const sequence = { next: jest.fn() };
-  const service = new RecibosCajaService(
+  const service = new CustomerPaymentsService(
     prisma as unknown as PrismaService,
     sequence,
   );
 
   beforeEach(() => {
     jest.resetAllMocks();
-    prisma.reciboCaja.findUnique.mockResolvedValue(null);
+    prisma.customerPayment.findUnique.mockResolvedValue(null);
     prisma.$transaction.mockImplementation((fn: (t: typeof tx) => unknown) =>
       fn(tx),
     );
@@ -73,9 +73,9 @@ describe('RecibosCajaService', () => {
       thirdParty: { isCustomer: true },
     });
     tx.$queryRaw.mockResolvedValue([]);
-    tx.reciboCaja.findUnique.mockResolvedValue(null);
-    tx.reciboCaja.create.mockResolvedValue({ id: 'r1' });
-    tx.reciboCaja.findUniqueOrThrow.mockResolvedValue({ id: 'r1' });
+    tx.customerPayment.findUnique.mockResolvedValue(null);
+    tx.customerPayment.create.mockResolvedValue({ id: 'r1' });
+    tx.customerPayment.findUniqueOrThrow.mockResolvedValue({ id: 'r1' });
     tx.customerBranch.findFirst.mockResolvedValue({ id: BRANCH_A });
     sequence.next.mockResolvedValue('000001');
   });
@@ -91,7 +91,7 @@ describe('RecibosCajaService', () => {
       await expect(service.create(buildDto('ar1'), user)).rejects.toThrow(
         BadRequestException,
       );
-      expect(tx.reciboCaja.create).not.toHaveBeenCalled();
+      expect(tx.customerPayment.create).not.toHaveBeenCalled();
     });
 
     it('rechaza una CxC de otra sucursal', async () => {
@@ -112,7 +112,7 @@ describe('RecibosCajaService', () => {
     it('acepta recibo sin sucursal para una CxC sin sucursal', async () => {
       mockReceivable(null);
       await service.create(buildDto('ar1'), user);
-      expect(tx.reciboCaja.create).toHaveBeenCalledWith({
+      expect(tx.customerPayment.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ customerBranchId: null }),
       });
     });
@@ -120,13 +120,13 @@ describe('RecibosCajaService', () => {
     it('guarda customerBranchId cuando coincide con la CxC', async () => {
       mockReceivable(BRANCH_A);
       await service.create(buildDto('ar1', BRANCH_A), user);
-      expect(tx.reciboCaja.create).toHaveBeenCalledWith({
+      expect(tx.customerPayment.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ customerBranchId: BRANCH_A }),
       });
     });
 
     it('idempotencia: misma clave con otra sucursal es 409', async () => {
-      prisma.reciboCaja.findUnique.mockResolvedValue({
+      prisma.customerPayment.findUnique.mockResolvedValue({
         clientId: CLIENT,
         customerBranchId: BRANCH_B,
         total: new Prisma.Decimal(100),
@@ -148,7 +148,7 @@ describe('RecibosCajaService', () => {
       lines: { id: string; amount: number }[],
       payments: number[],
       discount: { reason: string; amount: number },
-    ): CreateReciboCajaDto =>
+    ): CreateCustomerPaymentDto =>
       ({
         clientId: CLIENT,
         idempotencyKey: 'key',
@@ -161,10 +161,10 @@ describe('RecibosCajaService', () => {
           amount,
         })),
         discount,
-      }) as CreateReciboCajaDto;
+      }) as CreateCustomerPaymentDto;
 
     const expectNothingSaved = () => {
-      expect(tx.reciboCaja.create).not.toHaveBeenCalled();
+      expect(tx.customerPayment.create).not.toHaveBeenCalled();
       expect(tx.accountsReceivable.update).not.toHaveBeenCalled();
     };
 
@@ -177,7 +177,7 @@ describe('RecibosCajaService', () => {
         }),
         user,
       );
-      expect(tx.reciboCaja.create).toHaveBeenCalledWith({
+      expect(tx.customerPayment.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           total: 90,
           discountAmount: 10,
@@ -185,7 +185,7 @@ describe('RecibosCajaService', () => {
           debtBeforeReceipt: 100,
         }),
       });
-      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith({
+      expect(tx.customerPaymentAllocation.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ amount: 100, discountAmount: 10 }),
       });
       expect(tx.accountsReceivable.update).toHaveBeenCalledWith({
@@ -253,14 +253,14 @@ describe('RecibosCajaService', () => {
           }),
           user,
         );
-        expect(tx.reciboCaja.create).toHaveBeenCalledWith({
+        expect(tx.customerPayment.create).toHaveBeenCalledWith({
           data: expect.objectContaining({
             total: 0,
             discountAmount: 100,
             discountReason: reason,
           }),
         });
-        expect(tx.reciboCajaPayment.createMany).not.toHaveBeenCalled();
+        expect(tx.customerPaymentMethod.createMany).not.toHaveBeenCalled();
         expect(tx.accountsReceivable.update).toHaveBeenCalledWith({
           where: { id: 'ar1' },
           data: { paidAmount: 100, status: 'paid' },
@@ -284,19 +284,19 @@ describe('RecibosCajaService', () => {
         ),
         user,
       );
-      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith({
+      expect(tx.customerPaymentAllocation.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           accountReceivableId: 'ar1',
           discountAmount: 6.67,
         }),
       });
-      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith({
+      expect(tx.customerPaymentAllocation.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           accountReceivableId: 'ar2',
           discountAmount: 3.33,
         }),
       });
-      expect(tx.reciboCaja.create).toHaveBeenCalledWith({
+      expect(tx.customerPayment.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ debtBeforeReceipt: 150 }),
       });
     });
@@ -304,7 +304,7 @@ describe('RecibosCajaService', () => {
     it('sin descuento: guarda descuento 0 y la deuda antes del recibo', async () => {
       mockReceivable(null);
       await service.create(buildDto('ar1'), user);
-      expect(tx.reciboCaja.create).toHaveBeenCalledWith({
+      expect(tx.customerPayment.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           total: 100,
           discountAmount: 0,
@@ -329,7 +329,7 @@ describe('RecibosCajaService', () => {
     });
 
     it('idempotencia: misma clave con otro descuento es 409', async () => {
-      prisma.reciboCaja.findUnique.mockResolvedValue({
+      prisma.customerPayment.findUnique.mockResolvedValue({
         clientId: CLIENT,
         customerBranchId: null,
         total: new Prisma.Decimal(90),
@@ -367,7 +367,7 @@ describe('RecibosCajaService', () => {
     const dtoWith = (
       payments: number[],
       credits: { customerCreditId: string; amount: number }[],
-    ): CreateReciboCajaDto => ({
+    ): CreateCustomerPaymentDto => ({
       clientId: CLIENT,
       idempotencyKey: 'key',
       receivables: [{ accountReceivableId: 'ar1', amount: 100 }],
@@ -379,7 +379,7 @@ describe('RecibosCajaService', () => {
     });
 
     const expectNothingSaved = () => {
-      expect(tx.reciboCaja.create).not.toHaveBeenCalled();
+      expect(tx.customerPayment.create).not.toHaveBeenCalled();
       expect(tx.customerCredit.update).not.toHaveBeenCalled();
       expect(tx.accountsReceivable.update).not.toHaveBeenCalled();
     };
@@ -394,13 +394,13 @@ describe('RecibosCajaService', () => {
         dtoWith([70], [{ customerCreditId: 'cc1', amount: 30 }]),
         user,
       );
-      expect(tx.reciboCaja.create).toHaveBeenCalledWith({
+      expect(tx.customerPayment.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ total: 70 }),
       });
       expect(tx.customerCreditApplication.create).toHaveBeenCalledWith({
         data: {
           customerCreditId: 'cc1',
-          reciboCajaId: 'r1',
+          customerPaymentId: 'r1',
           accountReceivableId: 'ar1',
           amount: 30,
         },
@@ -423,7 +423,7 @@ describe('RecibosCajaService', () => {
         dtoWith([], [{ customerCreditId: 'cc1', amount: 100 }]),
         user,
       );
-      expect(tx.reciboCaja.create).toHaveBeenCalledWith({
+      expect(tx.customerPayment.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ total: 0 }),
       });
       expect(tx.customerCredit.update).toHaveBeenCalledWith({
@@ -544,7 +544,7 @@ describe('RecibosCajaService', () => {
     });
 
     it('idempotencia: misma clave con otros saldos a favor es 409', async () => {
-      prisma.reciboCaja.findUnique.mockResolvedValue({
+      prisma.customerPayment.findUnique.mockResolvedValue({
         clientId: CLIENT,
         customerBranchId: null,
         total: new Prisma.Decimal(70),
@@ -581,7 +581,7 @@ describe('RecibosCajaService', () => {
       payments: number[],
       credits: { customerCreditId: string; amount: number }[],
       discount?: { reason: string; amount: number },
-    ): CreateReciboCajaDto =>
+    ): CreateCustomerPaymentDto =>
       ({
         clientId: CLIENT,
         idempotencyKey: 'key',
@@ -595,7 +595,7 @@ describe('RecibosCajaService', () => {
         })),
         credits,
         discount,
-      }) as CreateReciboCajaDto;
+      }) as CreateCustomerPaymentDto;
 
     const application = (
       customerCreditId: string,
@@ -604,7 +604,7 @@ describe('RecibosCajaService', () => {
     ) => ({
       data: {
         customerCreditId,
-        reciboCajaId: 'r1',
+        customerPaymentId: 'r1',
         accountReceivableId,
         amount,
       },
@@ -636,10 +636,10 @@ describe('RecibosCajaService', () => {
         [application('cc1', 'ar1', 100)],
         [application('cc1', 'ar2', 20)],
       ]);
-      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+      expect(tx.customerPaymentAllocation.create).toHaveBeenCalledWith(
         allocation('ar1', { amount: 100, creditAmount: 100 }),
       );
-      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+      expect(tx.customerPaymentAllocation.create).toHaveBeenCalledWith(
         allocation('ar2', { amount: 50, creditAmount: 20 }),
       );
     });
@@ -679,10 +679,10 @@ describe('RecibosCajaService', () => {
         [application('ccNew', 'ar1', 30)],
         [application('ccNew', 'ar2', 30)],
       ]);
-      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+      expect(tx.customerPaymentAllocation.create).toHaveBeenCalledWith(
         allocation('ar1', { creditAmount: 100 }),
       );
-      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+      expect(tx.customerPaymentAllocation.create).toHaveBeenCalledWith(
         allocation('ar2', { creditAmount: 30 }),
       );
     });
@@ -709,14 +709,14 @@ describe('RecibosCajaService', () => {
         [application('cc2', 'ar2', 10)],
       ]);
       // ar1: 0 dinero + 90 saldo + 10 descuento; ar2: 35 dinero + 10 saldo + 5 descuento
-      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+      expect(tx.customerPaymentAllocation.create).toHaveBeenCalledWith(
         allocation('ar1', {
           amount: 100,
           discountAmount: 10,
           creditAmount: 90,
         }),
       );
-      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+      expect(tx.customerPaymentAllocation.create).toHaveBeenCalledWith(
         allocation('ar2', { amount: 50, discountAmount: 5, creditAmount: 10 }),
       );
     });
@@ -724,10 +724,10 @@ describe('RecibosCajaService', () => {
     it('sin saldos a favor guarda creditAmount 0 y no crea aplicaciones', async () => {
       await service.create(splitDto([150], []), user);
       expect(tx.customerCreditApplication.create).not.toHaveBeenCalled();
-      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+      expect(tx.customerPaymentAllocation.create).toHaveBeenCalledWith(
         allocation('ar1', { creditAmount: 0 }),
       );
-      expect(tx.reciboCajaAllocation.create).toHaveBeenCalledWith(
+      expect(tx.customerPaymentAllocation.create).toHaveBeenCalledWith(
         allocation('ar2', { creditAmount: 0 }),
       );
     });
@@ -749,7 +749,7 @@ describe('RecibosCajaService', () => {
           { customerCreditId: 'cc1', amount: new Prisma.Decimal(20) },
         ],
       };
-      prisma.reciboCaja.findUnique.mockResolvedValue(existing);
+      prisma.customerPayment.findUnique.mockResolvedValue(existing);
 
       await expect(
         service.create(
@@ -789,7 +789,7 @@ describe('RecibosCajaService', () => {
 
   describe('findOne', () => {
     it('en un recibo viejo creditAmount sigue null (no se convierte en 0)', async () => {
-      prisma.reciboCaja.findUnique.mockResolvedValue({
+      prisma.customerPayment.findUnique.mockResolvedValue({
         id: 'r1',
         allocations: [{ id: 'a1', creditAmount: null }],
       });

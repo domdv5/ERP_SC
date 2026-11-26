@@ -18,16 +18,16 @@ const receivableRowSchema = z.object({
   amount: moneyAmount,
 })
 
-export const RECIBO_CAJA_PAYMENT_METHODS = ['efectivo_oficina', 'consignacion_oficina'] as const
+export const CUSTOMER_PAYMENT_METHODS = ['efectivo_oficina', 'consignacion_oficina'] as const
 
 const paymentLineSchema = z.object({
-  method: z.enum(RECIBO_CAJA_PAYMENT_METHODS, { error: 'Selecciona una forma de pago' }),
+  method: z.enum(CUSTOMER_PAYMENT_METHODS, { error: 'Selecciona una forma de pago' }),
   amount: moneyAmount,
   reference: z.string().optional(),
   bank: z.string().optional(),
 })
 
-export const RECIBO_CAJA_DISCOUNT_REASONS = [
+export const CUSTOMER_PAYMENT_DISCOUNT_REASONS = [
   'descuento_comercial',
   'oferta',
   'donacion',
@@ -37,9 +37,12 @@ export const RECIBO_CAJA_DISCOUNT_REASONS = [
   'promocion',
 ] as const
 
-export type ReciboCajaDiscountReason = (typeof RECIBO_CAJA_DISCOUNT_REASONS)[number]
+export type CustomerPaymentDiscountReason = (typeof CUSTOMER_PAYMENT_DISCOUNT_REASONS)[number]
 
-export const RECIBO_CAJA_DISCOUNT_REASON_LABELS: Record<ReciboCajaDiscountReason, string> = {
+export const CUSTOMER_PAYMENT_DISCOUNT_REASON_LABELS: Record<
+  CustomerPaymentDiscountReason,
+  string
+> = {
   descuento_comercial: 'Descuento Comercial',
   oferta: 'Oferta',
   donacion: 'Donación',
@@ -50,7 +53,7 @@ export const RECIBO_CAJA_DISCOUNT_REASON_LABELS: Record<ReciboCajaDiscountReason
 }
 
 // Únicos motivos que pueden saldar toda la deuda sin que entre dinero (mismo criterio que el backend).
-export const FULL_COVER_DISCOUNT_REASONS: readonly ReciboCajaDiscountReason[] = [
+export const FULL_COVER_DISCOUNT_REASONS: readonly CustomerPaymentDiscountReason[] = [
   'castigo_cartera',
   'mercancia_extraviada',
 ]
@@ -72,19 +75,19 @@ const baseSchema = z.object({
   payments: z.array(paymentLineSchema),
   hasDiscount: z.boolean(),
   // '' = sin elegir
-  discountReason: z.union([z.enum(RECIBO_CAJA_DISCOUNT_REASONS), z.literal('')]),
+  discountReason: z.union([z.enum(CUSTOMER_PAYMENT_DISCOUNT_REASONS), z.literal('')]),
   discountAmount: moneyAmount,
   credits: z.array(creditRowSchema),
 })
 
-export type ReciboCajaFormValues = z.infer<typeof baseSchema>
+export type CustomerPaymentFormValues = z.infer<typeof baseSchema>
 
 export const CREDITS_OVERFLOW_MESSAGE =
   'El saldo a favor es mayor que lo pendiente: aumenta el abono o desmárcalo'
 
 // Cuadre exacto (sin saldo a favor): se valida junto, igual que hace el backend en una sola
 // transacción — si algo no cuadra acá, tampoco va a cuadrar allá.
-export const reciboCajaFormSchema = baseSchema.superRefine((data, ctx) => {
+export const customerPaymentFormSchema = baseSchema.superRefine((data, ctx) => {
   const selectedReceivables = data.receivables.filter((r) => r.selected)
 
   if (selectedReceivables.length === 0) {

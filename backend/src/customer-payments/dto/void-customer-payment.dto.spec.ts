@@ -1,13 +1,13 @@
 import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { VoidReciboCajaDto } from './void-recibo-caja.dto';
+import { VoidCustomerPaymentDto } from './void-customer-payment.dto';
 
 async function errorsFor(body: Record<string, unknown>) {
-  return validate(plainToInstance(VoidReciboCajaDto, body));
+  return validate(plainToInstance(VoidCustomerPaymentDto, body));
 }
 
-describe('VoidReciboCajaDto', () => {
+describe('VoidCustomerPaymentDto', () => {
   it.each([undefined, '', 'inventado', 'proveedor_equivocado', 123])(
     'rechaza un motivo fuera de la lista (%p)',
     async (reason) => {

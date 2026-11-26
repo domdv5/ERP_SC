@@ -163,7 +163,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
     it('rechaza una cuenta por cobrar con monto abonado aunque no tenga recibos de caja', async () => {
       loadDocument(DocumentType.COT, {
         accountsReceivable: [
-          { reciboCajaAllocations: [], paidAmount: '50000' },
+          { customerPaymentAllocations: [], paidAmount: '50000' },
         ],
       });
 
@@ -202,7 +202,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
     });
 
     it('rechaza una cuenta por cobrar con recibos de caja', async () => {
-      for (const used of [{ reciboCajaAllocations: [{ id: 'x' }] }]) {
+      for (const used of [{ customerPaymentAllocations: [{ id: 'x' }] }]) {
         loadDocument(DocumentType.COT, { accountsReceivable: [used] });
 
         await expect(service.void('doc-1', fullUser)).rejects.toThrow(
@@ -215,7 +215,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
     });
     it('POS con parte a crédito: rechaza si la CxC ya tiene un recibo de caja', async () => {
       loadDocument(DocumentType.POS, {
-        accountsReceivable: [{ reciboCajaAllocations: [{ id: 'r1' }] }],
+        accountsReceivable: [{ customerPaymentAllocations: [{ id: 'r1' }] }],
       });
 
       await expect(service.void('doc-1', fullUser)).rejects.toThrow(
@@ -312,7 +312,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
     it('lanza 409 si la cuenta por cobrar quedó con monto abonado entre el chequeo y el lock', async () => {
       loadDocument(DocumentType.COT);
       tx.accountsReceivable.findMany.mockResolvedValue([
-        { reciboCajaAllocations: [], paidAmount: '50000' },
+        { customerPaymentAllocations: [], paidAmount: '50000' },
       ]);
 
       await expect(service.void('doc-1', fullUser)).rejects.toThrow(
@@ -326,7 +326,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
     it('lanza 409 si un recibo de caja concurrente pagó la cuenta por cobrar', async () => {
       loadDocument(DocumentType.COT);
       tx.accountsReceivable.findMany.mockResolvedValue([
-        { reciboCajaAllocations: [{ id: 'r1' }] },
+        { customerPaymentAllocations: [{ id: 'r1' }] },
       ]);
 
       await expect(service.void('doc-1', fullUser)).rejects.toThrow(
@@ -339,10 +339,10 @@ describe('DocumentsService.void: validaciones y estado', () => {
 
     it('POS con parte a crédito: borra su CxC al anular', async () => {
       loadDocument(DocumentType.POS, {
-        accountsReceivable: [{ reciboCajaAllocations: [] }],
+        accountsReceivable: [{ customerPaymentAllocations: [] }],
       });
       tx.accountsReceivable.findMany.mockResolvedValue([
-        { reciboCajaAllocations: [] },
+        { customerPaymentAllocations: [] },
       ]);
 
       await service.void('doc-1', fullUser);
@@ -355,7 +355,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
     it('POS con parte a crédito: lanza 409 si un recibo concurrente abonó la CxC', async () => {
       loadDocument(DocumentType.POS);
       tx.accountsReceivable.findMany.mockResolvedValue([
-        { reciboCajaAllocations: [{ id: 'p1' }] },
+        { customerPaymentAllocations: [{ id: 'p1' }] },
       ]);
 
       await expect(service.void('doc-1', fullUser)).rejects.toThrow(

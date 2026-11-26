@@ -4,12 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import { getReciboCajaOpenItems } from '@/services/recibos-caja.service'
-import { useReciboCajaForm } from './useReciboCajaForm'
+import { getCustomerPaymentOpenItems } from '@/services/customer-payments.service'
+import { useCustomerPaymentForm } from './useCustomerPaymentForm'
 
-vi.mock('@/services/recibos-caja.service', () => ({
-  getReciboCajaOpenItems: vi.fn(),
-  createReciboCaja: vi.fn(),
+vi.mock('@/services/customer-payments.service', () => ({
+  getCustomerPaymentOpenItems: vi.fn(),
+  createCustomerPayment: vi.fn(),
 }))
 vi.mock('@/hooks/useCustomerBranches', () => ({
   useCustomerBranches: () => ({ branches: [], isLoading: false }),
@@ -24,14 +24,14 @@ const openItems = {
 }
 
 async function renderForm() {
-  vi.mocked(getReciboCajaOpenItems).mockResolvedValue(openItems as never)
+  vi.mocked(getCustomerPaymentOpenItems).mockResolvedValue(openItems as never)
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>{children}</MemoryRouter>
     </QueryClientProvider>
   )
-  const hook = renderHook(() => useReciboCajaForm(), { wrapper })
+  const hook = renderHook(() => useCustomerPaymentForm(), { wrapper })
   act(() => hook.result.current.setValue('clientId', 'cli-1'))
   await waitFor(() => expect(hook.result.current.watch('credits')).toHaveLength(2))
   act(() => hook.result.current.toggleReceivable('r1', true))
@@ -43,7 +43,7 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('useReciboCajaForm — saldos a favor', () => {
+describe('useCustomerPaymentForm — saldos a favor', () => {
   it('al marcar un saldo se aplica completo y al desmarcar vuelve a 0', async () => {
     const { result } = await renderForm()
     act(() => result.current.toggleCredit(0, true))

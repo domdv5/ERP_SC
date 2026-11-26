@@ -1,16 +1,17 @@
 import { Transform } from 'class-transformer';
 import { IsEnum, Length, ValidateIf } from 'class-validator';
-import { ReciboCajaVoidReason } from '@prisma/client';
+import { CustomerPaymentVoidReason } from '@prisma/client';
 
-export class VoidReciboCajaDto {
-  @IsEnum(ReciboCajaVoidReason, {
+export class VoidCustomerPaymentDto {
+  @IsEnum(CustomerPaymentVoidReason, {
     message: 'Elige un motivo de anulación válido',
   })
-  reason!: ReciboCajaVoidReason;
+  reason!: CustomerPaymentVoidReason;
 
   // Solo se valida (y se guarda) con motivo "otro"; con cualquier otro se ignora.
   @ValidateIf(
-    (dto: VoidReciboCajaDto) => dto.reason === ReciboCajaVoidReason.otro,
+    (dto: VoidCustomerPaymentDto) =>
+      dto.reason === CustomerPaymentVoidReason.otro,
   )
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,

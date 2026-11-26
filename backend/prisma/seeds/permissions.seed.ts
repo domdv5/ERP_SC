@@ -76,9 +76,9 @@ export async function seedPermissions(prisma: PrismaClient) {
 
       // Recibos de caja (tesorería, lado cliente) — reemplaza a ar.manage para
       // registrar pagos; ar.manage queda sembrado sin uso (ver backend/CLAUDE.md)
-      { code: 'recibo.read', module: 'accounts' },
-      { code: 'recibo.create', module: 'accounts' },
-      { code: 'recibo.void', module: 'accounts' },
+      { code: 'customer_payment.read', module: 'accounts' },
+      { code: 'customer_payment.create', module: 'accounts' },
+      { code: 'customer_payment.void', module: 'accounts' },
       // Registrar/anular excedentes (saldo a favor por pago de más) — solo admin y accounts_admin
       { code: 'excedente.create', module: 'accounts' },
 

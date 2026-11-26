@@ -20,16 +20,16 @@ import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { usePermission } from '@/hooks/usePermission'
 import { RegisterExcedenteModal } from '@/pages/accounts-receivable/components/RegisterExcedenteModal'
-import { useReciboCajaForm, NO_BRANCH } from './useReciboCajaForm'
+import { useCustomerPaymentForm, NO_BRANCH } from './useCustomerPaymentForm'
 import {
   CREDITS_OVERFLOW_MESSAGE,
-  RECIBO_CAJA_PAYMENT_METHODS,
-  RECIBO_CAJA_DISCOUNT_REASONS,
-  RECIBO_CAJA_DISCOUNT_REASON_LABELS,
-} from './recibo-caja-form.schema'
+  CUSTOMER_PAYMENT_METHODS,
+  CUSTOMER_PAYMENT_DISCOUNT_REASONS,
+  CUSTOMER_PAYMENT_DISCOUNT_REASON_LABELS,
+} from './customer-payment-form.schema'
 import { TREASURY_PAYMENT_METHOD_LABELS } from '@/types'
 import type { ThirdPartyDetail } from '@/types/third-party.types'
-import type { ReciboCajaOpenCredit } from '@/types/recibo-caja.types'
+import type { CustomerPaymentOpenCredit } from '@/types/customer-payment.types'
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
 // Mismo patrón que SupplierPaymentNewPage.tsx: overlay + card, sin librería de modales.
@@ -44,7 +44,7 @@ interface ConfirmDialogProps {
   onCancel: () => void
 }
 
-function creditOriginLabel(credit: ReciboCajaOpenCredit) {
+function creditOriginLabel(credit: CustomerPaymentOpenCredit) {
   if (credit.kind === 'excedente' || !credit.sourceDocument) return 'Excedente'
   return `Devolución ${docNumber(credit.sourceDocument.type, credit.sourceDocument.number)}`
 }
@@ -98,7 +98,7 @@ function ConfirmDialog({
 
 // ─── main page ─────────────────────────────────────────────────────────────────
 
-export default function RecibosCajaNewPage() {
+export default function CustomerPaymentNewPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -133,9 +133,9 @@ export default function RecibosCajaNewPage() {
     changeClient,
     changeBranch,
     hasClient,
-    submitReciboCaja,
+    submitCustomerPayment,
     isSubmitting,
-  } = useReciboCajaForm()
+  } = useCustomerPaymentForm()
   const missingPayment = Math.round(expectedPayments) - Math.round(totalPayments)
 
   const canCreateExcedente = usePermission('excedente.create')
@@ -191,7 +191,7 @@ export default function RecibosCajaNewPage() {
   const confirmAndSubmit = handleSubmit(
     async (values) => {
       try {
-        await submitReciboCaja(values)
+        await submitCustomerPayment(values)
         setConfirmOpen(false)
       } catch {
         // El hook ya mostró el toast; el diálogo se deja abierto y el refetch queda pendiente hasta cerrarlo (ver onCancel)
@@ -208,14 +208,14 @@ export default function RecibosCajaNewPage() {
     setConfirmOpen(false)
     if (needsOpenItemsRefetch) {
       setNeedsOpenItemsRefetch(false)
-      queryClient.invalidateQueries({ queryKey: ['recibos-caja-open-items', clientId] })
+      queryClient.invalidateQueries({ queryKey: ['customer-payments-open-items', clientId] })
     }
   }
 
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
-      <BackLink to="/recibos-caja" />
+      <BackLink to="/customer-payments" />
 
       <div>
         <h1 className="text-2xl text-content">Nuevo recibo de caja</h1>
@@ -542,7 +542,7 @@ export default function RecibosCajaNewPage() {
                             className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
                           >
                             <option value="">Selecciona...</option>
-                            {RECIBO_CAJA_PAYMENT_METHODS.map((value) => (
+                            {CUSTOMER_PAYMENT_METHODS.map((value) => (
                               <option key={value} value={value}>
                                 {TREASURY_PAYMENT_METHOD_LABELS[value]}
                               </option>
@@ -655,9 +655,9 @@ export default function RecibosCajaNewPage() {
                         className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
                       >
                         <option value="">Selecciona...</option>
-                        {RECIBO_CAJA_DISCOUNT_REASONS.map((value) => (
+                        {CUSTOMER_PAYMENT_DISCOUNT_REASONS.map((value) => (
                           <option key={value} value={value}>
-                            {RECIBO_CAJA_DISCOUNT_REASON_LABELS[value]}
+                            {CUSTOMER_PAYMENT_DISCOUNT_REASON_LABELS[value]}
                           </option>
                         ))}
                       </select>
@@ -767,7 +767,7 @@ export default function RecibosCajaNewPage() {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/recibos-caja')}
+              onClick={() => navigate('/customer-payments')}
               className="btn-secondary w-full px-4 py-2 text-sm"
             >
               Cancelar

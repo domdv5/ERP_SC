@@ -64,7 +64,7 @@ describe('AccountsReceivableService.getClientStatement', () => {
         paidAmount: decimal('40'),
         status: 'partial',
         document: { customerBranchId: null, date: saleDate },
-        reciboCajaAllocations: [],
+        customerPaymentAllocations: [],
       },
       {
         id: 'b',
@@ -72,7 +72,7 @@ describe('AccountsReceivableService.getClientStatement', () => {
         paidAmount: decimal('50'),
         status: 'paid',
         document: { customerBranchId: null, date: saleDate },
-        reciboCajaAllocations: [],
+        customerPaymentAllocations: [],
       },
     ]);
     prisma.customerCredit.findMany.mockResolvedValue([
@@ -125,8 +125,8 @@ describe('AccountsReceivableService.getClientStatement', () => {
         paidAmount: decimal('50'),
         status: 'paid',
         document: { customerBranchId: null, date: saleDate },
-        reciboCajaAllocations: [
-          { reciboCaja: { date: new Date('2026-09-15T00:00:00.000Z') } },
+        customerPaymentAllocations: [
+          { customerPayment: { date: new Date('2026-09-15T00:00:00.000Z') } },
         ],
       },
       {
@@ -135,7 +135,7 @@ describe('AccountsReceivableService.getClientStatement', () => {
         paidAmount: decimal('0'),
         status: 'pending',
         document: { customerBranchId: null, date: saleDate },
-        reciboCajaAllocations: [],
+        customerPaymentAllocations: [],
       },
     ]);
     prisma.customerCredit.findMany.mockResolvedValue([]);
@@ -148,7 +148,7 @@ describe('AccountsReceivableService.getClientStatement', () => {
     expect(paid.isPaymentOpen).toBe(false);
     expect(pending.lastPaymentDate).toBeNull();
     expect(pending.isPaymentOpen).toBe(true);
-    expect(paid).not.toHaveProperty('reciboCajaAllocations');
+    expect(paid).not.toHaveProperty('customerPaymentAllocations');
   });
 });
 
@@ -183,7 +183,7 @@ describe('AccountsReceivableService: sucursales del cliente', () => {
       customerBranch: branch,
       date: saleDate,
     },
-    reciboCajaAllocations: [],
+    customerPaymentAllocations: [],
   });
   const centro = { id: 'b1', name: 'Centro' };
   const norte = { id: 'b2', name: 'Norte' };

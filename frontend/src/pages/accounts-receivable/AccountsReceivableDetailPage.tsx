@@ -15,7 +15,7 @@ const ORIGIN_BADGE: Record<
   AccountsReceivableHistoryEntry['source'],
   { label: string; className: string }
 > = {
-  recibo_caja: {
+  customer_payment: {
     label: 'Recibo de caja',
     className: 'bg-brand-secondary/10 text-brand-secondary',
   },
@@ -226,20 +226,23 @@ export default function AccountsReceivableDetailPage() {
                       </td>
                       <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                         {formatCOP(Number(entry.amount))}
-                        {entry.source === 'recibo_caja' && Number(entry.discountAmount) > 0 && (
-                          <span className="block text-content-faint font-normal">
-                            incl. descuento {formatCOP(Number(entry.discountAmount))}
-                          </span>
-                        )}
+                        {entry.source === 'customer_payment' &&
+                          Number(entry.discountAmount) > 0 && (
+                            <span className="block text-content-faint font-normal">
+                              incl. descuento {formatCOP(Number(entry.discountAmount))}
+                            </span>
+                          )}
                       </td>
                       <td className="px-5 py-3.5">
-                        {entry.source === 'recibo_caja' && (
+                        {entry.source === 'customer_payment' && (
                           <button
-                            onClick={() => navigate(`/recibos-caja/${entry.reciboCaja.id}`)}
+                            onClick={() =>
+                              navigate(`/customer-payments/${entry.customerPayment.id}`)
+                            }
                             className="flex items-center gap-1.5 font-mono text-xs link-plain"
                           >
                             <Landmark className="w-3.5 h-3.5" />
-                            {docNumber('RC', entry.reciboCaja.number)}
+                            {docNumber('RC', entry.customerPayment.number)}
                           </button>
                         )}
                       </td>

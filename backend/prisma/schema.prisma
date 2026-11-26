@@ -116,7 +116,7 @@ model Customer {
   seller             ThirdParty?          @relation("SellerThirdParty", fields: [sellerId], references: [id])
   accountsReceivable AccountsReceivable[]
   customerCredits    CustomerCredit[]
-  recibosCaja        ReciboCaja[]
+  customerPayments   CustomerPayment[]
   branches           CustomerBranch[]
 
   @@map("customers")
@@ -135,11 +135,11 @@ model CustomerBranch {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  customer        Customer         @relation(fields: [customerId], references: [id])
-  city            City?            @relation(fields: [cityCode], references: [code])
-  documents       Document[]
-  recibosCaja     ReciboCaja[]
-  customerCredits CustomerCredit[]
+  customer         Customer          @relation(fields: [customerId], references: [id])
+  city             City?             @relation(fields: [cityCode], references: [code])
+  documents        Document[]
+  customerPayments CustomerPayment[]
+  customerCredits  CustomerCredit[]
 
   @@unique([customerId, name])
   @@map("customer_branch")
@@ -465,10 +465,10 @@ model User {
   systemConfigsDeactivated SystemConfig[]       @relation("SystemConfigDeactivatedBy")
   supplierPayments         SupplierPayment[]
   supplierPaymentsVoided   SupplierPayment[]    @relation("SupplierPaymentVoidedBy")
-  recibosCajaVoided        ReciboCaja[]         @relation("ReciboCajaVoidedBy")
+  customerPaymentsVoided   CustomerPayment[]    @relation("CustomerPaymentVoidedBy")
   customerCreditsCreated   CustomerCredit[]     @relation("CustomerCreditCreatedBy")
   customerCreditsVoided    CustomerCredit[]     @relation("CustomerCreditVoidedBy")
-  recibosCaja              ReciboCaja[]
+  customerPayments         CustomerPayment[]
   inventoryCasesClosed     InventoryCase[]      @relation("InventoryCaseClosedBy")
   inventoryCasesReopened   InventoryCase[]      @relation("InventoryCaseReopenedBy")
 
@@ -547,7 +547,7 @@ enum SupplierPaymentVoidReason {
 }
 
 /// Motivo de anulación de un recibo de caja; otro exige voidReasonOther.
-enum ReciboCajaVoidReason {
+enum CustomerPaymentVoidReason {
   valor_equivocado
   cliente_equivocado
   factura_equivocada
@@ -818,7 +818,7 @@ model AccountsReceivable {
   seller   ThirdParty @relation("SellerAR", fields: [sellerId], references: [id])
   document Document   @relation(fields: [documentId], references: [id])
 
-  reciboCajaAllocations      ReciboCajaAllocation[]
+  customerPaymentAllocations CustomerPaymentAllocation[]
   customerCreditApplications CustomerCreditApplication[]
 
   @@index([clientId, status])
@@ -972,9 +972,9 @@ model CustomerCredit {
 model CustomerCreditApplication {
   id                  String   @id @default(uuid(7)) @db.Uuid
   customerCreditId    String   @map("customer_credit_id") @db.Uuid
-  /// Exactamente uno de saleDocumentId (devolución aplicada al facturar) o reciboCajaId (excedente aplicado en un recibo) — CHECK a mano.
+  /// Exactamente uno de saleDocumentId (devolución aplicada al facturar) o customerPaymentId (excedente aplicado en un recibo) — CHECK a mano.
   saleDocumentId      String?  @map("sale_document_id") @db.Uuid
-  reciboCajaId        String?  @map("recibo_caja_id") @db.Uuid
+  customerPaymentId   String?  @map("customer_payment_id") @db.Uuid
   /// CxC del recibo que cubrió este tramo del saldo. Null en aplicaciones de venta y en recibos anteriores al reparto.
   accountReceivableId String?  @map("account_receivable_id") @db.Uuid
   amount              Decimal  @db.Decimal(16, 2)
@@ -982,17 +982,17 @@ model CustomerCreditApplication {
 
   customerCredit    CustomerCredit      @relation(fields: [customerCreditId], references: [id])
   saleDocument      Document?           @relation("CustomerCreditSaleApplication", fields: [saleDocumentId], references: [id], onDelete: Restrict)
-  reciboCaja        ReciboCaja?         @relation(fields: [reciboCajaId], references: [id], onDelete: Restrict)
+  customerPayment   CustomerPayment?    @relation(fields: [customerPaymentId], references: [id], onDelete: Restrict)
   accountReceivable AccountsReceivable? @relation(fields: [accountReceivableId], references: [id], onDelete: Restrict)
 
   // Un mismo crédito no se aplica dos veces a la misma venta; el prefijo cubre
   // el lookup "¿este crédito ya tiene aplicaciones?" al anular la DVV.
   @@unique([customerCreditId, saleDocumentId])
   // Un tramo por CxC: el mismo saldo puede cubrir varias CxC del mismo recibo.
-  @@unique([customerCreditId, reciboCajaId, accountReceivableId])
+  @@unique([customerCreditId, customerPaymentId, accountReceivableId])
   @@index([saleDocumentId])
   @@index([accountReceivableId])
-  @@index([reciboCajaId])
+  @@index([customerPaymentId])
   @@map("customer_credit_application")
 }
 
@@ -1089,50 +1089,50 @@ model SupplierPaymentAllocation {
 // ─── Recibo de caja (documento de tesorería, lado cliente) ───────────────────
 
 /// Paga una o varias CxC de un mismo cliente en un solo movimiento; no se edita, se anula con voidedAt (las filas hijas se conservan como historial). Los saldos a favor usados quedan en CustomerCreditApplication, repartidos por CxC.
-model ReciboCaja {
-  id                String                    @id @default(uuid(7)) @db.Uuid
+model CustomerPayment {
+  id                String                         @id @default(uuid(7)) @db.Uuid
   /// Consecutivo propio (clave "RECIBO_CAJA" en Sequence), ceros a la izquierda a 6 dígitos para ordenar como texto.
-  number            String                    @unique @db.VarChar(30)
+  number            String                         @unique @db.VarChar(30)
   /// Sin @default a propósito: la fija el service en huso Colombia, no el de la base (mismo criterio que SupplierPayment.date).
-  date              DateTime                  @db.Date
-  clientId          String                    @map("client_id") @db.Uuid
+  date              DateTime                       @db.Date
+  clientId          String                         @map("client_id") @db.Uuid
   /// Sucursal cobrada; null = recibo de CxC sin sucursal (o cliente sin sucursales).
-  customerBranchId  String?                   @map("customer_branch_id") @db.Uuid
-  userId            String                    @map("user_id") @db.Uuid
-  /// total = suma de las formas de pago; Σ ReciboCajaAllocation.amount = total + saldos a favor + discountAmount (lo valida el service, ningún CHECK lo ve).
-  total             Decimal                   @db.Decimal(16, 2)
-  discountAmount    Decimal                   @default(0) @map("discount_amount") @db.Decimal(16, 2)
+  customerBranchId  String?                        @map("customer_branch_id") @db.Uuid
+  userId            String                         @map("user_id") @db.Uuid
+  /// total = suma de las formas de pago; Σ CustomerPaymentAllocation.amount = total + saldos a favor + discountAmount (lo valida el service, ningún CHECK lo ve).
+  total             Decimal                        @db.Decimal(16, 2)
+  discountAmount    Decimal                        @default(0) @map("discount_amount") @db.Decimal(16, 2)
   /// Obligatorio si discountAmount > 0 (CHECK a mano).
-  discountReason    ReciboCajaDiscountReason? @map("discount_reason")
+  discountReason    CustomerPaymentDiscountReason? @map("discount_reason")
   /// Saldo de las CxC abonadas justo antes del recibo; null en recibos anteriores a este campo.
-  debtBeforeReceipt Decimal?                  @map("debt_before_receipt") @db.Decimal(16, 2)
-  notes             String?                   @db.VarChar(500)
+  debtBeforeReceipt Decimal?                       @map("debt_before_receipt") @db.Decimal(16, 2)
+  notes             String?                        @db.VarChar(500)
   /// Clave que manda el cliente para que un reintento de red no cobre dos veces.
-  idempotencyKey    String                    @unique @map("idempotency_key") @db.VarChar(100)
-  createdAt         DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  idempotencyKey    String                         @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt         DateTime                       @default(now()) @map("created_at") @db.Timestamptz
   /// Anulado si no es null; el motivo es obligatorio al anular.
-  voidedAt          DateTime?                 @map("voided_at") @db.Timestamptz
-  voidedById        String?                   @map("voided_by_id") @db.Uuid
-  voidReason        ReciboCajaVoidReason?     @map("void_reason")
-  voidReasonOther   String?                   @map("void_reason_other") @db.VarChar(500)
+  voidedAt          DateTime?                      @map("voided_at") @db.Timestamptz
+  voidedById        String?                        @map("voided_by_id") @db.Uuid
+  voidReason        CustomerPaymentVoidReason?     @map("void_reason")
+  voidReasonOther   String?                        @map("void_reason_other") @db.VarChar(500)
 
   client             Customer                    @relation(fields: [clientId], references: [id])
   customerBranch     CustomerBranch?             @relation(fields: [customerBranchId], references: [id], onDelete: Restrict)
   user               User                        @relation(fields: [userId], references: [id])
-  voidedBy           User?                       @relation("ReciboCajaVoidedBy", fields: [voidedById], references: [id])
-  payments           ReciboCajaPayment[]
-  allocations        ReciboCajaAllocation[]
+  voidedBy           User?                       @relation("CustomerPaymentVoidedBy", fields: [voidedById], references: [id])
+  payments           CustomerPaymentMethod[]
+  allocations        CustomerPaymentAllocation[]
   creditApplications CustomerCreditApplication[]
 
   @@index([date])
   @@index([clientId, date])
   @@index([customerBranchId])
   @@index([userId])
-  @@map("recibo_caja")
+  @@map("customer_payment")
 }
 
 /// Motivo del descuento de un recibo de caja; solo castigo_cartera y mercancia_extraviada pueden cubrir el 100% de la deuda.
-enum ReciboCajaDiscountReason {
+enum CustomerPaymentDiscountReason {
   descuento_comercial
   oferta
   donacion
@@ -1142,26 +1142,26 @@ enum ReciboCajaDiscountReason {
   promocion
 }
 
-model ReciboCajaPayment {
-  id           String                @id @default(uuid(7)) @db.Uuid
-  reciboCajaId String                @map("recibo_caja_id") @db.Uuid
+model CustomerPaymentMethod {
+  id                String                @id @default(uuid(7)) @db.Uuid
+  customerPaymentId String                @map("customer_payment_id") @db.Uuid
   /// Mismo enum que SupplierPayment — misma tesorería, mismas formas de pago (regla de negocio explícita).
-  method       TreasuryPaymentMethod
-  amount       Decimal               @db.Decimal(16, 2)
+  method            TreasuryPaymentMethod
+  amount            Decimal               @db.Decimal(16, 2)
   /// Número de cheque o de consignación. Obligatorio para `cheque` — lo valida el service.
-  reference    String?               @db.VarChar(100)
-  bank         String?               @db.VarChar(100)
-  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  reference         String?               @db.VarChar(100)
+  bank              String?               @db.VarChar(100)
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz
 
-  reciboCaja ReciboCaja @relation(fields: [reciboCajaId], references: [id])
+  customerPayment CustomerPayment @relation(fields: [customerPaymentId], references: [id])
 
-  @@index([reciboCajaId])
-  @@map("recibo_caja_payment")
+  @@index([customerPaymentId])
+  @@map("customer_payment_method")
 }
 
-model ReciboCajaAllocation {
+model CustomerPaymentAllocation {
   id                  String   @id @default(uuid(7)) @db.Uuid
-  reciboCajaId        String   @map("recibo_caja_id") @db.Uuid
+  customerPaymentId   String   @map("customer_payment_id") @db.Uuid
   accountReceivableId String   @map("account_receivable_id") @db.Uuid
   /// Total abonado a esta cuenta por cobrar en este recibo, descuento incluido.
   amount              Decimal  @db.Decimal(16, 2)
@@ -1170,12 +1170,12 @@ model ReciboCajaAllocation {
   /// Parte de `amount` cubierta con saldo a favor (más antigua primero, igual que egresos). Null en recibos anteriores al reparto.
   creditAmount        Decimal? @map("credit_amount") @db.Decimal(16, 2)
 
-  reciboCaja        ReciboCaja         @relation(fields: [reciboCajaId], references: [id])
+  customerPayment   CustomerPayment    @relation(fields: [customerPaymentId], references: [id])
   accountReceivable AccountsReceivable @relation(fields: [accountReceivableId], references: [id])
 
-  @@unique([reciboCajaId, accountReceivableId])
+  @@unique([customerPaymentId, accountReceivableId])
   @@index([accountReceivableId])
-  @@map("recibo_caja_allocation")
+  @@map("customer_payment_allocation")
 }
 
 // ─── Configuración del sistema ────────────────────────────────────────────────

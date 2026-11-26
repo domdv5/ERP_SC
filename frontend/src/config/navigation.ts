@@ -118,10 +118,10 @@ export const navGroups: NavGroup[] = [
         permission: 'supplier_payment.read',
       },
       {
-        to: '/recibos-caja',
+        to: '/customer-payments',
         label: 'Recibos de caja',
         icon: Wallet,
-        permission: 'recibo.read',
+        permission: 'customer_payment.read',
       },
     ],
   },

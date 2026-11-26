@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class FindAllRecibosCajaDto {
+export class FindAllCustomerPaymentsDto {
   @IsOptional()
   @IsInt()
   @Min(1)

@@ -4,7 +4,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { Wallet, Plus } from 'lucide-react'
 
-import { getRecibosCaja } from '@/services/recibos-caja.service'
+import { getCustomerPayments } from '@/services/customer-payments.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import { usePermission } from '@/hooks/usePermission'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
@@ -23,9 +23,9 @@ import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { DOC_STATUS_BADGE } from '@/pages/documents/document.constants'
 import type { ThirdPartyDetail } from '@/types/third-party.types'
 
-export default function RecibosCajaListPage() {
+export default function CustomerPaymentsListPage() {
   const navigate = useNavigate()
-  const canCreate = usePermission('recibo.create')
+  const canCreate = usePermission('customer_payment.create')
 
   const [search, setSearch] = useState('')
   const [clientId, setClientId] = useState('')
@@ -60,9 +60,18 @@ export default function RecibosCajaListPage() {
   }
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['recibos-caja', debouncedSearch, clientId, branchId, dateFrom, dateTo, page, limit],
+    queryKey: [
+      'customer-payments',
+      debouncedSearch,
+      clientId,
+      branchId,
+      dateFrom,
+      dateTo,
+      page,
+      limit,
+    ],
     queryFn: () =>
-      getRecibosCaja({
+      getCustomerPayments({
         number: debouncedSearch || undefined,
         clientId: clientId || undefined,
         customerBranchId: branchId || undefined,
@@ -121,7 +130,7 @@ export default function RecibosCajaListPage() {
         </div>
         {canCreate && (
           <button
-            onClick={() => navigate('/recibos-caja/new')}
+            onClick={() => navigate('/customer-payments/new')}
             className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
           >
             <Plus className="w-4 h-4" />
@@ -250,67 +259,68 @@ export default function RecibosCajaListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
-                {items.map((reciboCaja) => (
+                {items.map((customerPayment) => (
                   <tr
-                    key={reciboCaja.id}
-                    onClick={() => navigate(`/recibos-caja/${reciboCaja.id}`)}
+                    key={customerPayment.id}
+                    onClick={() => navigate(`/customer-payments/${customerPayment.id}`)}
                     className="hover:bg-surface-raised transition-colors group cursor-pointer"
                   >
                     <td className="px-5 py-3.5 font-mono text-xs font-medium text-content whitespace-nowrap">
-                      {docNumber('RC', reciboCaja.number)}
+                      {docNumber('RC', customerPayment.number)}
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatDateOnly(reciboCaja.date)}
+                      {formatDateOnly(customerPayment.date)}
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 avatar-outline">
-                          {reciboCaja.client.thirdParty.name[0]?.toUpperCase() ?? '?'}
+                          {customerPayment.client.thirdParty.name[0]?.toUpperCase() ?? '?'}
                         </div>
                         <span className="font-medium text-content">
-                          {reciboCaja.client.thirdParty.name}
+                          {customerPayment.client.thirdParty.name}
                         </span>
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {reciboCaja.customerBranch?.name ?? '—'}
+                      {customerPayment.customerBranch?.name ?? '—'}
                     </td>
                     <td
                       className={cn(
                         'px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap',
-                        reciboCaja.voidedAt && 'line-through text-content-faint',
+                        customerPayment.voidedAt && 'line-through text-content-faint',
                       )}
                     >
-                      {formatCOP(Number(reciboCaja.cashTotal))}
+                      {formatCOP(Number(customerPayment.cashTotal))}
                     </td>
                     <td
                       className={cn(
                         'px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap',
-                        reciboCaja.voidedAt && 'line-through text-content-faint',
+                        customerPayment.voidedAt && 'line-through text-content-faint',
                       )}
                     >
-                      {Number(reciboCaja.creditTotal) > 0
-                        ? formatCOP(Number(reciboCaja.creditTotal))
+                      {Number(customerPayment.creditTotal) > 0
+                        ? formatCOP(Number(customerPayment.creditTotal))
                         : '—'}
                     </td>
                     <td
                       className={cn(
                         'px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap',
-                        reciboCaja.voidedAt && 'line-through text-content-faint',
+                        customerPayment.voidedAt && 'line-through text-content-faint',
                       )}
                     >
-                      {Number(reciboCaja.discountAmount) > 0
-                        ? formatCOP(Number(reciboCaja.discountAmount))
+                      {Number(customerPayment.discountAmount) > 0
+                        ? formatCOP(Number(customerPayment.discountAmount))
                         : '—'}
                     </td>
                     <td className="px-5 py-3.5">
                       <span
                         className={cn(
                           'pill-stamp',
-                          DOC_STATUS_BADGE[reciboCaja.voidedAt ? 'voided' : 'confirmed'].className,
+                          DOC_STATUS_BADGE[customerPayment.voidedAt ? 'voided' : 'confirmed']
+                            .className,
                         )}
                       >
-                        {DOC_STATUS_BADGE[reciboCaja.voidedAt ? 'voided' : 'confirmed'].label}
+                        {DOC_STATUS_BADGE[customerPayment.voidedAt ? 'voided' : 'confirmed'].label}
                       </span>
                     </td>
                   </tr>

@@ -1,31 +1,31 @@
 import { useState } from 'react'
 import { AlertTriangle, Loader2 } from 'lucide-react'
-import { RECIBO_CAJA_VOID_REASON_LABELS } from '@/types'
-import type { ReciboCajaVoidReason } from '@/types'
+import { CUSTOMER_PAYMENT_VOID_REASON_LABELS } from '@/types'
+import type { CustomerPaymentVoidReason } from '@/types'
 
 const MAX_REASON_LENGTH = 500
 
-const REASON_OPTIONS = Object.entries(RECIBO_CAJA_VOID_REASON_LABELS) as [
-  ReciboCajaVoidReason,
+const REASON_OPTIONS = Object.entries(CUSTOMER_PAYMENT_VOID_REASON_LABELS) as [
+  CustomerPaymentVoidReason,
   string,
 ][]
 
-interface VoidReciboCajaDialogProps {
+interface VoidCustomerPaymentDialogProps {
   open: boolean
-  reciboLabel: string
+  customerPaymentLabel: string
   isPending: boolean
-  onConfirm: (vars: { reason: ReciboCajaVoidReason; reasonOther?: string }) => void
+  onConfirm: (vars: { reason: CustomerPaymentVoidReason; reasonOther?: string }) => void
   onCancel: () => void
 }
 
-export function VoidReciboCajaDialog({
+export function VoidCustomerPaymentDialog({
   open,
-  reciboLabel,
+  customerPaymentLabel,
   isPending,
   onConfirm,
   onCancel,
-}: VoidReciboCajaDialogProps) {
-  const [reason, setReason] = useState<ReciboCajaVoidReason | ''>('')
+}: VoidCustomerPaymentDialogProps) {
+  const [reason, setReason] = useState<CustomerPaymentVoidReason | ''>('')
   const [reasonOther, setReasonOther] = useState('')
   if (!open) return null
 
@@ -42,22 +42,24 @@ export function VoidReciboCajaDialog({
             <AlertTriangle className="w-5 h-5 text-red-500" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-base text-content mb-2">Anular recibo de caja {reciboLabel}</h3>
+            <h3 className="text-base text-content mb-2">
+              Anular recibo de caja {customerPaymentLabel}
+            </h3>
             <p className="text-sm text-content-secondary leading-relaxed">
               Las facturas cobradas vuelven a quedar con su saldo pendiente y los saldos a favor
               usados vuelven a estar disponibles. Esto no devuelve dinero: el sistema no lleva la
               caja, así que si ya recibiste el dinero, debes devolverlo aparte.
             </p>
             <label
-              htmlFor="void-recibo-caja-reason"
+              htmlFor="void-customer-payment-reason"
               className="block text-xs text-content-faint mt-4 mb-1.5"
             >
               Motivo
             </label>
             <select
-              id="void-recibo-caja-reason"
+              id="void-customer-payment-reason"
               value={reason}
-              onChange={(e) => setReason(e.target.value as ReciboCajaVoidReason | '')}
+              onChange={(e) => setReason(e.target.value as CustomerPaymentVoidReason | '')}
               disabled={isPending}
               className="input-hard w-full px-3 py-2 text-sm text-content border-ui-border-medium"
             >
