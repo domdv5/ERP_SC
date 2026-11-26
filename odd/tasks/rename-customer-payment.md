@@ -20,9 +20,9 @@ Mismo patrón que `odd/tasks/rename-supplier-payment.md` (PR #118, mergeado): no
 
 ## Tasks
 
-- T1 [S1,S3,S4,S5] schema + migración + backend + seed RBAC + contrato + backend/CLAUDE.md — nestjs-code-crafter — commit: ver Log
-- T2 [S1,S2,S4,S5] frontend + frontend/CLAUDE.md — react-code-crafter — commit: ver Log
-- T3 [S5] verificación completa, PR — parent — commit: pendiente
+- T1 [S1,S3,S4,S5] schema + migración + backend + seed RBAC + contrato + backend/CLAUDE.md — nestjs-code-crafter — commit: 8b2b098
+- T2 [S1,S2,S4,S5] frontend + frontend/CLAUDE.md — react-code-crafter — commit: 8b2b098
+- T3 [S5] verificación completa, PR — parent — commit: 8b2b098
 
 ## Log
 
@@ -30,3 +30,4 @@ Mismo patrón que `odd/tasks/rename-supplier-payment.md` (PR #118, mergeado): no
 - L2 (dueño): "dale" al mapa `supplier_payment` / `customer_payment`; "1" = mergear primero el PR 1 y después hacer este.
 - L3: objetos actuales en la base (verificados): 17 constraints, 14 índices, 2 enums, 3 columnas `recibo_caja_id`, CHECK `customer_credit_application_target_chk` (usa la columna; el RENAME de columna lo actualiza solo), permisos `recibo.read/create/void`.
 - L4: evidencia — jest 787/787, vitest 229/229, tsc 0, build OK; migración solo RENAME + UPDATE; filas iguales (22/26/24/20, role_permission 164); sin objetos `recibo_caja` en la base; permisos customer_payment.* en admin/accounts_admin (read/create/void) y gerencia (read). Pantalla: lista, detalle, nuevo, badge en CxC, /recibos-caja → 404. API real: crear recibo RC-000023 de $1.000 y anularlo → saldo CxC 643.500 → 642.500 → 643.500; GET /accounts-receivable/clients (SQL crudo) devuelve lastPaymentDate. Mutación seed (accounts_admin sin customer_payment.void) DETECTADA.
+- L5: verificador independiente PASS S1/S3; revisión nativa no corrió (lens_context_budget_exceeded).
