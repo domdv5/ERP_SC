@@ -203,17 +203,15 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-4">
-        {navGroups.map((group, groupIdx) => {
+        {navGroups.map((group) => {
           const visibleItems = group.items.filter(canSee)
           if (visibleItems.length === 0) return null
 
           return (
-            <div key={group.label ?? `group-${groupIdx}`} className="space-y-0.5">
-              {group.label && (
-                <p className="text-content-muted dark:text-white/40 font-mono text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
-                  {group.label}
-                </p>
-              )}
+            <div key={group.label} className="space-y-0.5">
+              <p className="text-content-muted dark:text-white/40 font-mono text-[10px] font-semibold uppercase tracking-widest px-3 pb-1">
+                {group.label}
+              </p>
               {visibleItems.map((item) => {
                 if (item.component === 'warehouses-accordion') {
                   return <WarehousesSidebarItem key={item.to} />

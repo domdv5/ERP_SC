@@ -10,6 +10,7 @@ import { login } from '@/services/auth.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useThemeStore } from '@/stores/theme.store'
 import { findApiErrorMessage } from '@/lib/api-error'
+import { findHomePath } from '@/config/navigation'
 
 const schema = z.object({
   username: z.string().min(1, 'El usuario es requerido'),
@@ -42,7 +43,7 @@ export default function LoginPage() {
     onSuccess: ({ user, token }) => {
       setAuth(user, token)
       toast.success(`Bienvenido, ${user.name}`)
-      navigate('/dashboard')
+      navigate(findHomePath(user.permissions))
     },
     onError: (err: unknown) => {
       const status = (err as { response?: { status?: number } })?.response?.status
