@@ -3,10 +3,10 @@ import {
   ValidationArguments,
   ValidationOptions,
 } from 'class-validator';
-import { EgresoPaymentMethod } from '@prisma/client';
+import { TreasuryPaymentMethod } from '@prisma/client';
 
 interface PaymentLineWithMethod {
-  method: EgresoPaymentMethod;
+  method: TreasuryPaymentMethod;
 }
 
 /** Valida `reference`: opcional salvo si `method === 'cheque'` — @IsOptional()/@ValidateIf() no sirven porque ambos descartan el validador entero cuando la condición da falso. */
@@ -20,7 +20,7 @@ export function IsValidChequeReference(validationOptions?: ValidationOptions) {
       validator: {
         validate(value: unknown, args: ValidationArguments) {
           const line = args.object as PaymentLineWithMethod;
-          const isCheque = line.method === EgresoPaymentMethod.cheque;
+          const isCheque = line.method === TreasuryPaymentMethod.cheque;
 
           if (value === undefined || value === null) {
             return !isCheque;
@@ -35,7 +35,7 @@ export function IsValidChequeReference(validationOptions?: ValidationOptions) {
         },
         defaultMessage(args: ValidationArguments) {
           const line = args.object as PaymentLineWithMethod;
-          return line.method === EgresoPaymentMethod.cheque
+          return line.method === TreasuryPaymentMethod.cheque
             ? 'El número de cheque es obligatorio para este método de pago'
             : 'reference debe ser un texto de máximo 100 caracteres';
         },

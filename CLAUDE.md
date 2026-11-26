@@ -39,7 +39,7 @@ Identificadores en **inglés simple** (comentarios en español); el dueño del r
 - **El verbo dice lo que pasa**: `assert*` solo si lanza error; `find*`/`get*` si devuelve algo sin escribir; `calculate*` si calcula; `is*`/`has*` solo para booleanos.
 - **Un concepto, una palabra**: no nombrar lo mismo con verbos distintos en controller y service (`get`/`list`/`find`), ni usar la misma palabra para dos conceptos.
 - **Sin abreviaturas ni siglas** de tipo de documento en helpers genéricos (`round2`, `...Cm`); nombres específicos, no genéricos (`generatePdf`, no `generate`).
-- Los nombres de documentos y conceptos del negocio se quedan en español (`egreso`, `reciboCaja`, `preventa`): son dominio, no vocabulario a traducir.
+- Conceptos del negocio también en inglés en tablas, carpetas, archivos, clases y rutas (`supplier_payment` = egreso, `customer_payment` = recibo de caja, decisión del dueño 2026-11-26); los textos que ve el usuario siguen en español. Los valores de enums ya guardados (`efectivo_almacen`…) y los códigos de documento (`POS`, `CM`…) no se traducen.
 - Renombrar algo que viaja al frontend (rutas, campos JSON) exige cambiar ambos lados en el mismo PR.
 - **Nada de letras sueltas ni nombres vagos** (regla del dueño, 2026-11-26): el parámetro de un `map`/`filter`/`find`/`some`/`reduce` se llama como la cosa que recorre (`allocations.map((allocation) => …)`, no `(a) => …`; índice `index`, no `i`). Una lista de IDs dice de qué tabla son (`customerCreditIds`, `accountReceivableIds`, no `creditIds`/`ids`). Aplica a código nuevo y a todo lo que se toque.
 

@@ -38,9 +38,15 @@ const CreditsListPage = lazy(() => import('@/pages/credits/CreditsListPage'))
 const CreditsDetailPage = lazy(() => import('@/pages/credits/CreditsDetailPage'))
 const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'))
 const StockLookupPage = lazy(() => import('@/pages/stock-lookup/StockLookupPage'))
-const EgresosListPage = lazy(() => import('@/pages/egresos/EgresosListPage'))
-const EgresoDetailPage = lazy(() => import('@/pages/egresos/EgresoDetailPage'))
-const EgresoNewPage = lazy(() => import('@/pages/egresos/EgresoNewPage'))
+const SupplierPaymentsListPage = lazy(
+  () => import('@/pages/supplier-payments/SupplierPaymentsListPage'),
+)
+const SupplierPaymentDetailPage = lazy(
+  () => import('@/pages/supplier-payments/SupplierPaymentDetailPage'),
+)
+const SupplierPaymentNewPage = lazy(
+  () => import('@/pages/supplier-payments/SupplierPaymentNewPage'),
+)
 const RecibosCajaListPage = lazy(() => import('@/pages/recibos-caja/RecibosCajaListPage'))
 const ReciboCajaDetailPage = lazy(() => import('@/pages/recibos-caja/ReciboCajaDetailPage'))
 const RecibosCajaNewPage = lazy(() => import('@/pages/recibos-caja/RecibosCajaNewPage'))
@@ -280,31 +286,31 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'egresos',
+        path: 'supplier-payments',
         element: (
           <Lazy>
-            <PermissionGuard permission="egreso.read">
-              <EgresosListPage />
+            <PermissionGuard permission="supplier_payment.read">
+              <SupplierPaymentsListPage />
             </PermissionGuard>
           </Lazy>
         ),
       },
       {
-        path: 'egresos/new',
+        path: 'supplier-payments/new',
         element: (
           <Lazy>
-            <PermissionGuard permission="egreso.create">
-              <EgresoNewPage />
+            <PermissionGuard permission="supplier_payment.create">
+              <SupplierPaymentNewPage />
             </PermissionGuard>
           </Lazy>
         ),
       },
       {
-        path: 'egresos/:id',
+        path: 'supplier-payments/:id',
         element: (
           <Lazy>
-            <PermissionGuard permission="egreso.read">
-              <EgresoDetailPage />
+            <PermissionGuard permission="supplier_payment.read">
+              <SupplierPaymentDetailPage />
             </PermissionGuard>
           </Lazy>
         ),

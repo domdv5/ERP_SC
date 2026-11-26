@@ -27,12 +27,12 @@ import {
   RECIBO_CAJA_DISCOUNT_REASONS,
   RECIBO_CAJA_DISCOUNT_REASON_LABELS,
 } from './recibo-caja-form.schema'
-import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
+import { TREASURY_PAYMENT_METHOD_LABELS } from '@/types'
 import type { ThirdPartyDetail } from '@/types/third-party.types'
 import type { ReciboCajaOpenCredit } from '@/types/recibo-caja.types'
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
-// Mismo patrón que EgresoNewPage.tsx: overlay + card, sin librería de modales.
+// Mismo patrón que SupplierPaymentNewPage.tsx: overlay + card, sin librería de modales.
 
 interface ConfirmDialogProps {
   open: boolean
@@ -544,7 +544,7 @@ export default function RecibosCajaNewPage() {
                             <option value="">Selecciona...</option>
                             {RECIBO_CAJA_PAYMENT_METHODS.map((value) => (
                               <option key={value} value={value}>
-                                {EGRESO_PAYMENT_METHOD_LABELS[value]}
+                                {TREASURY_PAYMENT_METHOD_LABELS[value]}
                               </option>
                             ))}
                           </select>

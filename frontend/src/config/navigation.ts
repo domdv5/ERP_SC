@@ -111,7 +111,12 @@ export const navGroups: NavGroup[] = [
   {
     label: 'Tesorería',
     items: [
-      { to: '/egresos', label: 'Egresos', icon: Landmark, permission: 'egreso.read' },
+      {
+        to: '/supplier-payments',
+        label: 'Egresos',
+        icon: Landmark,
+        permission: 'supplier_payment.read',
+      },
       {
         to: '/recibos-caja',
         label: 'Recibos de caja',

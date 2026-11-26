@@ -1,14 +1,17 @@
 import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { EgresoPaymentLineDto } from './create-egreso.dto';
+import { SupplierPaymentMethodLineDto } from './create-supplier-payment.dto';
 
 async function errorsFor(method: string) {
-  const line = plainToInstance(EgresoPaymentLineDto, { method, amount: 1000 });
+  const line = plainToInstance(SupplierPaymentMethodLineDto, {
+    method,
+    amount: 1000,
+  });
   return validate(line);
 }
 
-describe('EgresoPaymentLineDto', () => {
+describe('SupplierPaymentMethodLineDto', () => {
   it.each(['efectivo_oficina', 'consignacion_oficina'])(
     'acepta %s',
     async (method) => {

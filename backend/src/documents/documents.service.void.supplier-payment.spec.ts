@@ -16,11 +16,11 @@ jest.mock('./helpers/customer-credit.helpers', () => ({
   undoCustomerCreditApplications: jest.fn(),
 }));
 
-const voidedEgreso = { egreso: { voidedAt: new Date() } };
-const liveEgreso = { egreso: { voidedAt: null } };
+const voidedSupplierPayment = { supplierPayment: { voidedAt: new Date() } };
+const liveSupplierPayment = { supplierPayment: { voidedAt: null } };
 const payable = (overrides: Record<string, unknown>) => ({
   creditApplications: [],
-  egresoAllocations: [],
+  supplierPaymentAllocations: [],
   ...overrides,
 });
 
@@ -36,22 +36,22 @@ describe('DocumentsService.void: egresos anulados no bloquean', () => {
     loadDocument(DocumentType.CM, {
       accountsPayable: [
         payable({
-          egresoAllocations: [voidedEgreso],
-          creditApplications: [voidedEgreso],
+          supplierPaymentAllocations: [voidedSupplierPayment],
+          creditApplications: [voidedSupplierPayment],
         }),
       ],
     });
     tx.accountsPayable.findMany.mockResolvedValue([
-      payable({ egresoAllocations: [voidedEgreso] }),
+      payable({ supplierPaymentAllocations: [voidedSupplierPayment] }),
     ]);
 
     await expect(service.void('doc-1', fullUser)).resolves.toBeDefined();
 
     // Solo borra filas de egresos anulados: una vigente debe quedar para que la FK aborte.
-    expect(tx.egresoAllocation.deleteMany).toHaveBeenCalledWith({
+    expect(tx.supplierPaymentAllocation.deleteMany).toHaveBeenCalledWith({
       where: {
         accountPayable: { documentId: 'doc-1' },
-        egreso: { voidedAt: { not: null } },
+        supplierPayment: { voidedAt: { not: null } },
       },
     });
     expect(tx.accountsPayable.deleteMany).toHaveBeenCalled();
@@ -60,7 +60,12 @@ describe('DocumentsService.void: egresos anulados no bloquean', () => {
   it('sigue bloqueando una CM con un abono de un egreso vigente', async () => {
     loadDocument(DocumentType.CM, {
       accountsPayable: [
-        payable({ egresoAllocations: [voidedEgreso, liveEgreso] }),
+        payable({
+          supplierPaymentAllocations: [
+            voidedSupplierPayment,
+            liveSupplierPayment,
+          ],
+        }),
       ],
     });
 
@@ -72,10 +77,10 @@ describe('DocumentsService.void: egresos anulados no bloquean', () => {
 
   it('anula una DVC cuyo saldo solo se usó en egresos anulados', async () => {
     loadDocument(DocumentType.DVC, {
-      supplierCredits: [{ applications: [voidedEgreso] }],
+      supplierCredits: [{ applications: [voidedSupplierPayment] }],
     });
     tx.supplierCredit.findUnique.mockResolvedValue({
-      applications: [voidedEgreso],
+      applications: [voidedSupplierPayment],
     });
 
     await expect(service.void('doc-1', fullUser)).resolves.toBeDefined();
@@ -83,16 +88,21 @@ describe('DocumentsService.void: egresos anulados no bloquean', () => {
     expect(tx.supplierCreditApplication.deleteMany).toHaveBeenCalledWith({
       where: {
         supplierCredit: { sourceDocumentId: 'doc-1' },
-        egreso: { voidedAt: { not: null } },
+        supplierPayment: { voidedAt: { not: null } },
       },
     });
     expect(tx.supplierCredit.deleteMany).toHaveBeenCalled();
   });
 
   it('sigue bloqueando una DVC con una aplicación de un egreso vigente o un pago histórico (sin egreso)', async () => {
-    for (const application of [liveEgreso, { egreso: null }]) {
+    for (const application of [
+      liveSupplierPayment,
+      { supplierPayment: null },
+    ]) {
       loadDocument(DocumentType.DVC, {
-        supplierCredits: [{ applications: [voidedEgreso, application] }],
+        supplierCredits: [
+          { applications: [voidedSupplierPayment, application] },
+        ],
       });
 
       await expect(service.void('doc-1', fullUser)).rejects.toThrow(

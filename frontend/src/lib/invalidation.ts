@@ -40,7 +40,7 @@ export function invalidateAfterDocumentChange(
     'accounts-receivable',
     'customer-credit',
     'customer-available-credits',
-    'egresos-open-items',
+    'supplier-payments-open-items',
     'recibos-caja-open-items',
     'official-ledger',
     'official-purchases-pending',

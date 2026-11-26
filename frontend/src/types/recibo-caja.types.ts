@@ -16,7 +16,7 @@ export type {
 } from '@contracts/recibos-caja'
 import type { ReciboCajaDiscountReason, ReciboCajaVoidReason } from '@contracts/recibos-caja'
 // Reusa las formas de pago de Egresos (regla de negocio del backend)
-import type { EgresoPaymentMethod } from '@contracts/egresos'
+import type { TreasuryPaymentMethod } from '@contracts/supplier-payments'
 
 export const RECIBO_CAJA_VOID_REASON_LABELS: Record<ReciboCajaVoidReason, string> = {
   valor_equivocado: 'Valor equivocado',
@@ -44,7 +44,7 @@ export interface CreateReciboCajaReceivablePayload {
 }
 
 export interface CreateReciboCajaPaymentPayload {
-  method: EgresoPaymentMethod
+  method: TreasuryPaymentMethod
   amount: number
   reference?: string
   bank?: string

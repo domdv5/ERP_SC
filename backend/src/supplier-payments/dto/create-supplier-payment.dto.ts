@@ -13,12 +13,12 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { EgresoPaymentMethod } from '@prisma/client';
+import { TreasuryPaymentMethod } from '@prisma/client';
 import { OFFICE_PAYMENT_METHODS } from '@/common/enums/office-payment-methods';
 import { IsValidChequeReference } from '@/common/validators/is-valid-cheque-reference.validator';
 
 /** Abono a una cuenta por pagar dentro del egreso (dinero + saldo a favor, sin distinguir todavía). */
-export class EgresoPayableLineDto {
+export class SupplierPaymentPayableLineDto {
   @IsUUID()
   accountPayableId!: string;
 
@@ -28,7 +28,7 @@ export class EgresoPayableLineDto {
 }
 
 /** Saldo a favor del proveedor a aplicar; el reparto entre CxP lo decide el service (FIFO por antigüedad). */
-export class EgresoCreditLineDto {
+export class SupplierPaymentCreditLineDto {
   @IsUUID()
   supplierCreditId!: string;
 
@@ -37,12 +37,12 @@ export class EgresoCreditLineDto {
   amount!: number;
 }
 
-export class EgresoPaymentLineDto {
+export class SupplierPaymentMethodLineDto {
   @IsIn(OFFICE_PAYMENT_METHODS, {
     message:
       'La forma de pago debe ser efectivo_oficina o consignacion_oficina',
   })
-  method!: EgresoPaymentMethod;
+  method!: TreasuryPaymentMethod;
 
   @IsNumber()
   @IsPositive()
@@ -58,7 +58,7 @@ export class EgresoPaymentLineDto {
   bank?: string;
 }
 
-export class CreateEgresoDto {
+export class CreateSupplierPaymentDto {
   @IsUUID()
   supplierId!: string;
 
@@ -73,7 +73,7 @@ export class CreateEgresoDto {
   @MaxLength(500)
   notes?: string;
 
-  // La genera el frontend al abrir el formulario; un reintento con la misma clave no duplica si el resto del body coincide (ver EgresosService.create).
+  // La genera el frontend al abrir el formulario; un reintento con la misma clave no duplica si el resto del body coincide (ver SupplierPaymentsService.create).
   @IsUUID()
   idempotencyKey!: string;
 
@@ -83,20 +83,20 @@ export class CreateEgresoDto {
   @ArrayMinSize(1)
   @ArrayMaxSize(100)
   @ValidateNested({ each: true })
-  @Type(() => EgresoPayableLineDto)
-  payables!: EgresoPayableLineDto[];
+  @Type(() => SupplierPaymentPayableLineDto)
+  payables!: SupplierPaymentPayableLineDto[];
 
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(100)
   @ValidateNested({ each: true })
-  @Type(() => EgresoCreditLineDto)
-  credits?: EgresoCreditLineDto[];
+  @Type(() => SupplierPaymentCreditLineDto)
+  credits?: SupplierPaymentCreditLineDto[];
 
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(100)
   @ValidateNested({ each: true })
-  @Type(() => EgresoPaymentLineDto)
-  payments?: EgresoPaymentLineDto[];
+  @Type(() => SupplierPaymentMethodLineDto)
+  payments?: SupplierPaymentMethodLineDto[];
 }

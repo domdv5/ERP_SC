@@ -1,4 +1,4 @@
-// Contrato de egresos: GET/POST /egresos, tal como viaja en JSON.
+// Contrato de pagos a proveedor (egreso): GET/POST /supplier-payments, tal como viaja en JSON.
 // Solo tipos planos (el frontend lo importa con `import type`). Decimal y Date viajan como string.
 
 import type {
@@ -7,14 +7,14 @@ import type {
   PayableSupplier,
 } from './accounts-payable';
 
-export type EgresoPaymentMethod =
+export type TreasuryPaymentMethod =
   | 'efectivo_almacen'
   | 'consignacion_almacen'
   | 'cheque'
   | 'efectivo_oficina'
   | 'consignacion_oficina';
 
-export interface EgresoListItem {
+export interface SupplierPaymentListItem {
   id: string;
   number: string;
   date: string;
@@ -27,23 +27,23 @@ export interface EgresoListItem {
   supplier: PayableSupplier;
 }
 
-export interface EgresoListMeta {
+export interface SupplierPaymentListMeta {
   total: number;
   page: number;
   limit: number;
   totalPages: number;
 }
 
-// GET /egresos
-export interface EgresoListResponse {
-  items: EgresoListItem[];
-  meta: EgresoListMeta;
+// GET /supplier-payments
+export interface SupplierPaymentListResponse {
+  items: SupplierPaymentListItem[];
+  meta: SupplierPaymentListMeta;
 }
 
-export interface EgresoPaymentLine {
+export interface SupplierPaymentMethodLine {
   id: string;
-  egresoId: string;
-  method: EgresoPaymentMethod;
+  supplierPaymentId: string;
+  method: TreasuryPaymentMethod;
   amount: string;
   reference: string | null;
   bank: string | null;
@@ -51,7 +51,7 @@ export interface EgresoPaymentLine {
 }
 
 // Sin supplier, creditApplied ni balance: eso vive a nivel de CxP
-export interface EgresoAllocationAccountPayable {
+export interface SupplierPaymentAllocationAccountPayable {
   id: string;
   supplierId: string;
   documentId: string;
@@ -63,19 +63,19 @@ export interface EgresoAllocationAccountPayable {
   document: PayableDocumentRef;
 }
 
-export interface EgresoAllocation {
+export interface SupplierPaymentAllocation {
   id: string;
-  egresoId: string;
+  supplierPaymentId: string;
   accountPayableId: string;
   // Total abonado a la CxP con este egreso (dinero + saldo a favor)
   amount: string;
   // Parte de `amount` cubierta con saldo a favor (reparto FIFO)
   creditAmount: string;
-  accountPayable: EgresoAllocationAccountPayable;
+  accountPayable: SupplierPaymentAllocationAccountPayable;
 }
 
 // status es texto libre en la BD (available | used): el backend no manda unión
-export interface EgresoCredit {
+export interface SupplierPaymentCredit {
   id: string;
   supplierId: string;
   amount: string;
@@ -86,18 +86,18 @@ export interface EgresoCredit {
   sourceDocument: PayableDocumentRef | null;
 }
 
-export interface EgresoCreditApplication {
+export interface SupplierPaymentCreditApplication {
   id: string;
   supplierCreditId: string;
   accountPayableId: string;
-  egresoId: string | null;
+  supplierPaymentId: string | null;
   amount: string;
   appliedAt: string;
   accountPayable: { id: string; document: PayableDocumentRef };
-  supplierCredit: EgresoCredit;
+  supplierCredit: SupplierPaymentCredit;
 }
 
-export type EgresoVoidReason =
+export type SupplierPaymentVoidReason =
   | 'valor_equivocado'
   | 'proveedor_equivocado'
   | 'factura_equivocada'
@@ -106,8 +106,8 @@ export type EgresoVoidReason =
   | 'pago_no_realizado'
   | 'otro';
 
-// GET /egresos/:id, POST /egresos y POST /egresos/:id/void
-export interface Egreso {
+// GET /supplier-payments/:id, POST /supplier-payments y POST /supplier-payments/:id/void
+export interface SupplierPayment {
   id: string;
   number: string;
   date: string;
@@ -121,18 +121,18 @@ export interface Egreso {
   createdAt: string;
   // Anulación: null si no está anulado; voidReasonOther solo viene con motivo otro
   voidedAt: string | null;
-  voidReason: EgresoVoidReason | null;
+  voidReason: SupplierPaymentVoidReason | null;
   voidReasonOther: string | null;
   voidedBy: { id: string; name: string } | null;
   supplier: PayableSupplier;
   user: { id: string; name: string };
-  payments: EgresoPaymentLine[];
-  allocations: EgresoAllocation[];
-  creditApplications: EgresoCreditApplication[];
+  payments: SupplierPaymentMethodLine[];
+  allocations: SupplierPaymentAllocation[];
+  creditApplications: SupplierPaymentCreditApplication[];
 }
 
 // Ordenadas createdAt asc, el mismo orden del reparto FIFO
-export interface EgresoOpenPayable {
+export interface SupplierPaymentOpenPayable {
   id: string;
   supplierId: string;
   documentId: string;
@@ -146,8 +146,8 @@ export interface EgresoOpenPayable {
   balance: string;
 }
 
-// GET /egresos/suppliers/:supplierId/open-items
-export interface EgresoOpenItems {
-  payables: EgresoOpenPayable[];
-  credits: EgresoCredit[];
+// GET /supplier-payments/suppliers/:supplierId/open-items
+export interface SupplierPaymentOpenItems {
+  payables: SupplierPaymentOpenPayable[];
+  credits: SupplierPaymentCredit[];
 }

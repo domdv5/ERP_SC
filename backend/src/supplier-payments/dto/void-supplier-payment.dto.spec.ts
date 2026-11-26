@@ -1,13 +1,13 @@
 import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { VoidEgresoDto } from './void-egreso.dto';
+import { VoidSupplierPaymentDto } from './void-supplier-payment.dto';
 
 async function errorsFor(body: Record<string, unknown>) {
-  return validate(plainToInstance(VoidEgresoDto, body));
+  return validate(plainToInstance(VoidSupplierPaymentDto, body));
 }
 
-describe('VoidEgresoDto', () => {
+describe('VoidSupplierPaymentDto', () => {
   it.each([undefined, '', 'inventado', 123])(
     'rechaza un motivo fuera de la lista (%p)',
     async (reason) => {

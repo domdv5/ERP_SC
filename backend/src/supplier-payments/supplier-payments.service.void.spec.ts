@@ -2,7 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { JwtPayload } from '@/common/types';
-import { EgresosService } from './egresos.service';
+import { SupplierPaymentsService } from './supplier-payments.service';
 
 const user = { sub: 'admin-1' } as JwtPayload;
 const dec = (n: number) => new Prisma.Decimal(n);
@@ -14,10 +14,10 @@ const payable = (id: string, total: number, paid: number, status: string) => ({
   status,
 });
 
-describe('EgresosService.void: reversión de dinero', () => {
+describe('SupplierPaymentsService.void: reversión de dinero', () => {
   const tx = {
     $queryRaw: jest.fn(),
-    egreso: {
+    supplierPayment: {
       findUnique: jest.fn(),
       updateMany: jest.fn(),
       findUniqueOrThrow: jest.fn(),
@@ -26,9 +26,12 @@ describe('EgresosService.void: reversión de dinero', () => {
     supplierCredit: { findMany: jest.fn(), update: jest.fn() },
   };
   const prisma = { $transaction: jest.fn() };
-  const service = new EgresosService(prisma as unknown as PrismaService, {
-    next: jest.fn(),
-  });
+  const service = new SupplierPaymentsService(
+    prisma as unknown as PrismaService,
+    {
+      next: jest.fn(),
+    },
+  );
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -37,12 +40,12 @@ describe('EgresosService.void: reversión de dinero', () => {
     );
     tx.$queryRaw.mockResolvedValue([]);
     tx.supplierCredit.findMany.mockResolvedValue([]);
-    tx.egreso.updateMany.mockResolvedValue({ count: 1 });
-    tx.egreso.findUniqueOrThrow.mockResolvedValue({ id: 'e1' });
+    tx.supplierPayment.updateMany.mockResolvedValue({ count: 1 });
+    tx.supplierPayment.findUniqueOrThrow.mockResolvedValue({ id: 'e1' });
   });
 
   it('S4: A abonada 500.000 y B pagada 2.000.000 con 500.000 de saldo a favor vuelven a pendiente y el saldo queda disponible', async () => {
-    tx.egreso.findUnique.mockResolvedValue({
+    tx.supplierPayment.findUnique.mockResolvedValue({
       id: 'e1',
       allocations: [
         { accountPayableId: 'A', amount: dec(500000) },
@@ -72,7 +75,7 @@ describe('EgresosService.void: reversión de dinero', () => {
       where: { id: 'sc1' },
       data: { balance: 500000, status: 'available' },
     });
-    expect(tx.egreso.updateMany).toHaveBeenCalledWith({
+    expect(tx.supplierPayment.updateMany).toHaveBeenCalledWith({
       where: { id: 'e1', voidedAt: null },
       data: {
         voidedAt: expect.any(Date),
@@ -84,7 +87,7 @@ describe('EgresosService.void: reversión de dinero', () => {
   });
 
   it('respeta lo que otro egreso abonó después: anular E1 deja A en parcial con 500.000', async () => {
-    tx.egreso.findUnique.mockResolvedValue({
+    tx.supplierPayment.findUnique.mockResolvedValue({
       id: 'e1',
       allocations: [{ accountPayableId: 'A', amount: dec(500000) }],
       creditApplications: [],
@@ -103,7 +106,7 @@ describe('EgresosService.void: reversión de dinero', () => {
   });
 
   it('con un motivo de la lista guarda reasonOther en null aunque llegue texto', async () => {
-    tx.egreso.findUnique.mockResolvedValue({
+    tx.supplierPayment.findUnique.mockResolvedValue({
       id: 'e1',
       allocations: [],
       creditApplications: [],
@@ -116,7 +119,7 @@ describe('EgresosService.void: reversión de dinero', () => {
       user,
     );
 
-    expect(tx.egreso.updateMany).toHaveBeenCalledWith({
+    expect(tx.supplierPayment.updateMany).toHaveBeenCalledWith({
       where: { id: 'e1', voidedAt: null },
       data: expect.objectContaining({
         voidReason: 'pago_duplicado',
@@ -126,7 +129,7 @@ describe('EgresosService.void: reversión de dinero', () => {
   });
 
   it('bloquea CxP y luego saldos a favor antes de reclamar el egreso', async () => {
-    tx.egreso.findUnique.mockResolvedValue({
+    tx.supplierPayment.findUnique.mockResolvedValue({
       id: 'e1',
       allocations: [{ accountPayableId: 'A', amount: dec(100) }],
       creditApplications: [{ supplierCreditId: 'sc1', amount: dec(100) }],
@@ -142,7 +145,7 @@ describe('EgresosService.void: reversión de dinero', () => {
       order.push(strings.join('?').includes('accounts_payable') ? 'ap' : 'sc');
       return Promise.resolve([]);
     });
-    tx.egreso.updateMany.mockImplementation(() => {
+    tx.supplierPayment.updateMany.mockImplementation(() => {
       order.push('claim');
       return Promise.resolve({ count: 1 });
     });
@@ -153,12 +156,12 @@ describe('EgresosService.void: reversión de dinero', () => {
   });
 
   it('un segundo intento falla con 409 y no cambia nada', async () => {
-    tx.egreso.findUnique.mockResolvedValue({
+    tx.supplierPayment.findUnique.mockResolvedValue({
       id: 'e1',
       allocations: [{ accountPayableId: 'A', amount: dec(100) }],
       creditApplications: [],
     });
-    tx.egreso.updateMany.mockResolvedValue({ count: 0 });
+    tx.supplierPayment.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(
       service.void('e1', { reason: 'pago_duplicado' }, user),
@@ -168,11 +171,11 @@ describe('EgresosService.void: reversión de dinero', () => {
   });
 
   it('404 si el egreso no existe', async () => {
-    tx.egreso.findUnique.mockResolvedValue(null);
+    tx.supplierPayment.findUnique.mockResolvedValue(null);
 
     await expect(
       service.void('nope', { reason: 'otro', reasonOther: 'x' }, user),
     ).rejects.toThrow(NotFoundException);
-    expect(tx.egreso.updateMany).not.toHaveBeenCalled();
+    expect(tx.supplierPayment.updateMany).not.toHaveBeenCalled();
   });
 });

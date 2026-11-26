@@ -32,9 +32,9 @@ const matchStatementContract = matchContract<SupplierStatement>();
 const matchCreditsContract = matchContract<SupplierCredit[]>();
 
 // Un egreso anulado ya no abona nada: sus filas quedan de historial y no cuentan.
-const ACTIVE_ALLOCATION = { egreso: { voidedAt: null } };
+const ACTIVE_ALLOCATION = { supplierPayment: { voidedAt: null } };
 const ACTIVE_APPLICATION = {
-  OR: [{ egresoId: null }, { egreso: { voidedAt: null } }],
+  OR: [{ supplierPaymentId: null }, { supplierPayment: { voidedAt: null } }],
 } satisfies Prisma.SupplierCreditApplicationWhereInput;
 
 const LIST_INCLUDE = {
@@ -73,9 +73,11 @@ const DETAIL_INCLUDE = {
     },
     orderBy: { appliedAt: 'desc' },
   },
-  egresoAllocations: {
+  supplierPaymentAllocations: {
     where: ACTIVE_ALLOCATION,
-    include: { egreso: { select: { id: true, number: true, date: true } } },
+    include: {
+      supplierPayment: { select: { id: true, number: true, date: true } },
+    },
   },
 } satisfies Prisma.AccountsPayableInclude;
 
@@ -84,11 +86,11 @@ const STATEMENT_INCLUDE = {
   ...LIST_INCLUDE,
   creditApplications: {
     where: ACTIVE_APPLICATION,
-    select: { amount: true, egresoId: true, appliedAt: true },
+    select: { amount: true, supplierPaymentId: true, appliedAt: true },
   },
-  egresoAllocations: {
+  supplierPaymentAllocations: {
     where: ACTIVE_ALLOCATION,
-    select: { egreso: { select: { date: true } } },
+    select: { supplierPayment: { select: { date: true } } },
   },
 } satisfies Prisma.AccountsPayableInclude;
 
@@ -138,11 +140,13 @@ type StatementRow = Prisma.AccountsPayableGetPayload<{
 
 /** Último pago: egresos y saldo a favor sin egreso (los que tienen egreso ya cuentan por su egreso). */
 function withPaymentDays(row: StatementRow, today: Date) {
-  const { egresoAllocations, ...rest } = withDerivedFields(row);
+  const { supplierPaymentAllocations, ...rest } = withDerivedFields(row);
   const lastPaymentDate = findLastPaymentDate([
-    ...egresoAllocations.map((allocation) => allocation.egreso.date),
+    ...supplierPaymentAllocations.map(
+      (allocation) => allocation.supplierPayment.date,
+    ),
     ...row.creditApplications
-      .filter((application) => application.egresoId === null)
+      .filter((application) => application.supplierPaymentId === null)
       .map((application) => todayInBogota(application.appliedAt)),
   ]);
   const { days, isOpen } = calculatePaymentDays(
@@ -314,8 +318,8 @@ export class AccountsPayableService {
         payment_dates AS (
           SELECT s.supplier_id, e.date AS paid_on
           FROM scoped s
-          JOIN egreso_allocation ea ON ea.account_payable_id = s.id
-          JOIN egreso e ON e.id = ea.egreso_id
+          JOIN supplier_payment_allocation ea ON ea.account_payable_id = s.id
+          JOIN supplier_payment e ON e.id = ea.supplier_payment_id
           WHERE e.voided_at IS NULL
             AND s.supplier_id IN (SELECT supplier_id FROM page)
           UNION ALL
@@ -323,7 +327,7 @@ export class AccountsPayableService {
                  (sca.applied_at AT TIME ZONE 'America/Bogota')::date AS paid_on
           FROM scoped s
           JOIN supplier_credit_application sca ON sca.account_payable_id = s.id
-          WHERE sca.egreso_id IS NULL
+          WHERE sca.supplier_payment_id IS NULL
             AND s.supplier_id IN (SELECT supplier_id FROM page)
         )
         SELECT p.*,
@@ -389,9 +393,10 @@ export class AccountsPayableService {
       throw new NotFoundException('Cuenta por pagar no encontrada');
     }
 
-    // egresoAllocations/creditApplications ya quedan resumidos
+    // supplierPaymentAllocations/creditApplications ya quedan resumidos
     // en `history` — no se devuelven crudos para no duplicar la misma info.
-    const { egresoAllocations, creditApplications, ...rest } = accountPayable;
+    const { supplierPaymentAllocations, creditApplications, ...rest } =
+      accountPayable;
     const creditApplied = creditApplications.reduce(
       (sum, application) => sum.plus(application.amount),
       new Prisma.Decimal(0),
@@ -431,7 +436,9 @@ export class AccountsPayableService {
           applications: {
             where: ACTIVE_APPLICATION,
             include: {
-              egreso: { select: { id: true, number: true, date: true } },
+              supplierPayment: {
+                select: { id: true, number: true, date: true },
+              },
             },
             orderBy: { appliedAt: 'desc' },
           },
@@ -488,16 +495,18 @@ export class AccountsPayableService {
 
 /** Historial unificado de abonos de una CxP: egresos y aplicaciones de saldo a favor sin egreso (las que ya tienen egreso se excluyen para no duplicar). */
 function buildHistory(accountPayable: DetailRow) {
-  const fromEgresos = accountPayable.egresoAllocations.map((allocation) => ({
-    source: 'egreso' as const,
-    date: allocation.egreso.date,
-    amount: allocation.amount,
-    creditAmount: allocation.creditAmount,
-    egreso: allocation.egreso,
-  }));
+  const fromSupplierPayments = accountPayable.supplierPaymentAllocations.map(
+    (allocation) => ({
+      source: 'supplier_payment' as const,
+      date: allocation.supplierPayment.date,
+      amount: allocation.amount,
+      creditAmount: allocation.creditAmount,
+      supplierPayment: allocation.supplierPayment,
+    }),
+  );
 
   const fromHistoricCredits = accountPayable.creditApplications
-    .filter((application) => application.egresoId === null)
+    .filter((application) => application.supplierPaymentId === null)
     .map((application) => ({
       source: 'nota_credito_historica' as const,
       date: application.appliedAt,
@@ -505,7 +514,7 @@ function buildHistory(accountPayable: DetailRow) {
       supplierCredit: application.supplierCredit,
     }));
 
-  return [...fromEgresos, ...fromHistoricCredits].sort(
+  return [...fromSupplierPayments, ...fromHistoricCredits].sort(
     (a, b) => b.date.getTime() - a.date.getTime(),
   );
 }

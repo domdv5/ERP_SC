@@ -15,7 +15,10 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { EgresoPaymentMethod, ReciboCajaDiscountReason } from '@prisma/client';
+import {
+  TreasuryPaymentMethod,
+  ReciboCajaDiscountReason,
+} from '@prisma/client';
 import { OFFICE_PAYMENT_METHODS } from '@/common/enums/office-payment-methods';
 import { IsValidChequeReference } from '@/common/validators/is-valid-cheque-reference.validator';
 
@@ -44,7 +47,7 @@ export class ReciboCajaPaymentLineDto {
     message:
       'La forma de pago debe ser efectivo_oficina o consignacion_oficina',
   })
-  method!: EgresoPaymentMethod;
+  method!: TreasuryPaymentMethod;
 
   @IsNumber()
   @IsPositive()

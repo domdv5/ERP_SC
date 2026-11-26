@@ -83,7 +83,7 @@ export function createVoidHarness() {
     accountsReceivable: { findMany: jest.fn(), deleteMany: jest.fn() },
     supplierCredit: { findUnique: jest.fn(), deleteMany: jest.fn() },
     customerCredit: { deleteMany: jest.fn() },
-    egresoAllocation: { deleteMany: jest.fn() },
+    supplierPaymentAllocation: { deleteMany: jest.fn() },
     supplierCreditApplication: { deleteMany: jest.fn() },
     reciboCajaAllocation: { deleteMany: jest.fn() },
     customerCreditApplication: { deleteMany: jest.fn() },

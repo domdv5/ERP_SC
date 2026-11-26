@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { formatCOP } from '@/lib/format'
-import { egresoFormSchema, type EgresoFormValues } from './egreso-form.schema'
+import {
+  supplierPaymentFormSchema,
+  type SupplierPaymentFormValues,
+} from './supplier-payment-form.schema'
 
-const values = (creditAmount: number): EgresoFormValues => ({
+const values = (creditAmount: number): SupplierPaymentFormValues => ({
   supplierId: 's1',
   date: '2026-11-20',
   payables: [{ accountPayableId: 'ap1', balance: 100000, selected: true, amount: 100000 }],
@@ -10,8 +13,8 @@ const values = (creditAmount: number): EgresoFormValues => ({
   payments: [{ method: 'efectivo_oficina', amount: 100000 - creditAmount }],
 })
 
-const messages = (data: EgresoFormValues) => {
-  const result = egresoFormSchema.safeParse(data)
+const messages = (data: SupplierPaymentFormValues) => {
+  const result = supplierPaymentFormSchema.safeParse(data)
   return result.success ? [] : result.error.issues.map((issue) => issue.message)
 }
 
@@ -19,12 +22,12 @@ const overflowMessage = 'El saldo a favor es mayor que lo pendiente: aumenta el 
 
 const partialMessage = `El saldo a favor se usa completo o no se usa. Saldo disponible: ${formatCOP(50000)}`
 
-describe('egresoFormSchema — saldo marcado que no cabe', () => {
+describe('supplierPaymentFormSchema — saldo marcado que no cabe', () => {
   it('marca error en la fila del primer saldo que desborda y valida de nuevo al subir el abono', () => {
     const data = values(50000)
     data.payables = [{ accountPayableId: 'ap1', balance: 100000, selected: true, amount: 40000 }]
     data.payments = []
-    const result = egresoFormSchema.safeParse(data)
+    const result = supplierPaymentFormSchema.safeParse(data)
     const issue = result.success
       ? undefined
       : result.error.issues.find((i) => i.message === overflowMessage)
@@ -36,7 +39,7 @@ describe('egresoFormSchema — saldo marcado que no cabe', () => {
   })
 })
 
-describe('egresoFormSchema — saldo a favor completo o nada', () => {
+describe('supplierPaymentFormSchema — saldo a favor completo o nada', () => {
   it('rechaza un saldo a favor usado a medias', () => {
     expect(messages(values(30000))).toContain(partialMessage)
   })
