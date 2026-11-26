@@ -98,10 +98,13 @@ function sumCentsById<T>(
   return centsById;
 }
 
-function sameCents(a: Map<string, number>, b: Map<string, number>): boolean {
-  if (a.size !== b.size) return false;
-  for (const [id, cents] of a) {
-    if (b.get(id) !== cents) return false;
+function sameCents(
+  requested: Map<string, number>,
+  existing: Map<string, number>,
+): boolean {
+  if (requested.size !== existing.size) return false;
+  for (const [id, cents] of requested) {
+    if (existing.get(id) !== cents) return false;
   }
   return true;
 }
@@ -117,14 +120,19 @@ function splitDiscountCents(
   discountCents: number,
   amountCentsById: Map<string, number>,
 ): Map<string, number> {
-  const totalCents = [...amountCentsById.values()].reduce((a, b) => a + b, 0);
+  const totalCents = [...amountCentsById.values()].reduce(
+    (sum, cents) => sum + cents,
+    0,
+  );
   const shares = [...amountCentsById].map(([id, cents]) => {
     const exact = (discountCents * cents) / totalCents;
     return { id, cents: Math.floor(exact), remainder: exact % 1 };
   });
   let leftover =
     discountCents - shares.reduce((sum, share) => sum + share.cents, 0);
-  for (const share of [...shares].sort((a, b) => b.remainder - a.remainder)) {
+  for (const share of [...shares].sort(
+    (first, second) => second.remainder - first.remainder,
+  )) {
     if (leftover === 0) break;
     share.cents += 1;
     leftover -= 1;
@@ -155,7 +163,10 @@ function isSameEgresoRequest(
   }
 
   const existingCentsByReceivableId = new Map(
-    existing.allocations.map((a) => [a.accountReceivableId, toCents(a.amount)]),
+    existing.allocations.map((allocation) => [
+      allocation.accountReceivableId,
+      toCents(allocation.amount),
+    ]),
   );
 
   if (
@@ -173,8 +184,8 @@ function isSameEgresoRequest(
   // Un saldo repartido en varias CxC se guarda en varias filas: se suman por saldo
   const existingCredits = sumCentsById(
     existing.creditApplications,
-    (a) => a.customerCreditId,
-    (a) => Number(a.amount),
+    (application) => application.customerCreditId,
+    (application) => Number(application.amount),
   );
   if (!sameCents(requestedCredits, existingCredits)) {
     return false;
@@ -277,15 +288,15 @@ export class RecibosCajaService {
       (line) => line.customerCreditId,
       (line) => line.amount,
     );
-    const creditIds = [...creditCentsById.keys()].sort();
-    if (creditIds.length > 0) {
-      await tx.$queryRaw`SELECT id FROM "customer_credit" WHERE id = ANY(${creditIds}::uuid[]) ORDER BY id FOR UPDATE`;
+    const customerCreditIds = [...creditCentsById.keys()].sort();
+    if (customerCreditIds.length > 0) {
+      await tx.$queryRaw`SELECT id FROM "customer_credit" WHERE id = ANY(${customerCreditIds}::uuid[]) ORDER BY id FOR UPDATE`;
     }
 
-    const receivableIds = [
-      ...new Set(dto.receivables.map((r) => r.accountReceivableId)),
+    const accountReceivableIds = [
+      ...new Set(dto.receivables.map((line) => line.accountReceivableId)),
     ].sort();
-    await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE id = ANY(${receivableIds}::uuid[]) ORDER BY id FOR UPDATE`;
+    await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE id = ANY(${accountReceivableIds}::uuid[]) ORDER BY id FOR UPDATE`;
 
     // Re-chequeo tras el lock: un recibo concurrente con la misma idempotencyKey pudo
     // haber comprometido mientras esperábamos el FOR UPDATE — sin esto, el segundo
@@ -304,7 +315,7 @@ export class RecibosCajaService {
     }
 
     const receivables = await tx.accountsReceivable.findMany({
-      where: { id: { in: receivableIds } },
+      where: { id: { in: accountReceivableIds } },
       include: {
         document: { select: { number: true, customerBranchId: true } },
       },
@@ -312,7 +323,7 @@ export class RecibosCajaService {
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
 
-    if (receivables.length !== receivableIds.length) {
+    if (receivables.length !== accountReceivableIds.length) {
       throw new BadRequestException(
         'Alguna cuenta por cobrar citada no existe',
       );
@@ -363,7 +374,9 @@ export class RecibosCajaService {
     const discountCents = dto.discount ? toCents(dto.discount.amount) : 0;
     let debtBeforeReceiptCents = 0;
 
-    const receivableById = new Map(receivables.map((r) => [r.id, r]));
+    const receivableById = new Map(
+      receivables.map((receivable) => [receivable.id, receivable]),
+    );
     for (const [receivableId, requestedCents] of requestedCentsByReceivableId) {
       const receivable = receivableById.get(receivableId)!;
       const balanceCents =
@@ -483,9 +496,9 @@ export class RecibosCajaService {
     // Reparto igual que egresos: cada CxC (más antigua primero) consume saldos (más antiguo primero) sobre lo que queda tras su descuento.
     const creditQueue = [...credits]
       .sort(
-        (a, b) =>
-          a.createdAt.getTime() - b.createdAt.getTime() ||
-          a.id.localeCompare(b.id),
+        (first, second) =>
+          first.createdAt.getTime() - second.createdAt.getTime() ||
+          first.id.localeCompare(second.id),
       )
       .map((credit) => ({
         id: credit.id,
@@ -592,15 +605,23 @@ export class RecibosCajaService {
     }
 
     // Mismo orden de bloqueo que create(): customer_credit -> accounts_receivable.
-    const creditIds = [
-      ...new Set(reciboCaja.creditApplications.map((a) => a.customerCreditId)),
+    const customerCreditIds = [
+      ...new Set(
+        reciboCaja.creditApplications.map(
+          (application) => application.customerCreditId,
+        ),
+      ),
     ].sort();
-    await tx.$queryRaw`SELECT id FROM "customer_credit" WHERE id = ANY(${creditIds}::uuid[]) ORDER BY id FOR UPDATE`;
+    await tx.$queryRaw`SELECT id FROM "customer_credit" WHERE id = ANY(${customerCreditIds}::uuid[]) ORDER BY id FOR UPDATE`;
 
-    const receivableIds = [
-      ...new Set(reciboCaja.allocations.map((a) => a.accountReceivableId)),
+    const accountReceivableIds = [
+      ...new Set(
+        reciboCaja.allocations.map(
+          (allocation) => allocation.accountReceivableId,
+        ),
+      ),
     ].sort();
-    await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE id = ANY(${receivableIds}::uuid[]) ORDER BY id FOR UPDATE`;
+    await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE id = ANY(${accountReceivableIds}::uuid[]) ORDER BY id FOR UPDATE`;
 
     // Reclamo atómico: si dos anulaciones corren a la vez, la segunda ve count 0.
     const claimed = await tx.reciboCaja.updateMany({
@@ -618,9 +639,11 @@ export class RecibosCajaService {
     }
 
     const receivables = await tx.accountsReceivable.findMany({
-      where: { id: { in: receivableIds } },
+      where: { id: { in: accountReceivableIds } },
     });
-    const receivableById = new Map(receivables.map((r) => [r.id, r]));
+    const receivableById = new Map(
+      receivables.map((receivable) => [receivable.id, receivable]),
+    );
 
     // allocation.amount ya incluye pago + descuento + saldo a favor de esa CxC
     for (const allocation of reciboCaja.allocations) {
@@ -655,7 +678,7 @@ export class RecibosCajaService {
     }
 
     const credits = await tx.customerCredit.findMany({
-      where: { id: { in: creditIds } },
+      where: { id: { in: customerCreditIds } },
     });
     for (const credit of credits) {
       await tx.customerCredit.update({

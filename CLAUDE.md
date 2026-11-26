@@ -41,6 +41,7 @@ Identificadores en **inglés simple** (comentarios en español); el dueño del r
 - **Sin abreviaturas ni siglas** de tipo de documento en helpers genéricos (`round2`, `...Cm`); nombres específicos, no genéricos (`generatePdf`, no `generate`).
 - Los nombres de documentos y conceptos del negocio se quedan en español (`egreso`, `reciboCaja`, `preventa`): son dominio, no vocabulario a traducir.
 - Renombrar algo que viaja al frontend (rutas, campos JSON) exige cambiar ambos lados en el mismo PR.
+- **Nada de letras sueltas ni nombres vagos** (regla del dueño, 2026-11-26): el parámetro de un `map`/`filter`/`find`/`some`/`reduce` se llama como la cosa que recorre (`allocations.map((allocation) => …)`, no `(a) => …`; índice `index`, no `i`). Una lista de IDs dice de qué tabla son (`customerCreditIds`, `accountReceivableIds`, no `creditIds`/`ids`). Aplica a código nuevo y a todo lo que se toque.
 
 ## Botón de volver (regla del dueño, 2026-11-18)
 
