@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculateCreditPending } from './egreso-form.utils'
+import { calculateCreditPending } from './supplier-payment-form.utils'
 
 describe('calculateCreditPending', () => {
   it('sin otros saldos marcados, lo pendiente son todos los abonos', () => {

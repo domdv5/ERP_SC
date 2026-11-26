@@ -1,8 +1,8 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { JwtPayload } from '@/common/types';
-import { EgresosService } from './egresos.service';
-import { CreateEgresoDto } from './dto/create-egreso.dto';
+import { SupplierPaymentsService } from './supplier-payments.service';
+import { CreateSupplierPaymentDto } from './dto/create-supplier-payment.dto';
 
 const SUPPLIER = 's1';
 const user = { sub: 'u1' } as JwtPayload;
@@ -15,30 +15,30 @@ const payable = (id: string, total: number) => ({
   paidAmount: new Prisma.Decimal(0),
 });
 
-describe('EgresosService.create — reparto del saldo a favor', () => {
+describe('SupplierPaymentsService.create — reparto del saldo a favor', () => {
   const tx = {
     supplier: { findUnique: jest.fn() },
     $queryRaw: jest.fn(),
     accountsPayable: { findMany: jest.fn(), update: jest.fn() },
     supplierCredit: { findMany: jest.fn(), update: jest.fn() },
     supplierCreditApplication: { create: jest.fn() },
-    egreso: { create: jest.fn(), findUniqueOrThrow: jest.fn() },
-    egresoPayment: { createMany: jest.fn() },
-    egresoAllocation: { create: jest.fn() },
+    supplierPayment: { create: jest.fn(), findUniqueOrThrow: jest.fn() },
+    supplierPaymentMethod: { createMany: jest.fn() },
+    supplierPaymentAllocation: { create: jest.fn() },
   };
   const prisma = {
-    egreso: { findUnique: jest.fn() },
+    supplierPayment: { findUnique: jest.fn() },
     $transaction: jest.fn(),
   };
   const sequence = { next: jest.fn() };
-  const service = new EgresosService(
+  const service = new SupplierPaymentsService(
     prisma as unknown as PrismaService,
     sequence,
   );
 
   beforeEach(() => {
     jest.resetAllMocks();
-    prisma.egreso.findUnique.mockResolvedValue(null);
+    prisma.supplierPayment.findUnique.mockResolvedValue(null);
     prisma.$transaction.mockImplementation((fn: (t: typeof tx) => unknown) =>
       fn(tx),
     );
@@ -47,8 +47,8 @@ describe('EgresosService.create — reparto del saldo a favor', () => {
       thirdParty: { isSupplier: true },
     });
     tx.$queryRaw.mockResolvedValue([]);
-    tx.egreso.create.mockResolvedValue({ id: 'e1' });
-    tx.egreso.findUniqueOrThrow.mockResolvedValue({ id: 'e1' });
+    tx.supplierPayment.create.mockResolvedValue({ id: 'e1' });
+    tx.supplierPayment.findUniqueOrThrow.mockResolvedValue({ id: 'e1' });
     sequence.next.mockResolvedValue('000001');
   });
 
@@ -74,7 +74,7 @@ describe('EgresosService.create — reparto del saldo a favor', () => {
       ],
       payments: [{ method: 'efectivo_almacen', amount: 30 }],
       credits: [{ supplierCreditId: 'sc1', amount: 120 }],
-    } as CreateEgresoDto;
+    } as CreateSupplierPaymentDto;
 
     await service.create(dto, user);
 
@@ -83,7 +83,7 @@ describe('EgresosService.create — reparto del saldo a favor', () => {
         data: {
           supplierCreditId: 'sc1',
           accountPayableId,
-          egresoId: 'e1',
+          supplierPaymentId: 'e1',
           amount,
         },
       },
@@ -92,14 +92,14 @@ describe('EgresosService.create — reparto del saldo a favor', () => {
       application('ap1', 100),
       application('ap2', 20),
     ]);
-    expect(tx.egresoAllocation.create).toHaveBeenCalledWith({
+    expect(tx.supplierPaymentAllocation.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         accountPayableId: 'ap1',
         amount: 100,
         creditAmount: 100,
       }),
     });
-    expect(tx.egresoAllocation.create).toHaveBeenCalledWith({
+    expect(tx.supplierPaymentAllocation.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         accountPayableId: 'ap2',
         amount: 50,
@@ -124,12 +124,12 @@ describe('EgresosService.create — reparto del saldo a favor', () => {
       payables: [{ accountPayableId: 'ap1', amount: 100 }],
       payments: [{ method: 'efectivo_almacen', amount: 20 }],
       credits: [{ supplierCreditId: 'sc1', amount: 80 }],
-    } as CreateEgresoDto;
+    } as CreateSupplierPaymentDto;
 
     await expect(service.create(dto, user)).rejects.toThrow(
       'El saldo a favor se usa completo o no se usa. Saldo disponible: 120.00',
     );
-    expect(tx.egreso.create).not.toHaveBeenCalled();
+    expect(tx.supplierPayment.create).not.toHaveBeenCalled();
     expect(tx.supplierCredit.update).not.toHaveBeenCalled();
     expect(tx.supplierCreditApplication.create).not.toHaveBeenCalled();
     expect(tx.accountsPayable.update).not.toHaveBeenCalled();
@@ -158,7 +158,7 @@ describe('EgresosService.create — reparto del saldo a favor', () => {
       ],
       payments: [{ method: 'efectivo_almacen', amount: 20 }],
       credits: [{ supplierCreditId: 'sc1', amount: 60 }],
-    } as CreateEgresoDto;
+    } as CreateSupplierPaymentDto;
 
     await service.create(dto, user);
 

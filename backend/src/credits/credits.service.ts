@@ -31,7 +31,7 @@ const AVAILABLE_SUPPLIER_CREDIT = {
 
 // Las aplicaciones de un egreso anulado no cuentan como uso.
 const ACTIVE_SUPPLIER_APPLICATION = {
-  OR: [{ egresoId: null }, { egreso: { voidedAt: null } }],
+  OR: [{ supplierPaymentId: null }, { supplierPayment: { voidedAt: null } }],
 } satisfies Prisma.SupplierCreditApplicationWhereInput;
 
 const THIRD_PARTY_SELECT = {
@@ -66,7 +66,7 @@ const SUPPLIER_CREDIT_INCLUDE = {
   sourceDocument: SOURCE_DOCUMENT_SELECT,
   applications: {
     where: ACTIVE_SUPPLIER_APPLICATION,
-    include: { egreso: { select: { number: true } } },
+    include: { supplierPayment: { select: { number: true } } },
     orderBy: { appliedAt: 'desc' },
   },
 } satisfies Prisma.SupplierCreditInclude;
@@ -158,8 +158,8 @@ function buildSupplierCredit(credit: SupplierCreditRow) {
     origin: buildOrigin('devolucion', credit.sourceDocument),
     applications: credit.applications.map((application) => ({
       id: application.id,
-      documentType: application.egreso ? 'EG' : null,
-      documentNumber: application.egreso?.number ?? null,
+      documentType: application.supplierPayment ? 'EG' : null,
+      documentNumber: application.supplierPayment?.number ?? null,
       amount: application.amount,
       date: application.appliedAt,
     })),

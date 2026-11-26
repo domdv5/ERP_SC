@@ -46,7 +46,7 @@ describe('DocumentsService.void: compra y costos', () => {
         accountsPayable: [
           {
             creditApplications: [],
-            egresoAllocations: [],
+            supplierPaymentAllocations: [],
           },
         ],
       });

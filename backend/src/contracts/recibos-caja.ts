@@ -9,7 +9,7 @@ import type {
   ReceivableDocument,
   ReceivableDocumentRef,
 } from './accounts-receivable';
-import type { EgresoPaymentMethod } from './egresos';
+import type { TreasuryPaymentMethod } from './supplier-payments';
 
 export type ReciboCajaDiscountReason =
   | 'descuento_comercial'
@@ -68,7 +68,7 @@ export interface ReciboCajaListResponse {
 export interface ReciboCajaPaymentLine {
   id: string;
   reciboCajaId: string;
-  method: EgresoPaymentMethod;
+  method: TreasuryPaymentMethod;
   amount: string;
   reference: string | null;
   bank: string | null;

@@ -4,12 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import { getEgresoOpenItems } from '@/services/egresos.service'
-import { useEgresoForm } from './useEgresoForm'
+import { getSupplierPaymentOpenItems } from '@/services/supplier-payments.service'
+import { useSupplierPaymentForm } from './useSupplierPaymentForm'
 
-vi.mock('@/services/egresos.service', () => ({
-  getEgresoOpenItems: vi.fn(),
-  createEgreso: vi.fn(),
+vi.mock('@/services/supplier-payments.service', () => ({
+  getSupplierPaymentOpenItems: vi.fn(),
+  createSupplierPayment: vi.fn(),
 }))
 
 const openItems = {
@@ -21,14 +21,14 @@ const openItems = {
 }
 
 async function renderForm() {
-  vi.mocked(getEgresoOpenItems).mockResolvedValue(openItems as never)
+  vi.mocked(getSupplierPaymentOpenItems).mockResolvedValue(openItems as never)
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>{children}</MemoryRouter>
     </QueryClientProvider>
   )
-  const hook = renderHook(() => useEgresoForm(), { wrapper })
+  const hook = renderHook(() => useSupplierPaymentForm(), { wrapper })
   act(() => hook.result.current.setValue('supplierId', 'sup-1'))
   await waitFor(() => expect(hook.result.current.watch('credits')).toHaveLength(2))
   act(() => hook.result.current.togglePayable('p1', true))
@@ -40,7 +40,7 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('useEgresoForm', () => {
+describe('useSupplierPaymentForm', () => {
   it('el saldo a favor arranca sin usar y al marcarlo se aplica completo', async () => {
     const { result } = await renderForm()
     expect(result.current.watch('credits')[0].amount).toBe(0)

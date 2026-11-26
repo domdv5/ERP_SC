@@ -8,15 +8,15 @@ import { toast } from 'sonner'
 import { Plus, Trash2, Loader2, HandCoins } from 'lucide-react'
 
 import { getThirdParties } from '@/services/third-parties.service'
-import { getEgresoOpenItems } from '@/services/egresos.service'
+import { getSupplierPaymentOpenItems } from '@/services/supplier-payments.service'
 import { Combobox, ThousandsInput, UseCreditButton } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber, formatDateOnly, formatBogotaDate } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
-import { useEgresoForm } from './useEgresoForm'
-import { CREDITS_OVERFLOW_MESSAGE, EGRESO_PAYMENT_METHODS } from './egreso-form.schema'
-import { EGRESO_PAYMENT_METHOD_LABELS } from '@/types'
+import { useSupplierPaymentForm } from './useSupplierPaymentForm'
+import { CREDITS_OVERFLOW_MESSAGE, SUPPLIER_PAYMENT_METHODS } from './supplier-payment-form.schema'
+import { TREASURY_PAYMENT_METHOD_LABELS } from '@/types'
 import type { ThirdPartyDetail } from '@/types/third-party.types'
 
 // ─── confirm dialog ───────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ function ConfirmDialog({
 
 // ─── main page ─────────────────────────────────────────────────────────────────
 
-export default function EgresoNewPage() {
+export default function SupplierPaymentNewPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -106,9 +106,9 @@ export default function EgresoNewPage() {
     cuadraOk,
     isLoadingOpenItems,
     hasSupplier,
-    submitEgreso,
+    submitSupplierPayment,
     isSubmitting,
-  } = useEgresoForm()
+  } = useSupplierPaymentForm()
   const missingPayment = Math.round(dineroAPagar) - Math.round(totalPayments)
 
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -149,10 +149,10 @@ export default function EgresoNewPage() {
         ]
       : supplierOptions
 
-  // Mismo queryKey que useEgresoForm — TanStack comparte caché, no dispara una segunda request
+  // Mismo queryKey que useSupplierPaymentForm — TanStack comparte caché, no dispara una segunda request
   const { data: openItems } = useQuery({
-    queryKey: ['egresos-open-items', supplierId],
-    queryFn: () => getEgresoOpenItems(supplierId),
+    queryKey: ['supplier-payments-open-items', supplierId],
+    queryFn: () => getSupplierPaymentOpenItems(supplierId),
     enabled: Boolean(supplierId),
     staleTime: 30 * 1000,
   })
@@ -173,7 +173,7 @@ export default function EgresoNewPage() {
   const confirmAndSubmit = handleSubmit(
     async (values) => {
       try {
-        await submitEgreso(values)
+        await submitSupplierPayment(values)
         setConfirmOpen(false)
       } catch {
         // El hook ya mostró el toast; el diálogo se deja abierto y el refetch queda pendiente hasta cerrarlo (ver onCancel)
@@ -190,14 +190,14 @@ export default function EgresoNewPage() {
     setConfirmOpen(false)
     if (needsOpenItemsRefetch) {
       setNeedsOpenItemsRefetch(false)
-      queryClient.invalidateQueries({ queryKey: ['egresos-open-items', supplierId] })
+      queryClient.invalidateQueries({ queryKey: ['supplier-payments-open-items', supplierId] })
     }
   }
 
   return (
     <div className="space-y-6 pb-10">
       {/* Back */}
-      <BackLink to="/egresos" />
+      <BackLink to="/supplier-payments" />
 
       <div>
         <h1 className="text-2xl text-content">Nuevo egreso</h1>
@@ -486,9 +486,9 @@ export default function EgresoNewPage() {
                             className="input-hard w-full px-3 py-2 text-sm text-content transition-all border-ui-border-medium"
                           >
                             <option value="">Selecciona...</option>
-                            {EGRESO_PAYMENT_METHODS.map((value) => (
+                            {SUPPLIER_PAYMENT_METHODS.map((value) => (
                               <option key={value} value={value}>
-                                {EGRESO_PAYMENT_METHOD_LABELS[value]}
+                                {TREASURY_PAYMENT_METHOD_LABELS[value]}
                               </option>
                             ))}
                           </select>
@@ -630,7 +630,7 @@ export default function EgresoNewPage() {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/egresos')}
+              onClick={() => navigate('/supplier-payments')}
               className="btn-secondary w-full px-4 py-2 text-sm"
             >
               Cancelar

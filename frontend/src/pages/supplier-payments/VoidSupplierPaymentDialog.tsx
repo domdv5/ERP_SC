@@ -1,28 +1,31 @@
 import { useState } from 'react'
 import { AlertTriangle, Loader2 } from 'lucide-react'
-import { EGRESO_VOID_REASON_LABELS } from '@/types'
-import type { EgresoVoidReason } from '@/types'
+import { SUPPLIER_PAYMENT_VOID_REASON_LABELS } from '@/types'
+import type { SupplierPaymentVoidReason } from '@/types'
 
 const MAX_REASON_LENGTH = 500
 
-const REASON_OPTIONS = Object.entries(EGRESO_VOID_REASON_LABELS) as [EgresoVoidReason, string][]
+const REASON_OPTIONS = Object.entries(SUPPLIER_PAYMENT_VOID_REASON_LABELS) as [
+  SupplierPaymentVoidReason,
+  string,
+][]
 
-interface VoidEgresoDialogProps {
+interface VoidSupplierPaymentDialogProps {
   open: boolean
-  egresoLabel: string
+  supplierPaymentLabel: string
   isPending: boolean
-  onConfirm: (vars: { reason: EgresoVoidReason; reasonOther?: string }) => void
+  onConfirm: (vars: { reason: SupplierPaymentVoidReason; reasonOther?: string }) => void
   onCancel: () => void
 }
 
-export function VoidEgresoDialog({
+export function VoidSupplierPaymentDialog({
   open,
-  egresoLabel,
+  supplierPaymentLabel,
   isPending,
   onConfirm,
   onCancel,
-}: VoidEgresoDialogProps) {
-  const [reason, setReason] = useState<EgresoVoidReason | ''>('')
+}: VoidSupplierPaymentDialogProps) {
+  const [reason, setReason] = useState<SupplierPaymentVoidReason | ''>('')
   const [reasonOther, setReasonOther] = useState('')
   if (!open) return null
 
@@ -39,22 +42,22 @@ export function VoidEgresoDialog({
             <AlertTriangle className="w-5 h-5 text-red-500" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-base text-content mb-2">Anular egreso {egresoLabel}</h3>
+            <h3 className="text-base text-content mb-2">Anular egreso {supplierPaymentLabel}</h3>
             <p className="text-sm text-content-secondary leading-relaxed">
               Las facturas abonadas vuelven a quedar con su saldo y los saldos a favor usados
               vuelven a estar disponibles. Esto no devuelve dinero: si el pago sí salió del banco,
               regístralo de nuevo correctamente.
             </p>
             <label
-              htmlFor="void-egreso-reason"
+              htmlFor="void-supplier-payment-reason"
               className="block text-xs text-content-faint mt-4 mb-1.5"
             >
               Motivo
             </label>
             <select
-              id="void-egreso-reason"
+              id="void-supplier-payment-reason"
               value={reason}
-              onChange={(e) => setReason(e.target.value as EgresoVoidReason | '')}
+              onChange={(e) => setReason(e.target.value as SupplierPaymentVoidReason | '')}
               disabled={isPending}
               className="input-hard w-full px-3 py-2 text-sm text-content border-ui-border-medium"
             >

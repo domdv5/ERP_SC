@@ -140,8 +140,8 @@ function splitDiscountCents(
   return new Map(shares.map((share) => [share.id, share.cents]));
 }
 
-/** Compara el reintento contra el recibo ya guardado con la misma idempotencyKey: receivables exacto, payments solo por total (el reparto interno lo decide el service). Mismo patrón que isSameEgresoRequest de EgresosService. */
-function isSameEgresoRequest(
+/** Compara el reintento contra el recibo ya guardado con la misma idempotencyKey: receivables exacto, payments solo por total (el reparto interno lo decide el service). Mismo patrón que isSameSupplierPaymentRequest de SupplierPaymentsService. */
+function isSameCustomerPaymentRequest(
   dto: CreateReciboCajaDto,
   existing: ExistingReciboCajaForIdempotency,
 ): boolean {
@@ -224,7 +224,7 @@ export class RecibosCajaService {
       include: RECIBO_CAJA_DETAIL_INCLUDE,
     });
     if (alreadyCreated) {
-      if (!isSameEgresoRequest(dto, alreadyCreated)) {
+      if (!isSameCustomerPaymentRequest(dto, alreadyCreated)) {
         throw new ConflictException(
           'Esta clave de idempotencia ya se usó para un recibo de caja distinto',
         );
@@ -254,7 +254,7 @@ export class RecibosCajaService {
           include: RECIBO_CAJA_DETAIL_INCLUDE,
         });
         if (existing) {
-          if (!isSameEgresoRequest(dto, existing)) {
+          if (!isSameCustomerPaymentRequest(dto, existing)) {
             throw new ConflictException(
               'Esta clave de idempotencia ya se usó para un recibo de caja distinto',
             );
@@ -306,7 +306,7 @@ export class RecibosCajaService {
       include: RECIBO_CAJA_DETAIL_INCLUDE,
     });
     if (concurrentlyCreated) {
-      if (!isSameEgresoRequest(dto, concurrentlyCreated)) {
+      if (!isSameCustomerPaymentRequest(dto, concurrentlyCreated)) {
         throw new ConflictException(
           'Esta clave de idempotencia ya se usó para un recibo de caja distinto',
         );

@@ -20,7 +20,7 @@ import { usePermission } from '@/hooks/usePermission'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { invalidateAfterReciboCajaVoid } from '@/lib/invalidation'
 import { formatCOP, docNumber, formatDateOnly, formatDateTimeBogota } from '@/lib/format'
-import { EGRESO_PAYMENT_METHOD_LABELS, RECIBO_CAJA_VOID_REASON_LABELS } from '@/types'
+import { TREASURY_PAYMENT_METHOD_LABELS, RECIBO_CAJA_VOID_REASON_LABELS } from '@/types'
 import type { ReciboCajaVoidReason } from '@/types'
 import { VoidReciboCajaDialog } from './VoidReciboCajaDialog'
 import { RECIBO_CAJA_DISCOUNT_REASON_LABELS } from './recibo-caja-form.schema'
@@ -247,7 +247,7 @@ export default function ReciboCajaDetailPage() {
                     <td className="px-5 py-3.5">
                       <span className="flex items-center gap-1.5 text-content-secondary text-xs">
                         <Landmark className="w-3.5 h-3.5 text-content-faint" />
-                        {EGRESO_PAYMENT_METHOD_LABELS[payment.method]}
+                        {TREASURY_PAYMENT_METHOD_LABELS[payment.method]}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">

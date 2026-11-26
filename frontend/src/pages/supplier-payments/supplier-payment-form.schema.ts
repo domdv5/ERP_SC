@@ -24,10 +24,10 @@ const creditRowSchema = z.object({
   amount: moneyAmount,
 })
 
-export const EGRESO_PAYMENT_METHODS = ['efectivo_oficina', 'consignacion_oficina'] as const
+export const SUPPLIER_PAYMENT_METHODS = ['efectivo_oficina', 'consignacion_oficina'] as const
 
 const paymentLineSchema = z.object({
-  method: z.enum(EGRESO_PAYMENT_METHODS, { error: 'Selecciona una forma de pago' }),
+  method: z.enum(SUPPLIER_PAYMENT_METHODS, { error: 'Selecciona una forma de pago' }),
   amount: moneyAmount,
   reference: z.string().optional(),
   bank: z.string().optional(),
@@ -42,14 +42,14 @@ const baseSchema = z.object({
   payments: z.array(paymentLineSchema),
 })
 
-export type EgresoFormValues = z.infer<typeof baseSchema>
+export type SupplierPaymentFormValues = z.infer<typeof baseSchema>
 
 export const CREDITS_OVERFLOW_MESSAGE =
   'El saldo a favor es mayor que lo pendiente: aumenta el abono o desmárcalo'
 
 // Todo el cuadre (abonos, saldo a favor, formas de pago) se valida junto, igual que hace el
 // backend en una sola transacción: si algo no cuadra acá, tampoco va a cuadrar allá.
-export const egresoFormSchema = baseSchema.superRefine((data, ctx) => {
+export const supplierPaymentFormSchema = baseSchema.superRefine((data, ctx) => {
   const selectedPayables = data.payables.filter((p) => p.selected)
 
   if (selectedPayables.length === 0) {

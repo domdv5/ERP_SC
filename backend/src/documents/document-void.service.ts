@@ -8,10 +8,10 @@ import type { JwtPayload } from '@/common/types';
 import { PrismaService } from '@/prisma/prisma.service';
 import { undoCustomerCreditApplications } from './helpers/customer-credit.helpers';
 import {
-  EGRESO_VOID_STATE,
-  isActiveEgresoLink,
-  VOIDED_EGRESO_ROW,
-} from './helpers/egreso-links.helpers';
+  SUPPLIER_PAYMENT_VOID_STATE,
+  isActiveSupplierPaymentLink,
+  VOIDED_SUPPLIER_PAYMENT_ROW,
+} from './helpers/supplier-payment-links.helpers';
 import {
   isActiveReciboLink,
   RECIBO_VOID_STATE,
@@ -89,8 +89,8 @@ export class DocumentVoidService {
     const hasPayments = document.accountsPayable.some(
       (payable) =>
         hasPaidAmount(payable) ||
-        payable.creditApplications.some(isActiveEgresoLink) ||
-        payable.egresoAllocations.some(isActiveEgresoLink),
+        payable.creditApplications.some(isActiveSupplierPaymentLink) ||
+        payable.supplierPaymentAllocations.some(isActiveSupplierPaymentLink),
     );
 
     if (hasPayments) {
@@ -102,7 +102,7 @@ export class DocumentVoidService {
     // Si la nota crédito que generó esta devolución ya se aplicó a otra cuenta
     // por pagar, anular el documento la dejaría suelta pero todavía usable.
     const hasCreditApplications = document.supplierCredits.some((credit) =>
-      credit.applications.some(isActiveEgresoLink),
+      credit.applications.some(isActiveSupplierPaymentLink),
     );
 
     if (hasCreditApplications) {
@@ -263,7 +263,7 @@ export class DocumentVoidService {
           });
         }
 
-        // Re-chequeo con FOR UPDATE (mismo orden que EgresosService) por si un egreso concurrente pagó esto entre el chequeo de arriba y acá.
+        // Re-chequeo con FOR UPDATE (mismo orden que SupplierPaymentsService) por si un egreso concurrente pagó esto entre el chequeo de arriba y acá.
         await tx.$queryRaw`SELECT id FROM "accounts_payable" WHERE document_id = ${id}::uuid FOR UPDATE`;
         await tx.$queryRaw`SELECT id FROM "accounts_receivable" WHERE document_id = ${id}::uuid FOR UPDATE`;
         await tx.$queryRaw`SELECT id FROM "supplier_credit" WHERE source_document_id = ${id}::uuid FOR UPDATE`;
@@ -272,8 +272,8 @@ export class DocumentVoidService {
           tx.accountsPayable.findMany({
             where: { documentId: id },
             include: {
-              creditApplications: EGRESO_VOID_STATE,
-              egresoAllocations: EGRESO_VOID_STATE,
+              creditApplications: SUPPLIER_PAYMENT_VOID_STATE,
+              supplierPaymentAllocations: SUPPLIER_PAYMENT_VOID_STATE,
             },
           }),
           tx.accountsReceivable.findMany({
@@ -285,8 +285,10 @@ export class DocumentVoidService {
         const stillHasPayablePayments = freshPayables.some(
           (payable) =>
             hasPaidAmount(payable) ||
-            payable.creditApplications.some(isActiveEgresoLink) ||
-            payable.egresoAllocations.some(isActiveEgresoLink),
+            payable.creditApplications.some(isActiveSupplierPaymentLink) ||
+            payable.supplierPaymentAllocations.some(
+              isActiveSupplierPaymentLink,
+            ),
         );
         if (stillHasPayablePayments) {
           throw new ConflictException(
@@ -308,9 +310,9 @@ export class DocumentVoidService {
         if (document.supplierCredits.length > 0) {
           const freshCredit = await tx.supplierCredit.findUnique({
             where: { sourceDocumentId: id },
-            include: { applications: EGRESO_VOID_STATE },
+            include: { applications: SUPPLIER_PAYMENT_VOID_STATE },
           });
-          if (freshCredit?.applications.some(isActiveEgresoLink)) {
+          if (freshCredit?.applications.some(isActiveSupplierPaymentLink)) {
             throw new ConflictException(
               'No se puede anular: la nota crédito generada por este documento ya fue aplicada a un pago',
             );
@@ -319,18 +321,24 @@ export class DocumentVoidService {
 
         // Solo historial de egresos anulados: una fila vigente colada en paralelo hace fallar la FK y aborta la anulación.
         if (document.accountsPayable.length > 0) {
-          await tx.egresoAllocation.deleteMany({
-            where: { accountPayable: { documentId: id }, ...VOIDED_EGRESO_ROW },
+          await tx.supplierPaymentAllocation.deleteMany({
+            where: {
+              accountPayable: { documentId: id },
+              ...VOIDED_SUPPLIER_PAYMENT_ROW,
+            },
           });
           await tx.supplierCreditApplication.deleteMany({
-            where: { accountPayable: { documentId: id }, ...VOIDED_EGRESO_ROW },
+            where: {
+              accountPayable: { documentId: id },
+              ...VOIDED_SUPPLIER_PAYMENT_ROW,
+            },
           });
         }
         if (document.supplierCredits.length > 0) {
           await tx.supplierCreditApplication.deleteMany({
             where: {
               supplierCredit: { sourceDocumentId: id },
-              ...VOIDED_EGRESO_ROW,
+              ...VOIDED_SUPPLIER_PAYMENT_ROW,
             },
           });
         }

@@ -47,11 +47,11 @@ export interface AccountsPayable {
 
 export type AccountsPayableHistoryEntry =
   | {
-      source: 'egreso';
+      source: 'supplier_payment';
       date: string;
       amount: string;
       creditAmount: string;
-      egreso: { id: string; number: string; date: string };
+      supplierPayment: { id: string; number: string; date: string };
     }
   | {
       source: 'nota_credito_historica';
@@ -120,10 +120,10 @@ export interface SupplierCreditApplication {
   id: string;
   supplierCreditId: string;
   accountPayableId: string;
-  egresoId: string | null;
+  supplierPaymentId: string | null;
   amount: string;
   appliedAt: string;
-  egreso: { id: string; number: string; date: string } | null;
+  supplierPayment: { id: string; number: string; date: string } | null;
 }
 
 export interface SupplierCreditWithApplications extends SupplierCredit {

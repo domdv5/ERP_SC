@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { DocumentStatus, DocumentType } from '@/common/enums';
 import { applyStockChange } from './helpers/stock.helpers';
-import { EGRESO_VOID_STATE } from './helpers/egreso-links.helpers';
+import { SUPPLIER_PAYMENT_VOID_STATE } from './helpers/supplier-payment-links.helpers';
 import {
   createVoidHarness,
   fullUser,
@@ -122,11 +122,11 @@ describe('DocumentsService.void: validaciones y estado', () => {
     it('rechaza una cuenta por pagar con notas crédito aplicadas o egresos', async () => {
       const empty = {
         creditApplications: [],
-        egresoAllocations: [],
+        supplierPaymentAllocations: [],
       };
       for (const used of [
         { creditApplications: [{ id: 'x' }] },
-        { egresoAllocations: [{ id: 'x' }] },
+        { supplierPaymentAllocations: [{ id: 'x' }] },
       ]) {
         loadDocument(DocumentType.CM, {
           accountsPayable: [{ ...empty, ...used }],
@@ -146,7 +146,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
         accountsPayable: [
           {
             creditApplications: [],
-            egresoAllocations: [],
+            supplierPaymentAllocations: [],
             paidAmount: '50000',
           },
         ],
@@ -279,7 +279,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
       tx.accountsPayable.findMany.mockResolvedValue([
         {
           creditApplications: [],
-          egresoAllocations: [{ id: 'e1' }],
+          supplierPaymentAllocations: [{ id: 'e1' }],
         },
       ]);
 
@@ -294,7 +294,11 @@ describe('DocumentsService.void: validaciones y estado', () => {
     it('lanza 409 si la cuenta por pagar quedó con monto abonado entre el chequeo y el lock', async () => {
       loadDocument(DocumentType.CM);
       tx.accountsPayable.findMany.mockResolvedValue([
-        { creditApplications: [], egresoAllocations: [], paidAmount: '50000' },
+        {
+          creditApplications: [],
+          supplierPaymentAllocations: [],
+          paidAmount: '50000',
+        },
       ]);
 
       await expect(service.void('doc-1', fullUser)).rejects.toThrow(
@@ -377,7 +381,7 @@ describe('DocumentsService.void: validaciones y estado', () => {
       );
       expect(tx.supplierCredit.findUnique).toHaveBeenCalledWith({
         where: { sourceDocumentId: 'doc-1' },
-        include: { applications: EGRESO_VOID_STATE },
+        include: { applications: SUPPLIER_PAYMENT_VOID_STATE },
       });
       expect(tx.supplierCredit.deleteMany).not.toHaveBeenCalled();
     });

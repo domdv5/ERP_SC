@@ -7,23 +7,27 @@ import {
 import {
   Prisma,
   AccountsPayableStatus,
-  EgresoVoidReason,
+  SupplierPaymentVoidReason,
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
 import { matchContract } from '@/common/types';
 import type { JwtPayload } from '@/common/types';
-import type { Egreso, EgresoListResponse, EgresoOpenItems } from '@/contracts';
+import type {
+  SupplierPayment,
+  SupplierPaymentListResponse,
+  SupplierPaymentOpenItems,
+} from '@/contracts';
 import { toCents } from '@/common/utils/money.util';
-import { CreateEgresoDto } from './dto/create-egreso.dto';
-import { FindAllEgresosDto } from './dto/find-all-egresos.dto';
-import { VoidEgresoDto } from './dto/void-egreso.dto';
+import { CreateSupplierPaymentDto } from './dto/create-supplier-payment.dto';
+import { FindAllSupplierPaymentsDto } from './dto/find-all-supplier-payments.dto';
+import { VoidSupplierPaymentDto } from './dto/void-supplier-payment.dto';
 
-const matchListContract = matchContract<EgresoListResponse>();
-const matchDetailContract = matchContract<Egreso>();
-const matchOpenItemsContract = matchContract<EgresoOpenItems>();
+const matchListContract = matchContract<SupplierPaymentListResponse>();
+const matchDetailContract = matchContract<SupplierPayment>();
+const matchOpenItemsContract = matchContract<SupplierPaymentOpenItems>();
 
-export const EGRESO_DETAIL_INCLUDE = {
+export const SUPPLIER_PAYMENT_DETAIL_INCLUDE = {
   supplier: { include: { thirdParty: { select: { id: true, name: true } } } },
   user: { select: { id: true, name: true } },
   voidedBy: { select: { id: true, name: true } },
@@ -58,9 +62,9 @@ export const EGRESO_DETAIL_INCLUDE = {
       },
     },
   },
-} satisfies Prisma.EgresoInclude;
+} satisfies Prisma.SupplierPaymentInclude;
 
-type ExistingEgresoForIdempotency = {
+type ExistingSupplierPaymentForIdempotency = {
   supplierId: string;
   cashTotal: Prisma.Decimal;
   creditTotal: Prisma.Decimal;
@@ -68,9 +72,9 @@ type ExistingEgresoForIdempotency = {
 };
 
 /** Compara el reintento contra el egreso ya guardado con la misma idempotencyKey: payables exacto, credits/payments solo por total (el reparto interno lo decide el service). */
-function isSameEgresoRequest(
-  dto: CreateEgresoDto,
-  existing: ExistingEgresoForIdempotency,
+function isSameSupplierPaymentRequest(
+  dto: CreateSupplierPaymentDto,
+  existing: ExistingSupplierPaymentForIdempotency,
 ): boolean {
   if (existing.supplierId !== dto.supplierId) {
     return false;
@@ -114,22 +118,22 @@ function isSameEgresoRequest(
 }
 
 @Injectable()
-export class EgresosService {
+export class SupplierPaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sequenceService: SequenceService,
   ) {}
 
   /** Paga una o varias CxP de un proveedor: cuadre exacto (Σ abonos = Σ saldos a favor + Σ formas de pago), saldo a favor repartido FIFO por antigüedad, idempotente por idempotencyKey. */
-  async create(dto: CreateEgresoDto, user: JwtPayload) {
+  async create(dto: CreateSupplierPaymentDto, user: JwtPayload) {
     // Corto circuito rápido antes de la transacción pesada: la mayoría de los
     // reintentos (doble clic) llegan bien después de que el primero ya terminó.
-    const alreadyCreated = await this.prisma.egreso.findUnique({
+    const alreadyCreated = await this.prisma.supplierPayment.findUnique({
       where: { idempotencyKey: dto.idempotencyKey },
-      include: EGRESO_DETAIL_INCLUDE,
+      include: SUPPLIER_PAYMENT_DETAIL_INCLUDE,
     });
     if (alreadyCreated) {
-      if (!isSameEgresoRequest(dto, alreadyCreated)) {
+      if (!isSameSupplierPaymentRequest(dto, alreadyCreated)) {
         throw new ConflictException(
           'Esta clave de idempotencia ya se usó para un egreso distinto',
         );
@@ -154,12 +158,12 @@ export class EgresosService {
           'idempotency_key',
         )
       ) {
-        const existing = await this.prisma.egreso.findUnique({
+        const existing = await this.prisma.supplierPayment.findUnique({
           where: { idempotencyKey: dto.idempotencyKey },
-          include: EGRESO_DETAIL_INCLUDE,
+          include: SUPPLIER_PAYMENT_DETAIL_INCLUDE,
         });
         if (existing) {
-          if (!isSameEgresoRequest(dto, existing)) {
+          if (!isSameSupplierPaymentRequest(dto, existing)) {
             throw new ConflictException(
               'Esta clave de idempotencia ya se usó para un egreso distinto',
             );
@@ -173,7 +177,7 @@ export class EgresosService {
 
   private async createInTransaction(
     tx: Prisma.TransactionClient,
-    dto: CreateEgresoDto,
+    dto: CreateSupplierPaymentDto,
     user: JwtPayload,
   ) {
     const supplier = await tx.supplier.findUnique({
@@ -337,7 +341,7 @@ export class EgresosService {
     const number = await this.sequenceService.next(tx, 'EGRESO');
 
     // total = settledCents (no la suma cruda) para que siempre cuadre con el CHECK total=cash_total+credit_total.
-    const egreso = await tx.egreso.create({
+    const supplierPayment = await tx.supplierPayment.create({
       data: {
         number,
         date: new Date(dateStr),
@@ -352,9 +356,9 @@ export class EgresosService {
     });
 
     if (paymentLines.length > 0) {
-      await tx.egresoPayment.createMany({
+      await tx.supplierPaymentMethod.createMany({
         data: paymentLines.map((payment) => ({
-          egresoId: egreso.id,
+          supplierPaymentId: supplierPayment.id,
           method: payment.method,
           amount: payment.amount,
           reference: payment.reference,
@@ -385,7 +389,7 @@ export class EgresosService {
           data: {
             supplierCreditId: chunk.id,
             accountPayableId: payable.id,
-            egresoId: egreso.id,
+            supplierPaymentId: supplierPayment.id,
             amount: takeCents / 100,
           },
         });
@@ -395,9 +399,9 @@ export class EgresosService {
         creditUsedCents += takeCents;
       }
 
-      await tx.egresoAllocation.create({
+      await tx.supplierPaymentAllocation.create({
         data: {
-          egresoId: egreso.id,
+          supplierPaymentId: supplierPayment.id,
           accountPayableId: payable.id,
           amount: amountCents / 100,
           creditAmount: creditUsedCents / 100,
@@ -431,14 +435,14 @@ export class EgresosService {
       });
     }
 
-    return tx.egreso.findUniqueOrThrow({
-      where: { id: egreso.id },
-      include: EGRESO_DETAIL_INCLUDE,
+    return tx.supplierPayment.findUniqueOrThrow({
+      where: { id: supplierPayment.id },
+      include: SUPPLIER_PAYMENT_DETAIL_INCLUDE,
     });
   }
 
   /** Revierte exactamente lo que hizo create(): resta cada abono a su CxP y devuelve cada saldo a favor usado; las filas hijas se conservan como historial. */
-  async void(id: string, dto: VoidEgresoDto, user: JwtPayload) {
+  async void(id: string, dto: VoidSupplierPaymentDto, user: JwtPayload) {
     return matchDetailContract(
       await this.prisma.$transaction(
         (tx) => this.voidInTransaction(tx, id, dto, user),
@@ -450,37 +454,41 @@ export class EgresosService {
   private async voidInTransaction(
     tx: Prisma.TransactionClient,
     id: string,
-    dto: VoidEgresoDto,
+    dto: VoidSupplierPaymentDto,
     user: JwtPayload,
   ) {
-    const egreso = await tx.egreso.findUnique({
+    const supplierPayment = await tx.supplierPayment.findUnique({
       where: { id },
       include: { allocations: true, creditApplications: true },
     });
-    if (!egreso) {
+    if (!supplierPayment) {
       throw new NotFoundException('Egreso no encontrado');
     }
 
     // Mismo orden de bloqueo que create(): accounts_payable -> supplier_credit.
     const payableIds = [
-      ...new Set(egreso.allocations.map((a) => a.accountPayableId)),
+      ...new Set(supplierPayment.allocations.map((a) => a.accountPayableId)),
     ].sort();
     await tx.$queryRaw`SELECT id FROM "accounts_payable" WHERE id = ANY(${payableIds}::uuid[]) ORDER BY id FOR UPDATE`;
 
     const creditIds = [
-      ...new Set(egreso.creditApplications.map((a) => a.supplierCreditId)),
+      ...new Set(
+        supplierPayment.creditApplications.map((a) => a.supplierCreditId),
+      ),
     ].sort();
     await tx.$queryRaw`SELECT id FROM "supplier_credit" WHERE id = ANY(${creditIds}::uuid[]) ORDER BY id FOR UPDATE`;
 
     // Reclamo atómico: si dos anulaciones corren a la vez, la segunda ve count 0.
-    const claimed = await tx.egreso.updateMany({
+    const claimed = await tx.supplierPayment.updateMany({
       where: { id, voidedAt: null },
       data: {
         voidedAt: new Date(),
         voidedById: user.sub,
         voidReason: dto.reason,
         voidReasonOther:
-          dto.reason === EgresoVoidReason.otro ? dto.reasonOther : null,
+          dto.reason === SupplierPaymentVoidReason.otro
+            ? dto.reasonOther
+            : null,
       },
     });
     if (claimed.count === 0) {
@@ -492,7 +500,7 @@ export class EgresosService {
     });
     const payableById = new Map(payables.map((p) => [p.id, p]));
 
-    for (const allocation of egreso.allocations) {
+    for (const allocation of supplierPayment.allocations) {
       const payable = payableById.get(allocation.accountPayableId)!;
       const paidCents =
         toCents(payable.paidAmount) - toCents(allocation.amount);
@@ -515,7 +523,7 @@ export class EgresosService {
     }
 
     const returnedCentsByCreditId = new Map<string, number>();
-    for (const application of egreso.creditApplications) {
+    for (const application of supplierPayment.creditApplications) {
       returnedCentsByCreditId.set(
         application.supplierCreditId,
         (returnedCentsByCreditId.get(application.supplierCreditId) ?? 0) +
@@ -539,17 +547,17 @@ export class EgresosService {
       });
     }
 
-    return tx.egreso.findUniqueOrThrow({
+    return tx.supplierPayment.findUniqueOrThrow({
       where: { id },
-      include: EGRESO_DETAIL_INCLUDE,
+      include: SUPPLIER_PAYMENT_DETAIL_INCLUDE,
     });
   }
 
-  async findAll(dto: FindAllEgresosDto) {
+  async findAll(dto: FindAllSupplierPaymentsDto) {
     const { page = 1, limit = 20, supplierId, dateFrom, dateTo, number } = dto;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.EgresoWhereInput = {
+    const where: Prisma.SupplierPaymentWhereInput = {
       ...(supplierId && { supplierId }),
       ...(number && { number: { contains: number } }),
       ...((dateFrom || dateTo) && {
@@ -561,7 +569,7 @@ export class EgresosService {
     };
 
     const [items, total] = await this.prisma.$transaction([
-      this.prisma.egreso.findMany({
+      this.prisma.supplierPayment.findMany({
         where,
         select: {
           id: true,
@@ -582,7 +590,7 @@ export class EgresosService {
         // string da el mismo orden que ordenar por el número real.
         orderBy: { number: 'desc' },
       }),
-      this.prisma.egreso.count({ where }),
+      this.prisma.supplierPayment.count({ where }),
     ]);
 
     return matchListContract({
@@ -597,16 +605,16 @@ export class EgresosService {
   }
 
   async findOne(id: string) {
-    const egreso = await this.prisma.egreso.findUnique({
+    const supplierPayment = await this.prisma.supplierPayment.findUnique({
       where: { id },
-      include: EGRESO_DETAIL_INCLUDE,
+      include: SUPPLIER_PAYMENT_DETAIL_INCLUDE,
     });
 
-    if (!egreso) {
+    if (!supplierPayment) {
       throw new NotFoundException('Egreso no encontrado');
     }
 
-    return matchDetailContract(egreso);
+    return matchDetailContract(supplierPayment);
   }
 
   /** CxP abiertas y saldos a favor disponibles de un proveedor, para armar el formulario de egreso. */

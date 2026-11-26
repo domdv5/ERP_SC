@@ -12,16 +12,18 @@ describe('ROLE_PERMISSIONS', () => {
     ]);
   });
 
-  it('recibo.void es solo de admin y accounts_admin, igual que egreso.void', () => {
+  it('recibo.void es solo de admin y accounts_admin, igual que supplier_payment.void', () => {
     const holders = Object.entries(ROLE_PERMISSIONS)
       .filter(([, permissions]) => permissions.includes('recibo.void'))
       .map(([role]) => role);
-    const egresoHolders = Object.entries(ROLE_PERMISSIONS)
-      .filter(([, permissions]) => permissions.includes('egreso.void'))
+    const supplierPaymentHolders = Object.entries(ROLE_PERMISSIONS)
+      .filter(([, permissions]) =>
+        permissions.includes('supplier_payment.void'),
+      )
       .map(([role]) => role);
 
     expect(holders.sort()).toEqual(['accounts_admin', 'admin']);
-    expect(holders.sort()).toEqual(egresoHolders.sort());
+    expect(holders.sort()).toEqual(supplierPaymentHolders.sort());
   });
 
   it('gerencia reads reports and accounts but has no write permission nor the official book', () => {

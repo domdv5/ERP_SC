@@ -144,8 +144,8 @@ describe('AccountsPayableService.findSuppliers', () => {
     await service.findSuppliers({});
 
     const sql = sqlOf(prisma.$queryRaw.mock.calls[0]);
-    expect(sql).toContain('egreso_allocation');
-    expect(sql).toContain('sca.egreso_id IS NULL');
+    expect(sql).toContain('supplier_payment_allocation');
+    expect(sql).toContain('sca.supplier_payment_id IS NULL');
   });
 
   it('meta cuenta proveedores y totaliza sobre todos los proveedores filtrados', async () => {
@@ -378,7 +378,7 @@ describe('AccountsPayableService.getSupplierStatement: días de pago', () => {
     paidAmount: new Prisma.Decimal(1000),
     document: { date: day('2026-10-01') },
     creditApplications: [],
-    egresoAllocations: [],
+    supplierPaymentAllocations: [],
     ...overrides,
   });
 
@@ -406,7 +406,9 @@ describe('AccountsPayableService.getSupplierStatement: días de pago', () => {
         status: 'partial',
         paidAmount: new Prisma.Decimal(100),
         document: { date: day('2026-10-01') },
-        egresoAllocations: [{ egreso: { date: day('2026-10-05') } }],
+        supplierPaymentAllocations: [
+          { supplierPayment: { date: day('2026-10-05') } },
+        ],
       }),
     );
 
@@ -419,7 +421,11 @@ describe('AccountsPayableService.getSupplierStatement: días de pago', () => {
 
   it('CxP pagada: cuenta los días desde la compra hasta el último pago', async () => {
     const row = await statementOf(
-      payable({ egresoAllocations: [{ egreso: { date: day('2026-10-11') } }] }),
+      payable({
+        supplierPaymentAllocations: [
+          { supplierPayment: { date: day('2026-10-11') } },
+        ],
+      }),
     );
 
     expect(row.isPaymentOpen).toBe(false);
@@ -430,17 +436,19 @@ describe('AccountsPayableService.getSupplierStatement: días de pago', () => {
   it('último pago = el más reciente entre egreso y saldo a favor sin egreso; el que tiene egreso no cuenta por appliedAt', async () => {
     const row = await statementOf(
       payable({
-        egresoAllocations: [{ egreso: { date: day('2026-10-10') } }],
+        supplierPaymentAllocations: [
+          { supplierPayment: { date: day('2026-10-10') } },
+        ],
         creditApplications: [
           // 2026-10-13 02:00 UTC = 12-oct 21:00 en Bogotá
           {
-            egresoId: null,
+            supplierPaymentId: null,
             amount: new Prisma.Decimal(50),
             appliedAt: new Date('2026-10-13T02:00:00.000Z'),
           },
           // con egreso: su fecha posterior no debe contar
           {
-            egresoId: 'e1',
+            supplierPaymentId: 'e1',
             amount: new Prisma.Decimal(50),
             appliedAt: new Date('2026-10-20T15:00:00.000Z'),
           },
@@ -471,9 +479,9 @@ describe('AccountsPayableService: las lecturas ignoran egresos anulados (S13)', 
   );
 
   const activeApplication = {
-    OR: [{ egresoId: null }, { egreso: { voidedAt: null } }],
+    OR: [{ supplierPaymentId: null }, { supplierPayment: { voidedAt: null } }],
   };
-  const activeAllocation = { egreso: { voidedAt: null } };
+  const activeAllocation = { supplierPayment: { voidedAt: null } };
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -506,7 +514,7 @@ describe('AccountsPayableService: las lecturas ignoran egresos anulados (S13)', 
 
     const include = prisma.accountsPayable.findUnique.mock.calls[0][0].include;
     expect(include.creditApplications.where).toEqual(activeApplication);
-    expect(include.egresoAllocations.where).toEqual(activeAllocation);
+    expect(include.supplierPaymentAllocations.where).toEqual(activeAllocation);
   });
 
   it('el estado de cuenta filtra abonos y saldos a favor de egresos anulados', async () => {
@@ -514,7 +522,7 @@ describe('AccountsPayableService: las lecturas ignoran egresos anulados (S13)', 
 
     const include = prisma.accountsPayable.findMany.mock.calls[0][0].include;
     expect(include.creditApplications.where).toEqual(activeApplication);
-    expect(include.egresoAllocations.where).toEqual(activeAllocation);
+    expect(include.supplierPaymentAllocations.where).toEqual(activeAllocation);
 
     const creditsInclude = prisma.supplierCredit.findMany.mock.calls[0][0]
       .include as { applications: { where: unknown } };
@@ -535,6 +543,8 @@ describe('AccountsPayableService: las lecturas ignoran egresos anulados (S13)', 
       call[0] as TemplateStringsArray,
       ...call.slice(1),
     ).sql;
-    expect(sql).toMatch(/JOIN egreso e ON[\s\S]*?WHERE e\.voided_at IS NULL/);
+    expect(sql).toMatch(
+      /JOIN supplier_payment e ON[\s\S]*?WHERE e\.voided_at IS NULL/,
+    );
   });
 });

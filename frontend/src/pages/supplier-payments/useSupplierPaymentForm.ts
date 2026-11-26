@@ -5,19 +5,25 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import { getEgresoOpenItems, createEgreso } from '@/services/egresos.service'
-import { egresoFormSchema, type EgresoFormValues } from './egreso-form.schema'
+import {
+  getSupplierPaymentOpenItems,
+  createSupplierPayment,
+} from '@/services/supplier-payments.service'
+import {
+  supplierPaymentFormSchema,
+  type SupplierPaymentFormValues,
+} from './supplier-payment-form.schema'
 import {
   calculateAmountToPay,
   calculateCreditPending,
   limitPayableAmount,
-} from './egreso-form.utils'
-import type { CreateEgresoPayload } from '@/types'
+} from './supplier-payment-form.utils'
+import type { CreateSupplierPaymentPayload } from '@/types'
 import { canUseCredit, findCreditOverflowIndex } from '@/lib/credit-application'
 import { todayInBogota } from '@/lib/format'
 import { getApiErrorMessage } from '@/lib/api-error'
 
-const emptyDefaults = (): EgresoFormValues => ({
+const emptyDefaults = (): SupplierPaymentFormValues => ({
   supplierId: '',
   date: todayInBogota(),
   notes: '',
@@ -27,7 +33,7 @@ const emptyDefaults = (): EgresoFormValues => ({
 })
 
 // Toda la lógica de negocio del form de Egresos (carga, cuadre, envío) — la página solo arma el layout
-export function useEgresoForm() {
+export function useSupplierPaymentForm() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -42,9 +48,9 @@ export function useEgresoForm() {
     reset,
     handleSubmit,
     formState: { errors },
-  } = useForm<EgresoFormValues>({
+  } = useForm<SupplierPaymentFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(egresoFormSchema) as any,
+    resolver: zodResolver(supplierPaymentFormSchema) as any,
     defaultValues: emptyDefaults(),
   })
 
@@ -55,8 +61,8 @@ export function useEgresoForm() {
   const supplierId = watch('supplierId')
 
   const { data: openItems, isLoading: isLoadingOpenItems } = useQuery({
-    queryKey: ['egresos-open-items', supplierId],
-    queryFn: () => getEgresoOpenItems(supplierId),
+    queryKey: ['supplier-payments-open-items', supplierId],
+    queryFn: () => getSupplierPaymentOpenItems(supplierId),
     enabled: Boolean(supplierId),
     staleTime: 30 * 1000,
   })
@@ -133,12 +139,12 @@ export function useEgresoForm() {
     totalCreditsApplied <= totalAbonos &&
     creditOverflowIndex < 0
 
-  const { mutateAsync: createEgresoMutateAsync, isPending: isCreating } = useMutation({
-    mutationFn: createEgreso,
+  const { mutateAsync: createSupplierPaymentMutateAsync, isPending: isCreating } = useMutation({
+    mutationFn: createSupplierPayment,
   })
 
-  async function submitEgreso(values: EgresoFormValues) {
-    const payload: CreateEgresoPayload = {
+  async function submitSupplierPayment(values: SupplierPaymentFormValues) {
+    const payload: CreateSupplierPaymentPayload = {
       supplierId: values.supplierId,
       date: values.date,
       notes: values.notes || undefined,
@@ -158,12 +164,14 @@ export function useEgresoForm() {
     }
 
     try {
-      const egreso = await createEgresoMutateAsync(payload)
+      const supplierPayment = await createSupplierPaymentMutateAsync(payload)
       queryClient.invalidateQueries({ queryKey: ['accounts-payable'] })
-      queryClient.invalidateQueries({ queryKey: ['egresos'] })
-      queryClient.invalidateQueries({ queryKey: ['egresos-open-items', values.supplierId] })
-      toast.success(`Egreso EG-${egreso.number} registrado correctamente`)
-      navigate(`/egresos/${egreso.id}`)
+      queryClient.invalidateQueries({ queryKey: ['supplier-payments'] })
+      queryClient.invalidateQueries({
+        queryKey: ['supplier-payments-open-items', values.supplierId],
+      })
+      toast.success(`Egreso EG-${supplierPayment.number} registrado correctamente`)
+      navigate(`/supplier-payments/${supplierPayment.id}`)
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Error al registrar el egreso'))
       // No invalidamos open-items acá: repoblaría payables/credits debajo del diálogo todavía abierto — el caller lo hace al cerrarlo
@@ -194,7 +202,7 @@ export function useEgresoForm() {
     cuadraOk,
     isLoadingOpenItems,
     hasSupplier: Boolean(supplierId),
-    submitEgreso,
+    submitSupplierPayment,
     isSubmitting: isCreating,
   }
 }

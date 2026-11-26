@@ -16,7 +16,7 @@ const ORIGIN_BADGE: Record<
   AccountsPayableHistoryEntry['source'],
   { label: string; className: string }
 > = {
-  egreso: {
+  supplier_payment: {
     label: 'Egreso',
     className: 'bg-brand-secondary/10 text-brand-secondary',
   },
@@ -232,20 +232,22 @@ export default function AccountsPayableDetailPage() {
                       </td>
                       <td className="px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap">
                         {formatCOP(Number(entry.amount))}
-                        {entry.source === 'egreso' && Number(entry.creditAmount) > 0 && (
+                        {entry.source === 'supplier_payment' && Number(entry.creditAmount) > 0 && (
                           <p className="text-content-faint text-[11px] font-normal mt-0.5">
                             de los cuales {formatCOP(Number(entry.creditAmount))} fue saldo a favor
                           </p>
                         )}
                       </td>
                       <td className="px-5 py-3.5">
-                        {entry.source === 'egreso' && (
+                        {entry.source === 'supplier_payment' && (
                           <button
-                            onClick={() => navigate(`/egresos/${entry.egreso.id}`)}
+                            onClick={() =>
+                              navigate(`/supplier-payments/${entry.supplierPayment.id}`)
+                            }
                             className="flex items-center gap-1.5 font-mono text-xs link-plain"
                           >
                             <Landmark className="w-3.5 h-3.5" />
-                            {docNumber('EG', entry.egreso.number)}
+                            {docNumber('EG', entry.supplierPayment.number)}
                           </button>
                         )}
                         {entry.source === 'nota_credito_historica' && (

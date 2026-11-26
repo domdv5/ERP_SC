@@ -4,7 +4,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { Wallet, Plus } from 'lucide-react'
 
-import { getEgresos } from '@/services/egresos.service'
+import { getSupplierPayments } from '@/services/supplier-payments.service'
 import { getThirdParties } from '@/services/third-parties.service'
 import { usePermission } from '@/hooks/usePermission'
 import {
@@ -22,9 +22,9 @@ import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { DOC_STATUS_BADGE } from '@/pages/documents/document.constants'
 import type { ThirdPartyDetail } from '@/types/third-party.types'
 
-export default function EgresosListPage() {
+export default function SupplierPaymentsListPage() {
   const navigate = useNavigate()
-  const canCreate = usePermission('egreso.create')
+  const canCreate = usePermission('supplier_payment.create')
 
   const [search, setSearch] = useState('')
   const [supplierId, setSupplierId] = useState('')
@@ -44,9 +44,9 @@ export default function EgresosListPage() {
   }, [debouncedSearch, supplierId, dateFrom, dateTo])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['egresos', debouncedSearch, supplierId, dateFrom, dateTo, page, limit],
+    queryKey: ['supplier-payments', debouncedSearch, supplierId, dateFrom, dateTo, page, limit],
     queryFn: () =>
-      getEgresos({
+      getSupplierPayments({
         number: debouncedSearch || undefined,
         supplierId: supplierId || undefined,
         dateFrom: dateFrom || undefined,
@@ -104,7 +104,7 @@ export default function EgresosListPage() {
         </div>
         {canCreate && (
           <button
-            onClick={() => navigate('/egresos/new')}
+            onClick={() => navigate('/supplier-payments/new')}
             className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
           >
             <Plus className="w-4 h-4" />
@@ -203,58 +203,61 @@ export default function EgresosListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-divide">
-                {items.map((egreso) => (
+                {items.map((supplierPayment) => (
                   <tr
-                    key={egreso.id}
-                    onClick={() => navigate(`/egresos/${egreso.id}`)}
+                    key={supplierPayment.id}
+                    onClick={() => navigate(`/supplier-payments/${supplierPayment.id}`)}
                     className="hover:bg-surface-raised transition-colors group cursor-pointer"
                   >
                     <td className="px-5 py-3.5 font-mono text-xs font-medium text-content whitespace-nowrap">
-                      {docNumber('EG', egreso.number)}
+                      {docNumber('EG', supplierPayment.number)}
                     </td>
                     <td className="px-5 py-3.5 text-content-muted text-xs whitespace-nowrap">
-                      {formatDateOnly(egreso.date)}
+                      {formatDateOnly(supplierPayment.date)}
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 avatar-outline">
-                          {egreso.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
+                          {supplierPayment.supplier.thirdParty.name[0]?.toUpperCase() ?? '?'}
                         </div>
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            navigate(`/accounts-payable/suppliers/${egreso.supplier.id}`)
+                            navigate(`/accounts-payable/suppliers/${supplierPayment.supplier.id}`)
                           }}
                           className="font-medium link-plain text-left"
                         >
-                          {egreso.supplier.thirdParty.name}
+                          {supplierPayment.supplier.thirdParty.name}
                         </button>
                       </div>
                     </td>
                     <td
                       className={cn(
                         'px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap',
-                        egreso.voidedAt && 'line-through text-content-faint',
+                        supplierPayment.voidedAt && 'line-through text-content-faint',
                       )}
                     >
-                      {formatCOP(Number(egreso.cashTotal))}
+                      {formatCOP(Number(supplierPayment.cashTotal))}
                     </td>
                     <td
                       className={cn(
                         'px-5 py-3.5 text-content-secondary font-medium text-xs whitespace-nowrap',
-                        egreso.voidedAt && 'line-through text-content-faint',
+                        supplierPayment.voidedAt && 'line-through text-content-faint',
                       )}
                     >
-                      {Number(egreso.creditTotal) > 0 ? formatCOP(Number(egreso.creditTotal)) : '—'}
+                      {Number(supplierPayment.creditTotal) > 0
+                        ? formatCOP(Number(supplierPayment.creditTotal))
+                        : '—'}
                     </td>
                     <td className="px-5 py-3.5">
                       <span
                         className={cn(
                           'pill-stamp',
-                          DOC_STATUS_BADGE[egreso.voidedAt ? 'voided' : 'confirmed'].className,
+                          DOC_STATUS_BADGE[supplierPayment.voidedAt ? 'voided' : 'confirmed']
+                            .className,
                         )}
                       >
-                        {DOC_STATUS_BADGE[egreso.voidedAt ? 'voided' : 'confirmed'].label}
+                        {DOC_STATUS_BADGE[supplierPayment.voidedAt ? 'voided' : 'confirmed'].label}
                       </span>
                     </td>
                   </tr>

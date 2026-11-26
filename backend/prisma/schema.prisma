@@ -176,11 +176,11 @@ model Supplier {
   /// Condiciones de descuento del proveedor, texto libre informativo — no se usa en ningún cálculo.
   discountNotes  String? @map("discount_notes") @db.VarChar(500)
 
-  thirdParty      ThirdParty        @relation(fields: [id], references: [id])
-  brands          Brand[]
-  accountsPayable AccountsPayable[]
-  supplierCredits SupplierCredit[]
-  egresos         Egreso[]
+  thirdParty       ThirdParty        @relation(fields: [id], references: [id])
+  brands           Brand[]
+  accountsPayable  AccountsPayable[]
+  supplierCredits  SupplierCredit[]
+  supplierPayments SupplierPayment[]
 
   @@map("suppliers")
 }
@@ -463,8 +463,8 @@ model User {
   reservationReleases      ReservationRelease[]
   systemConfigsActivated   SystemConfig[]       @relation("SystemConfigActivatedBy")
   systemConfigsDeactivated SystemConfig[]       @relation("SystemConfigDeactivatedBy")
-  egresos                  Egreso[]
-  egresosVoided            Egreso[]             @relation("EgresoVoidedBy")
+  supplierPayments         SupplierPayment[]
+  supplierPaymentsVoided   SupplierPayment[]    @relation("SupplierPaymentVoidedBy")
   recibosCajaVoided        ReciboCaja[]         @relation("ReciboCajaVoidedBy")
   customerCreditsCreated   CustomerCredit[]     @relation("CustomerCreditCreatedBy")
   customerCreditsVoided    CustomerCredit[]     @relation("CustomerCreditVoidedBy")
@@ -536,7 +536,7 @@ enum PaymentMethod {
 }
 
 /// Motivo de anulación de un egreso; otro exige voidReasonOther.
-enum EgresoVoidReason {
+enum SupplierPaymentVoidReason {
   valor_equivocado
   proveedor_equivocado
   factura_equivocada
@@ -846,10 +846,10 @@ model AccountsPayable {
   createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime              @updatedAt @map("updated_at") @db.Timestamptz
 
-  supplier           Supplier                    @relation(fields: [supplierId], references: [id])
-  document           Document                    @relation(fields: [documentId], references: [id])
-  creditApplications SupplierCreditApplication[]
-  egresoAllocations  EgresoAllocation[]
+  supplier                   Supplier                    @relation(fields: [supplierId], references: [id])
+  document                   Document                    @relation(fields: [documentId], references: [id])
+  creditApplications         SupplierCreditApplication[]
+  supplierPaymentAllocations SupplierPaymentAllocation[]
 
   // Pantalla de egreso: CxP abiertas de un proveedor. Prisma no indexa FKs en PostgreSQL.
   @@index([supplierId, status])
@@ -892,26 +892,26 @@ model SupplierCredit {
 }
 
 model SupplierCreditApplication {
-  id               String   @id @default(uuid(7)) @db.Uuid
-  supplierCreditId String   @map("supplier_credit_id") @db.Uuid
-  accountPayableId String   @map("account_payable_id") @db.Uuid
+  id                String   @id @default(uuid(7)) @db.Uuid
+  supplierCreditId  String   @map("supplier_credit_id") @db.Uuid
+  accountPayableId  String   @map("account_payable_id") @db.Uuid
   /// Egreso que aplicó este crédito. Nullable: las aplicaciones anteriores al módulo
   /// de egresos (las hacía POST /accounts-payable/:id/payments, eliminado) no tienen egreso.
-  egresoId         String?  @map("egreso_id") @db.Uuid
+  supplierPaymentId String?  @map("supplier_payment_id") @db.Uuid
   // Monto aplicado en este movimiento, en positivo (parte del balance del crédito
   // que se descuenta contra esta cuenta por pagar).
-  amount           Decimal  @db.Decimal(16, 2)
-  appliedAt        DateTime @default(now()) @map("applied_at") @db.Timestamptz
+  amount            Decimal  @db.Decimal(16, 2)
+  appliedAt         DateTime @default(now()) @map("applied_at") @db.Timestamptz
 
-  supplierCredit SupplierCredit  @relation(fields: [supplierCreditId], references: [id])
-  accountPayable AccountsPayable @relation(fields: [accountPayableId], references: [id])
+  supplierCredit  SupplierCredit   @relation(fields: [supplierCreditId], references: [id])
+  accountPayable  AccountsPayable  @relation(fields: [accountPayableId], references: [id])
   /// Restrict explícito: el default de Prisma para una FK nullable es SET NULL, que
   /// dejaría la aplicación huérfana si alguna vez se borra un egreso.
-  egreso         Egreso?         @relation(fields: [egresoId], references: [id], onDelete: Restrict)
+  supplierPayment SupplierPayment? @relation(fields: [supplierPaymentId], references: [id], onDelete: Restrict)
 
   // Un mismo crédito no se aplica dos veces a la misma cuenta dentro de un egreso. En
   // PostgreSQL varios NULL conviven, así que las filas viejas (sin egreso) no chocan.
-  @@unique([egresoId, accountPayableId, supplierCreditId])
+  @@unique([supplierPaymentId, accountPayableId, supplierCreditId])
   @@index([accountPayableId])
   @@index([supplierCreditId])
   @@map("supplier_credit_application")
@@ -1006,10 +1006,10 @@ model Sequence {
   @@map("sequence")
 }
 
-// ─── Egreso (documento de tesorería) ─────────────────────────────────────────
+// ─── SupplierPayment (documento de tesorería) ─────────────────────────────────────────
 
 /// Forma de pago del egreso — "almacén" vs "oficina" es solo clasificación, el sistema no lleva saldos de caja.
-enum EgresoPaymentMethod {
+enum TreasuryPaymentMethod {
   efectivo_almacen
   consignacion_almacen
   cheque
@@ -1018,72 +1018,72 @@ enum EgresoPaymentMethod {
 }
 
 /// Paga una o varias CxP de un mismo proveedor en un solo movimiento; no se edita, se anula con voidedAt (las filas hijas se conservan como historial).
-model Egreso {
-  id              String            @id @default(uuid(7)) @db.Uuid
+model SupplierPayment {
+  id              String                     @id @default(uuid(7)) @db.Uuid
   /// Consecutivo propio (clave "EGRESO" en Sequence), ceros a la izquierda a 6 dígitos para ordenar como texto.
-  number          String            @unique @db.VarChar(30)
+  number          String                     @unique @db.VarChar(30)
   /// Sin @default a propósito: la fija el service en huso Colombia, no el de la base (mismo criterio que Document.date).
-  date            DateTime          @db.Date
-  supplierId      String            @map("supplier_id") @db.Uuid
-  userId          String            @map("user_id") @db.Uuid
-  /// total = cashTotal + creditTotal (CHECK) y también la suma de EgresoAllocation.amount (eso lo valida el service, ningún CHECK lo ve).
-  total           Decimal           @db.Decimal(16, 2)
-  cashTotal       Decimal           @map("cash_total") @db.Decimal(16, 2)
-  creditTotal     Decimal           @map("credit_total") @db.Decimal(16, 2)
-  notes           String?           @db.VarChar(500)
+  date            DateTime                   @db.Date
+  supplierId      String                     @map("supplier_id") @db.Uuid
+  userId          String                     @map("user_id") @db.Uuid
+  /// total = cashTotal + creditTotal (CHECK) y también la suma de SupplierPaymentAllocation.amount (eso lo valida el service, ningún CHECK lo ve).
+  total           Decimal                    @db.Decimal(16, 2)
+  cashTotal       Decimal                    @map("cash_total") @db.Decimal(16, 2)
+  creditTotal     Decimal                    @map("credit_total") @db.Decimal(16, 2)
+  notes           String?                    @db.VarChar(500)
   /// Clave que manda el cliente para que un reintento de red no pague dos veces.
-  idempotencyKey  String            @unique @map("idempotency_key") @db.VarChar(100)
-  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  idempotencyKey  String                     @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt       DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   /// Anulado si no es null; el motivo es obligatorio al anular.
-  voidedAt        DateTime?         @map("voided_at") @db.Timestamptz
-  voidedById      String?           @map("voided_by_id") @db.Uuid
-  voidReason      EgresoVoidReason? @map("void_reason")
-  voidReasonOther String?           @map("void_reason_other") @db.VarChar(500)
+  voidedAt        DateTime?                  @map("voided_at") @db.Timestamptz
+  voidedById      String?                    @map("voided_by_id") @db.Uuid
+  voidReason      SupplierPaymentVoidReason? @map("void_reason")
+  voidReasonOther String?                    @map("void_reason_other") @db.VarChar(500)
 
   supplier           Supplier                    @relation(fields: [supplierId], references: [id])
   user               User                        @relation(fields: [userId], references: [id])
-  voidedBy           User?                       @relation("EgresoVoidedBy", fields: [voidedById], references: [id])
-  payments           EgresoPayment[]
-  allocations        EgresoAllocation[]
+  voidedBy           User?                       @relation("SupplierPaymentVoidedBy", fields: [voidedById], references: [id])
+  payments           SupplierPaymentMethod[]
+  allocations        SupplierPaymentAllocation[]
   creditApplications SupplierCreditApplication[]
 
   @@index([date])
   @@index([supplierId, date])
   @@index([userId])
-  @@map("egreso")
+  @@map("supplier_payment")
 }
 
-model EgresoPayment {
-  id        String              @id @default(uuid(7)) @db.Uuid
-  egresoId  String              @map("egreso_id") @db.Uuid
-  method    EgresoPaymentMethod
-  amount    Decimal             @db.Decimal(16, 2)
+model SupplierPaymentMethod {
+  id                String                @id @default(uuid(7)) @db.Uuid
+  supplierPaymentId String                @map("supplier_payment_id") @db.Uuid
+  method            TreasuryPaymentMethod
+  amount            Decimal               @db.Decimal(16, 2)
   /// Número de cheque o de consignación. Obligatorio para `cheque` — lo valida el service.
-  reference String?             @db.VarChar(100)
-  bank      String?             @db.VarChar(100)
-  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  reference         String?               @db.VarChar(100)
+  bank              String?               @db.VarChar(100)
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz
 
-  egreso Egreso @relation(fields: [egresoId], references: [id])
+  supplierPayment SupplierPayment @relation(fields: [supplierPaymentId], references: [id])
 
-  @@index([egresoId])
-  @@map("egreso_payment")
+  @@index([supplierPaymentId])
+  @@map("supplier_payment_method")
 }
 
-model EgresoAllocation {
-  id               String  @id @default(uuid(7)) @db.Uuid
-  egresoId         String  @map("egreso_id") @db.Uuid
-  accountPayableId String  @map("account_payable_id") @db.Uuid
+model SupplierPaymentAllocation {
+  id                String  @id @default(uuid(7)) @db.Uuid
+  supplierPaymentId String  @map("supplier_payment_id") @db.Uuid
+  accountPayableId  String  @map("account_payable_id") @db.Uuid
   /// Total abonado a esta cuenta por pagar en este egreso (efectivo + saldo a favor).
-  amount           Decimal @db.Decimal(16, 2)
+  amount            Decimal @db.Decimal(16, 2)
   /// Parte de `amount` cubierta con saldo a favor, guardada aparte para que el detalle de la CxP la lea sin join. CHECK: 0 <= creditAmount <= amount.
-  creditAmount     Decimal @default(0) @map("credit_amount") @db.Decimal(16, 2)
+  creditAmount      Decimal @default(0) @map("credit_amount") @db.Decimal(16, 2)
 
-  egreso         Egreso          @relation(fields: [egresoId], references: [id])
-  accountPayable AccountsPayable @relation(fields: [accountPayableId], references: [id])
+  supplierPayment SupplierPayment @relation(fields: [supplierPaymentId], references: [id])
+  accountPayable  AccountsPayable @relation(fields: [accountPayableId], references: [id])
 
-  @@unique([egresoId, accountPayableId])
+  @@unique([supplierPaymentId, accountPayableId])
   @@index([accountPayableId])
-  @@map("egreso_allocation")
+  @@map("supplier_payment_allocation")
 }
 
 // ─── Recibo de caja (documento de tesorería, lado cliente) ───────────────────
@@ -1093,7 +1093,7 @@ model ReciboCaja {
   id                String                    @id @default(uuid(7)) @db.Uuid
   /// Consecutivo propio (clave "RECIBO_CAJA" en Sequence), ceros a la izquierda a 6 dígitos para ordenar como texto.
   number            String                    @unique @db.VarChar(30)
-  /// Sin @default a propósito: la fija el service en huso Colombia, no el de la base (mismo criterio que Egreso.date).
+  /// Sin @default a propósito: la fija el service en huso Colombia, no el de la base (mismo criterio que SupplierPayment.date).
   date              DateTime                  @db.Date
   clientId          String                    @map("client_id") @db.Uuid
   /// Sucursal cobrada; null = recibo de CxC sin sucursal (o cliente sin sucursales).
@@ -1143,15 +1143,15 @@ enum ReciboCajaDiscountReason {
 }
 
 model ReciboCajaPayment {
-  id           String              @id @default(uuid(7)) @db.Uuid
-  reciboCajaId String              @map("recibo_caja_id") @db.Uuid
-  /// Mismo enum que Egreso — misma tesorería, mismas formas de pago (regla de negocio explícita).
-  method       EgresoPaymentMethod
-  amount       Decimal             @db.Decimal(16, 2)
+  id           String                @id @default(uuid(7)) @db.Uuid
+  reciboCajaId String                @map("recibo_caja_id") @db.Uuid
+  /// Mismo enum que SupplierPayment — misma tesorería, mismas formas de pago (regla de negocio explícita).
+  method       TreasuryPaymentMethod
+  amount       Decimal               @db.Decimal(16, 2)
   /// Número de cheque o de consignación. Obligatorio para `cheque` — lo valida el service.
-  reference    String?             @db.VarChar(100)
-  bank         String?             @db.VarChar(100)
-  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  reference    String?               @db.VarChar(100)
+  bank         String?               @db.VarChar(100)
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz
 
   reciboCaja ReciboCaja @relation(fields: [reciboCajaId], references: [id])
 
