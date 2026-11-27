@@ -901,7 +901,7 @@ model SupplierCredit {
   id               String             @id @default(uuid(7)) @db.Uuid
   supplierId       String             @map("supplier_id") @db.Uuid
   kind             SupplierCreditKind @default(devolucion)
-  /// Solo excedentes: consecutivo EXC (compartido con los excedentes de cliente), fecha, quién lo registró y anulación.
+  /// Solo excedentes: consecutivo EXC (compartido con los excedentes de cliente), fecha, quién lo registró y anulación. CHECK a mano "supplier_credit_excedente_chk": fecha y usuario obligatorios, sin documento origen.
   number           String?            @unique @db.VarChar(20)
   /// Solo excedentes: clave del reintento de POST /excesses (un doble clic no duplica).
   idempotencyKey   String?            @unique @map("idempotency_key") @db.VarChar(100)

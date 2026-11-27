@@ -96,7 +96,10 @@ export class ExcessesService {
     if (query.partyType === 'customer') {
       const where: Prisma.CustomerCreditWhereInput = {
         kind: CustomerCreditKind.excedente,
-        ...(query.status ? { status: query.status } : {}),
+        ...this.statusWhere(
+          query.status,
+          this.prisma.customerCredit.fields.amount,
+        ),
         ...(search
           ? {
               OR: [
@@ -126,7 +129,10 @@ export class ExcessesService {
 
     const where: Prisma.SupplierCreditWhereInput = {
       kind: SupplierCreditKind.excedente,
-      ...(query.status ? { status: query.status } : {}),
+      ...this.statusWhere(
+        query.status,
+        this.prisma.supplierCredit.fields.amount,
+      ),
       ...(search
         ? {
             OR: [
@@ -150,6 +156,21 @@ export class ExcessesService {
       items: rows.map((row) => this.toSupplierExcess(row)),
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
+  }
+
+  // Excedentes viejos usados en parte siguen 'available' en BD: se separan por balance contra amount
+  private statusWhere<Model extends 'CustomerCredit' | 'SupplierCredit'>(
+    status: FindAllExcessesDto['status'],
+    amountField: Prisma.FieldRef<Model, 'Decimal'>,
+  ) {
+    if (!status) return {};
+    if (status === 'available') {
+      return { status: 'available' as const, balance: { equals: amountField } };
+    }
+    if (status === 'partial') {
+      return { status: 'available' as const, balance: { lt: amountField } };
+    }
+    return { status };
   }
 
   async create(dto: CreateExcessDto, user: JwtPayload) {

@@ -85,3 +85,17 @@ Pasaron todas:
   - la carrera real P2002 en Postgres (solo con mocks);
   - el texto "Excedente EXC-…" dentro de la pantalla del egreso (solo pruebas unitarias del helper);
   - el recibo de caja: el backend ya manda `number`, pero la pantalla del recibo todavía no lo muestra.
+
+## T7 — Hallazgos 7 a 9 de Judgment Day
+- Conteos: backend tsc sin errores y jest 878/878; frontend vitest 259/259 y tsc sin errores.
+- Migración `20261127150000_supplier_excess_chk` aplicada. Las filas existentes ya cumplían la regla.
+- E2E contra la API, 4/4 PASS:
+  - "Disponible" ya no trae los "Usado en parte";
+  - "Usado en parte" trae EXC-000006;
+  - el total coincide con las filas;
+  - un valor de 100.000.000.000.000 da 400 «El valor del excedente es demasiado grande».
+- Base real: un INSERT de un excedente de proveedor sin fecha ni usuario lo rechaza `supplier_credit_excedente_chk` (en una transacción con ROLLBACK).
+- Mutaciones, todas DETECTADAS:
+  - S1 "Disponible" sin exigir saldo completo;
+  - S2 "Usado en parte" sin exigir saldo menor;
+  - S3 quitar el tope del valor.

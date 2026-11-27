@@ -36,6 +36,7 @@ type StatusFilter = ExcessStatus | ''
 const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: '', label: 'Todos los estados' },
   { value: 'available', label: 'Disponible' },
+  { value: 'partial', label: 'Usado en parte' },
   { value: 'used', label: 'Usado' },
   { value: 'voided', label: 'Anulado' },
 ]

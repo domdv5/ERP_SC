@@ -53,11 +53,13 @@ describe('ExcessesService', () => {
       findUnique: jest.fn(),
       findMany: jest.fn(),
       count: jest.fn(),
+      fields: { amount: { ref: 'customerCredit.amount' } },
     },
     supplierCredit: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
       count: jest.fn(),
+      fields: { amount: { ref: 'supplierCredit.amount' } },
     },
     thirdParty: { findUnique: jest.fn() },
     customerBranch: { findFirst: jest.fn() },
@@ -597,6 +599,80 @@ describe('ExcessesService', () => {
       ];
       expect(call[0].where.OR.some((term) => 'number' in term)).toBe(false);
     });
+  });
+
+  describe('findAll — filtro de estado', () => {
+    const cases = [
+      { table: 'customerCredit', partyType: 'customer' },
+      { table: 'supplierCredit', partyType: 'supplier' },
+    ] as const;
+
+    beforeEach(() => {
+      prisma.$transaction.mockResolvedValue([[], 0]);
+    });
+
+    const whereOf = (table: 'customerCredit' | 'supplierCredit') =>
+      (
+        prisma[table].findMany.mock.calls[0] as [
+          { where: Record<string, unknown> },
+        ]
+      )[0].where;
+
+    it.each(cases)(
+      '$partyType available: disponible y nunca usado (balance = amount)',
+      async ({ table, partyType }) => {
+        await service.findAll({ partyType, status: 'available' });
+        const where = whereOf(table);
+        expect(where.status).toBe('available');
+        expect(where.balance).toEqual({ equals: prisma[table].fields.amount });
+      },
+    );
+
+    it.each(cases)(
+      '$partyType partial: disponible con balance < amount',
+      async ({ table, partyType }) => {
+        await service.findAll({ partyType, status: 'partial' });
+        const where = whereOf(table);
+        expect(where.status).toBe('available');
+        expect(where.balance).toEqual({ lt: prisma[table].fields.amount });
+      },
+    );
+
+    it.each(cases)(
+      '$partyType used y voided: solo el status, sin filtro de balance',
+      async ({ table, partyType }) => {
+        await service.findAll({ partyType, status: 'used' });
+        await service.findAll({ partyType, status: 'voided' });
+        const calls = prisma[table].findMany.mock.calls as [
+          { where: Record<string, unknown> },
+        ][];
+        expect(calls[0][0].where.status).toBe('used');
+        expect(calls[1][0].where.status).toBe('voided');
+        expect(calls[0][0].where).not.toHaveProperty('balance');
+        expect(calls[1][0].where).not.toHaveProperty('balance');
+      },
+    );
+
+    it.each(cases)(
+      '$partyType el count usa el mismo where que las filas',
+      async ({ table, partyType }) => {
+        await service.findAll({ partyType, status: 'partial' });
+        const countCall = prisma[table].count.mock.calls[0] as [
+          { where: unknown },
+        ];
+        expect(countCall[0].where).toBe(whereOf(table));
+      },
+    );
+
+    it.each(cases)(
+      '$partyType sin status: no filtra por estado ni balance',
+      async ({ table, partyType }) => {
+        await service.findAll({ partyType });
+        const where = whereOf(table);
+        expect(where).not.toHaveProperty('status');
+        expect(where).not.toHaveProperty('balance');
+      },
+    );
   });
 
   describe('usages', () => {

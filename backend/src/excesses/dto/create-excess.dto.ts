@@ -5,6 +5,7 @@ import {
   IsPositive,
   IsUUID,
   Matches,
+  Max,
 } from 'class-validator';
 import type { CreateExcessBody, ExcessPartyType } from '@/contracts';
 
@@ -22,6 +23,10 @@ export class CreateExcessDto implements CreateExcessBody {
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
+  // Tope de Decimal(16,2) en BD
+  @Max(99999999999999.99, {
+    message: 'El valor del excedente es demasiado grande',
+  })
   amount!: number;
 
   // Sin default acá: el service lo resuelve a hoy en Bogotá

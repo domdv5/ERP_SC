@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import type { ExcessPartyType } from '@/contracts';
+import type { ExcessPartyType, ExcessStatus } from '@/contracts';
 
 export class FindAllExcessesDto {
   @IsIn(['customer', 'supplier'])
@@ -12,8 +12,8 @@ export class FindAllExcessesDto {
   search?: string;
 
   @IsOptional()
-  @IsIn(['available', 'used', 'voided'])
-  status?: 'available' | 'used' | 'voided';
+  @IsIn(['available', 'partial', 'used', 'voided'])
+  status?: ExcessStatus;
 
   @IsOptional()
   @IsInt()
