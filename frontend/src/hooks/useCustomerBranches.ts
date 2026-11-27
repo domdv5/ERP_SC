@@ -6,7 +6,7 @@ const NO_BRANCHES: CustomerBranch[] = []
 
 // El prefijo 'third-parties' de la key lo invalida invalidateThirdParties.
 export function useCustomerBranches(customerId: string | undefined) {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['third-parties-customer-branches', customerId],
     queryFn: async () => (await getThirdParty(customerId!)).customer?.branches ?? NO_BRANCHES,
     enabled: Boolean(customerId),
@@ -14,5 +14,12 @@ export function useCustomerBranches(customerId: string | undefined) {
     staleTime: 0,
   })
 
-  return { branches: data ?? NO_BRANCHES, isLoading, isError }
+  return {
+    branches: data ?? NO_BRANCHES,
+    hasLoaded: data !== undefined,
+    isLoading,
+    isError,
+    isFetching,
+    refetch,
+  }
 }

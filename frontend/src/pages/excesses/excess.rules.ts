@@ -12,6 +12,21 @@ export const VOID_REASON_LABELS: Record<ExcessVoidReason, string> = {
 // Proveedores y clientes sin elegir quedan 'ready': no hay sucursales que esperar
 export type BranchesState = 'ready' | 'loading' | 'failed'
 
+interface BranchesQueryStatus {
+  isWaiting: boolean
+  isLoading: boolean
+  isError: boolean
+  hasLoaded: boolean
+}
+
+// Solo falla si nunca cargaron: un refresco fallido no bloquea si la lista ya está
+export function findBranchesState(status: BranchesQueryStatus): BranchesState {
+  if (!status.isWaiting) return 'ready'
+  if (status.isLoading) return 'loading'
+  if (status.isError && !status.hasLoaded) return 'failed'
+  return 'ready'
+}
+
 interface ExcessFormValues {
   thirdPartyId: string
   hasBranches: boolean
@@ -27,7 +42,7 @@ export function findExcessFormError(values: ExcessFormValues): string | null {
   // Sin la lista de sucursales no se sabe si hay que elegir una: guardaría "Sin sucursal" por error
   if (values.branchesState === 'loading') return 'Espera a que carguen las sucursales del cliente'
   if (values.branchesState === 'failed') {
-    return 'No se pudieron cargar las sucursales del cliente. Intenta de nuevo'
+    return 'No se pudieron cargar las sucursales del cliente. Pulsa Reintentar'
   }
   if (values.hasBranches && !values.branchId) return 'Selecciona una sucursal'
   if (!values.amount || values.amount <= 0) return 'El valor debe ser mayor que 0'

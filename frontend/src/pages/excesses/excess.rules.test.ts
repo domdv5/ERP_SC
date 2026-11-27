@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildCreateExcessBody,
   canConfirmVoid,
+  findBranchesState,
   findExcessFormError,
   NO_BRANCH,
 } from './excess.rules'
@@ -15,6 +16,28 @@ const valid = {
   date: '2026-11-27',
   today: '2026-11-27',
 }
+
+describe('findBranchesState', () => {
+  const loaded = { isWaiting: true, isLoading: false, isError: false, hasLoaded: true }
+
+  it('sin cliente elegido (o proveedor) no espera sucursales', () => {
+    expect(
+      findBranchesState({ ...loaded, isWaiting: false, isError: true, hasLoaded: false }),
+    ).toBe('ready')
+  })
+
+  it('la primera carga en curso bloquea', () => {
+    expect(findBranchesState({ ...loaded, isLoading: true, hasLoaded: false })).toBe('loading')
+  })
+
+  it('si la primera carga falla, bloquea', () => {
+    expect(findBranchesState({ ...loaded, isError: true, hasLoaded: false })).toBe('failed')
+  })
+
+  it('si falla un refresco con la lista ya cargada, sigue usando la lista', () => {
+    expect(findBranchesState({ ...loaded, isError: true })).toBe('ready')
+  })
+})
 
 describe('findExcessFormError', () => {
   it('acepta un formulario completo', () => {
@@ -42,7 +65,7 @@ describe('findExcessFormError', () => {
   it('no deja registrar si no se pudieron cargar las sucursales', () => {
     expect(
       findExcessFormError({ ...valid, hasBranches: false, branchId: '', branchesState: 'failed' }),
-    ).toBe('No se pudieron cargar las sucursales del cliente. Intenta de nuevo')
+    ).toBe('No se pudieron cargar las sucursales del cliente. Pulsa Reintentar')
   })
 
   it('rechaza valor cero y fecha futura', () => {

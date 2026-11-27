@@ -15,9 +15,9 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { todayInBogota } from '@/lib/format'
 import {
   buildCreateExcessBody,
+  findBranchesState,
   findExcessFormError,
   NO_BRANCH,
-  type BranchesState,
 } from './excess.rules'
 
 interface RegisterExcessPanelProps {
@@ -61,18 +61,19 @@ export function RegisterExcessPanel({ activePartyType }: RegisterExcessPanelProp
 
   const {
     branches,
+    hasLoaded: hasLoadedBranches,
     isLoading: isLoadingBranches,
     isError: isBranchesError,
+    isFetching: isFetchingBranches,
+    refetch: refetchBranches,
   } = useCustomerBranches(isCustomer && thirdPartyId ? thirdPartyId : undefined)
   const hasBranches = isCustomer && branches.length > 0
-  const isWaitingBranches = isCustomer && Boolean(thirdPartyId)
-  const branchesState: BranchesState = !isWaitingBranches
-    ? 'ready'
-    : isLoadingBranches
-      ? 'loading'
-      : isBranchesError
-        ? 'failed'
-        : 'ready'
+  const branchesState = findBranchesState({
+    isWaiting: isCustomer && Boolean(thirdPartyId),
+    isLoading: isLoadingBranches,
+    isError: isBranchesError,
+    hasLoaded: hasLoadedBranches,
+  })
 
   const searchOptions: ComboboxOption[] = (searchData?.items ?? []).map((party) => ({
     id: party.id,
@@ -200,6 +201,19 @@ export function RegisterExcessPanel({ activePartyType }: RegisterExcessPanelProp
 
         {isCustomer && thirdPartyId && isLoadingBranches && (
           <div className="h-10 rounded-md bg-surface-hover animate-pulse" />
+        )}
+        {branchesState === 'failed' && (
+          <p className="text-xs text-red-500 font-accent">
+            No se pudieron cargar las sucursales del cliente.{' '}
+            <button
+              type="button"
+              onClick={() => void refetchBranches()}
+              disabled={isFetchingBranches}
+              className="btn-secondary px-2 py-0.5 text-xs disabled:opacity-60"
+            >
+              {isFetchingBranches ? 'Reintentando...' : 'Reintentar'}
+            </button>
+          </p>
         )}
         {hasBranches && (
           <div className="space-y-1.5">
