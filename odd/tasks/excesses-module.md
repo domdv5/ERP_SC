@@ -20,13 +20,13 @@ Rama `feat/excesses-module`. Riesgo alto: migración, dinero, consecutivo.
 
 | ID | Specs | Ruta | Commit |
 |---|---|---|---|
-| T1 | S3, S9 | Migración + schema (inline) | 8049fb5 |
-| T2 | S1-S5, S7-S10 | Backend módulo `excesses` (service inline + nestjs-code-crafter) | 173f5cc |
-| T3 | S6, S7 | Egresos: excedentes de proveedor (nestjs-code-crafter, pruebas) | 173f5cc |
-| T4 | S1, S5, S8 | Frontend diseño 01 + quitar modal viejo (react-code-crafter) | af3dbef |
+| T1 | S3, S9 | Migración + schema (inline) | d932641 |
+| T2 | S1-S5, S7-S10 | Backend módulo `excesses` (service inline + nestjs-code-crafter) | d4197c0 |
+| T3 | S6, S7 | Egresos: excedentes de proveedor (nestjs-code-crafter, pruebas) | d4197c0 |
+| T4 | S1, S5, S8 | Frontend diseño 01 + quitar modal viejo (react-code-crafter) | 53c6e72 |
 | T5 | todas | Docs, mutaciones, verificación dev | 85b98ee, 8577a88 |
-| T6 | S5, S7 | JD hallazgos 1-6: no registrar mientras cargan/fallan sucursales; EXC en el egreso; invalidaciones cruzadas; panel sigue la pestaña; idempotencia POST /excesses (migración); buscar "EXC-000012" | 173459f |
-| T7 | S3, S4, S5 | JD hallazgos 7-9: filtro Disponible sin "Usado en parte" (+ filtro propio); CHECK fecha/usuario/sin documento en excedente de proveedor; tope de valor | commit B |
+| T6 | S5, S7 | JD hallazgos 1-6: no registrar mientras cargan/fallan sucursales; EXC en el egreso; invalidaciones cruzadas; panel sigue la pestaña; idempotencia POST /excesses (migración); buscar "EXC-000012" | 4531227 |
+| T7 | S3, S4, S5 | JD hallazgos 7-9: filtro Disponible sin "Usado en parte" (+ filtro propio); CHECK fecha/usuario/sin documento en excedente de proveedor; tope de valor | 37a4759 |
 
 ## Log
 
@@ -44,3 +44,4 @@ Rama `feat/excesses-module`. Riesgo alto: migración, dinero, consecutivo.
 - **L12** Judgment Day (dos jueces): APPROVED, sin BLOCKER/CRITICAL; verificación final jest 839/839, vitest 251/251 sobre 949cd2f. Hallazgos informativos 1-9 (ver resumen al dueño).
 - **L13** Dueño: "puede ser 1 y 6 en un commit y el resto en otro no?" + "osea me refiere del 1 al 6" → T6 = hallazgos 1-6 (un commit), T7 = 7-9 (otro commit).
 - **L14** T6 commit 173459f: E2E 9/9, pantalla 4/4, mutaciones 8/8. T7: E2E 4/4, CHECK probado en base real, mutaciones 3/3.
+- **L15** RDD por tramos (dueño: "como lanzamod RDD de toda la funcionaldiad como tal?" → "dale"). El tramo 1 quedó escalado porque el commit de BD arrastraba los borrados de los archivos viejos. Se reordenó la rama con commit-tree (el árbol final quedó idéntico; respaldo en backup/excesses-before-rebase). Resultado: d932641+d4197c0 (BD + backend) APROBADO; 53c6e72 (frontend) APROBADO; 2d85c10..529d537 (fix + docs) no requería revisión (riesgo medio); 4531227+37a4759 (hallazgos JD) APROBADO.
