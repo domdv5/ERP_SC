@@ -490,7 +490,7 @@ describe('ExcessesService', () => {
       expectNothingCreated();
     });
 
-    it('busca la clave también en los excedentes de proveedor', async () => {
+    it('un reintento de proveedor busca la clave solo en los excedentes de proveedor', async () => {
       prisma.supplierCredit.findUnique.mockResolvedValue(
         savedRow({ number: '000013' }),
       );
@@ -500,7 +500,16 @@ describe('ExcessesService', () => {
       );
       expect(result.number).toBe('000013');
       expect(result.partyType).toBe('supplier');
+      expect(prisma.customerCredit.findUnique).not.toHaveBeenCalled();
       expectNothingCreated();
+    });
+
+    it('un excedente de cliente busca la clave solo en los excedentes de cliente', async () => {
+      prisma.customerCredit.findUnique.mockResolvedValue(
+        savedRow({ number: '000012' }),
+      );
+      await service.create(body, user);
+      expect(prisma.supplierCredit.findUnique).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -509,7 +518,6 @@ describe('ExcessesService', () => {
       ['otra fecha', { date: '2026-11-02' }],
       ['otra sucursal', { customerBranchId: 'otra' }],
       ['sin sucursal', { customerBranchId: undefined }],
-      ['otro tipo', { partyType: 'supplier' as const }],
     ])('misma clave con %s → 409 y no crea nada', async (_label, change) => {
       prisma.customerCredit.findUnique.mockResolvedValue(savedRow());
       const error = await service

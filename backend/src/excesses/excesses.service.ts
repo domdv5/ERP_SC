@@ -174,7 +174,10 @@ export class ExcessesService {
   }
 
   async create(dto: CreateExcessDto, user: JwtPayload) {
-    const alreadyCreated = await this.findByIdempotencyKey(dto.idempotencyKey);
+    const alreadyCreated = await this.findByIdempotencyKey(
+      dto.partyType,
+      dto.idempotencyKey,
+    );
     if (alreadyCreated) {
       return this.returnIfSameRequest(dto, alreadyCreated);
     }
@@ -190,7 +193,10 @@ export class ExcessesService {
           'idempotency_key',
         )
       ) {
-        const winner = await this.findByIdempotencyKey(dto.idempotencyKey);
+        const winner = await this.findByIdempotencyKey(
+          dto.partyType,
+          dto.idempotencyKey,
+        );
         if (winner) {
           return this.returnIfSameRequest(dto, winner);
         }
@@ -199,14 +205,19 @@ export class ExcessesService {
     }
   }
 
-  // La clave es única por tabla: se busca en las dos
-  private async findByIdempotencyKey(idempotencyKey: string) {
-    const customerExcess = await this.prisma.customerCredit.findUnique({
-      where: { idempotencyKey },
-      include: CUSTOMER_EXCESS_INCLUDE,
-    });
-    if (customerExcess) {
-      return { partyType: 'customer' as const, row: customerExcess };
+  // Un reintento llega con el mismo tipo: basta buscar en la tabla de ese tipo
+  private async findByIdempotencyKey(
+    partyType: ExcessPartyType,
+    idempotencyKey: string,
+  ) {
+    if (partyType === 'customer') {
+      const customerExcess = await this.prisma.customerCredit.findUnique({
+        where: { idempotencyKey },
+        include: CUSTOMER_EXCESS_INCLUDE,
+      });
+      return customerExcess
+        ? { partyType: 'customer' as const, row: customerExcess }
+        : null;
     }
     const supplierExcess = await this.prisma.supplierCredit.findUnique({
       where: { idempotencyKey },
