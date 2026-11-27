@@ -13,6 +13,7 @@ import { WarehousesModule } from './warehouses/warehouses.module';
 import { DocumentsModule } from './documents/documents.module';
 import { AccountsPayableModule } from '@/accounts-payable/accounts-payable.module';
 import { CreditsModule } from '@/credits/credits.module';
+import { ExcessesModule } from '@/excesses/excesses.module';
 import { AccountsReceivableModule } from '@/accounts-receivable/accounts-receivable.module';
 import { SupplierPaymentsModule } from '@/supplier-payments/supplier-payments.module';
 import { CustomerPaymentsModule } from '@/customer-payments/customer-payments.module';
@@ -61,6 +62,7 @@ import {
     LocationsModule,
     InventoryCasesModule,
     CreditsModule,
+    ExcessesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

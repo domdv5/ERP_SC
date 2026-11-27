@@ -46,7 +46,37 @@ describe('CreditsService', () => {
     });
     expect(
       prisma.supplier.findMany.mock.calls[0][0].where.supplierCredits,
-    ).toEqual({ some: { balance: { gt: 0 } } });
+    ).toEqual({ some: { status: { not: 'voided' }, balance: { gt: 0 } } });
+  });
+
+  it('el detalle de proveedor marca el origen excedente y deja el anulado en voided con total 0', async () => {
+    prisma.supplier.findUnique.mockResolvedValue({
+      thirdParty: { id: 's1', name: 'Prov', documentNumber: '9' },
+      supplierCredits: [
+        {
+          id: 'x1',
+          kind: 'excedente',
+          status: 'voided',
+          amount: money(100),
+          balance: money(0),
+          voidedAt: new Date('2026-11-02'),
+          date: new Date('2026-11-01'),
+          createdAt: new Date('2026-11-01'),
+          sourceDocument: null,
+          applications: [],
+        },
+      ],
+    });
+
+    const result = await service.findSupplierDetail('s1');
+
+    expect(result.credits[0].origin).toEqual({
+      kind: 'excedente',
+      documentType: null,
+      documentNumber: null,
+    });
+    expect(result.credits[0].status).toBe('voided');
+    expect(result.supplier.availableTotal.toString()).toBe('0');
   });
 
   it('sin onlyAvailable lista todo tercero con algún saldo, usado o anulado', async () => {

@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { JwtPayload } from '@/common/types';
@@ -134,6 +135,44 @@ describe('SupplierPaymentsService.create — reparto del saldo a favor', () => {
     expect(tx.supplierCreditApplication.create).not.toHaveBeenCalled();
     expect(tx.accountsPayable.update).not.toHaveBeenCalled();
   });
+
+  const rejectsCredit = async (
+    credit: { supplierId: string; status: string },
+    message: string,
+  ) => {
+    tx.accountsPayable.findMany.mockResolvedValue([payable('ap1', 100)]);
+    tx.supplierCredit.findMany.mockResolvedValue([
+      { id: 'sc1', balance: new Prisma.Decimal(100), ...credit },
+    ]);
+    const dto = {
+      supplierId: SUPPLIER,
+      idempotencyKey: 'key',
+      payables: [{ accountPayableId: 'ap1', amount: 100 }],
+      credits: [{ supplierCreditId: 'sc1', amount: 100 }],
+    } as CreateSupplierPaymentDto;
+
+    const error = await service
+      .create(dto, user)
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect((error as Error).message).toBe(message);
+    expect(tx.supplierPayment.create).not.toHaveBeenCalled();
+    expect(tx.supplierCredit.update).not.toHaveBeenCalled();
+    expect(tx.supplierCreditApplication.create).not.toHaveBeenCalled();
+    expect(tx.accountsPayable.update).not.toHaveBeenCalled();
+  };
+
+  it('rechaza el saldo a favor (excedente) de otro proveedor y no guarda nada', () =>
+    rejectsCredit(
+      { supplierId: 'otro', status: 'available' },
+      'La nota crédito citada no pertenece al proveedor de este egreso',
+    ));
+
+  it('rechaza un excedente anulado y no guarda nada', () =>
+    rejectsCredit(
+      { supplierId: SUPPLIER, status: 'voided' },
+      'La nota crédito citada ya fue utilizada',
+    ));
 
   it('un saldo ya usado en parte se aplica por todo lo que le queda, repartido entre dos CxP', async () => {
     tx.accountsPayable.findMany.mockResolvedValue([
