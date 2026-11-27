@@ -30,4 +30,8 @@ export class CreateExcessDto implements CreateExcessBody {
     message: 'date debe tener formato YYYY-MM-DD',
   })
   date?: string;
+
+  // La genera el frontend al abrir el panel; un reintento con la misma clave no duplica (ver ExcessesService.create)
+  @IsUUID()
+  idempotencyKey!: string;
 }

@@ -57,6 +57,8 @@ export interface CreateExcessBody {
   amount: number;
   // YYYY-MM-DD, default hoy (Bogotá), nunca futura
   date?: string;
+  // Un reintento con la misma clave y el mismo body devuelve el excedente ya creado
+  idempotencyKey: string;
 }
 
 // POST /excesses/customers/:id/void y /excesses/suppliers/:id/void → ExcessItem

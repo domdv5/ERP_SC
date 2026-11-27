@@ -52,3 +52,36 @@ Pasaron todas:
 - Pantalla angosta (menos de xl).
 - Que el formulario de egreso abierto se refresque solo después de registrar un excedente; la consulta de open-items no se invalida.
 - El uso de un excedente de cliente en un recibo de caja. Ese código no cambió, pero no se volvió a ejercitar.
+
+## T6 — Hallazgos 1 a 6 de Judgment Day
+- Conteos:
+  - backend: `tsc` sin errores y jest 865/865;
+  - frontend: `tsc` sin errores, vitest 259/259 y el build compila.
+- Migración `20261127140000_excess_idempotency` aplicada. `migrate diff` solo muestra los índices trigram, que son una diferencia ya aceptada.
+- E2E contra la API, 9/9 PASS:
+  - un reintento con la misma clave devuelve el mismo excedente y no crea otro;
+  - la misma clave con otro valor da 409;
+  - registrar sin clave da 400;
+  - buscar "EXC-000012", "EXC 000012" y "000012" encuentra el excedente;
+  - el egreso recibe el tipo, el número y la fecha del excedente.
+- Pantalla (Playwright), 4/4 PASS:
+  - al pasar a la pestaña Proveedores, el panel cambia a Proveedor;
+  - registrar desde la pantalla da 201, así que la clave se manda bien;
+  - el excedente aparece como Disponible y se anula.
+- Mutaciones:
+
+| Mutación | Resultado |
+|---|---|
+| I1 ignorar una clave ya usada | DETECTADA |
+| I2 no comparar el valor | DETECTADA |
+| I3 no comparar el tercero | DETECTADA |
+| I4 no comparar la sucursal | DETECTADA |
+| I5 no buscar la clave en proveedores | DETECTADA |
+| I6 en una carrera, responder error | DETECTADA |
+| I7 no quitar el prefijo EXC al buscar | DETECTADA |
+| F1 registrar mientras cargan las sucursales (frontend) | DETECTADA |
+
+- Qué no se probó:
+  - la carrera real P2002 en Postgres (solo con mocks);
+  - el texto "Excedente EXC-…" dentro de la pantalla del egreso (solo pruebas unitarias del helper);
+  - el recibo de caja: el backend ya manda `number`, pero la pantalla del recibo todavía no lo muestra.

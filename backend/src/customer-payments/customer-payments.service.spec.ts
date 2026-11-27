@@ -2,7 +2,10 @@ import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { JwtPayload } from '@/common/types';
-import { CustomerPaymentsService } from './customer-payments.service';
+import {
+  CUSTOMER_PAYMENT_DETAIL_INCLUDE,
+  CustomerPaymentsService,
+} from './customer-payments.service';
 import { CreateCustomerPaymentDto } from './dto/create-customer-payment.dto';
 
 const CLIENT = 'c1';
@@ -798,6 +801,15 @@ describe('CustomerPaymentsService', () => {
     });
   });
 
+  describe('detalle — crédito aplicado', () => {
+    it('el detalle pide el número del saldo a favor aplicado', () => {
+      expect(
+        CUSTOMER_PAYMENT_DETAIL_INCLUDE.creditApplications.select.customerCredit
+          .select.number,
+      ).toBe(true);
+    });
+  });
+
   describe('findOpenItems', () => {
     const whereOf = () =>
       (
@@ -854,6 +866,29 @@ describe('CustomerPaymentsService', () => {
         expect.objectContaining({ kind: 'devolucion', date: dvvDate }),
       );
       expect(credits[0]).not.toHaveProperty('createdAt');
+    });
+
+    it('el excedente trae su número EXC en saldos abiertos', async () => {
+      prisma.customerCredit.findMany.mockResolvedValue([
+        {
+          id: 'cc1',
+          amount: new Prisma.Decimal(50),
+          balance: new Prisma.Decimal(50),
+          date: new Date('2026-11-01'),
+          createdAt: new Date('2026-11-02'),
+          kind: 'excedente',
+          number: '000012',
+          usableIn: 'administracion',
+          customerBranchId: null,
+          sourceDocument: null,
+        },
+      ]);
+      const { credits } = await service.findOpenItems(CLIENT);
+      expect(credits[0].number).toBe('000012');
+      const call = prisma.customerCredit.findMany.mock.calls[0] as [
+        { select: { number?: boolean } },
+      ];
+      expect(call[0].select.number).toBe(true);
     });
 
     it('no pide saldos de facturación', async () => {

@@ -2,7 +2,10 @@ import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { JwtPayload } from '@/common/types';
-import { SupplierPaymentsService } from './supplier-payments.service';
+import {
+  SUPPLIER_PAYMENT_DETAIL_INCLUDE,
+  SupplierPaymentsService,
+} from './supplier-payments.service';
 import { CreateSupplierPaymentDto } from './dto/create-supplier-payment.dto';
 
 const SUPPLIER = 's1';
@@ -205,5 +208,61 @@ describe('SupplierPaymentsService.create — reparto del saldo a favor', () => {
       where: { id: 'sc1' },
       data: expect.objectContaining({ balance: 0, status: 'used' }),
     });
+  });
+});
+
+describe('SupplierPaymentsService — saldo a favor con tipo, número y fecha', () => {
+  const prisma = {
+    accountsPayable: { findMany: jest.fn() },
+    supplierCredit: { findMany: jest.fn() },
+  };
+  const service = new SupplierPaymentsService(
+    prisma as unknown as PrismaService,
+    { next: jest.fn() },
+  );
+  const excess = {
+    id: 'sc1',
+    supplierId: SUPPLIER,
+    kind: 'excedente' as const,
+    number: '000012',
+    date: new Date('2026-11-01'),
+    amount: new Prisma.Decimal(200),
+    balance: new Prisma.Decimal(200),
+    status: 'available' as const,
+    sourceDocumentId: null,
+    sourceDocument: null,
+    createdAt: new Date('2026-11-02'),
+  };
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.accountsPayable.findMany.mockResolvedValue([]);
+  });
+
+  it('open-items devuelve kind, number y date del excedente (el recibo muestra EXC)', async () => {
+    prisma.supplierCredit.findMany.mockResolvedValue([excess]);
+    const { credits } = await service.findOpenItems(SUPPLIER);
+    expect(credits[0]).toEqual(
+      expect.objectContaining({
+        kind: 'excedente',
+        number: '000012',
+        date: excess.date,
+      }),
+    );
+  });
+
+  it('open-items de una nota DVC deja number y date en null', async () => {
+    prisma.supplierCredit.findMany.mockResolvedValue([
+      { ...excess, kind: 'devolucion', number: null, date: null },
+    ]);
+    const { credits } = await service.findOpenItems(SUPPLIER);
+    expect(credits[0]).toEqual(
+      expect.objectContaining({ kind: 'devolucion', number: null, date: null }),
+    );
+  });
+
+  it('el detalle pide el crédito completo (kind, number, date) en creditApplications', () => {
+    const include = SUPPLIER_PAYMENT_DETAIL_INCLUDE.creditApplications.include;
+    expect('select' in include.supplierCredit).toBe(false);
   });
 });

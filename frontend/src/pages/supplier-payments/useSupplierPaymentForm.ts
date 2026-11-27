@@ -167,6 +167,7 @@ export function useSupplierPaymentForm() {
       const supplierPayment = await createSupplierPaymentMutateAsync(payload)
       queryClient.invalidateQueries({ queryKey: ['accounts-payable'] })
       queryClient.invalidateQueries({ queryKey: ['supplier-payments'] })
+      queryClient.invalidateQueries({ queryKey: ['excesses'] })
       queryClient.invalidateQueries({
         queryKey: ['supplier-payments-open-items', values.supplierId],
       })

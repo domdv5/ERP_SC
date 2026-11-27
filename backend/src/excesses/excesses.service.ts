@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -81,6 +82,8 @@ export class ExcessesService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const search = query.search?.trim();
+    // El número se muestra como EXC-000012: se acepta con o sin el prefijo
+    const numberSearch = search?.replace(/^EXC[\s-]*/i, '');
     const thirdPartyWhere = {
       thirdParty: {
         OR: [
@@ -97,7 +100,9 @@ export class ExcessesService {
         ...(search
           ? {
               OR: [
-                { number: { contains: search } },
+                ...(numberSearch
+                  ? [{ number: { contains: numberSearch } }]
+                  : []),
                 { customer: thirdPartyWhere },
               ],
             }
@@ -125,7 +130,7 @@ export class ExcessesService {
       ...(search
         ? {
             OR: [
-              { number: { contains: search } },
+              ...(numberSearch ? [{ number: { contains: numberSearch } }] : []),
               { supplier: thirdPartyWhere },
             ],
           }
@@ -148,6 +153,82 @@ export class ExcessesService {
   }
 
   async create(dto: CreateExcessDto, user: JwtPayload) {
+    const alreadyCreated = await this.findByIdempotencyKey(dto.idempotencyKey);
+    if (alreadyCreated) {
+      return this.returnIfSameRequest(dto, alreadyCreated);
+    }
+
+    try {
+      return await this.createNew(dto, user);
+    } catch (error) {
+      // Carrera entre dos requests con la misma clave: el @unique revienta con P2002
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        (error.meta?.target as string[] | undefined)?.includes(
+          'idempotency_key',
+        )
+      ) {
+        const winner = await this.findByIdempotencyKey(dto.idempotencyKey);
+        if (winner) {
+          return this.returnIfSameRequest(dto, winner);
+        }
+      }
+      throw error;
+    }
+  }
+
+  // La clave es única por tabla: se busca en las dos
+  private async findByIdempotencyKey(idempotencyKey: string) {
+    const customerExcess = await this.prisma.customerCredit.findUnique({
+      where: { idempotencyKey },
+      include: CUSTOMER_EXCESS_INCLUDE,
+    });
+    if (customerExcess) {
+      return { partyType: 'customer' as const, row: customerExcess };
+    }
+    const supplierExcess = await this.prisma.supplierCredit.findUnique({
+      where: { idempotencyKey },
+      include: SUPPLIER_EXCESS_INCLUDE,
+    });
+    return supplierExcess
+      ? { partyType: 'supplier' as const, row: supplierExcess }
+      : null;
+  }
+
+  private returnIfSameRequest(
+    dto: CreateExcessDto,
+    existing: NonNullable<
+      Awaited<ReturnType<typeof this.findByIdempotencyKey>>
+    >,
+  ) {
+    const { row } = existing;
+    const savedThirdPartyId =
+      existing.partyType === 'customer'
+        ? existing.row.customerId
+        : existing.row.supplierId;
+    const savedBranchId =
+      existing.partyType === 'customer' ? existing.row.customerBranchId : null;
+    // Sin date en el body el servidor puso hoy: cambia de día entre reintentos, no se compara
+    const isSame =
+      existing.partyType === dto.partyType &&
+      savedThirdPartyId === dto.thirdPartyId &&
+      savedBranchId === (dto.customerBranchId ?? null) &&
+      toCents(row.amount) === toCents(dto.amount) &&
+      (!dto.date || row.date?.toISOString().slice(0, 10) === dto.date);
+    if (!isSame) {
+      throw new ConflictException(
+        'Esta clave de idempotencia ya se usó para un excedente distinto',
+      );
+    }
+    return matchExcessContract(
+      existing.partyType === 'customer'
+        ? this.toCustomerExcess(existing.row)
+        : this.toSupplierExcess(existing.row),
+    );
+  }
+
+  private async createNew(dto: CreateExcessDto, user: JwtPayload) {
     const thirdParty = await this.prisma.thirdParty.findUnique({
       where: { id: dto.thirdPartyId },
       select: { isCustomer: true, isSupplier: true },
@@ -199,6 +280,7 @@ export class ExcessesService {
         status: 'available' as const,
         date: new Date(dateText),
         userId: user.sub,
+        idempotencyKey: dto.idempotencyKey,
       };
 
       if (dto.partyType === 'customer') {

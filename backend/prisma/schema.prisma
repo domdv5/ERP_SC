@@ -903,6 +903,8 @@ model SupplierCredit {
   kind             SupplierCreditKind @default(devolucion)
   /// Solo excedentes: consecutivo EXC (compartido con los excedentes de cliente), fecha, quién lo registró y anulación.
   number           String?            @unique @db.VarChar(20)
+  /// Solo excedentes: clave del reintento de POST /excesses (un doble clic no duplica).
+  idempotencyKey   String?            @unique @map("idempotency_key") @db.VarChar(100)
   date             DateTime?          @db.Date
   userId           String?            @map("user_id") @db.Uuid
   voidedAt         DateTime?          @map("voided_at") @db.Timestamptz
@@ -981,6 +983,8 @@ model CustomerCredit {
   usableIn         CustomerCreditUsableIn @default(facturacion) @map("usable_in")
   /// Solo excedentes: consecutivo EXC (compartido con los excedentes de proveedor).
   number           String?                @unique @db.VarChar(20)
+  /// Solo excedentes: clave del reintento de POST /excesses (un doble clic no duplica).
+  idempotencyKey   String?                @unique @map("idempotency_key") @db.VarChar(100)
   voidReason       ExcessVoidReason?      @map("void_reason")
   voidReasonOther  String?                @map("void_reason_other") @db.VarChar(500)
   /// Solo excedentes: se aplica únicamente a CxC de esta sucursal (null = CxC sin sucursal).

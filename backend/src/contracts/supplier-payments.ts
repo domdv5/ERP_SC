@@ -84,6 +84,10 @@ export interface SupplierPaymentCredit {
   status: string;
   createdAt: string;
   sourceDocument: PayableDocumentRef | null;
+  // Excedente: number (EXC) y date vienen llenos; nota de DVC: null
+  kind: 'devolucion' | 'excedente';
+  number: string | null;
+  date: string | null;
 }
 
 export interface SupplierPaymentCreditApplication {

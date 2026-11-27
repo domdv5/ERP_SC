@@ -24,6 +24,7 @@ import {
 } from '@/components/shared'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { cn } from '@/lib/utils'
+import { invalidateAfterExcessChange } from '@/lib/invalidation'
 import { docNumber, formatCOP, formatDateOnly } from '@/lib/format'
 import { CREDIT_STATUS_BADGE } from '@/pages/credits/credits.constants'
 import { RegisterExcessPanel } from './RegisterExcessPanel'
@@ -107,12 +108,7 @@ export default function ExcessesPage() {
   async function handleVoid(excess: ExcessItem, body: VoidExcessBody) {
     try {
       await voidMutation.mutateAsync({ excess, body })
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['excesses'] }),
-        queryClient.invalidateQueries({ queryKey: ['credits'] }),
-        queryClient.invalidateQueries({ queryKey: ['accounts-receivable'] }),
-        queryClient.invalidateQueries({ queryKey: ['accounts-payable'] }),
-      ])
+      invalidateAfterExcessChange(queryClient)
       toast.success('Excedente anulado correctamente')
       setVoiding(null)
     } catch (err) {
@@ -305,7 +301,7 @@ export default function ExcessesPage() {
           )}
         </section>
 
-        <RegisterExcessPanel initialPartyType="customer" />
+        <RegisterExcessPanel activePartyType={partyType} />
       </div>
 
       {voiding && (

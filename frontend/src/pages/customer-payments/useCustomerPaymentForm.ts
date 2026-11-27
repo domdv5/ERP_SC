@@ -254,6 +254,7 @@ export function useCustomerPaymentForm() {
       const customerPayment = await createCustomerPaymentMutateAsync(payload)
       queryClient.invalidateQueries({ queryKey: ['accounts-receivable'] })
       queryClient.invalidateQueries({ queryKey: ['customer-payments'] })
+      queryClient.invalidateQueries({ queryKey: ['excesses'] })
       invalidateThirdParties(queryClient)
       queryClient.invalidateQueries({ queryKey: ['customer-payments-open-items', values.clientId] })
       toast.success(`Recibo de caja RC-${customerPayment.number} registrado correctamente`)

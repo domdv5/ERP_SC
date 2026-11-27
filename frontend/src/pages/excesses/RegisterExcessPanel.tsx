@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'use-debounce'
 import { toast } from 'sonner'
@@ -10,20 +10,26 @@ import { getThirdParties } from '@/services/third-parties.service'
 import { useCustomerBranches } from '@/hooks/useCustomerBranches'
 import { Combobox, SegmentedToggle, ThousandsInput } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
+import { invalidateAfterExcessChange } from '@/lib/invalidation'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { todayInBogota } from '@/lib/format'
-import { buildCreateExcessBody, findExcessFormError, NO_BRANCH } from './excess.rules'
+import {
+  buildCreateExcessBody,
+  findExcessFormError,
+  NO_BRANCH,
+  type BranchesState,
+} from './excess.rules'
 
 interface RegisterExcessPanelProps {
-  // Pestaña activa de la lista: el panel arranca con ese tipo
-  initialPartyType: ExcessPartyType
+  // Pestaña activa de la lista: al cambiarla el panel cambia de tipo y limpia el tercero
+  activePartyType: ExcessPartyType
 }
 
-export function RegisterExcessPanel({ initialPartyType }: RegisterExcessPanelProps) {
+export function RegisterExcessPanel({ activePartyType }: RegisterExcessPanelProps) {
   const queryClient = useQueryClient()
   const today = todayInBogota()
 
-  const [partyType, setPartyType] = useState<ExcessPartyType>(initialPartyType)
+  const [partyType, setPartyType] = useState<ExcessPartyType>(activePartyType)
   const [thirdPartyId, setThirdPartyId] = useState('')
   const [thirdPartyName, setThirdPartyName] = useState('')
   const [thirdPartySearch, setThirdPartySearch] = useState('')
@@ -33,6 +39,8 @@ export function RegisterExcessPanel({ initialPartyType }: RegisterExcessPanelPro
   const [error, setError] = useState<string | null>(null)
   // Se marca al instante: un doble clic rápido no crea dos excedentes
   const isSubmittingRef = useRef(false)
+  // Misma clave en los reintentos; cambia al editar el formulario o tras registrar (los campos se limpian)
+  const idempotencyKeyRef = useRef(crypto.randomUUID())
 
   const isCustomer = partyType === 'customer'
   const [debouncedSearch] = useDebounce(thirdPartySearch, 400)
@@ -51,10 +59,20 @@ export function RegisterExcessPanel({ initialPartyType }: RegisterExcessPanelPro
     enabled: debouncedSearch.length >= 1,
   })
 
-  const { branches, isLoading: isLoadingBranches } = useCustomerBranches(
-    isCustomer && thirdPartyId ? thirdPartyId : undefined,
-  )
+  const {
+    branches,
+    isLoading: isLoadingBranches,
+    isError: isBranchesError,
+  } = useCustomerBranches(isCustomer && thirdPartyId ? thirdPartyId : undefined)
   const hasBranches = isCustomer && branches.length > 0
+  const isWaitingBranches = isCustomer && Boolean(thirdPartyId)
+  const branchesState: BranchesState = !isWaitingBranches
+    ? 'ready'
+    : isLoadingBranches
+      ? 'loading'
+      : isBranchesError
+        ? 'failed'
+        : 'ready'
 
   const searchOptions: ComboboxOption[] = (searchData?.items ?? []).map((party) => ({
     id: party.id,
@@ -71,6 +89,16 @@ export function RegisterExcessPanel({ initialPartyType }: RegisterExcessPanelPro
 
   const { mutateAsync, isPending } = useMutation({ mutationFn: createExcess })
 
+  useEffect(() => {
+    idempotencyKeyRef.current = crypto.randomUUID()
+  }, [partyType, thirdPartyId, branchId, amount, date])
+
+  const [prevActivePartyType, setPrevActivePartyType] = useState(activePartyType)
+  if (prevActivePartyType !== activePartyType) {
+    setPrevActivePartyType(activePartyType)
+    changePartyType(activePartyType)
+  }
+
   function changePartyType(next: ExcessPartyType) {
     setPartyType(next)
     setThirdPartyId('')
@@ -82,7 +110,7 @@ export function RegisterExcessPanel({ initialPartyType }: RegisterExcessPanelPro
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    const values = { thirdPartyId, hasBranches, branchId, amount, date, today }
+    const values = { thirdPartyId, hasBranches, branchesState, branchId, amount, date, today }
     const formError = findExcessFormError(values)
     if (formError) return setError(formError)
     if (isSubmittingRef.current) return
@@ -90,13 +118,8 @@ export function RegisterExcessPanel({ initialPartyType }: RegisterExcessPanelPro
     setError(null)
 
     try {
-      await mutateAsync(buildCreateExcessBody(partyType, values))
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['excesses'] }),
-        queryClient.invalidateQueries({ queryKey: ['credits'] }),
-        queryClient.invalidateQueries({ queryKey: ['accounts-receivable'] }),
-        queryClient.invalidateQueries({ queryKey: ['accounts-payable'] }),
-      ])
+      await mutateAsync(buildCreateExcessBody(partyType, values, idempotencyKeyRef.current))
+      invalidateAfterExcessChange(queryClient)
       toast.success('Excedente registrado correctamente')
       setThirdPartyId('')
       setThirdPartyName('')

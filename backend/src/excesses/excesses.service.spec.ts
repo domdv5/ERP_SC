@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SequenceService } from '@/common/sequence/sequence.service';
@@ -7,6 +11,7 @@ import { ExcessesService } from './excesses.service';
 
 const THIRD_PARTY = 'tp1';
 const BRANCH = 'b1';
+const KEY = '11111111-1111-4111-8111-111111111111';
 const user = { sub: 'u1' } as JwtPayload;
 const thirdParty = { id: THIRD_PARTY, name: 'Cliente', documentNumber: '900' };
 
@@ -44,6 +49,16 @@ describe('ExcessesService', () => {
     },
   };
   const prisma = {
+    customerCredit: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+    },
+    supplierCredit: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+    },
     thirdParty: { findUnique: jest.fn() },
     customerBranch: { findFirst: jest.fn() },
     $transaction: jest.fn(),
@@ -74,6 +89,8 @@ describe('ExcessesService', () => {
     tx.$queryRaw.mockResolvedValue([]);
     tx.customerCredit.create.mockResolvedValue(row());
     tx.supplierCredit.create.mockResolvedValue(row());
+    prisma.customerCredit.findUnique.mockResolvedValue(null);
+    prisma.supplierCredit.findUnique.mockResolvedValue(null);
   });
 
   describe('create', () => {
@@ -84,7 +101,12 @@ describe('ExcessesService', () => {
       });
       const error = await service
         .create(
-          { partyType: 'customer', thirdPartyId: THIRD_PARTY, amount: 1000 },
+          {
+            partyType: 'customer',
+            thirdPartyId: THIRD_PARTY,
+            idempotencyKey: KEY,
+            amount: 1000,
+          },
           user,
         )
         .catch((caught: unknown) => caught);
@@ -100,7 +122,12 @@ describe('ExcessesService', () => {
       });
       const error = await service
         .create(
-          { partyType: 'supplier', thirdPartyId: THIRD_PARTY, amount: 1000 },
+          {
+            partyType: 'supplier',
+            thirdPartyId: THIRD_PARTY,
+            idempotencyKey: KEY,
+            amount: 1000,
+          },
           user,
         )
         .catch((caught: unknown) => caught);
@@ -116,6 +143,7 @@ describe('ExcessesService', () => {
           {
             partyType: 'customer',
             thirdPartyId: THIRD_PARTY,
+            idempotencyKey: KEY,
             customerBranchId: 'otra',
             amount: 1000,
           },
@@ -139,6 +167,7 @@ describe('ExcessesService', () => {
           {
             partyType: 'supplier',
             thirdPartyId: THIRD_PARTY,
+            idempotencyKey: KEY,
             customerBranchId: BRANCH,
             amount: 1000,
           },
@@ -158,6 +187,7 @@ describe('ExcessesService', () => {
           {
             partyType: 'customer',
             thirdPartyId: THIRD_PARTY,
+            idempotencyKey: KEY,
             amount: 1000,
             date: '2999-01-01',
           },
@@ -176,7 +206,12 @@ describe('ExcessesService', () => {
       async (amount) => {
         const error = await service
           .create(
-            { partyType: 'supplier', thirdPartyId: THIRD_PARTY, amount },
+            {
+              partyType: 'supplier',
+              thirdPartyId: THIRD_PARTY,
+              idempotencyKey: KEY,
+              amount,
+            },
             user,
           )
           .catch((caught: unknown) => caught);
@@ -193,6 +228,7 @@ describe('ExcessesService', () => {
         {
           partyType: 'customer',
           thirdPartyId: THIRD_PARTY,
+          idempotencyKey: KEY,
           customerBranchId: BRANCH,
           amount: 7000000,
           date: '2026-10-29',
@@ -209,6 +245,7 @@ describe('ExcessesService', () => {
             status: 'available',
             date: new Date('2026-10-29'),
             userId: 'u1',
+            idempotencyKey: KEY,
             customerId: THIRD_PARTY,
             kind: 'excedente',
             usableIn: 'administracion',
@@ -221,7 +258,12 @@ describe('ExcessesService', () => {
 
     it('cliente sin sucursal guarda customerBranchId null', async () => {
       await service.create(
-        { partyType: 'customer', thirdPartyId: THIRD_PARTY, amount: 1000 },
+        {
+          partyType: 'customer',
+          thirdPartyId: THIRD_PARTY,
+          idempotencyKey: KEY,
+          amount: 1000,
+        },
         user,
       );
       expect(prisma.customerBranch.findFirst).not.toHaveBeenCalled();
@@ -237,6 +279,7 @@ describe('ExcessesService', () => {
         {
           partyType: 'supplier',
           thirdPartyId: THIRD_PARTY,
+          idempotencyKey: KEY,
           amount: 500,
           date: '2026-10-29',
         },
@@ -252,6 +295,7 @@ describe('ExcessesService', () => {
             status: 'available',
             date: new Date('2026-10-29'),
             userId: 'u1',
+            idempotencyKey: KEY,
             supplierId: THIRD_PARTY,
             kind: 'excedente',
           },
@@ -385,6 +429,176 @@ describe('ExcessesService', () => {
     });
   });
 
+  describe('create — idempotencia', () => {
+    const body = {
+      partyType: 'customer' as const,
+      thirdPartyId: THIRD_PARTY,
+      customerBranchId: BRANCH,
+      amount: 1000,
+      date: '2026-11-01',
+      idempotencyKey: KEY,
+    };
+    const conflictMessage =
+      'Esta clave de idempotencia ya se usó para un excedente distinto';
+    const savedRow = (overrides: Record<string, unknown> = {}) =>
+      row({
+        customerId: THIRD_PARTY,
+        supplierId: THIRD_PARTY,
+        customerBranch: { id: BRANCH, name: 'Sede' },
+        customerBranchId: BRANCH,
+        ...overrides,
+      });
+    const idempotencyRace = () =>
+      new Prisma.PrismaClientKnownRequestError('dup', {
+        code: 'P2002',
+        clientVersion: 'test',
+        meta: { target: ['idempotency_key'] },
+      });
+
+    it('guarda la clave en el excedente de cliente', async () => {
+      await service.create(body, user);
+      expect(tx.customerCredit.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ idempotencyKey: KEY }),
+        }),
+      );
+    });
+
+    it('guarda la clave en el excedente de proveedor', async () => {
+      await service.create(
+        { ...body, partyType: 'supplier', customerBranchId: undefined },
+        user,
+      );
+      expect(tx.supplierCredit.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ idempotencyKey: KEY }),
+        }),
+      );
+    });
+
+    it('reintento con la misma clave y el mismo body devuelve el excedente ya creado sin consumir número', async () => {
+      prisma.customerCredit.findUnique.mockResolvedValue(
+        savedRow({ number: '000012' }),
+      );
+      const result = await service.create(body, user);
+      expect(result.number).toBe('000012');
+      expect(prisma.customerCredit.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { idempotencyKey: KEY } }),
+      );
+      expectNothingCreated();
+    });
+
+    it('busca la clave también en los excedentes de proveedor', async () => {
+      prisma.supplierCredit.findUnique.mockResolvedValue(
+        savedRow({ number: '000013' }),
+      );
+      const result = await service.create(
+        { ...body, partyType: 'supplier', customerBranchId: undefined },
+        user,
+      );
+      expect(result.number).toBe('000013');
+      expect(result.partyType).toBe('supplier');
+      expectNothingCreated();
+    });
+
+    it.each([
+      ['otro tercero', { thirdPartyId: 'otro' }],
+      ['otro valor', { amount: 2000 }],
+      ['otra fecha', { date: '2026-11-02' }],
+      ['otra sucursal', { customerBranchId: 'otra' }],
+      ['sin sucursal', { customerBranchId: undefined }],
+      ['otro tipo', { partyType: 'supplier' as const }],
+    ])('misma clave con %s → 409 y no crea nada', async (_label, change) => {
+      prisma.customerCredit.findUnique.mockResolvedValue(savedRow());
+      const error = await service
+        .create({ ...body, ...change }, user)
+        .catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as Error).message).toBe(conflictMessage);
+      expectNothingCreated();
+    });
+
+    it('carrera: si la clave revienta con P2002 devuelve el excedente que ganó', async () => {
+      tx.customerCredit.create.mockRejectedValue(idempotencyRace());
+      prisma.customerCredit.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(savedRow({ number: '000012' }));
+      const result = await service.create(body, user);
+      expect(result.number).toBe('000012');
+    });
+
+    it('carrera con un body distinto → 409', async () => {
+      tx.customerCredit.create.mockRejectedValue(idempotencyRace());
+      prisma.customerCredit.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(savedRow({ amount: new Prisma.Decimal(5) }));
+      const error = await service
+        .create(body, user)
+        .catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as Error).message).toBe(conflictMessage);
+    });
+
+    it('un P2002 de otra columna no se oculta', async () => {
+      const other = new Prisma.PrismaClientKnownRequestError('dup', {
+        code: 'P2002',
+        clientVersion: 'test',
+        meta: { target: ['number'] },
+      });
+      tx.customerCredit.create.mockRejectedValue(other);
+      await expect(service.create(body, user)).rejects.toBe(other);
+    });
+  });
+
+  describe('findAll — búsqueda por número', () => {
+    const numberTermOf = (table: 'customerCredit' | 'supplierCredit') => {
+      const call = prisma[table].findMany.mock.calls[0] as [
+        { where: { OR: { number?: { contains: string } }[] } },
+      ];
+      return call[0].where.OR[0];
+    };
+
+    beforeEach(() => {
+      prisma.$transaction.mockResolvedValue([[], 0]);
+    });
+
+    it.each([
+      'EXC-000012',
+      'EXC 000012',
+      'exc000012',
+      'Exc - 000012',
+      '000012',
+    ])('"%s" busca el número 000012', async (search) => {
+      await service.findAll({ partyType: 'customer', search });
+      expect(numberTermOf('customerCredit')).toEqual({
+        number: { contains: '000012' },
+      });
+    });
+
+    it('proveedor: también quita el prefijo EXC', async () => {
+      await service.findAll({ partyType: 'supplier', search: 'EXC-12' });
+      expect(numberTermOf('supplierCredit')).toEqual({
+        number: { contains: '12' },
+      });
+    });
+
+    it('un nombre que empieza con "exc" se sigue buscando completo por nombre', async () => {
+      await service.findAll({ partyType: 'customer', search: 'Excavaciones' });
+      const call = prisma.customerCredit.findMany.mock.calls[0] as [
+        { where: { OR: unknown[] } },
+      ];
+      expect(JSON.stringify(call[0].where.OR)).toContain('"Excavaciones"');
+    });
+
+    it('solo "EXC" no filtra por número (evita traer todo por el número)', async () => {
+      await service.findAll({ partyType: 'customer', search: 'EXC' });
+      const call = prisma.customerCredit.findMany.mock.calls[0] as [
+        { where: { OR: { number?: unknown }[] } },
+      ];
+      expect(call[0].where.OR.some((term) => 'number' in term)).toBe(false);
+    });
+  });
+
   describe('usages', () => {
     it('muestra una sola vez el recibo que usó el excedente en varias cuentas', async () => {
       const payment = {
@@ -401,7 +615,12 @@ describe('ExcessesService', () => {
         }),
       );
       const created = await service.create(
-        { partyType: 'customer', thirdPartyId: THIRD_PARTY, amount: 1000 },
+        {
+          partyType: 'customer',
+          thirdPartyId: THIRD_PARTY,
+          idempotencyKey: KEY,
+          amount: 1000,
+        },
         user,
       );
       expect(created.usages).toEqual([{ documentType: 'RC', ...payment }]);
