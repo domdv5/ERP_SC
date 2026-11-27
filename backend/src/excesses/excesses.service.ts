@@ -64,11 +64,6 @@ type SupplierExcessRow = Prisma.SupplierCreditGetPayload<{
   include: typeof SUPPLIER_EXCESS_INCLUDE;
 }>;
 
-// Un pago que reparte el excedente en varias cuentas deja una aplicación por cuenta
-function uniqueById<T extends { id: string }>(usages: T[]): T[] {
-  return [...new Map(usages.map((usage) => [usage.id, usage])).values()];
-}
-
 /** Excedentes (pago de más) de clientes y proveedores: el único lugar donde se registran y anulan. */
 @Injectable()
 export class ExcessesService {
@@ -308,12 +303,10 @@ export class ExcessesService {
       partyType: 'customer' as const,
       thirdParty: row.customer.thirdParty,
       customerBranch: row.customerBranch,
-      usages: uniqueById(
-        row.applications.flatMap((application) =>
-          application.customerPayment
-            ? [{ documentType: 'RC' as const, ...application.customerPayment }]
-            : [],
-        ),
+      usages: row.applications.flatMap((application) =>
+        application.customerPayment
+          ? [{ documentType: 'RC' as const, ...application.customerPayment }]
+          : [],
       ),
     };
   }
@@ -324,12 +317,10 @@ export class ExcessesService {
       partyType: 'supplier' as const,
       thirdParty: row.supplier.thirdParty,
       customerBranch: null,
-      usages: uniqueById(
-        row.applications.flatMap((application) =>
-          application.supplierPayment
-            ? [{ documentType: 'EG' as const, ...application.supplierPayment }]
-            : [],
-        ),
+      usages: row.applications.flatMap((application) =>
+        application.supplierPayment
+          ? [{ documentType: 'EG' as const, ...application.supplierPayment }]
+          : [],
       ),
     };
   }

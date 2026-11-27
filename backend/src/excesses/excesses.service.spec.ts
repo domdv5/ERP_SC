@@ -384,27 +384,4 @@ describe('ExcessesService', () => {
       );
     });
   });
-
-  describe('usages', () => {
-    it('muestra una sola vez el recibo que usó el excedente en varias cuentas', async () => {
-      const payment = {
-        id: 'rc1',
-        number: '000017',
-        date: new Date('2026-11-17'),
-      };
-      tx.customerCredit.create.mockResolvedValue(
-        row({
-          applications: [
-            { customerPayment: payment },
-            { customerPayment: payment },
-          ],
-        }),
-      );
-      const created = await service.create(
-        { partyType: 'customer', thirdPartyId: THIRD_PARTY, amount: 1000 },
-        user,
-      );
-      expect(created.usages).toEqual([{ documentType: 'RC', ...payment }]);
-    });
-  });
 });
