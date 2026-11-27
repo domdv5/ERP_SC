@@ -38,3 +38,4 @@ Rama `feat/excesses-module`. Riesgo alto: migración, dinero, consecutivo.
 - **L8** T4 (react-code-crafter): `src/pages/excesses/*`, ruta `/excesses`, menú Tesorería; quitado el modal viejo del estado de cuenta **y también de `CustomerPaymentNewPage`** (segundo lugar de registro). tsc ok, vitest 251/251, build ok. Sin prueba en pantalla.
 - **L9** T2/T3 (nestjs-code-crafter): módulo `/excesses`, borradas las rutas viejas, `credits.service` muestra el origen excedente de proveedor y deja fuera los anulados; el egreso ya cumplía las reglas (solo se agregaron pruebas). tsc ok, jest 838/838.
 - **L10** Verificación: E2E API 25/25 PASS, 9/9 mutaciones DETECTADAS (ver `excesses-module-evidencia.md`). Corte de commits: 8049fb5 (BD), 173f5cc (backend), af3dbef (frontend).
+- **L11** Verificador: S1-S10 PASS. Arreglo de usos repetidos (dc62549). Pantalla verificada con Playwright.

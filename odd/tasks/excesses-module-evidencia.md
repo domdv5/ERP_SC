@@ -34,6 +34,21 @@ Las 25 verificaciones pasaron:
 
 El archivo quedó restaurado después de cada mutación (`cmp` idéntico).
 
+## Corrección después de la verificación
+- El listado repetía el mismo RC o EG cuando un pago repartía el excedente en varias cuentas. Se arregló con `uniqueById` y una prueba RED→GREEN (commit dc62549). Ahora jest da 839/839.
+
+## Verificador independiente (gentle-ai-verify)
+- S1 a S10 PASS. Sin blockers. La revisión nativa no corrió porque el cambio supera el presupuesto de contexto (`lens_context_budget_exceeded`).
+
+## Pantalla (Playwright contra dev)
+Pasaron todas:
+- Al elegir un cliente con sucursales aparece el selector de sucursal, y si no se elige una sale «Selecciona una sucursal».
+- Se registra el excedente: toast, y aparece en la lista como Disponible con su EXC.
+- Al anular, el botón queda deshabilitado sin motivo, y con «Otro» sin texto no deja anular.
+- Queda Anulado con su motivo.
+- La pestaña Proveedores muestra sus EXC.
+
 ## Qué no se probó
-- La pantalla `/excesses` en el navegador.
+- Pantalla angosta (menos de xl).
+- Que el formulario de egreso abierto se refresque solo después de registrar un excedente; la consulta de open-items no se invalida.
 - El uso de un excedente de cliente en un recibo de caja. Ese código no cambió, pero no se volvió a ejercitar.
