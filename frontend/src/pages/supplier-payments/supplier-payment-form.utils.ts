@@ -1,3 +1,6 @@
+import type { SupplierPaymentCredit } from '@contracts/supplier-payments'
+import { docNumber, formatBogotaDate, formatDateOnly } from '@/lib/format'
+
 // Lo que falta cubrir de los abonos para un saldo: abonos menos los otros saldos ya marcados
 export function calculateCreditPending(
   totalAbonos: number,
@@ -17,4 +20,18 @@ export function calculateAmountToPay(totalAbonos: number, totalCreditsApplied: n
 export function limitPayableAmount(next: number, balance: number): number {
   if (Number.isNaN(next) || next < 0) return 0
   return Math.min(next, balance)
+}
+
+type SupplierCreditOrigin = Pick<SupplierPaymentCredit, 'kind' | 'number' | 'date' | 'createdAt'>
+
+// Un excedente no tiene documento de origen: su identidad es el consecutivo EXC
+export function getExcessCreditLabel(credit: SupplierCreditOrigin): string | null {
+  return credit.kind === 'excedente' && credit.number ? docNumber('EXC', credit.number) : null
+}
+
+// El excedente trae su propia fecha (solo día); la nota de DVC usa la de creación
+export function formatSupplierCreditDate(credit: SupplierCreditOrigin): string {
+  return credit.kind === 'excedente' && credit.date
+    ? formatDateOnly(credit.date)
+    : formatBogotaDate(credit.createdAt)
 }

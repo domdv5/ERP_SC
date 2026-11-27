@@ -63,6 +63,7 @@ export const CUSTOMER_PAYMENT_DETAIL_INCLUDE = {
         select: {
           id: true,
           kind: true,
+          number: true,
           amount: true,
           date: true,
           sourceDocument: {
@@ -910,6 +911,7 @@ export class CustomerPaymentsService {
         date: true,
         createdAt: true,
         kind: true,
+        number: true,
         usableIn: true,
         customerBranchId: true,
         sourceDocument: {

@@ -12,12 +12,14 @@ import { formatCOP, docNumber, formatDateOnly, formatDateTimeBogota } from '@/li
 import { TREASURY_PAYMENT_METHOD_LABELS, SUPPLIER_PAYMENT_VOID_REASON_LABELS } from '@/types'
 import type { SupplierPaymentVoidReason } from '@/types'
 import { VoidSupplierPaymentDialog } from './VoidSupplierPaymentDialog'
+import { getExcessCreditLabel } from './supplier-payment-form.utils'
 
 const VOID_INVALIDATE_KEYS = [
   'supplier-payments',
   'supplier-payments-open-items',
   'accounts-payable',
   'documents',
+  'excesses',
 ]
 
 export default function SupplierPaymentDetailPage() {
@@ -346,7 +348,11 @@ export default function SupplierPaymentDetailPage() {
                           )}
                         </Link>
                       ) : (
-                        <span className="text-xs text-content-faint">Sin documento de origen</span>
+                        <span className="text-xs text-content-faint">
+                          {getExcessCreditLabel(application.supplierCredit)
+                            ? `Excedente ${getExcessCreditLabel(application.supplierCredit)}`
+                            : 'Sin documento de origen'}
+                        </span>
                       )}
                     </td>
                     <td className="px-5 py-3.5">

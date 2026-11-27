@@ -12,3 +12,4 @@ export type * from './official-ledger';
 export type * from './reports';
 export type * from './system';
 export type * from './credits';
+export type * from './excesses';

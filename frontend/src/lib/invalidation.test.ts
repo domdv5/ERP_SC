@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { QueryClient } from '@tanstack/react-query'
-import { invalidateAfterDocumentChange, invalidateAfterCustomerPaymentVoid } from './invalidation'
+import {
+  invalidateAfterDocumentChange,
+  invalidateAfterCustomerPaymentVoid,
+  invalidateAfterExcessChange,
+} from './invalidation'
 
 function collectInvalidatedKeys(run: (qc: QueryClient) => void) {
   const invalidateQueries = vi.fn()
@@ -44,5 +48,15 @@ describe('invalidateAfterCustomerPaymentVoid', () => {
     expect(keys).toContainEqual(['credits'])
     expect(keys).toContainEqual(['customer-payments-open-items'])
     expect(prefixes).toContain('third-parties')
+  })
+})
+
+describe('invalidateAfterExcessChange', () => {
+  it('refresca lo que ofrecen los recibos, egresos y el POS', () => {
+    const { keys } = collectInvalidatedKeys((qc) => invalidateAfterExcessChange(qc))
+    expect(keys).toContainEqual(['excesses'])
+    expect(keys).toContainEqual(['customer-payments-open-items'])
+    expect(keys).toContainEqual(['supplier-payments-open-items'])
+    expect(keys).toContainEqual(['customer-available-credits'])
   })
 })

@@ -468,6 +468,8 @@ model User {
   customerPaymentsVoided   CustomerPayment[]    @relation("CustomerPaymentVoidedBy")
   customerCreditsCreated   CustomerCredit[]     @relation("CustomerCreditCreatedBy")
   customerCreditsVoided    CustomerCredit[]     @relation("CustomerCreditVoidedBy")
+  supplierCreditsCreated   SupplierCredit[]     @relation("SupplierCreditCreatedBy")
+  supplierCreditsVoided    SupplierCredit[]     @relation("SupplierCreditVoidedBy")
   customerPayments         CustomerPayment[]
   inventoryCasesClosed     InventoryCase[]      @relation("InventoryCaseClosedBy")
   inventoryCasesReopened   InventoryCase[]      @relation("InventoryCaseReopenedBy")
@@ -882,20 +884,46 @@ enum CreditStatus {
   voided
 }
 
+/// Origen del saldo a favor del proveedor: devolucion (DVC) o excedente (pago de más, registrado en el módulo de excedentes).
+enum SupplierCreditKind {
+  devolucion
+  excedente
+}
+
+/// Motivo al anular un excedente (cliente o proveedor).
+enum ExcessVoidReason {
+  valor_mal_digitado
+  tercero_equivocado
+  otro
+}
+
 model SupplierCredit {
-  id               String       @id @default(uuid(7)) @db.Uuid
-  supplierId       String       @map("supplier_id") @db.Uuid
+  id               String             @id @default(uuid(7)) @db.Uuid
+  supplierId       String             @map("supplier_id") @db.Uuid
+  kind             SupplierCreditKind @default(devolucion)
+  /// Solo excedentes: consecutivo EXC (compartido con los excedentes de cliente), fecha, quién lo registró y anulación. CHECK a mano "supplier_credit_excedente_chk": fecha y usuario obligatorios, sin documento origen.
+  number           String?            @unique @db.VarChar(20)
+  /// Solo excedentes: clave del reintento de POST /excesses (un doble clic no duplica).
+  idempotencyKey   String?            @unique @map("idempotency_key") @db.VarChar(100)
+  date             DateTime?          @db.Date
+  userId           String?            @map("user_id") @db.Uuid
+  voidedAt         DateTime?          @map("voided_at") @db.Timestamptz
+  voidedById       String?            @map("voided_by_id") @db.Uuid
+  voidReason       ExcessVoidReason?  @map("void_reason")
+  voidReasonOther  String?            @map("void_reason_other") @db.VarChar(500)
   // Monto original de la nota crédito. Se guarda en positivo (a diferencia de la
   // AccountsPayable negativa que este modelo reemplaza) porque es un saldo a favor.
-  amount           Decimal      @db.Decimal(16, 2)
+  amount           Decimal            @db.Decimal(16, 2)
   // Invariante: 0 <= balance <= amount; al llegar a 0, status pasa a 'used'. Reforzado por el CHECK "supplier_credit_balance_range_chk" (a mano).
-  balance          Decimal      @db.Decimal(16, 2)
-  sourceDocumentId String?      @map("source_document_id") @db.Uuid
-  // Nunca usa voided: anular solo existe para excedentes de cliente.
-  status           CreditStatus @default(available)
-  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  balance          Decimal            @db.Decimal(16, 2)
+  sourceDocumentId String?            @map("source_document_id") @db.Uuid
+  /// voided: excedente anulado sin haberse usado (las notas DVC nunca se anulan, se borran con su DVC)
+  status           CreditStatus       @default(available)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz
 
   supplier       Supplier                    @relation(fields: [supplierId], references: [id])
+  user           User?                       @relation("SupplierCreditCreatedBy", fields: [userId], references: [id], onDelete: Restrict)
+  voidedBy       User?                       @relation("SupplierCreditVoidedBy", fields: [voidedById], references: [id], onDelete: Restrict)
   sourceDocument Document?                   @relation("DvcSupplierCredit", fields: [sourceDocumentId], references: [id], onDelete: Restrict)
   applications   SupplierCreditApplication[]
 
@@ -953,6 +981,12 @@ model CustomerCredit {
   customerId       String                 @map("customer_id") @db.Uuid
   kind             CustomerCreditKind     @default(devolucion)
   usableIn         CustomerCreditUsableIn @default(facturacion) @map("usable_in")
+  /// Solo excedentes: consecutivo EXC (compartido con los excedentes de proveedor).
+  number           String?                @unique @db.VarChar(20)
+  /// Solo excedentes: clave del reintento de POST /excesses (un doble clic no duplica).
+  idempotencyKey   String?                @unique @map("idempotency_key") @db.VarChar(100)
+  voidReason       ExcessVoidReason?      @map("void_reason")
+  voidReasonOther  String?                @map("void_reason_other") @db.VarChar(500)
   /// Solo excedentes: se aplica únicamente a CxC de esta sucursal (null = CxC sin sucursal).
   customerBranchId String?                @map("customer_branch_id") @db.Uuid
   /// Solo excedentes: fecha del pago de más y quién lo registró.

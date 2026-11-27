@@ -119,6 +119,8 @@ export interface CustomerPaymentCreditApplication {
   customerCredit: {
     id: string;
     kind: CustomerCreditKind;
+    // Solo excedentes: consecutivo EXC
+    number: string | null;
     amount: string;
     // Solo excedentes; una devolución no tiene fecha propia: la UI usa sourceDocument.date
     date: string | null;
@@ -179,6 +181,8 @@ export interface CustomerPaymentOpenCredit {
   balance: string;
   date: string;
   kind: CustomerCreditKind;
+  // Solo excedentes: consecutivo EXC
+  number: string | null;
   usableIn: CustomerCreditUsableIn;
   customerBranchId: string | null;
   // Null en los excedentes

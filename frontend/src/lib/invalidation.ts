@@ -64,8 +64,22 @@ export function invalidateAfterCustomerPaymentVoid(queryClient: QueryClient) {
     'customer-credit',
     'customer-available-credits',
     'credits',
+    'excesses',
     'documents',
     'document',
   ])
   invalidateThirdParties(queryClient)
+}
+
+// Registrar o anular un excedente cambia saldos a favor y lo que ofrecen los recibos y egresos
+export function invalidateAfterExcessChange(queryClient: QueryClient) {
+  invalidateKeys(queryClient, [
+    'excesses',
+    'credits',
+    'accounts-receivable',
+    'accounts-payable',
+    'customer-available-credits',
+    'customer-payments-open-items',
+    'supplier-payments-open-items',
+  ])
 }

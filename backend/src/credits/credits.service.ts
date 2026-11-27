@@ -26,6 +26,7 @@ const AVAILABLE_CUSTOMER_CREDIT = {
 } satisfies Prisma.CustomerCreditWhereInput;
 
 const AVAILABLE_SUPPLIER_CREDIT = {
+  status: { not: 'voided' },
   balance: { gt: 0 },
 } satisfies Prisma.SupplierCreditWhereInput;
 
@@ -155,7 +156,7 @@ function buildCustomerCredit(credit: CustomerCreditRow) {
 function buildSupplierCredit(credit: SupplierCreditRow) {
   return {
     ...buildCreditBase(credit),
-    origin: buildOrigin('devolucion', credit.sourceDocument),
+    origin: buildOrigin(credit.kind, credit.sourceDocument),
     applications: credit.applications.map((application) => ({
       id: application.id,
       documentType: application.supplierPayment ? 'EG' : null,

@@ -11,10 +11,11 @@ import { getThirdParties } from '@/services/third-parties.service'
 import { getSupplierPaymentOpenItems } from '@/services/supplier-payments.service'
 import { Combobox, ThousandsInput, UseCreditButton } from '@/components/shared'
 import type { ComboboxOption } from '@/components/shared'
-import { formatCOP, docNumber, formatDateOnly, formatBogotaDate } from '@/lib/format'
+import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
 import { useSupplierPaymentForm } from './useSupplierPaymentForm'
+import { formatSupplierCreditDate, getExcessCreditLabel } from './supplier-payment-form.utils'
 import { CREDITS_OVERFLOW_MESSAGE, SUPPLIER_PAYMENT_METHODS } from './supplier-payment-form.schema'
 import { TREASURY_PAYMENT_METHOD_LABELS } from '@/types'
 import type { ThirdPartyDetail } from '@/types/third-party.types'
@@ -397,15 +398,17 @@ export default function SupplierPaymentNewPage() {
                           return (
                             <tr key={field.id}>
                               <td className="px-5 py-3 text-content-muted text-xs whitespace-nowrap">
-                                {openCredit ? formatBogotaDate(openCredit.createdAt) : '—'}
+                                {openCredit ? formatSupplierCreditDate(openCredit) : '—'}
                               </td>
                               <td className="px-5 py-3 text-content-secondary text-xs whitespace-nowrap">
-                                {openCredit?.sourceDocument
-                                  ? docNumber(
-                                      openCredit.sourceDocument.type,
-                                      openCredit.sourceDocument.number,
-                                    )
-                                  : 'Sin documento de origen'}
+                                {openCredit && getExcessCreditLabel(openCredit)
+                                  ? `Excedente ${getExcessCreditLabel(openCredit)}`
+                                  : openCredit?.sourceDocument
+                                    ? docNumber(
+                                        openCredit.sourceDocument.type,
+                                        openCredit.sourceDocument.number,
+                                      )
+                                    : 'Sin documento de origen'}
                               </td>
                               <td className="px-5 py-3 text-content-secondary text-xs whitespace-nowrap">
                                 {formatCOP(row?.balance ?? 0)}

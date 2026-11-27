@@ -18,6 +18,7 @@ import {
   ChartColumnBig,
   ClipboardCheck,
   PiggyBank,
+  Coins,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -122,6 +123,12 @@ export const navGroups: NavGroup[] = [
         label: 'Recibos de caja',
         icon: Wallet,
         permission: 'customer_payment.read',
+      },
+      {
+        to: '/excesses',
+        label: 'Excedentes',
+        icon: Coins,
+        permission: 'excedente.create',
       },
     ],
   },

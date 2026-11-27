@@ -172,6 +172,3 @@ export interface ClientStatement {
   receivables: AccountsReceivable[];
   credits: ClientCredit[];
 }
-
-// POST /accounts-receivable/clients/:clientId/excedentes y PATCH /accounts-receivable/excedentes/:id/void
-export type Excedente = CustomerCreditRecord;

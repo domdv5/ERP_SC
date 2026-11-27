@@ -3,23 +3,19 @@ import { useGoBack } from '@/hooks/useGoBack'
 import { BackLink } from '@/components/shared'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { Wallet, CreditCard, FileText, PiggyBank, Plus } from 'lucide-react'
+import { Wallet, CreditCard, FileText, PiggyBank } from 'lucide-react'
 import { getClientStatement } from '@/services/accounts-receivable.service'
-import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 import { formatCOP, docNumber } from '@/lib/format'
 import { StatusBadge } from './components/StatusBadge'
 import { PaymentDaysCell } from './components/PaymentDaysCell'
-import { RegisterExcedenteModal } from './components/RegisterExcedenteModal'
 import { formatDate, DOCUMENT_TYPE_LABELS } from './accounts-receivable.utils'
 
 export default function AccountsReceivableClientStatementPage() {
   const { clientId } = useParams<{ clientId: string }>()
   const navigate = useNavigate()
   const goBack = useGoBack('/accounts-receivable')
-  const canManageExcedente = usePermission('excedente.create')
   const [branchId, setBranchId] = useState('')
-  const [excedenteModalOpen, setExcedenteModalOpen] = useState(false)
 
   const {
     data: statement,
@@ -100,16 +96,6 @@ export default function AccountsReceivableClientStatementPage() {
               Estado de cuenta del cliente
             </p>
           </div>
-          {canManageExcedente && (
-            <button
-              type="button"
-              onClick={() => setExcedenteModalOpen(true)}
-              className="btn-primary flex items-center gap-1.5 px-4 py-2 text-sm"
-            >
-              <Plus className="w-4 h-4" />
-              Registrar excedente
-            </button>
-          )}
         </div>
 
         {/* Totals grid */}
@@ -333,13 +319,6 @@ export default function AccountsReceivableClientStatementPage() {
           </div>
         )}
       </div>
-
-      <RegisterExcedenteModal
-        open={excedenteModalOpen}
-        clientId={clientId!}
-        defaultBranchId={branchId}
-        onClose={() => setExcedenteModalOpen(false)}
-      />
     </div>
   )
 }

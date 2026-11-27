@@ -3,7 +3,6 @@ import type {
   ApiResponse,
   AccountsReceivableDetail,
   ClientStatement,
-  CreateExcedentePayload,
   ReceivableClientsResponse,
   GetReceivableClientsParams,
 } from '@/types'
@@ -31,18 +30,5 @@ export async function getClientStatement(
     `/accounts-receivable/clients/${clientId}/statement`,
     { params: { customerBranchId } },
   )
-  return res.data.data
-}
-
-export async function createExcedente(clientId: string, payload: CreateExcedentePayload) {
-  const res = await api.post<ApiResponse<unknown>>(
-    `/accounts-receivable/clients/${clientId}/excedentes`,
-    payload,
-  )
-  return res.data.data
-}
-
-export async function voidExcedente(id: string) {
-  const res = await api.patch<ApiResponse<unknown>>(`/accounts-receivable/excedentes/${id}/void`)
   return res.data.data
 }

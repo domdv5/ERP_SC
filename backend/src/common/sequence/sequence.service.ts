@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DocumentType } from '@/common/enums';
 
-/** Claves válidas de consecutivo: los 12 tipos de documento, más tesorería y casos de inventario. */
+/** Claves válidas de consecutivo: los 12 tipos de documento, más tesorería, casos de inventario y excedentes. */
 export type SequenceKey =
-  DocumentType | 'EGRESO' | 'RECIBO_CAJA' | 'INVENTORY_CASE';
+  DocumentType | 'EGRESO' | 'RECIBO_CAJA' | 'INVENTORY_CASE' | 'EXCESS';
 
 @Injectable()
 export class SequenceService {

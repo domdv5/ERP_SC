@@ -14,7 +14,6 @@ export type {
   CustomerCreditKind,
   CustomerCreditRecord,
   CustomerCreditUsableIn,
-  Excedente,
   ReceivableClient,
   ReceivableClientsResponse,
   ReceivableClientsSort,
@@ -36,11 +35,4 @@ export interface GetReceivableClientsParams {
   // Formato YYYY-MM-DD; filtra las facturas por document.date
   dateFrom?: string
   dateTo?: string
-}
-
-export interface CreateExcedentePayload {
-  customerBranchId?: string
-  amount: number
-  // YYYY-MM-DD
-  date?: string
 }
