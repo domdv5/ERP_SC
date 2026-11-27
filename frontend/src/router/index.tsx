@@ -56,6 +56,7 @@ const CustomerPaymentDetailPage = lazy(
 const CustomerPaymentNewPage = lazy(
   () => import('@/pages/customer-payments/CustomerPaymentNewPage'),
 )
+const ExcessesPage = lazy(() => import('@/pages/excesses/ExcessesPage'))
 const OfficialPurchasesPendingPage = lazy(
   () => import('@/pages/official-purchases/OfficialPurchasesPendingPage'),
 )
@@ -347,6 +348,16 @@ export const router = createBrowserRouter([
           <Lazy>
             <PermissionGuard permission="customer_payment.read">
               <CustomerPaymentDetailPage />
+            </PermissionGuard>
+          </Lazy>
+        ),
+      },
+      {
+        path: 'excesses',
+        element: (
+          <Lazy>
+            <PermissionGuard permission="excedente.create">
+              <ExcessesPage />
             </PermissionGuard>
           </Lazy>
         ),

@@ -119,7 +119,6 @@ export type {
   ClientCreditApplication,
   ClientStatement,
   ClientStatementTotals,
-  CreateExcedentePayload,
   CustomerCreditKind,
   CustomerCreditUsableIn,
   GetReceivableClientsParams,

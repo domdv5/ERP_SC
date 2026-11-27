@@ -18,8 +18,6 @@ import type { ComboboxOption } from '@/components/shared'
 import { formatCOP, docNumber, formatDateOnly } from '@/lib/format'
 import { getFirstErrorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
-import { usePermission } from '@/hooks/usePermission'
-import { RegisterExcedenteModal } from '@/pages/accounts-receivable/components/RegisterExcedenteModal'
 import { useCustomerPaymentForm, NO_BRANCH } from './useCustomerPaymentForm'
 import {
   CREDITS_OVERFLOW_MESSAGE,
@@ -138,8 +136,6 @@ export default function CustomerPaymentNewPage() {
   } = useCustomerPaymentForm()
   const missingPayment = Math.round(expectedPayments) - Math.round(totalPayments)
 
-  const canCreateExcedente = usePermission('excedente.create')
-  const [excedenteModalOpen, setExcedenteModalOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   // Diferido hasta que se cierre el diálogo de confirmación, para no repoblar la tabla detrás de él
   const [needsOpenItemsRefetch, setNeedsOpenItemsRefetch] = useState(false)
@@ -331,16 +327,6 @@ export default function CustomerPaymentNewPage() {
                       Selecciona las que va a cubrir este recibo y ajusta el abono de cada una
                     </p>
                   </div>
-                  {canCreateExcedente && (
-                    <button
-                      type="button"
-                      onClick={() => setExcedenteModalOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brand-secondary border border-brand-secondary/30 rounded-lg hover:bg-brand-secondary/10 transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Registrar excedente
-                    </button>
-                  )}
                 </div>
 
                 {receivablesFields.length === 0 ? (
@@ -790,13 +776,6 @@ export default function CustomerPaymentNewPage() {
           void confirmAndSubmit()
         }}
         onCancel={closeConfirmDialog}
-      />
-
-      <RegisterExcedenteModal
-        open={excedenteModalOpen}
-        clientId={clientId}
-        defaultBranchId={watch('customerBranchId')}
-        onClose={() => setExcedenteModalOpen(false)}
       />
     </div>
   )
